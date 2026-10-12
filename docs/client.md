@@ -34,34 +34,40 @@ for scripts and tests.
 ## 2. Where it lives
 
 In flash, as an app with `install_location = flash`
-(`/data/apps/store/`, about 1 MB): it must work with any card, or none,
+(`/data/apps/store/`, 905 KB): it must work with any card, or none,
 since reinstalling after a card swap is its main job. It updates itself
-as the package `store` (type `system`): the new binary is unpacked next
-to the running one and takes over on the next start. A copy of the
-first version comes with the OS image (in `/data`'s initial contents),
-so a fresh badge has a store without a computer.
+as the package `store` (type `system`, [apps/store](../apps/store)): the new
+version is unpacked next to the running one and moved into place; on NOMMU
+the running program is in RAM, so the new one takes over on the next
+start. A copy of the first version comes with the OS image (in `/data`'s
+initial contents, why2025-linux `stage-store.py`, pinned by commit and
+SHA-256) with its `.package/` but no registry entry; `store maintain` at the
+first boot registers it (adopt), so a fresh badge has a store without a
+computer.
 
 ## 3. Building blocks
 
 | Need | How | Notes |
 |---|---|---|
 | HTTPS | mbedTLS 3.x, TLS 1.2 and 1.3 | Already built for NetSurf (why2025-linux `sdapps/build.sh`). Busybox `wget` on the badge has no TLS |
-| CA certificates | Mozilla bundle, only the roots GitHub and the mirrors need, shipped with the store | Updated with the store. Full bundle stays in NetSurf/Links |
+| CA certificates | 12 roots from Mozilla's list (`client/roots.pem`, picked by `mkroots.py`): the ones GitHub and the usual hosts need, built into the store | Updated with the store. Full bundle stays in NetSurf/Links. A source can add its own (`CAFILE=`, for test sources) |
 | Clock | Must be set before TLS (certificate validity) | `netd` sets it once after connecting; the store waits for it or says why it cannot connect |
 | Redirects | Follow up to 5, HTTPS only | GitHub release downloads redirect |
 | Resume | HTTP Range on `.part` files | Wi-Fi on the badge goes through the C6 and can drop |
 | Integrity | SHA-256 of every package and detail file from the index (mbedTLS has SHA-256); `serial` against a stale index | No signature (repository.md §6) |
-| Decompress | inflate (zlib or a small inflater such as `tinf`) | Streaming |
+| Decompress | zlib's inflate | Streaming |
 | Archive | ustar reader, streaming, with the checks of package.md §1.2 | ~300 lines |
-| JSON | streaming tokenizer (jsmn-style) | The index is parsed in one pass into a compact in-memory table |
-| Images | QOI decoder | Icons and screenshots are converted by CI (repository.md §5.3) |
-| Drawing | The menu's drawing code and fonts (`overlay-src/wbdraw.h`, `home-assets`) and the design tokens of the badge's design system | Same look as the menu |
+| JSON | jsmn | The index is parsed in one pass into a compact in-memory table |
+| Images | QOI decoder (`client/src/qoi.c`) | Icons and screenshots are converted by `tools/publish.py` (repository.md §5.3), fetched when a page opens and cached |
+| Drawing | The menu's drawing code and fonts (why2025-linux `overlay-src/wbdraw.h`, `home_assets.h`) and the design tokens of the badge's design system | Same look as the menu. Drawn in bands of 40 rows, as appterm does: no 1 MB frame buffer |
 
 Memory budget: at most 1.5 MB of the user pool while the store runs
 (the menu is out of the way, as for any app). Downloads and unpacking
 stream to the card; nothing larger than a buffer is held in memory. The
 index table for 1000 apps is about 200 KB (strings interned, no
-descriptions). Screenshots load one at a time.
+descriptions). Screenshots load one at a time. Measured on the badge
+(2026-10-12): 920 KB at the peak of an install from the CLI, 1.3 MB for
+the UI.
 
 ## 4. UI
 
@@ -81,9 +87,28 @@ Progress (download, unpack) shows bytes and a bar; Esc cancels and
 leaves nothing half-installed. Errors say what to do ("No network:
 connect in Settings > Wi-Fi", "Card full: 12 MB needed, 3 MB free").
 
+As built (2026-10-12, `client/src/ui.c`):
+
+- Discover shows the types as list rows with counts, like the menu's
+  lists. Featured comes from `featured` in the index (none yet).
+- Questions the install asks (replacing a hand-installed app, a big app
+  in flash, a downgrade) come up as dialogs with Cancel focused. Remove
+  and delete ask first.
+- Esc cancels a download. The unpack after it is not cancelled (it is
+  short, and the journal covers an interruption). The partial download
+  stays in `badge/.store/download/` for resuming, until "Clear cache".
+- "Open" writes the app's id to `/tmp/store-open` and ends; the menu,
+  back from apprun, starts the app, or shows its files first when it has
+  `FILES` (why2025-linux `home.c`).
+- Settings has no refresh interval: the index is refreshed when older
+  than an hour (`INDEX_MAX_AGE`), and with "Refresh now". A mirror is a
+  new address for an existing source (`$HOME/.whyos/store/sources.d/<id>.conf`).
+- `STORE_UI_TIMING=1` writes the drawing time of each screen to stderr.
+
 ## 5. What the OS must provide
 
-Changes in why2025-linux, outside this repository:
+Changes in why2025-linux, outside this repository (all done on its
+`usb-host` branch, 2026-10-12; that branch is not public):
 
 | Change | Where | Why |
 |---|---|---|
@@ -94,8 +119,9 @@ Changes in why2025-linux, outside this repository:
 | Store tile or entry in the menu | `home.c` | Start `store`; "My apps" also reachable from Settings |
 | `$HOME/.whyos/bin` on `PATH` | `/etc/profile.d/whyos-apps.sh` in the rootfs overlay (login and interactive shells); `DEFAULT_PATH` in `dropbear-localoptions.h`, path written out (commands run directly over SSH) | Commands of command-line apps in every shell (package.md §2.3.1) |
 | `/etc/whyos-release` | rootfs overlay | OS version and API level (device.md §6.3) |
-| `store maintain` after the card is mounted | where the card is mounted (boot and hot-plug) | Finish interrupted work, pending cleanups |
-| The first store binary in `/data` | `post-build.sh` / `mkdata.sh` | A fresh badge has a store |
+| `store maintain` after the card is mounted | `S15sdcard` at boot (with `HOME=/root`), and the menu's Settings > Disks when it mounts the card. There is no automount when a card is inserted while the badge runs | Finish interrupted work, pending cleanups |
+| The first store in `/data` | `post-build.sh` runs `stage-store.py` | A fresh badge has a store |
+| "Open" from the store | `home.c` reads `/tmp/store-open` when the store ends | The store cannot start apps itself: apprun and the menu do that |
 
 None of these break existing hand-installed apps.
 
@@ -104,9 +130,12 @@ None of these break existing hand-installed apps.
 - Host build of the package checker and index parser (the same C), run
   in CI against good and malicious packages (path traversal, links,
   case collisions, oversized entries, wrong hashes).
-- A local source: the index tools can publish to a directory; a test
-  HTTP server on the build machine serves it to the badge or the QEMU
-  simulation, with a test key.
+- A local source: `tools/publish.py --out` publishes to a directory and
+  `tools/serve.py` serves it over HTTPS with a test CA (`CAFILE=` in the
+  source), to the host tests, the badge or the QEMU simulation
+  (why2025-linux `Tools/usb/sim/test_s10_store.py`).
+- The screens on the host: `store-ui-host` takes keys from a script and
+  writes screens as PPM (`client/tests/test_ui.py`).
 - On the badge: install, update, card swap (missing → reinstall), remove
   with and without the card, power cut during install (journal), and
   memory use measured as for other apps.

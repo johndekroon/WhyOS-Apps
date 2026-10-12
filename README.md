@@ -7,9 +7,13 @@ turns them into packages and an index, and the published result in
 the index and downloads packages from this repository over HTTPS
 (raw.githubusercontent.com) and installs them on the microSD card.
 
-Status: **specification, draft 1.0** (2026-10-12). `apps/` has the first
-five packages (the SD-card apps of why2025-linux), checked with
-`tools/validate.py`, and are published in `dist/v1/` by `tools/publish.py`.
+Status (2026-10-12): **phases 1 and 2 done** ([docs/roadmap.md](docs/roadmap.md)).
+The specification is draft 1.0. `apps/` has the five SD-card apps of
+why2025-linux and the store itself, published in `dist/v1/`. The `store`
+client ([client/](client/README.md)) installs, updates and removes them on
+a badge, from the command line and from its full-screen UI, which opens
+from the menu (Apps > App store, Settings > My apps). why2025-linux puts
+the first store in the image.
 
 ## Documents
 
@@ -23,11 +27,12 @@ five packages (the SD-card apps of why2025-linux), checked with
 | [docs/roadmap.md](docs/roadmap.md) | Phases, open questions, non-goals |
 | [schema/](schema/) | JSON Schemas for the manifest, the index and the category tree |
 | [categories.json](categories.json) | The category tree |
-| [apps/](apps/) | The apps: gnuboy, NetSurf, Links, nmap, imgview |
+| [apps/](apps/) | The apps: gnuboy, NetSurf, Links, nmap, imgview, and the store itself |
+| [client/](client/README.md) | The `store` program: CLI and UI, for the badge and the host |
 | [toolchain/](toolchain/README.md) | How the apps' toolchain is built (part of their corresponding source) |
-| [tools/](tools/) | `validate.py` (check apps against the spec), `import-sdapp.py` (package an app built by why2025-linux) |
+| [tools/](tools/) | `validate.py` (check apps against the spec), `publish.py` (pack and write `dist/v1/`), `import-sdapp.py` (package an app built by why2025-linux), `serve.py`/`local-source.sh` (a test source) |
 
-## Submitting an app (once the store is live)
+## Submitting an app
 
 1. Fork this repository and add `apps/<id>/` with a `manifest.toml`, an
    icon and screenshots ([docs/repository.md](docs/repository.md)).
