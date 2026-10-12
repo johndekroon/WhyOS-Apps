@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://johndekroon.github.io/WhyOS-Apps/schema/categories.schema.json",
+  "title": "WhyOS app store category tree",
+  "type": "object",
+  "required": ["format", "types"],
+  "properties": {
+    "format": { "const": 1 },
+    "types": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/type" }
+    }
+  },
+  "$defs": {
+    "slug": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,31}$" },
+    "icon": { "type": "string", "pattern": "^[a-z0-9-]{1,32}$" },
+    "menu": { "enum": ["apps", "games", "tools", "none"] },
+    "type": {
+      "type": "object",
+      "required": ["id", "name", "icon", "menu", "categories"],
+      "properties": {
+        "id": { "enum": ["app", "game", "system"] },
+        "name": { "type": "string", "maxLength": 32 },
+        "icon": { "$ref": "#/$defs/icon" },
+        "menu": { "$ref": "#/$defs/menu" },
+        "hidden": { "type": "boolean" },
+        "categories": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/category" },
+          "contains": { "type": "object", "properties": { "id": { "const": "other" } }, "required": ["id"] }
+        }
+      }
+    },
+    "category": {
+      "type": "object",
+      "required": ["id", "name", "icon"],
+      "properties": {
+        "id": { "$ref": "#/$defs/slug" },
+        "name": { "type": "string", "maxLength": 32 },
+        "icon": { "$ref": "#/$defs/icon" },
+        "menu": { "$ref": "#/$defs/menu" },
+        "hidden": { "type": "boolean" }
+      }
+    }
+  }
+}

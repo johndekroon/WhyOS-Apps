@@ -1,0 +1,168 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://johndekroon.github.io/WhyOS-Apps/schema/manifest.schema.json",
+  "title": "WhyOS app manifest",
+  "description": "The JSON form of apps/<id>/manifest.toml (docs/package.md §2). Strict for authoring: unknown keys are errors here, while clients ignore them. Generated fields (published, size, files) are added by CI.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "format": { "const": 1 },
+    "id": { "$ref": "#/$defs/slug" },
+    "name": { "type": "string", "minLength": 1, "maxLength": 32 },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$"
+    },
+    "build": { "type": "integer", "minimum": 1 },
+    "summary": { "type": "string", "minLength": 1, "maxLength": 80 },
+    "description": { "type": "string", "maxLength": 4000 },
+    "author": { "type": "string", "maxLength": 80 },
+    "maintainer": { "type": "string", "pattern": "^[A-Za-z0-9-]{1,39}$" },
+    "license": { "type": "string", "maxLength": 100 },
+    "homepage": { "$ref": "#/$defs/url" },
+    "source": { "$ref": "#/$defs/url" },
+    "changelog": { "type": "string", "maxLength": 2000 },
+    "upstream_version": { "type": "string", "maxLength": 32 },
+    "withdrawn": { "type": "string", "maxLength": 200 },
+
+    "type": { "enum": ["app", "game", "system"] },
+    "category": { "$ref": "#/$defs/slug" },
+    "tags": {
+      "type": "array", "maxItems": 8, "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{0,23}$" }
+    },
+    "content_warning": { "type": "string", "maxLength": 200 },
+
+    "launch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exec"],
+      "properties": {
+        "exec": { "$ref": "#/$defs/relpath" },
+        "args": { "type": "string", "maxLength": 159 },
+        "info": { "type": "string", "maxLength": 32 },
+        "icon": { "type": "string", "pattern": "^[a-z0-9-]{1,32}$" },
+        "terminal": { "enum": [false, true, "close", "shell"] },
+        "esc": { "enum": ["quit"] },
+        "files": { "type": "string", "pattern": "^%[DdT](/[^/]+)*$" },
+        "types": { "$ref": "#/$defs/extensions" },
+        "opens": { "$ref": "#/$defs/extensions" },
+        "opens_also": { "$ref": "#/$defs/extensions" },
+        "ask": { "type": "string", "maxLength": 32 },
+        "ask_default": { "type": "string", "maxLength": 64 },
+        "rotation": { "enum": ["auto", "locked"], "default": "auto" },
+        "menu": { "enum": ["apps", "games", "tools", "none"] },
+        "stack_kb": { "type": "integer", "minimum": 4, "maximum": 4096 }
+      }
+    },
+
+    "commands": {
+      "type": "array", "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "exec"],
+        "properties": {
+          "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$" },
+          "exec": { "$ref": "#/$defs/relpath" },
+          "args": { "type": "string", "maxLength": 159 }
+        }
+      }
+    },
+
+    "requires": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os_api", "memory_kb"],
+      "properties": {
+        "os_api": { "type": "integer", "minimum": 1 },
+        "memory_kb": { "type": "integer", "minimum": 0 },
+        "features": {
+          "type": "array", "uniqueItems": true,
+          "items": { "enum": ["wifi", "bluetooth", "usb-host", "sd-card", "audio", "camera", "lora", "keyboard", "display", "accelerometer", "environment-sensor"] }
+        },
+        "apps": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/slug" } }
+      }
+    },
+
+    "install_location": { "enum": ["sd", "flash"] },
+
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "config": {
+          "type": "object", "additionalProperties": false,
+          "properties": { "max_kb": { "type": "integer", "minimum": 0, "maximum": 256 } }
+        },
+        "data": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "max_mb": { "type": "integer", "minimum": 0 },
+            "folders": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/relpath" } },
+            "user_folders": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/relpath" } }
+          }
+        },
+        "cache": {
+          "type": "object", "additionalProperties": false,
+          "properties": { "enabled": { "type": "boolean" } }
+        }
+      }
+    },
+
+    "permissions": {
+      "type": "array", "uniqueItems": true,
+      "items": { "enum": ["network", "usb", "bluetooth", "files-all", "system"] }
+    },
+
+    "hooks": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "post_install": { "$ref": "#/$defs/relpath" },
+        "migrate": { "$ref": "#/$defs/relpath" },
+        "pre_remove": { "$ref": "#/$defs/relpath" }
+      }
+    },
+
+    "published": { "type": "string", "format": "date-time" },
+    "size": {
+      "type": "object", "additionalProperties": false,
+      "required": ["download", "installed"],
+      "properties": {
+        "download": { "type": "integer", "minimum": 0 },
+        "installed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "files": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sha256"],
+      "properties": {
+        "sha256": {
+          "type": "object",
+          "propertyNames": { "$ref": "#/$defs/relpath" },
+          "additionalProperties": { "$ref": "#/$defs/sha256" }
+        }
+      }
+    }
+  },
+  "if": { "required": ["withdrawn"] },
+  "then": { "required": ["format", "id", "name", "withdrawn"] },
+  "else": {
+    "required": ["format", "id", "name", "version", "build", "summary", "description",
+                 "author", "license", "type", "category", "launch", "requires"]
+  },
+  "$defs": {
+    "slug": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,31}$" },
+    "url": { "type": "string", "pattern": "^https://", "maxLength": 300 },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "relpath": {
+      "type": "string", "maxLength": 240,
+      "pattern": "^(?!/)(?!.*(^|/)\\.\\.(/|$))[^\"*:<>?\\\\|\\x00-\\x1f]+$"
+    },
+    "extensions": {
+      "type": "array", "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^([a-z0-9]{1,8}|\\*)$" }
+    }
+  }
+}

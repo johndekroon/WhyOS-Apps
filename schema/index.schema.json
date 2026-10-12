@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://johndekroon.github.io/WhyOS-Apps/schema/index.schema.json",
+  "title": "WhyOS app store index",
+  "description": "v1/index.json (docs/repository.md §5.1). Clients ignore unknown keys, so this schema allows them.",
+  "type": "object",
+  "required": ["format", "source", "serial", "generated", "base_url", "apps"],
+  "properties": {
+    "format": { "const": 1 },
+    "source": { "$ref": "#/$defs/slug" },
+    "serial": { "type": "integer", "minimum": 1 },
+    "generated": { "type": "string", "format": "date-time" },
+    "expires": { "type": "string", "format": "date-time" },
+    "base_url": { "type": "string", "pattern": "^https://.*/$" },
+    "categories_sha256": { "$ref": "#/$defs/sha256" },
+    "featured": { "type": "array", "maxItems": 12, "items": { "$ref": "#/$defs/slug" } },
+    "apps": { "type": "array", "items": { "$ref": "#/$defs/app" } }
+  },
+  "$defs": {
+    "slug": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,31}$" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "app": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": {
+        "id": { "$ref": "#/$defs/slug" },
+        "name": { "type": "string", "maxLength": 32 },
+        "summary": { "type": "string", "maxLength": 80 },
+        "type": { "enum": ["app", "game", "system"] },
+        "category": { "$ref": "#/$defs/slug" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "author": { "type": "string" },
+        "terminal": { "type": "boolean" },
+        "commands": { "type": "array", "items": { "type": "string" } },
+        "updated": { "type": "string", "format": "date" },
+        "icon": { "type": "string" },
+        "details_sha256": { "$ref": "#/$defs/sha256" },
+        "withdrawn": { "type": "string" },
+        "requires": {
+          "type": "object",
+          "properties": {
+            "os_api": { "type": "integer", "minimum": 1 },
+            "memory_kb": { "type": "integer", "minimum": 0 },
+            "features": { "type": "array", "items": { "type": "string" } },
+            "apps": { "type": "array", "items": { "$ref": "#/$defs/slug" } }
+          }
+        },
+        "latest": {
+          "type": "object",
+          "required": ["version", "build", "package"],
+          "properties": {
+            "version": { "type": "string" },
+            "build": { "type": "integer", "minimum": 1 },
+            "package": { "$ref": "#/$defs/package" }
+          }
+        }
+      },
+      "if": { "required": ["withdrawn"] },
+      "else": { "required": ["summary", "type", "category", "updated", "details_sha256", "requires", "latest"] }
+    },
+    "package": {
+      "type": "object",
+      "required": ["url", "sha256", "size", "installed_size"],
+      "properties": {
+        "url": { "type": "string", "pattern": "^https://" },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "size": { "type": "integer", "minimum": 0 },
+        "installed_size": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}
