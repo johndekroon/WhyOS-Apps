@@ -19,7 +19,14 @@ store repair <id>            reinstall the installed version
 store adopt <id>             register an unregistered app on this card
 store maintain               finish interrupted work, run pending cleanups (device.md §5.7)
 store sources                list sources and their state
+store delete <id>            delete a legacy or unregistered app's directory
+store pin <id> | unpin <id>  stay on the installed version, or not
+store check-package <file> [<sha256>]   the package checks alone (CI, tests)
 ```
+
+Options anywhere: `--yes` (answer yes: confirmations such as user folders
+on remove or an explicit downgrade), `--json`, `--keep` (keep the downloaded
+package). Exit status 2 when a confirmation was needed and not given.
 
 Exit status 0 on success; messages on stderr; `--json` on list commands
 for scripts and tests.

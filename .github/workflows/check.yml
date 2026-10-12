@@ -1,0 +1,32 @@
+# Checks on every push and pull request (docs/repository.md §4). Publishes
+# nothing: publishing is committing dist/ (tools/publish.py) and pushing.
+name: check
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install jsonschema pillow pytest
+      - name: Validate the apps
+        run: python tools/validate.py
+      - name: Tests of the tools
+        run: python -m pytest -q tests
+      - uses: actions/cache@v4
+        with:
+          path: client/.deps
+          key: deps-${{ hashFiles('client/deps.sh') }}
+      - name: Build the store client for the host
+        run: make -C client host
+      - name: The client's package checks on everything published
+        run: for f in dist/v1/packages/*.wpk; do client/store-host check-package "$f"; done
+      - name: Tests of the client
+        run: make -C client test
+      - name: dist/ is what tools/publish.py makes from apps/
+        run: |
+          python tools/publish.py
+          git status --porcelain dist
+          test -z "$(git status --porcelain dist)" || { echo "dist/ is out of date: run tools/publish.py and commit it"; exit 1; }

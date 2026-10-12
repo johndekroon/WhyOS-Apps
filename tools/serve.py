@@ -35,6 +35,8 @@ def handler(root, redirects, drop_after):
             size = os.path.getsize(path)
             start, end, status = 0, size - 1, 200
             rng = self.headers.get("Range", "")
+            if rng:
+                self.log_message("range %s %s", self.path, rng)
             if rng.startswith("bytes="):
                 a, _, b = rng[6:].partition("-")
                 start = int(a) if a else 0

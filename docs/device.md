@@ -16,8 +16,9 @@ SD/badge/appdata/<id>/.cache/      storage.cache: may be deleted at any time
 SD/badge/.store/card.json          this card's identity (§4)
 SD/badge/.store/cache/             cached index, details and images
 SD/badge/.store/download/          packages being downloaded (resumable)
-SD/badge/.store/staging/           packages being unpacked
-SD/badge/.store/journal            the operation in progress (§5.7)
+SD/badge/apps/.<id>.new/           a package being unpacked (next to its place: same filesystem)
+SD/badge/apps/.<id>.old/           the previous version while the new one moves in
+SD/badge/.store/journal            the operation in progress (§5.7); $HOME/.whyos/store/journal without a card
 
 /data/apps/<id>/                   program files of an app with install_location = flash
                                    (same contents as on the card, incl. app.conf and .package/)
@@ -171,13 +172,14 @@ and the reason the registry lives in flash.
 4. Write the journal: `install <id> <build>`.
 5. Download to `.store/download/<file>.part` (resume with HTTP Range),
    check size and SHA-256 against the index, rename to `<file>`.
-6. Unpack into `.store/staging/<id>/`: `manifest.json` first, check it
+6. Unpack into `apps/.<id>.new/` (for `flash`: `/data/apps/.<id>.new/`,
+   so moving it in is a rename on one filesystem): `manifest.json` first, check it
    matches the index entry (id, version, build), then `files/`, checking
    each file against `files.sha256` while streaming.
-7. Write `app.conf` and `.package/` into the staging directory, and the
-   command wrappers (package.md §2.3.1) into `$HOME/.whyos/bin/`.
-8. Move into place: `apps/<id>` (if present) → `apps/.<id>.old`, staging →
+7. Write `app.conf` and `.package/` into `.<id>.new/`.
+8. Move into place: `apps/<id>` (if present) → `apps/.<id>.old`, `.<id>.new` →
    `apps/<id>`. On FAT a directory rename is one directory-entry change.
+   Then the command wrappers (package.md §2.3.1) into `$HOME/.whyos/bin/`.
 9. Create `appdata/<id>/` with its `folders`, and `$HOME/.whyos/config/<id>/`.
 10. Write the registry entry; add this card to `cards`.
 11. Run `hooks.post_install`; delete `apps/.<id>.old`, the download (unless
@@ -247,7 +249,9 @@ by the client at start and by the system after the card is mounted
   `apps/.<id>.old` if present, else remove the half-made directory and
   mark the registry entry *damaged* (if there is one);
 - an unfinished **remove**: finish it;
-- clears `staging/`, and `download/` parts older than 7 days;
+- deletes `.<id>.new/` directories, puts back an `.<id>.old/` whose
+  `<id>` is gone and deletes the others, and `download/` parts older than
+  7 days;
 - runs pending cleanups for this card (§5.4).
 
 ### 5.8 Legacy apps

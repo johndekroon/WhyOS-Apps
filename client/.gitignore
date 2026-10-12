@@ -1,0 +1,5 @@
+.deps/
+store-host
+store-host.dSYM/
+src/roots.inc
+build/
