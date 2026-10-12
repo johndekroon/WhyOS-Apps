@@ -203,18 +203,18 @@
    "commands": [
     "nethack"
    ],
-   "details_sha256": "bafbc04eba106ceb6cd536021502de1b135af53d3d9c4cc1c974b356e2f762ad",
+   "details_sha256": "1e00ae6671708d6f011419f0e28d8a25099dcd944c11de2989c60d5f551b88c9",
    "id": "nethack",
    "install_location": "sd",
    "latest": {
-    "build": 1,
+    "build": 2,
     "package": {
-     "installed_size": 3349455,
-     "sha256": "7c621caf9dca30223a2f1b210583c7f55b11c7bd7b3f37212f807a98c6571915",
-     "size": 1587416,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/nethack-3.6.7.wpk"
+     "installed_size": 3439309,
+     "sha256": "b024d416b50e5112eaf1cc63b6ed1cfca21efc3e0a2bb623d82bd93b4e6d918d",
+     "size": 1631973,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/nethack-3.6.7-2.wpk"
     },
-    "version": "3.6.7"
+    "version": "3.6.7-2"
    },
    "menu_icon": "games",
    "name": "NetHack",
@@ -398,7 +398,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "3a6ddad8aabd3c71f44e356f3f543d968fbbd8d3f3327a2ed3b5af870ab368bb",
  "format": 1,
- "generated": "2026-10-12T15:06:54Z",
- "serial": 7,
+ "generated": "2026-10-12T15:50:29Z",
+ "serial": 8,
  "source": "whyos"
 }

@@ -5,8 +5,8 @@
 format = 1
 id = "nethack"
 name = "NetHack"
-version = "3.6.7"
-build = 1
+version = "3.6.7-2"
+build = 2
 summary = "The classic dungeon adventure: find the Amulet of Yendor"
 description = """
 Explore the Dungeons of Doom, fight monsters, find treasure and retrieve
@@ -27,7 +27,7 @@ license_file = "nethack.txt"
 homepage = "https://www.nethack.org"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/nethack/source"
 upstream_version = "3.6.7"
-changelog = "First store release."
+changelog = "A game cut off by a reset or power loss is recovered at the next start; before, NetHack would not start again (\"Too many hacks running now\")."
 
 type = "game"
 category = "strategy"
@@ -71,7 +71,7 @@ license_file = "uClibc-ng.txt"
 
 [[bundled]]
 name = "Badge port (key and fork glue, start script, termcap entry)"
-version = "60835d6"
+version = "149190c"
 license = "MIT"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/nethack/source"
 license_file = "badge-port.txt"

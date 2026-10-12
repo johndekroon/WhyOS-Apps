@@ -3,7 +3,7 @@
 Together with the downloads below, this directory is the complete
 corresponding source of the `nethack` package (docs/package.md §2.10).
 The files here are the badge-specific ones, copied from why2025-linux
-`sdapps/nethack/` at commit `60835d6`; the toolchain and the build script
+`sdapps/nethack/` at commit `149190c`; the toolchain and the build script
 are in [toolchain/](../../../toolchain/README.md).
 
 | Upstream | URL | SHA-256 or commit |
@@ -15,7 +15,7 @@ are in [toolchain/](../../../toolchain/README.md).
 |---|---|
 | `0001-badge.patch` | Changes to NetHack's source (termcap without ncurses, colours, paths, locking, SIGTERM) |
 | `badge.c` | The arrow keys as moves; a `fork()` that fails |
-| `start` | Sets up APP_DATA and APP_CONFIG and starts the game |
+| `start` | Sets up APP_DATA and APP_CONFIG, recovers a game that was killed, and starts the game |
 | `termcap`, `sysconf`, `nethackrc` | The terminal entry, the system settings, the default options |
 | `app.conf` | The menu entry of the hand-installed app (the store writes its own) |
 

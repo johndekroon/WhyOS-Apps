@@ -13,15 +13,26 @@ mkdir -p "$APP_DATA/save" || exit 1
 for f in perm record logfile xlogfile; do
 	[ -f "$APP_DATA/$f" ] || : > "$APP_DATA/$f"
 done
-# NetHack locks with lock files (no file locking in the kernel): one left
-# by a NetHack that was killed would keep the next from starting.
+# A NetHack that was killed (power, a reset, SIGKILL) leaves its lock
+# files, which keep the next from starting ("Too many hacks running"), and
+# the level files of its game. When no NetHack runs: lock files go, and
+# recover makes a save of the game from its level files; what it cannot
+# use goes too (that game is lost, but NetHack starts).
 running() {
 	for c in /proc/[0-9]*/comm; do
 		read -r n < "$c" 2>/dev/null && [ "$n" = nethack ] && return 0
 	done
 	return 1
 }
-running || rm -f "$APP_DATA"/*_lock
+if ! running; then
+	rm -f "$APP_DATA"/*_lock
+	for l in "$APP_DATA"/*lock.0; do
+		[ -e "$l" ] || continue
+		l=${l##*/}
+		"$d/recover" -d "$APP_DATA" "${l%.0}" >/dev/null 2>&1
+		rm -f "$APP_DATA/${l%.0}".*
+	done
+fi
 mkdir -p "$APP_CONFIG" &&
 	{ [ -f "$APP_CONFIG/nethackrc" ] || cp "$d/nethackrc" "$APP_CONFIG/nethackrc"; } &&
 	export NETHACKOPTIONS="$APP_CONFIG/nethackrc"

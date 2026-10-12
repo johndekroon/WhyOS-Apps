@@ -23,7 +23,7 @@
    "license_url": "licenses/nethack/badge-port.txt",
    "name": "Badge port (key and fork glue, start script, termcap entry)",
    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/nethack/source",
-   "version": "60835d6"
+   "version": "149190c"
   }
  ],
  "category": "strategy",
@@ -84,6 +84,19 @@
  "type": "game",
  "upstream_version": "3.6.7",
  "versions": [
+  {
+   "build": 2,
+   "changelog": "A game cut off by a reset or power loss is recovered at the next start; before, NetHack would not start again (\"Too many hacks running now\").",
+   "package": {
+    "installed_size": 3439309,
+    "sha256": "b024d416b50e5112eaf1cc63b6ed1cfca21efc3e0a2bb623d82bd93b4e6d918d",
+    "size": 1631973,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/nethack-3.6.7-2.wpk"
+   },
+   "published": "2026-10-12T15:50:28Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/nethack-3.6.7-2-source.tar.gz",
+   "version": "3.6.7-2"
+  },
   {
    "build": 1,
    "changelog": "First store release.",

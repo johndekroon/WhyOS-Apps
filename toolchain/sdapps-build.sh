@@ -382,12 +382,16 @@ build_nethack() {
 		LFLAGS="-static -Wl,--gc-sections -Wl,--no-relax -Wl,-elf2flt=-r" nethack
 	zero_page "$s/src/nethack.gdb"
 	"$T-flthdr" -s 131072 "$s/src/nethack"	# its stack (make splits -s N)
+	# recover: a save from the level files a killed game left (start)
+	make -s -C "$s/util" "${nf[@]}" LFLAGS="-static -Wl,--gc-sections -Wl,--no-relax -Wl,-elf2flt=-r" recover
+	zero_page "$s/util/recover.gdb"
+	"$T-flthdr" -s 32768 "$s/util/recover"
 	# the data: level files, the dungeon, then all of it in one nhdat
 	make -s -C "$s/dat" "${nf[@]}" all
 	make -s -C "$s" "${nf[@]}" dlb
 	rm -rf "$d"
 	mkdir -p "$d"
-	cp "$s/src/nethack" "$s/dat/nhdat" "$s/dat/license" "$d/"
+	cp "$s/src/nethack" "$s/util/recover" "$s/dat/nhdat" "$s/dat/license" "$d/"
 	cp "$HERE/nethack/start" "$HERE/nethack/termcap" "$HERE/nethack/sysconf" \
 		"$HERE/nethack/nethackrc" "$HERE/nethack/app.conf" "$d/"
 	ls -l "$d"
