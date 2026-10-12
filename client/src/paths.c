@@ -46,6 +46,8 @@ void paths_init(void)
 
 	memset(&P, 0, sizeof(P));
 	snprintf(P.home, sizeof(P.home), "%s", env_or("HOME", "/root"));
+	if (!strcmp(P.home, "/"))	/* init's: boot scripts, the menu before it fixes it */
+		snprintf(P.home, sizeof(P.home), "/root");
 	if (!read_file(env_or("STORE_RELEASE", "/etc/whyos-release"), &rel, 0, 16384)) {
 		for (char *l = rel; l && *l; l = strchr(l, '\n') ? strchr(l, '\n') + 1 : 0) {
 			conf_line(l, "SD", sd, sizeof(sd));
