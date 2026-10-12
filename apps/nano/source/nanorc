@@ -1,0 +1,15 @@
+## nano's settings on the badge (the start script reads this first, then
+## the syntax colours, then nanorc in the app's config folder, where your
+## own settings go: "set" and "unset" lines as in nano's manual).
+
+## No title bar: the name and state of the file show at the bottom when
+## they change, which leaves one more row for text in the 25.
+set minibar
+## Remember what you searched for and where you were in each file.
+set historylog
+set positionlog
+set tabsize 4
+set autoindent
+set zap
+## Running a command needs fork(), which the badge does not have.
+unbind ^T all

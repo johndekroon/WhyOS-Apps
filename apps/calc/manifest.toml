@@ -1,0 +1,62 @@
+# The calculator (why2025-linux sdapps/calc), written for the badge.
+format = 1
+id = "calc"
+name = "Calculator"
+version = "1.0.0"
+build = 1
+summary = "Type a sum, get the answer: functions, hex and binary"
+description = """
+Type a sum on the keyboard and press Enter (or =). Earlier sums stay on
+screen like a paper tape; Up and Down bring them back to change them.
+Starting with + * / or ^ goes on from the last answer.
+
+It knows + - * / ^, brackets, n% (n/100), n! and mod; pi, e and ans
+(the last answer); sqrt, cbrt, abs, exp, ln, log, log2, sin, cos, tan,
+asin, acos, atan, sinh, cosh, tanh, round, floor and ceil. 2pi and
+3(4+5) multiply. Numbers can be written as 0xff, 0b1010 or 1.5e3, and a
+whole-number answer also shows in hexadecimal and binary.
+
+Angles are in degrees; Tab switches to radians. Esc clears the line,
+and on an empty line closes the calculator, as the logo key does."""
+author = "WhyOS-Apps contributors"
+license = "MIT AND OFL-1.1 AND LGPL-2.1-or-later"
+license_file = "calc.txt"
+homepage = "https://github.com/johndekroon/WhyOS-Apps"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/calc/source"
+changelog = "First release."
+
+type = "app"
+category = "utilities"
+tags = ["calculator", "math", "hex", "binary"]
+install_location = "sd"
+
+[launch]
+exec = "calc"
+info = "sums, functions, hex and binary"
+icon = "count"
+
+[requires]
+os_api = 1
+memory_kb = 600           # estimate: the 0.34 MB program; it draws in bands, no screen buffer
+features = ["display", "keyboard"]
+
+[[bundled]]
+name = "uClibc-ng"
+version = "1.0.57"
+license = "LGPL-2.1-or-later"
+source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
+license_file = "uClibc-ng.txt"
+
+[[bundled]]
+name = "JetBrains Mono (font)"
+version = "2.211"
+license = "OFL-1.1"
+source = "https://github.com/JetBrains/JetBrainsMono"
+license_file = "jetbrains-mono.txt"
+
+[[bundled]]
+name = "Space Grotesk (font)"
+version = "2.000"
+license = "OFL-1.1"
+source = "https://github.com/floriankarsten/space-grotesk"
+license_file = "space-grotesk.txt"

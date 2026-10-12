@@ -1,0 +1,21 @@
+# appterm, the menu's terminal window (patches/buildroot/overlay-src/
+# appterm.c): what it understands of VT100/ANSI, with 8 colours (the
+# bright ones come from bold). Compiled into ncurses as a fallback entry
+# (sdapps/build.sh); the start script picks it in appterm's window.
+appterm|WhyOS terminal window,
+	am, msgr, xenl,
+	colors#8, cols#73, it#8, lines#25, pairs#64,
+	bel=^G, bold=\E[1m, civis=\E[?25l, clear=\E[H\E[J,
+	cnorm=\E[?25h, cr=\r, csr=\E[%i%p1%d;%p2%dr,
+	cub=\E[%p1%dD, cub1=^H, cud=\E[%p1%dB, cud1=\n,
+	cuf=\E[%p1%dC, cuf1=\E[C, cup=\E[%i%p1%d;%p2%dH,
+	cuu=\E[%p1%dA, cuu1=\E[A, dch=\E[%p1%dP, dch1=\E[P,
+	dim=\E[2m, dl=\E[%p1%dM, dl1=\E[M, ech=\E[%p1%dX, ed=\E[J,
+	el=\E[K, home=\E[H, hpa=\E[%i%p1%dG, ht=^I,
+	ich=\E[%p1%d@, il=\E[%p1%dL, il1=\E[L, ind=\n,
+	indn=\E[%p1%dS, kbs=^?, kcub1=\EOD, kcud1=\EOB, kcuf1=\EOC,
+	kcuu1=\EOA, kdch1=\E[3~, op=\E[39;49m, rc=\E8, rev=\E[7m,
+	ri=\EM, rin=\E[%p1%dT, rmkx=\E[?1l, rmso=\E[27m, rmul=\E[24m,
+	sc=\E7, setab=\E[4%p1%dm, setaf=\E[3%p1%dm,
+	sgr0=\E[m, smkx=\E[?1h, smso=\E[7m, smul=\E[4m,
+	vpa=\E[%i%p1%dd,

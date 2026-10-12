@@ -1,0 +1,38 @@
+#!/bin/sh
+# nano from the menu, Files, or as the nano command (app.conf). The
+# program, its settings and the syntax colours stay in the app directory;
+# your own settings are nanorc in APP_CONFIG, the search and position
+# history go to APP_DATA.
+d=${0%/*}
+: "${APP_DATA:=/mnt/sd/badge/appdata/nano}"
+: "${APP_CONFIG:=${HOME:-/root}/.whyos/config/nano}"
+# ncurses here knows only the terminals built into it (no terminfo files):
+# appterm's window (TERM=vt100 at 73 columns) gets its own entry, with
+# colour; a terminal it does not know is treated as a VT100.
+case $TERM in
+vt100) [ "$COLUMNS" = 73 ] && TERM=appterm ;;
+appterm | vt102 | ansi | linux | xterm | xterm-256color | screen | screen-256color | tmux | tmux-256color) ;;
+*) TERM=vt100 ;;
+esac
+# From the menu without a file: start on the card, where you save it.
+if [ "$TERM" = appterm ] && [ $# -eq 0 ]; then
+	SD=/mnt/sd
+	[ -r /etc/whyos-release ] && . /etc/whyos-release
+	cd "$SD" 2>/dev/null || cd "${HOME:-/root}"
+fi
+# The settings: ours, the syntax colours, then yours (nano reads one
+# file). One file for every nano, replaced whole: nothing is left behind
+# when the window is closed under us.
+rc=/tmp/nanorc
+{
+	cat "$d/nanorc"
+	for f in "$d"/syntax/*.nanorc; do
+		[ -f "$f" ] && echo "include \"$f\""
+	done
+	if [ -f "$APP_CONFIG/nanorc" ]; then
+		cat "$APP_CONFIG/nanorc"
+	fi
+} > "$rc.$$" && mv -f "$rc.$$" "$rc" || exit 1
+mkdir -p "$APP_DATA" 2>/dev/null
+export TERM XDG_DATA_HOME="$APP_DATA"
+exec "$d/nano" --rcfile="$rc" "$@"

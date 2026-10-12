@@ -57,7 +57,10 @@ rotation lock.
   `maintain` dealt with it; since store 0.2.3 the registry follows too.
   DOOM, the sensor panel and the Bus Pirate came from the OS image into
   the store on the same day; the sensor panel and the Bus Pirate
-  installed from the store on the badge, DOOM only by hand so far.
+  installed from the store on the badge, DOOM only by hand at first
+  (the user installed it from the store later that day). nano and the
+  calculator were added the same evening, tested on the badge from the
+  menu as hand-installed copies before they were published.
 - **Moving data of hand-installed apps.** Replacing a hand-installed app
   keeps the data where the old app put it (gnuboy's ROMs in `/mnt/sd/roms`,
   the store version uses `appdata/gnuboy/roms`). The store could offer to

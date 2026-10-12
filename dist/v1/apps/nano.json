@@ -1,0 +1,112 @@
+{
+ "author": "The GNU nano developers, badge port",
+ "bundled": [
+  {
+   "license": "X11-distribute-modifications-variant",
+   "license_file": "ncurses.txt",
+   "license_url": "licenses/nano/ncurses.txt",
+   "name": "ncurses",
+   "source": "https://ftp.gnu.org/gnu/ncurses/ncurses-6.6.tar.gz",
+   "version": "6.6"
+  },
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/nano/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  },
+  {
+   "license": "MIT",
+   "license_file": "badge-port.txt",
+   "license_url": "licenses/nano/badge-port.txt",
+   "name": "Badge port (start script, terminal entry, fork stub)",
+   "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/nano/source",
+   "version": "2dc2819"
+  }
+ ],
+ "category": "productivity",
+ "commands": [
+  {
+   "exec": "start",
+   "name": "nano"
+  }
+ ],
+ "description": "Edit text files on the badge: notes, configuration files, scripts. GNU\nnano shows its main short-cuts at the bottom of the screen: Ctrl+S\nsaves, Ctrl+X closes, Ctrl+W searches, Ctrl+K cuts a line and Ctrl+U\npastes it, Ctrl+G shows the help.\n\nFrom the menu it starts on a new file on the SD card; Files opens text\nfiles with it (.txt, .md, .conf, .sh, .py, .json and more). In a shell\n(serial console or SSH) \"nano file\" edits in your own terminal, at full\nwidth, with syntax colours for many languages.\n\nThe logo key closes it; unsaved text is then kept in a file with\n\".save\" added to its name. Your own settings go in nanorc in the app's\nconfig folder. Running a command from nano (Ctrl+T) is not possible on\nthe badge, and the spell checker is left out. Plain ASCII and Latin-1\nonly: no UTF-8.",
+ "format": 1,
+ "homepage": "https://www.nano-editor.org",
+ "icon": null,
+ "id": "nano",
+ "install_location": "sd",
+ "launch": {
+  "args": "%f",
+  "exec": "start",
+  "icon": "keyboard",
+  "info": "text editor",
+  "menu": "apps",
+  "opens": [
+   "txt",
+   "md",
+   "conf",
+   "cfg",
+   "ini",
+   "sh",
+   "py",
+   "c",
+   "h",
+   "json",
+   "toml",
+   "yaml",
+   "yml",
+   "csv",
+   "log"
+  ],
+  "rotation": "auto",
+  "terminal": "close"
+ },
+ "license": "GPL-3.0-or-later AND X11-distribute-modifications-variant AND MIT AND LGPL-2.1-or-later",
+ "license_url": "licenses/nano/nano.txt",
+ "name": "nano",
+ "requires": {
+  "features": [
+   "keyboard"
+  ],
+  "memory_kb": 1200,
+  "os_api": 1
+ },
+ "screenshots": [
+  "screens/nano-1.qoi"
+ ],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/nano/source",
+ "storage": {
+  "config": {
+   "max_kb": 16
+  }
+ },
+ "summary": "A small, easy text editor",
+ "tags": [
+  "editor",
+  "text",
+  "terminal",
+  "nano",
+  "gnu"
+ ],
+ "type": "app",
+ "upstream_version": "9.2",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "First store release.",
+   "package": {
+    "installed_size": 659280,
+    "sha256": "eb3e08dc79f41cd5e15e4076dc8b438bde3304bc4d135d6fcdc9c6275fb82059",
+    "size": 335396,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/nano-9.2.0.wpk"
+   },
+   "published": "2026-10-12T21:45:50Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/nano-9.2.0-source.tar.gz",
+   "version": "9.2.0"
+  }
+ ]
+}

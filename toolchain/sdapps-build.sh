@@ -3,7 +3,8 @@
 # VM, with the toolchain of a badge build (Tools/usb/br.sh badge first).
 #
 #   sdapps/build.sh [gnuboy] [netsurf] [nmap] [imgview] [links] [nethack]
-#                   [doom] [sensorpanel] [buspirate]                       default: all
+#                   [doom] [sensorpanel] [buspirate] [nano] [calc] [micropython]
+#                                                                          default: all
 #
 # Sources are fetched at pinned versions into ~/sdapps/src; the result is
 # ~/br-badge/sdapps/badge/apps/<app>/, to copy to the card's badge/apps/.
@@ -397,6 +398,66 @@ build_nethack() {
 	ls -l "$d"
 }
 
+# nano 9.2, the text editor, in appterm's window (nano/app.conf) and as
+# the nano command. ncurses 6.6 is linked in, without terminfo files:
+# the terminals it knows are built into it (--with-fallbacks), among them
+# appterm's own entry (nano/appterm.ti; the start script picks it), which
+# a host tic of the same version compiles from ncurses' terminfo.src. No UTF-8 (uClibc has no
+# locales here), and no fork: the speller, linter and formatter are left
+# out, running a command fails (nano/nofork.c).
+NCURSES_URL=https://ftp.gnu.org/gnu/ncurses/ncurses-6.6.tar.gz
+NCURSES_SHA=355b4cbbed880b0381a04c46617b7656e362585d52e9cf84a67e2009b749ff11
+NANO_URL=https://www.nano-editor.org/dist/v9/nano-9.2.tar.xz
+NANO_SHA=05ecb99247b782e8a5b3a25ed4101dd034b0236902f7449bc9795b717642f7e9
+NANO_TERMS=appterm,vt100,vt102,ansi,linux,xterm,xterm-256color,screen,screen-256color,tmux,tmux-256color
+
+build_ncurses() {
+	local n HN=$SRC/ncurses-host NC=$SRC/ncurses-badge
+	[ -f "$NC/.done" ] && return
+	n=$SRC/$(get "$NCURSES_URL" "$NCURSES_SHA")
+	# appterm's entry next to the others: the fallbacks are made from it
+	cat "$HERE/nano/appterm.ti" >> "$n/misc/terminfo.src"
+	# tic and infocmp for the build machine, with their terminfo files
+	rm -rf "$HN" "$n/host" "$n/badge" && mkdir -p "$n/host"
+	(cd "$n/host" && ../configure --prefix="$HN" --without-ada --without-cxx --without-cxx-binding \
+		--without-manpages --without-tests --without-debug --disable-widec >/dev/null &&
+		make -s -j"$(nproc)" >/dev/null && make -s install >/dev/null)
+	rm -rf "$NC" && mkdir -p "$n/badge"
+	(cd "$n/badge" && ../configure --host=riscv32-buildroot-linux-uclibc \
+		--prefix="$NC" --disable-shared --enable-static --without-ada --without-cxx \
+		--without-cxx-binding --without-progs --without-tests --without-manpages --without-debug \
+		--without-gpm --disable-widec --disable-database --disable-home-terminfo \
+		--with-fallbacks="$NANO_TERMS" --with-tic-path="$HN/bin/tic" \
+		--with-infocmp-path="$HN/bin/infocmp" \
+		CC="$CC" AR="$T-ar" RANLIB="$T-ranlib" CFLAGS="$LIBCFLAGS" >/dev/null &&
+		make -s -j"$(nproc)" libs >/dev/null &&
+		make -s install.libs install.includes >/dev/null)
+	touch "$NC/.done"
+}
+
+build_nano() {
+	local s d=$DEST/nano NC=$SRC/ncurses-badge
+	build_ncurses
+	s=$SRC/$(get "$NANO_URL" "$NANO_SHA")
+	"$CC" $LIBCFLAGS -c "$HERE/nano/nofork.c" -o "$SRC/nano-nofork.o"
+	(cd "$s" && PKG_CONFIG=false NCURSES_CFLAGS="-I$NC/include -I$NC/include/ncurses" \
+		NCURSES_LIBS="-L$NC/lib -lncurses" CC="$CC" \
+		CFLAGS="$LIBCFLAGS -I$NC/include -I$NC/include/ncurses" CPPFLAGS="-I$NC/include" \
+		LDFLAGS="-static -L$NC/lib -Wl,--gc-sections -Wl,--no-relax -Wl,-elf2flt=-r" \
+		LIBS="$SRC/nano-nofork.o" ./configure --host=riscv32-buildroot-linux-uclibc \
+		--disable-nls --disable-utf8 --disable-speller --disable-linter --disable-formatter \
+		--disable-mouse --disable-libmagic --disable-threads >/dev/null)
+	make -s -C "$s" -j"$(nproc)"
+	zero_page "$s/src/nano.gdb"
+	"$T-flthdr" -s 65536 "$s/src/nano"	# its stack (configure splits -s N)
+	rm -rf "$d"
+	mkdir -p "$d/syntax"
+	cp "$s/src/nano" "$s/COPYING" "$d/"
+	cp "$s"/syntax/*.nanorc "$d/syntax/"
+	cp "$HERE/nano/start" "$HERE/nano/nanorc" "$HERE/nano/app.conf" "$d/"
+	ls -l "$d"
+}
+
 # The sensor panel: BME680 and BMI270 readings, live (it was in the image).
 build_sensorpanel() {
 	local d=$DEST/sensorpanel
@@ -419,6 +480,19 @@ build_buspirate() {
 	zero_page "$d/buspirate.gdb"
 	rm -f "$d/buspirate.gdb"
 	cp "$HERE/buspirate/app.conf" "$d/"
+	ls -l "$d"
+}
+
+# The calculator (calc/calc.c): drawn with the menu's code and fonts, as
+# the Bus Pirate app is; libm for the functions.
+build_calc() {
+	local d=$DEST/calc O=$HERE/../patches/buildroot/overlay-src
+	mkdir -p "$d"
+	flat 16384
+	"$CC" "${CFLAGS[@]}" -Wall -I"$O" "$HERE/calc/calc.c" "${LDFLAT[@]}" -lm -o "$d/calc"
+	zero_page "$d/calc.gdb"
+	rm -f "$d/calc.gdb"
+	cp "$HERE/calc/app.conf" "$d/"
 	ls -l "$d"
 }
 
@@ -463,7 +537,35 @@ build_doom() {
 	ls -l "$d"
 }
 
-for app in "${@:-gnuboy netsurf nmap imgview links nethack doom sensorpanel buspirate}"; do
+# MicroPython 1.29.0, the Unix port: the REPL in appterm's window and the
+# micropython command (micropython/start). Its own readline, mbedTLS for
+# ssl (mip installs over HTTPS) and the RV32 native emitter; no threads,
+# ffi, btree or littlefs/FAT VFS. mpy-cross runs on the build VM to freeze
+# the bundled modules (mip, asyncio, ...). Its printf and uClibc's both
+# define vsnprintf: MicroPython's wins (it ties output to its streams),
+# uClibc keeps its own for internal calls.
+MPY_URL=https://github.com/micropython/micropython/releases/download/v1.29.0/micropython-1.29.0.tar.xz
+MPY_SHA=d925a7c664e79a2bdf3dfcb285ba5e2237041cc35a0bd4ee573b6c5711efeca0
+
+build_micropython() {
+	local s d=$DEST/micropython
+	s=$SRC/$(get "$MPY_URL" "$MPY_SHA")
+	make -s -C "$s/mpy-cross" -j"$(nproc)"
+	make -s -C "$s/ports/unix" -j"$(nproc)" CROSS_COMPILE="$T-" STRIP=true SIZE=true CWARN=-Wall \
+		MICROPY_PY_FFI=0 MICROPY_PY_BTREE=0 MICROPY_PY_THREAD=0 \
+		MICROPY_VFS_LFS1=0 MICROPY_VFS_LFS2=0 MICROPY_VFS_FAT=0 CFLAGS_EXTRA="-fPIC" \
+		LDFLAGS_EXTRA="-static -Wl,--allow-multiple-definition -Wl,--no-relax -Wl,-elf2flt=-r"
+	zero_page "$s/ports/unix/build-standard/micropython.gdb"
+	# its stack: main.c limits Python's recursion at 40000 bytes
+	"$T-flthdr" -s 65536 "$s/ports/unix/build-standard/micropython"
+	rm -rf "$d"
+	mkdir -p "$d"
+	cp "$s/ports/unix/build-standard/micropython" "$s/LICENSE" "$d/"
+	cp "$HERE/micropython/start" "$HERE/micropython/app.conf" "$d/"
+	ls -l "$d"
+}
+
+for app in "${@:-gnuboy netsurf nmap imgview links nethack doom sensorpanel buspirate nano calc micropython}"; do
 	for a in $app; do
 		case $a in
 		gnuboy) build_gnuboy ;;
@@ -476,6 +578,9 @@ for app in "${@:-gnuboy netsurf nmap imgview links nethack doom sensorpanel busp
 		doom) build_doom ;;
 		sensorpanel) build_sensorpanel ;;
 		buspirate) build_buspirate ;;
+		nano) build_nano ;;
+		calc) build_calc ;;
+		micropython) build_micropython ;;
 		*) echo "unknown app $a" >&2; exit 2 ;;
 		esac
 	done

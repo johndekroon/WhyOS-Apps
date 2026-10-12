@@ -1,0 +1,77 @@
+# GNU nano 9.2 (why2025-linux sdapps/nano), in the menu's terminal window
+# and as the "nano" command in any shell. Files opens text files with it.
+format = 1
+id = "nano"
+name = "nano"
+version = "9.2.0"
+build = 1
+summary = "A small, easy text editor"
+description = """
+Edit text files on the badge: notes, configuration files, scripts. GNU
+nano shows its main short-cuts at the bottom of the screen: Ctrl+S
+saves, Ctrl+X closes, Ctrl+W searches, Ctrl+K cuts a line and Ctrl+U
+pastes it, Ctrl+G shows the help.
+
+From the menu it starts on a new file on the SD card; Files opens text
+files with it (.txt, .md, .conf, .sh, .py, .json and more). In a shell
+(serial console or SSH) "nano file" edits in your own terminal, at full
+width, with syntax colours for many languages.
+
+The logo key closes it; unsaved text is then kept in a file with
+".save" added to its name. Your own settings go in nanorc in the app's
+config folder. Running a command from nano (Ctrl+T) is not possible on
+the badge, and the spell checker is left out. Plain ASCII and Latin-1
+only: no UTF-8."""
+author = "The GNU nano developers, badge port"
+license = "GPL-3.0-or-later AND X11-distribute-modifications-variant AND MIT AND LGPL-2.1-or-later"
+license_file = "nano.txt"
+homepage = "https://www.nano-editor.org"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/nano/source"
+upstream_version = "9.2"
+changelog = "First store release."
+
+type = "app"
+category = "productivity"
+tags = ["editor", "text", "terminal", "nano", "gnu"]
+install_location = "sd"
+
+[launch]
+exec = "start"
+args = "%f"
+info = "text editor"
+icon = "keyboard"
+terminal = "close"
+opens = ["txt", "md", "conf", "cfg", "ini", "sh", "py", "c", "h", "json", "toml", "yaml", "yml", "csv", "log"]
+
+[[commands]]
+name = "nano"
+exec = "start"
+
+[requires]
+os_api = 1
+memory_kb = 1200          # estimate: the 0.5 MB program, ncurses' screens and the text
+features = ["keyboard"]
+
+[storage.config]
+max_kb = 16               # nanorc
+
+[[bundled]]
+name = "ncurses"
+version = "6.6"
+license = "X11-distribute-modifications-variant"
+source = "https://ftp.gnu.org/gnu/ncurses/ncurses-6.6.tar.gz"
+license_file = "ncurses.txt"
+
+[[bundled]]
+name = "uClibc-ng"
+version = "1.0.57"
+license = "LGPL-2.1-or-later"
+source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
+license_file = "uClibc-ng.txt"
+
+[[bundled]]
+name = "Badge port (start script, terminal entry, fork stub)"
+version = "2dc2819"
+license = "MIT"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/nano/source"
+license_file = "badge-port.txt"

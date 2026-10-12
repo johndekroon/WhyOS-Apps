@@ -41,6 +41,44 @@
    "updated": "2026-10-12"
   },
   {
+   "author": "WhyOS-Apps contributors",
+   "category": "utilities",
+   "commands": [],
+   "details_sha256": "1f266234082921b799cd3d8a6a65a0747cf5d49bdd2eaa3fb6b4669e2bda8b98",
+   "id": "calc",
+   "install_location": "sd",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 374271,
+     "sha256": "a641d19170e3b9ec98b6d26b8e17765a962d7ad8d0a4eb16d60b2a32e88c9e90",
+     "size": 167479,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.0.0.wpk"
+    },
+    "version": "1.0.0"
+   },
+   "menu_icon": "count",
+   "name": "Calculator",
+   "requires": {
+    "features": [
+     "display",
+     "keyboard"
+    ],
+    "memory_kb": 600,
+    "os_api": 1
+   },
+   "summary": "Type a sum, get the answer: functions, hex and binary",
+   "tags": [
+    "calculator",
+    "math",
+    "hex",
+    "binary"
+   ],
+   "terminal": false,
+   "type": "app",
+   "updated": "2026-10-12"
+  },
+  {
    "author": "id Software (DOOM), maximevince (fbDOOM), badge port",
    "category": "action",
    "commands": [],
@@ -192,6 +230,46 @@
     "web",
     "text",
     "terminal"
+   ],
+   "terminal": true,
+   "type": "app",
+   "updated": "2026-10-12"
+  },
+  {
+   "author": "The GNU nano developers, badge port",
+   "category": "productivity",
+   "commands": [
+    "nano"
+   ],
+   "details_sha256": "2a5ed8d42eecfa558ba7e0cacf9f928a865b102820e26b64eef36f6525466e12",
+   "id": "nano",
+   "install_location": "sd",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 659280,
+     "sha256": "eb3e08dc79f41cd5e15e4076dc8b438bde3304bc4d135d6fcdc9c6275fb82059",
+     "size": 335396,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/nano-9.2.0.wpk"
+    },
+    "version": "9.2.0"
+   },
+   "menu_icon": "keyboard",
+   "name": "nano",
+   "requires": {
+    "features": [
+     "keyboard"
+    ],
+    "memory_kb": 1200,
+    "os_api": 1
+   },
+   "summary": "A small, easy text editor",
+   "tags": [
+    "editor",
+    "text",
+    "terminal",
+    "nano",
+    "gnu"
    ],
    "terminal": true,
    "type": "app",
@@ -398,7 +476,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "3a6ddad8aabd3c71f44e356f3f543d968fbbd8d3f3327a2ed3b5af870ab368bb",
  "format": 1,
- "generated": "2026-10-12T15:50:29Z",
- "serial": 8,
+ "generated": "2026-10-12T21:45:51Z",
+ "serial": 9,
  "source": "whyos"
 }
