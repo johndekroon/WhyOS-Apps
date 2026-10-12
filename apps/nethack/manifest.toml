@@ -1,0 +1,77 @@
+# NetHack 3.6.7 (why2025-linux sdapps/nethack), in the menu's terminal
+# window and as the "nethack" command in any shell. Saves and scores go
+# to the app's data folder on the card, the options file to its config
+# directory (the start script; it copies a default there once).
+format = 1
+id = "nethack"
+name = "NetHack"
+version = "3.6.7"
+build = 1
+summary = "The classic dungeon adventure: find the Amulet of Yendor"
+description = """
+Explore the Dungeons of Doom, fight monsters, find treasure and retrieve
+the Amulet of Yendor. NetHack 3.6.7, with its classic text display and
+colour, plays in a terminal window from the menu; in a shell (serial
+console or SSH) "nethack" plays it in your own terminal, at full width.
+
+The map is 80 columns and the window 73: it scrolls along with your
+hero. Move with the arrow keys or hjkl (yubn diagonally); "?" lists the
+commands, "S" saves and quits. The logo key saves the game too, and the
+next start continues it. Your options are in nethackrc in the app's
+config folder (OPTIONS=name:yourname sets your name).
+
+Saves and the high scores are in badge/appdata/nethack on the SD card."""
+author = "The NetHack DevTeam, badge port"
+license = "NGPL AND MIT AND Zlib AND LGPL-2.1-or-later"
+license_file = "nethack.txt"
+homepage = "https://www.nethack.org"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/nethack/source"
+upstream_version = "3.6.7"
+changelog = "First store release."
+
+type = "game"
+category = "strategy"
+tags = ["roguelike", "dungeon", "rpg", "terminal", "classic"]
+install_location = "sd"
+
+[launch]
+exec = "start"
+info = "dungeon adventure"
+icon = "games"
+terminal = "close"
+
+[[commands]]
+name = "nethack"
+exec = "start"
+
+[requires]
+os_api = 1
+memory_kb = 2600          # peak 2.2-2.6 MB in the simulator (peakmem)
+features = ["sd-card", "keyboard"]
+
+[storage.config]
+max_kb = 16               # nethackrc
+
+[storage.data]
+folders = ["save"]
+
+[[bundled]]
+name = "zlib"
+version = "1.3.2"
+license = "Zlib"
+source = "https://zlib.net/fossils/zlib-1.3.2.tar.gz"
+license_file = "zlib.txt"
+
+[[bundled]]
+name = "uClibc-ng"
+version = "1.0.57"
+license = "LGPL-2.1-or-later"
+source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
+license_file = "uClibc-ng.txt"
+
+[[bundled]]
+name = "Badge port (key and fork glue, start script, termcap entry)"
+version = "60835d6"
+license = "MIT"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/nethack/source"
+license_file = "badge-port.txt"

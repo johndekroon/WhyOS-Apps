@@ -1,0 +1,9 @@
+# NetHack options on the badge. The start script copies this file to the
+# app's config folder once; change that copy (it is kept on updates).
+# All options: the Guidebook, or "O" in the game.
+OPTIONS=color,hilite_pet,lit_corridor,showexp,time
+OPTIONS=pickup_types:$?!/="+
+# Your name in the game and the high scores (else: the login name):
+#OPTIONS=name:yourname
+# Arrow keys move in any case; with number_pad the digits move too.
+#OPTIONS=number_pad:1

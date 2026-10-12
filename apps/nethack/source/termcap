@@ -1,0 +1,9 @@
+# The terminal NetHack draws for (sys/share/tclib.c reads this file: the
+# start script sets TERMCAP to it and TERM to vt100). What appterm, the
+# menu's terminal window, understands; terminals that SSH comes in from
+# understand it too. co#/li# only when the terminal does not tell its size.
+vt100|badge|appterm subset of VT100/ANSI:\
+	:am:bs:xn:co#80:li#24:\
+	:cl=\E[H\E[J:cm=\E[%i%d;%dH:ho=\E[H:ce=\E[K:cd=\E[J:\
+	:up=\E[A:do=^J:nd=\E[C:le=^H:cr=^M:\
+	:so=\E[7m:se=\E[m:us=\E[4m:ue=\E[m:md=\E[1m:me=\E[m:mr=\E[7m:

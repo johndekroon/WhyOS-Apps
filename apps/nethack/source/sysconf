@@ -1,0 +1,10 @@
+# NetHack's system configuration on the badge (sys/unix/sysconf, cut down).
+# One player, root (the badge's only user) may use debug mode (-D),
+# everyone explore mode (-X).
+WIZARDS=root
+EXPLORERS=*
+GENERICUSERS=play player game games nethack nethacker
+MAXPLAYERS=1
+# No debugger or libc backtrace on the badge.
+PANICTRACE_GDB=0
+PANICTRACE_LIBC=0

@@ -1,0 +1,152 @@
+diff -ru a/include/unixconf.h b/include/unixconf.h
+--- a/include/unixconf.h	2023-02-15 22:52:57.000000000 +0100
++++ b/include/unixconf.h	2026-10-12 16:22:30.531667094 +0200
+@@ -49,7 +49,7 @@
+                         * job control (note that AIX is SYSV otherwise)
+                         * Also define this for AIX 3.2 */
+ 
+-#define TERMINFO       /* uses terminfo rather than termcap */
++/* #define TERMINFO */ /* badge: termcap through sys/share/tclib.c, no ncurses */
+                        /* Should be defined for most SYSV, SVR4 (including
+                         * Solaris 2+), HPUX, and Linux systems.  In
+                         * particular, it should NOT be defined for the UNIXPC
+@@ -99,14 +99,20 @@
+  *              Ralf Brown, 7/26/89 (from v2.3 hack of 10/10/88)
+  */
+ 
+-/* #define NO_FILE_LINKS */                       /* if no hard links */
+-/* #define LOCKDIR "/usr/games/lib/nethackdir" */ /* where to put locks */
++/* badge: FAT has no hard links, and the kernel no file locking
++ * (CONFIG_FILE_LOCKING off, so no USE_FCNTL below): lock files, created
++ * with O_EXCL, next to what they lock */
++#define NO_FILE_LINKS                       /* if no hard links */
++#define LOCKDIR VAR_PLAYGROUND /* where to put locks */
+ 
+ /*
+  * If you want the static parts of your playground on a read-only file
+  * system, define VAR_PLAYGROUND to be where the variable parts are kept.
+  */
+ /* #define VAR_PLAYGROUND "/var/lib/games/nethack" */
++/* badge: the program and its data are in the app directory (HACKDIR,
++ * read-only); saves, scores and level files go to the app's data folder */
++#define VAR_PLAYGROUND (getenv("APP_DATA") ? getenv("APP_DATA") : ".")
+ 
+ /*
+  * Define DEF_PAGER as your default pager, e.g. "/bin/cat" or "/usr/ucb/more"
+@@ -246,7 +252,7 @@
+  * Comment out the USE_FCNTL if for some reason you have a strange
+  * OS/filesystem combination for which fcntl(2) does not work. */
+ #ifdef POSIX_TYPES
+-#define USE_FCNTL
++/* #define USE_FCNTL */ /* badge: no file locking in the kernel */
+ #endif
+ 
+ /*
+@@ -292,7 +298,7 @@
+ #endif
+ #endif
+ #if defined(BSD_JOB_CONTROL) || defined(POSIX_JOB_CONTROL) || defined(AUX)
+-#define SUSPEND /* let ^Z suspend the game */
++/* #define SUSPEND */ /* badge: no fork on NOMMU, nothing to suspend to */
+ #endif
+ 
+ /*
+@@ -311,7 +317,9 @@
+ 
+ #define HLOCK "perm" /* an empty file used for locking purposes */
+ 
+-#define tgetch getchar
++/* badge: reads the keys itself, to turn the arrow keys into moves */
++extern int NDECL(badge_tgetch);
++#define tgetch badge_tgetch
+ 
+ #ifndef NOSHELL
+ #define SHELL /* do not delete the '!' command */
+diff -ru a/sys/share/unixtty.c b/sys/share/unixtty.c
+--- a/sys/share/unixtty.c	2023-02-15 22:52:57.000000000 +0100
++++ b/sys/share/unixtty.c	2026-10-12 16:17:48.424883432 +0200
+@@ -38,9 +38,11 @@
+ #endif /* POSIX_TYPES */
+ #ifdef LINUX
+ #include <sys/ioctl.h>
++#ifdef TERMINFO /* badge: termcap, no curses */
+ #undef delay_output /* curses redefines this */
+ #include <curses.h>
+ #endif
++#endif
+ #define kill_sym c_cc[VKILL]
+ #define erase_sym c_cc[VERASE]
+ #define intr_sym c_cc[VINTR]
+@@ -455,7 +457,7 @@
+     if (WINDOWPORT("tty") && linux_flag_console) {
+         atexit(linux_mapon);
+         linux_mapoff();
+-#ifdef TEXTCOLOR
++#if defined(TEXTCOLOR) && defined(TERMINFO) /* badge: has_colors is curses */
+         if (has_colors())
+             iflags.use_color = TRUE;
+ #endif
+diff -ru a/sys/unix/unixmain.c b/sys/unix/unixmain.c
+--- a/sys/unix/unixmain.c	2023-02-15 22:52:57.000000000 +0100
++++ b/sys/unix/unixmain.c	2026-10-12 16:20:53.208426079 +0200
+@@ -490,11 +490,10 @@
+         (void) setgid(getgid());
+         (void) setuid(getuid()); /* Ron Wessels */
+ #endif
+-    } else {
+-        /* non-default data files is a sign that scores may not be
+-         * compatible, or perhaps that a binary not fitting this
+-         * system's layout is being used.
+-         */
++    }
++    /* badge: the app directory (NETHACKDIR) varies, saves and scores
++     * always go to VAR_PLAYGROUND (unixconf.h) */
++    {
+ #ifdef VAR_PLAYGROUND
+         int len = strlen(VAR_PLAYGROUND);
+ 
+@@ -583,11 +582,14 @@
+     (void) memset((genericptr_t) &sact, 0, sizeof sact);
+     sact.sa_handler = (SIG_RET_TYPE) handler;
+     (void) sigaction(SIGHUP, &sact, (struct sigaction *) 0);
++    /* badge: the menu ends an app with SIGTERM (the logo key): save */
++    (void) sigaction(SIGTERM, &sact, (struct sigaction *) 0);
+ #ifdef SIGXCPU
+     (void) sigaction(SIGXCPU, &sact, (struct sigaction *) 0);
+ #endif
+ #else /* !SA_RESTART */
+     (void) signal(SIGHUP, (SIG_RET_TYPE) handler);
++    (void) signal(SIGTERM, (SIG_RET_TYPE) handler);
+ #ifdef SIGXCPU
+     (void) signal(SIGXCPU, (SIG_RET_TYPE) handler);
+ #endif
+diff -ru a/win/tty/termcap.c b/win/tty/termcap.c
+--- a/win/tty/termcap.c	2023-02-15 22:52:57.000000000 +0100
++++ b/win/tty/termcap.c	2026-10-12 16:54:57.192847622 +0200
+@@ -1101,6 +1101,13 @@
+ 
+     analyze_seq(nh_HI, &hi_foreg, &hi_backg);
+     analyze_seq(nh_HE, &foreg, &backg);
++    /* badge: "\033[m" leaves both at NO_COLOR, which put an explicit
++     * black background (40) on every glyph and gray in a sequence of its
++     * own: the terminal's own colours are gray on black */
++    if (foreg == NO_COLOR)
++        foreg = CLR_GRAY;
++    if (backg == NO_COLOR)
++        backg = CLR_BLACK;
+ 
+     for (c = 0; c < SIZE(hilites); c++)
+         /* avoid invisibility */
+@@ -1126,6 +1133,12 @@
+     /* brighten low-visibility colors */
+     hilites[CLR_BLUE] = hilites[CLR_BLUE | BRIGHT];
+ #endif
++    /* badge: no colour stays the terminal's own; black (dark parts of
++     * rooms, some monsters) is dark gray, bold black, not standout */
++    if (hilites[NO_COLOR] && hilites[NO_COLOR] != nh_HI)
++        free((genericptr_t) hilites[NO_COLOR]);
++    hilites[NO_COLOR] = (char *) 0;
++    hilites[CLR_BLACK] = dupstr("\033[1;30m");
+ #endif /* TOS */
+ }
+ 

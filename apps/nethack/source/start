@@ -1,0 +1,29 @@
+#!/bin/sh
+# NetHack from the menu or as the nethack command (app.conf). Its program
+# and data stay in the app directory (NETHACKDIR); saves, scores and the
+# level files of the running game go to APP_DATA (0001-badge.patch), the
+# options to APP_CONFIG/nethackrc.
+d=${0%/*}
+# appterm before 2026-10-12 passed no APP_* on: the store's paths then
+: "${APP_DATA:=/mnt/sd/badge/appdata/nethack}"
+: "${APP_CONFIG:=${HOME:-/root}/.whyos/config/nethack}"
+# the name of the save file and in the scores; NetHack asks without it
+: "${USER:=${LOGNAME:-root}}"
+mkdir -p "$APP_DATA/save" || exit 1
+for f in perm record logfile xlogfile; do
+	[ -f "$APP_DATA/$f" ] || : > "$APP_DATA/$f"
+done
+# NetHack locks with lock files (no file locking in the kernel): one left
+# by a NetHack that was killed would keep the next from starting.
+running() {
+	for c in /proc/[0-9]*/comm; do
+		read -r n < "$c" 2>/dev/null && [ "$n" = nethack ] && return 0
+	done
+	return 1
+}
+running || rm -f "$APP_DATA"/*_lock
+mkdir -p "$APP_CONFIG" &&
+	{ [ -f "$APP_CONFIG/nethackrc" ] || cp "$d/nethackrc" "$APP_CONFIG/nethackrc"; } &&
+	export NETHACKOPTIONS="$APP_CONFIG/nethackrc"
+export APP_DATA USER NETHACKDIR="$d" TERM=vt100 TERMCAP="$d/termcap"
+exec "$d/nethack" "$@"

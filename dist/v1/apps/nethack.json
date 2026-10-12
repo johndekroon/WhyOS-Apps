@@ -1,0 +1,101 @@
+{
+ "author": "The NetHack DevTeam, badge port",
+ "bundled": [
+  {
+   "license": "Zlib",
+   "license_file": "zlib.txt",
+   "license_url": "licenses/nethack/zlib.txt",
+   "name": "zlib",
+   "source": "https://zlib.net/fossils/zlib-1.3.2.tar.gz",
+   "version": "1.3.2"
+  },
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/nethack/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  },
+  {
+   "license": "MIT",
+   "license_file": "badge-port.txt",
+   "license_url": "licenses/nethack/badge-port.txt",
+   "name": "Badge port (key and fork glue, start script, termcap entry)",
+   "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/nethack/source",
+   "version": "60835d6"
+  }
+ ],
+ "category": "strategy",
+ "commands": [
+  {
+   "exec": "start",
+   "name": "nethack"
+  }
+ ],
+ "description": "Explore the Dungeons of Doom, fight monsters, find treasure and retrieve\nthe Amulet of Yendor. NetHack 3.6.7, with its classic text display and\ncolour, plays in a terminal window from the menu; in a shell (serial\nconsole or SSH) \"nethack\" plays it in your own terminal, at full width.\n\nThe map is 80 columns and the window 73: it scrolls along with your\nhero. Move with the arrow keys or hjkl (yubn diagonally); \"?\" lists the\ncommands, \"S\" saves and quits. The logo key saves the game too, and the\nnext start continues it. Your options are in nethackrc in the app's\nconfig folder (OPTIONS=name:yourname sets your name).\n\nSaves and the high scores are in badge/appdata/nethack on the SD card.",
+ "format": 1,
+ "homepage": "https://www.nethack.org",
+ "icon": null,
+ "id": "nethack",
+ "install_location": "sd",
+ "launch": {
+  "exec": "start",
+  "icon": "games",
+  "info": "dungeon adventure",
+  "menu": "games",
+  "rotation": "auto",
+  "terminal": "close"
+ },
+ "license": "NGPL AND MIT AND Zlib AND LGPL-2.1-or-later",
+ "license_url": "licenses/nethack/nethack.txt",
+ "name": "NetHack",
+ "requires": {
+  "features": [
+   "sd-card",
+   "keyboard"
+  ],
+  "memory_kb": 2600,
+  "os_api": 1
+ },
+ "screenshots": [
+  "screens/nethack-1.qoi",
+  "screens/nethack-2.qoi"
+ ],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/nethack/source",
+ "storage": {
+  "config": {
+   "max_kb": 16
+  },
+  "data": {
+   "folders": [
+    "save"
+   ]
+  }
+ },
+ "summary": "The classic dungeon adventure: find the Amulet of Yendor",
+ "tags": [
+  "roguelike",
+  "dungeon",
+  "rpg",
+  "terminal",
+  "classic"
+ ],
+ "type": "game",
+ "upstream_version": "3.6.7",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "First store release.",
+   "package": {
+    "installed_size": 3349455,
+    "sha256": "7c621caf9dca30223a2f1b210583c7f55b11c7bd7b3f37212f807a98c6571915",
+    "size": 1587416,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/nethack-3.6.7.wpk"
+   },
+   "published": "2026-10-12T15:06:53Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/nethack-3.6.7-source.tar.gz",
+   "version": "3.6.7"
+  }
+ ]
+}
