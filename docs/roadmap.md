@@ -36,6 +36,34 @@
 - **Signing key custody.** Only as a GitHub secret, or a hardware key and
   signing by a maintainer for each publication?
 
+## Open points of the first packages (2026-10-12)
+
+The five apps in `apps/` were built with why2025-linux `sdapps/build.sh`
+at commit 2be6d7c and pass `tools/validate.py`. Not yet done or checked:
+
+- **Not run from the store on a badge.** There is no client yet, and the
+  menu does not expand `%D`, `%C`, `%T` or set `APP_*` (device.md §6), so
+  gnuboy's `--savedir=%D/...` and `FILES=%D/roms` only work once it does.
+  The start scripts of NetSurf and Links fall back to the old behaviour
+  without `APP_CONFIG`.
+- **Memory figures** for gnuboy, Links and imgview are estimates; NetSurf
+  (about 5 MB) and nmap (7 MB for one port) come from measurements in the
+  documentation.
+- **Licences.** The MIT texts for the badge's own code name "the
+  why2025-linux and WhyOS-Apps contributors" as copyright holder; the
+  actual authors should confirm or correct that. nmap's NPSL 0.95 allows
+  redistribution under its own terms but is not open source in the OSI
+  sense; to be confirmed by a maintainer before publishing. The SPDX id
+  chosen for utf8proc's Unicode data terms (`Unicode-DFS-2015`) is
+  derived, not checked against the SPDX list. Bundled lists were derived
+  from the build script; NetSurf's lists libraries that may not all be
+  linked in (listing too many is harmless).
+- **NetSurf's tarball is not pinned** by SHA-256 in the build script; its
+  hash is recorded in `apps/netsurf/source/SOURCES.md`.
+- NetSurf's `opens` includes `svg` (as the hand-installed app did), while
+  it is built without SVG support.
+- No icons or screenshots yet: the store falls back to the menu icon.
+
 ## Non-goals
 
 - Payments, accounts, and anything needing a server beyond static files.

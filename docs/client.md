@@ -66,7 +66,7 @@ symbol keys for actions, typing for search. English UI text.
 | **Discover** | Updates waiting (if any), recently updated, featured (a list in the index, chosen by maintainers), and the types as tiles |
 | **Apps / Games** | Subcategories of the type as a list with counts; a subcategory opens its apps sorted by name or recently updated |
 | **Search** | Typing filters live over name, summary, tags, author and command names of the cached index, offline; results grouped by type |
-| **App page** | Icon, name, author, version, size; a "Command-line" label and the commands it adds, for command-line apps; summary and description; screenshots (left/right); requirements and permissions; storage it uses; changelog and older versions; state and buttons: Install / Open / Update / Remove / Reinstall |
+| **App page** | Icon, name, author, version, size; a "Command-line" label and the commands it adds, for command-line apps; summary and description; screenshots (left/right); requirements and permissions; licence, with a "Licences" view listing the bundled components and their texts ("not open source" marked); storage it uses; changelog and older versions; state and buttons: Install / Open / Update / Remove / Reinstall |
 | **My apps** | Sections in this order, each only when not empty: Updates (with "Update all"), Not on this card (with "Reinstall all"), Needs repair, Found on this card, Installed, Other apps (legacy), Pending cleanups |
 | **Settings** | Sources (add a mirror, enable, disable), refresh interval, keep downloaded packages, clear cache, storage overview per app |
 

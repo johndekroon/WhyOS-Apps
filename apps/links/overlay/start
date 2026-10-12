@@ -1,0 +1,16 @@
+#!/bin/sh
+# Links from the menu (manifest.toml) or the shell (the links command):
+# the page given, or its start page. Settings, bookmarks and history
+# (~/.links2) go to the app's config directory (APP_CONFIG).
+# Small caches: its defaults (4 MB of sources, 5 formatted pages) kept
+# earlier pages in a pool all programs share, and a large page that
+# followed them no longer fitted. Builtins only, then exec.
+d=${0%/*}
+if [ -n "$APP_CONFIG" ]; then
+	HOME=$APP_CONFIG
+	export HOME
+fi
+if [ $# -eq 0 ]; then
+	set -- "$d/start.html"
+fi
+exec "$d/links" -memory-cache-size 524288 -format-cache-size 1 "$@"

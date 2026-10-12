@@ -4,15 +4,20 @@
 
 ```
 apps/<id>/manifest.toml        the manifest (package.md §2)
-apps/<id>/icon.png             256×256 PNG with transparency
-apps/<id>/screenshots/<n>.png  up to 6, 720×720 PNG (the panel), named 1.png, 2.png, ...
+apps/<id>/icon.png             optional: 256×256 PNG with transparency (without it: the menu icon of launch.icon)
+apps/<id>/screenshots/<n>.png  optional: up to 6, 720×720 PNG (the panel), named 1.png, 2.png, ...
 apps/<id>/build.sh             EITHER: builds the package's files/ from pinned sources
-apps/<id>/artifact.toml        OR: a prebuilt files/ archive: URL + SHA-256
+apps/<id>/artifact.toml        OR: a prebuilt files/ archive: path in this repository or URL, + SHA-256
+apps/<id>/files.tar.gz         the prebuilt files/ archive, when artifact.toml points to it
+apps/<id>/overlay/             optional: files added on top of the build output (wrapper scripts)
+apps/<id>/licenses/            licence texts that go into files/LICENSES/ (package.md §2.10)
+apps/<id>/source/              badge-specific source and SOURCES.md, when not published elsewhere (§1.2)
 apps/<id>/README.md            optional notes for maintainers (not shown in the store)
 categories.json                the category tree (§3)
 keys/<key id>.pub              public signing keys (minisign format)
 schema/                        JSON Schemas
-tools/                         validator, packer, index builder (host tools, any OS)
+toolchain/                     how the apps' toolchain is built: Buildroot config, uClibc patch, build script
+tools/                         validate.py, import-sdapp.py; later the packer and index builder (host tools)
 docs/                          this specification
 .github/workflows/             CI
 ```
@@ -27,10 +32,12 @@ docs/                          this specification
 Two ways to supply the program:
 
 - **`artifact.toml`** (phase 1): the author builds the app with the badge
-  toolchain and publishes a `files/` archive (tar.gz) somewhere stable,
-  for example a release in their own repository. `artifact.toml` pins the
-  URL and SHA-256. CI downloads it, checks the hash and
-  packs it.
+  toolchain and supplies a `files/` archive (tar.gz): committed in the
+  app directory as `files.tar.gz` (`path`), or published somewhere stable
+  (`url`). `artifact.toml` pins it with its SHA-256. CI checks the hash
+  and packs it. Committed archives keep every version in the git history;
+  that is accepted for now (a few MB per version) and can move to
+  `url` or Git LFS later without a format change.
 - **`build.sh`** (phase 3): CI builds from pinned sources in a container
   with the badge toolchain ([roadmap.md](roadmap.md)). The script gets
   `$OUT` (the `files/` directory to fill) and the toolchain
@@ -38,9 +45,29 @@ Two ways to supply the program:
 
 ```toml
 # apps/gnuboy/artifact.toml
-url = "https://github.com/example/gnuboy-badge/releases/download/v1.0.4/files.tar.gz"
+path = "files.tar.gz"               # or: url = "https://…/files.tar.gz"
 sha256 = "…"
+built_from = "why2025-linux sdapps/build.sh at 2be6d7c"   # free text: what produced it
 ```
+
+`tools/import-sdapp.py` makes such an archive from an app built with
+why2025-linux `sdapps/build.sh`: it drops `app.conf` and debug files,
+adds `overlay/` and `licenses/`, writes a reproducible archive (sorted,
+fixed timestamps and owners) and updates `artifact.toml`.
+
+`tools/validate.py` runs the checks of §4 that need no network (schema,
+category, archive rules, programs, licence files, source) on all or the
+given apps; CI will run it on every pull request.
+
+### 1.2 Source in this repository
+
+When the badge-specific source of an app is not published elsewhere at a
+fixed revision, `apps/<id>/source/` holds it: the patches and new files,
+the build script that was used, and `SOURCES.md` with every upstream
+download (URL and SHA-256, or repository and commit) and how to build.
+Together with those downloads and [toolchain/](../toolchain/README.md)
+(shared by all apps: every one links the badge's patched uClibc-ng) this
+is the complete corresponding source ([package.md](package.md) §2.10).
 
 ## 2. Submitting and reviewing
 
@@ -96,13 +123,16 @@ On every pull request:
    `sdapps/build.sh`).
 4. Pack the `.wpk` and run the client's own package checker on it (the
    same code, built for the host).
-5. Convert icon and screenshots (§5.3), check their sizes.
+5. Convert icon and screenshots (§5.3), check their sizes; without an
+   icon, render the menu icon named in `launch.icon`.
+6. Check licences: every `license_file` is in `files/LICENSES/`, every
+   SPDX id is covered, and native packages have `source` or `source/`.
 
 On merge to `main`, additionally:
 
-6. Create a release per new app version, tag `<id>/v<version>`, with the
-   `.wpk` files as assets.
-7. Rebuild the index and detail files, sign the index, publish to Pages.
+7. Create a release per new app version, tag `<id>/v<version>`, with the
+   `.wpk` file and, with `source/`, the source archive as assets.
+8. Rebuild the index and detail files, sign the index, publish to Pages.
 
 The signing key is a repository secret available only to the publish
 job on `main`.
@@ -187,7 +217,8 @@ it stays small (aim: under 1 KB per app).
 ### 5.2 App details
 
 `apps/<id>.json` holds what only the info page needs: `description`,
-`homepage`, `source`, `license`, `permissions`, `storage`, `screenshots`
+`homepage`, `source`, `license`, `bundled` (with links to the licence
+texts, published next to the details), `permissions`, `storage`, `screenshots`
 (list of paths), and `versions`: every published version with `version`,
 `build`, `published`, `changelog` and its package (URL, SHA-256, size).
 It is covered by the signature through `details_sha256` in the index

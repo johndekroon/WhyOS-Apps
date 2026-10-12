@@ -6,8 +6,10 @@ the tooling that turns them into a published, signed index. The store
 client on the badge reads that index, downloads packages from this
 repository's releases and installs them on the microSD card.
 
-Status: **specification, draft 1.0** (2026-10-12). Nothing is
-implemented yet.
+Status: **specification, draft 1.0** (2026-10-12). `apps/` has the first
+five packages (the SD-card apps of why2025-linux), checked with
+`tools/validate.py`. Not yet built: CI, publishing, signing, the store
+client on the badge, and the OS changes the specification asks for.
 
 ## Documents
 
@@ -21,7 +23,9 @@ implemented yet.
 | [docs/roadmap.md](docs/roadmap.md) | Phases, open questions, non-goals |
 | [schema/](schema/) | JSON Schemas for the manifest, the index and the category tree |
 | [categories.json](categories.json) | The category tree |
-| [examples/](examples/) | Worked example manifests |
+| [apps/](apps/) | The apps: gnuboy, NetSurf, Links, nmap, imgview |
+| [toolchain/](toolchain/README.md) | How the apps' toolchain is built (part of their corresponding source) |
+| [tools/](tools/) | `validate.py` (check apps against the spec), `import-sdapp.py` (package an app built by why2025-linux) |
 
 ## Submitting an app (once the store is live)
 

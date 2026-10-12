@@ -1,0 +1,7 @@
+#!/bin/sh
+# Links from the menu (app.conf): the page given, or its start page.
+# Small caches: its defaults (4 MB of sources, 5 formatted pages) kept
+# earlier pages in a pool all programs share, and a large page that
+# followed them no longer fitted.
+d=${0%/*}
+exec "$d/links" -memory-cache-size 524288 -format-cache-size 1 "${1:-$d/start.html}"

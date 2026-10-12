@@ -1,0 +1,73 @@
+From: John <john.de.kroon@cyberant.com>
+Subject: [PATCH] linuxthreads: sigaction safe in a vfork child
+
+The user handler table is shared with the parent under vfork(). A child
+that reset a signal to SIG_DFL before exec cleared the parent's entry,
+and the parent's next signal jumped to address 0. Write the table only
+when a handler function is installed; report the old action from the
+kernel.
+---
+--- a/libpthread/linuxthreads/signals.c	2026-10-11 12:46:53
++++ b/libpthread/linuxthreads/signals.c	2026-10-11 12:47:08
+@@ -127,7 +127,17 @@
+ }
+ 
+ /* The wrapper around sigaction.  Install our own signal handler
+-   around the signal. */
++   around the signal.
++
++   The table of user handlers lives in the process's memory.  On NOMMU
++   a vfork() child shares that memory with its parent until it execs;
++   the kernel gives the child its own copy of the signal actions, but
++   not of this table.  A child that reset a signal before exec
++   (signal(SIGCHLD, SIG_DFL), as dropbear does) stored SIG_DFL in the
++   parent's entry, while the parent's kernel action still pointed at
++   pthread_sighandler, which then called address 0 at the next signal.
++   So the table is written only when a handler function is installed,
++   and the old action comes from the kernel. */
+ libpthread_hidden_proto(sigaction)
+ int sigaction(int sig, const struct sigaction * act,
+               struct sigaction * oact)
+@@ -135,6 +145,7 @@
+   struct sigaction newact;
+   struct sigaction *newactp;
+   void *save = NULL;
++  int wrap = 0;
+ 
+ #ifdef DEBUG_PT
+ printf(__FUNCTION__": pthreads wrapper!\n");
+@@ -155,27 +166,26 @@
+ 	    newact.sa_handler = (__sighandler_t) pthread_sighandler_rt;
+ 	  else
+ 	    newact.sa_handler = (__sighandler_t) pthread_sighandler;
++	  sighandler[sig].old = (arch_sighandler_t) act->sa_handler;
++	  wrap = 1;
+ 	}
+       newactp = &newact;
+-      if (sig > 0 && sig < NSIG)
+-	sighandler[sig].old = (arch_sighandler_t) act->sa_handler;
+     }
+   else
+     newactp = NULL;
+   if (__libc_sigaction(sig, newactp, oact) == -1)
+     {
+-      if (act && sig > 0 && sig < NSIG)
++      if (wrap)
+ 	sighandler[sig].old = save;
+       return -1;
+     }
+ #ifdef DEBUG_PT
+ printf(__FUNCTION__": sighandler installed, sigaction successful\n");
+ #endif
+-  if (sig > 0 && sig < NSIG)
+-    {
+-      if (oact != NULL)
+-	oact->sa_handler = save;
+-    }
++  if (oact != NULL &&
++      (oact->sa_handler == (__sighandler_t) pthread_sighandler ||
++       oact->sa_handler == (__sighandler_t) pthread_sighandler_rt))
++    oact->sa_handler = save;
+   return 0;
+ }
+ libpthread_hidden_def(sigaction)

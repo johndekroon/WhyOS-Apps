@@ -1,0 +1,24 @@
+No history thumbnails (WHY2025 badge, sdapps/README.md).
+
+For each page NetSurf draws a thumbnail for its local history view: it
+renders the page at full width into a 32-bit buffer first, 1.8 MB for
+Wikipedia, with the pool nearly full after the page itself.
+
+--- a/netsurf/frontends/framebuffer/bitmap.c	2026-10-12 09:08:57.571204549 +0200
++++ b/netsurf/frontends/framebuffer/bitmap.c	2026-10-12 09:08:57.571204549 +0200
+@@ -240,6 +240,15 @@
+ 
+ 	NSLOG(netsurf, INFO, "width %d, height %d", width, height);
+ 
++	/*
++	 * WHY2025 badge: no thumbnails. The page is drawn at full width into
++	 * a 32-bit buffer first (734 x 632 x 4 = 1.8 MB for Wikipedia), on top
++	 * of a pool the page itself has nearly filled; that request ended
++	 * NetSurf. Local history shows an empty picture instead.
++	 */
++	if (width > 0)
++		return NSERROR_OK;
++
+ 	/* Calculate size of buffer to render the content into */
+ 	/* We get the width from the largest of the bitmap width and the content
+ 	 * width, unless it exceeds 1024, in which case we use 1024. This means

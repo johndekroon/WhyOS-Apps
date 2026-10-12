@@ -18,8 +18,24 @@
     "description": { "type": "string", "maxLength": 4000 },
     "author": { "type": "string", "maxLength": 80 },
     "maintainer": { "type": "string", "pattern": "^[A-Za-z0-9-]{1,39}$" },
-    "license": { "type": "string", "maxLength": 100 },
-    "homepage": { "$ref": "#/$defs/url" },
+    "license": { "type": "string", "maxLength": 400 },
+    "license_file": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,64}\\.txt$" },
+    "bundled": {
+      "type": "array", "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "version", "license", "source", "license_file"],
+        "properties": {
+          "name": { "type": "string", "maxLength": 64 },
+          "version": { "type": "string", "maxLength": 64 },
+          "license": { "type": "string", "maxLength": 200 },
+          "source": { "type": "string", "pattern": "^https?://", "maxLength": 300 },
+          "license_file": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,64}\\.txt$" }
+        }
+      }
+    },
+    "homepage": { "type": "string", "pattern": "^https?://", "maxLength": 300 },
     "source": { "$ref": "#/$defs/url" },
     "changelog": { "type": "string", "maxLength": 2000 },
     "upstream_version": { "type": "string", "maxLength": 32 },

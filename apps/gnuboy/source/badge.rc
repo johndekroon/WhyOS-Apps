@@ -1,0 +1,18 @@
+# gnuboy on the WHY2025 badge: what the keypad does (sdapps/README.md).
+# The symbol keys reach Linux as F1..F6: f1 = square, f2 = triangle,
+# f3 = cross, f4 = circle, f5 = cloud, f6 = diamond.
+
+bind esc quit
+bind up +up
+bind down +down
+bind left +left
+bind right +right
+bind f4 +a
+bind f3 +b
+bind x +a
+bind z +b
+bind enter +start
+bind space +select
+bind backspace +select
+bind f1 savestate
+bind f2 loadstate

@@ -1,0 +1,17 @@
+# NetSurf on the WHY2025 badge (sdapps/README.md): small caches, as
+# all programs share a 13 MB memory pool; HTTPS checked against the CA
+# bundle next to it.
+# no images: decoded at 32 bits a pixel they took most of the memory
+# (Wikipedia's portal did not fit); pages show alt text instead
+foreground_images:0
+background_images:0
+memory_cache_size:1048576
+disc_cache_size:0
+max_fetchers:3
+max_fetchers_per_host:2
+max_cached_fetch_handles:2
+ca_bundle:/mnt/sd/badge/apps/netsurf/ca-bundle.crt
+homepage_url:file:///mnt/sd/badge/apps/netsurf/res/welcome.html
+fb_depth:16
+window_width:720
+window_height:720

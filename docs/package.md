@@ -58,10 +58,11 @@ Authors write `apps/<id>/manifest.toml` in this repository. CI validates
 it, adds generated fields (sizes, hashes, publish dates) and writes
 `manifest.json` into the package and the index. The badge only reads
 JSON. The schema is [schema/manifest.schema.json](../schema/manifest.schema.json);
-this section explains the fields. Full examples:
-[examples/gnuboy/manifest.toml](../examples/gnuboy/manifest.toml) (a game
-with a ROM folder) and [examples/nmap/manifest.toml](../examples/nmap/manifest.toml)
-(a command-line app). In TOML, top-level keys (`tags`, `permissions`, ...)
+this section explains the fields. Real manifests:
+[apps/gnuboy/manifest.toml](../apps/gnuboy/manifest.toml) (a game
+with a ROM folder), [apps/nmap/manifest.toml](../apps/nmap/manifest.toml)
+(a command-line app) and [apps/netsurf/manifest.toml](../apps/netsurf/manifest.toml)
+(many bundled libraries). In TOML, top-level keys (`tags`, `permissions`, ...)
 must come before the first `[table]`, or they become part of that table;
 the strict schema reports this as an unknown key.
 
@@ -78,8 +79,9 @@ the strict schema reports this as an unknown key.
 | `description` | yes | Plain text; blank lines separate paragraphs; ≤ 4000 characters |
 | `author` | yes | Name of the author or team |
 | `maintainer` | no | GitHub username responsible in this repository |
-| `license` | yes | SPDX expression (`GPL-2.0-or-later`) |
-| `homepage`, `source` | no | URLs; `source` SHOULD be given for free software |
+| `license` | yes | SPDX expression for the package as a whole: the app and everything bundled with it (§2.10) |
+| `homepage` | no | URL |
+| `source` | yes* | Where the corresponding source is (§2.10). *Required for every package with native code |
 | `changelog` | no | Plain text for this version, ≤ 2000 characters |
 | `upstream_version` | no | Version of the upstream program, if it differs (e.g. nmap `7.95`) |
 
@@ -317,6 +319,65 @@ CI adds these to `manifest.json`; authors do not write them:
 
 The SHA-256 of the whole `.wpk` is in the index, not in the manifest
 (the manifest is inside the package).
+
+### 2.10 Licences
+
+Packages are binaries that bundle other people's code, and this
+repository is public, so every package carries what its licences ask
+for. Three parts:
+
+**1. `license`**: one SPDX expression for everything in the package,
+e.g. `GPL-2.0-or-later AND LGPL-2.1-or-later`. The store shows it on the
+app page. Licences without an SPDX id use `LicenseRef-<name>`
+(`LicenseRef-NPSL-0.95` for nmap).
+
+**2. `[[bundled]]`**: every component that ends up in the package
+besides the app's own code: libraries linked in, the C library, data
+files, fonts, certificate bundles.
+
+```toml
+[[bundled]]
+name = "uClibc-ng"
+version = "1.0.57"
+license = "LGPL-2.1-or-later"
+source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
+license_file = "uClibc-ng.txt"
+```
+
+| Field | Req. | Meaning |
+|---|---|---|
+| `name`, `version` | yes | As upstream names them |
+| `license` | yes | SPDX expression of this component |
+| `source` | yes | Upstream source of exactly this version |
+| `license_file` | yes | File in `files/LICENSES/` with its licence text and copyright notices |
+
+Compiler runtime libraries covered by the GCC Runtime Library Exception
+(libgcc, libstdc++) need not be listed.
+
+**3. `files/LICENSES/`**: the full licence texts, one file per component
+(the upstream `COPYING`/`LICENSE` file as is, so copyright notices that
+MIT- and BSD-style licences require are kept), plus `<id>.txt` for the
+app itself (`license_file` at the top level, default `<id>.txt`). CI
+checks that every `license_file` exists and that every SPDX id in
+`license` occurs in the app's or a bundled component's licence. The
+store's app page has a "Licences" view that lists the components and
+opens these texts.
+
+**Source.** Every WhyOS binary links uClibc-ng statically, and the LGPL
+then requires that users can relink the app; copyleft apps (GPL) require
+the complete corresponding source anyway. So every package with native
+code MUST make its corresponding source available: the upstream sources
+at pinned versions plus everything that was changed or added for the
+badge (patches, new files, build scripts). Either `source` points to a
+public place that holds exactly that (a tag or commit, not a branch), or
+the app directory in this repository has a `source/` directory with the
+badge-specific files and a `SOURCES.md` that lists the pinned upstream
+downloads (repository.md §1.2). CI publishes `source/` as
+`<id>-<version>-source.tar.gz` next to the package.
+
+Reviewers also check that the licence allows redistribution at all.
+Non-free licences (`LicenseRef-…`) are accepted only when they do, and
+the app page marks them as "not open source".
 
 ## 3. Binaries
 

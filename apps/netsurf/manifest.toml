@@ -1,0 +1,197 @@
+# NetSurf web browser (why2025-linux sdapps/netsurf). The start script
+# (overlay/start) points HOME at the app's config directory, so cookies
+# and history no longer go to /root/.netsurf.
+format = 1
+id = "netsurf"
+name = "NetSurf"
+version = "1.0.0"
+build = 1
+summary = "Graphical web browser with HTTPS, without JavaScript"
+description = """
+A web browser with its own layout engine: HTML, CSS, PNG, JPEG and GIF,
+HTTPS through Mbed TLS. No JavaScript, WebP, SVG or video, to save memory.
+
+The badge has no mouse, so the browser brings a pointer: the arrows move
+it (faster while held), circle clicks or drags, triangle and cross scroll
+a page up and down, square and diamond go back and forward, and the cloud
+key opens the address bar. Fn with the arrows sends the arrow keys
+themselves.
+
+Large pages such as Wikipedia do not fit in the badge's memory; NetSurf
+then stops with an error instead of hanging."""
+author = "NetSurf developers, badge port"
+license = "GPL-2.0-only AND MIT AND Unicode-DFS-2015 AND (Apache-2.0 OR GPL-2.0-or-later) AND curl AND libpng-2.0 AND IJG AND Zlib AND LGPL-2.1-or-later AND MPL-2.0"
+license_file = "netsurf.txt"
+homepage = "https://www.netsurf-browser.org"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/netsurf/source"
+upstream_version = "3.11"
+changelog = "First store release. Cookies and history move to the app's settings folder."
+
+type = "app"
+category = "internet"
+tags = ["browser", "web", "https"]
+permissions = ["network"]
+install_location = "sd"
+
+[launch]
+exec = "start"
+args = "-f badge -w 720 -h 720 -b 16 %u"
+info = "web browser"
+icon = "globe"
+opens = ["html", "htm", "xhtml", "svg"]
+stack_kb = 256
+
+[requires]
+os_api = 1
+memory_kb = 5000          # about 5 MB of the pool for ordinary pages (sdapps/README.md)
+features = ["wifi", "sd-card", "display", "keyboard"]
+
+[storage.config]
+max_kb = 128              # cookies and history
+
+[[bundled]]
+name = "libcss"
+version = "netsurf-all 3.11"
+license = "MIT"
+source = "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz"
+license_file = "libcss.txt"
+
+[[bundled]]
+name = "libdom"
+version = "netsurf-all 3.11"
+license = "MIT"
+source = "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz"
+license_file = "libdom.txt"
+
+[[bundled]]
+name = "libhubbub"
+version = "netsurf-all 3.11"
+license = "MIT"
+source = "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz"
+license_file = "libhubbub.txt"
+
+[[bundled]]
+name = "libnsbmp"
+version = "netsurf-all 3.11"
+license = "MIT"
+source = "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz"
+license_file = "libnsbmp.txt"
+
+[[bundled]]
+name = "libnsfb"
+version = "netsurf-all 3.11"
+license = "MIT"
+source = "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz"
+license_file = "libnsfb.txt"
+
+[[bundled]]
+name = "libnsgif"
+version = "netsurf-all 3.11"
+license = "MIT"
+source = "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz"
+license_file = "libnsgif.txt"
+
+[[bundled]]
+name = "libnslog"
+version = "netsurf-all 3.11"
+license = "MIT"
+source = "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz"
+license_file = "libnslog.txt"
+
+[[bundled]]
+name = "libnspsl"
+version = "netsurf-all 3.11"
+license = "MIT"
+source = "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz"
+license_file = "libnspsl.txt"
+
+[[bundled]]
+name = "libnsutils"
+version = "netsurf-all 3.11"
+license = "MIT"
+source = "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz"
+license_file = "libnsutils.txt"
+
+[[bundled]]
+name = "libparserutils"
+version = "netsurf-all 3.11"
+license = "MIT"
+source = "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz"
+license_file = "libparserutils.txt"
+
+[[bundled]]
+name = "libwapcaplet"
+version = "netsurf-all 3.11"
+license = "MIT"
+source = "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz"
+license_file = "libwapcaplet.txt"
+
+[[bundled]]
+name = "libutf8proc"
+version = "netsurf-all 3.11"
+license = "MIT AND Unicode-DFS-2015"
+source = "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz"
+license_file = "libutf8proc.txt"
+
+[[bundled]]
+name = "Mbed TLS"
+version = "3.6.6"
+license = "Apache-2.0 OR GPL-2.0-or-later"
+source = "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.6/mbedtls-3.6.6.tar.bz2"
+license_file = "mbedtls.txt"
+
+[[bundled]]
+name = "curl"
+version = "8.20.0"
+license = "curl"
+source = "https://curl.se/download/curl-8.20.0.tar.xz"
+license_file = "curl.txt"
+
+[[bundled]]
+name = "libpng"
+version = "1.6.58"
+license = "libpng-2.0"
+source = "http://downloads.sourceforge.net/project/libpng/libpng16/1.6.58/libpng-1.6.58.tar.xz"
+license_file = "libpng.txt"
+
+[[bundled]]
+name = "libjpeg (IJG)"
+version = "9f"
+license = "IJG"
+source = "http://www.ijg.org/files/jpegsrc.v9f.tar.gz"
+license_file = "libjpeg.txt"
+
+[[bundled]]
+name = "Expat"
+version = "2.8.1"
+license = "MIT"
+source = "https://github.com/libexpat/libexpat/releases/download/R_2_8_1/expat-2.8.1.tar.xz"
+license_file = "expat.txt"
+
+[[bundled]]
+name = "zlib"
+version = "1.3.2"
+license = "Zlib"
+source = "https://zlib.net/fossils/zlib-1.3.2.tar.gz"
+license_file = "zlib.txt"
+
+[[bundled]]
+name = "uClibc-ng"
+version = "1.0.57"
+license = "LGPL-2.1-or-later"
+source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
+license_file = "uClibc-ng.txt"
+
+[[bundled]]
+name = "Mozilla CA certificate store (curl.se cacert.pem)"
+version = "2026-09-25"
+license = "MPL-2.0"
+source = "https://curl.se/docs/caextract.html"
+license_file = "ca-certificates.txt"
+
+[[bundled]]
+name = "Badge port (surface, iconv, OOM handler, start)"
+version = "2be6d7c"
+license = "MIT"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps"
+license_file = "badge-port.txt"

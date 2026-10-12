@@ -1,0 +1,35 @@
+Leave out images larger than 1 MB decoded (WHY2025 badge, sdapps/README.md).
+
+NetSurf decodes every image into a 32-bit bitmap. On the badge all
+programs share a 13 MB pool; Wikipedia's portal asked for 1.7 MB more
+with the pool already full.
+
+--- a/netsurf/frontends/framebuffer/bitmap.c	2026-10-11 17:04:44
++++ b/netsurf/frontends/framebuffer/bitmap.c	2026-10-11 17:04:54
+@@ -35,6 +35,14 @@
+ #include "netsurf/content.h"
+ 
+ #include "framebuffer/gui.h"
++
++/*
++ * WHY2025 badge: the largest image NetSurf decodes, in bytes at 32 bits a
++ * pixel. All programs share a 13 MB pool; Wikipedia's portal asked for a
++ * 1.7 MB bitmap on top of a full pool. A larger image is left out of the
++ * page (as if it failed to load) instead of being decoded.
++ */
++#define BADGE_BITMAP_MAX	(1024 * 1024)
+ #include "framebuffer/fbtk.h"
+ #include "framebuffer/framebuffer.h"
+ #include "framebuffer/bitmap.h"
+@@ -50,6 +58,11 @@
+ static void *bitmap_create(int width, int height, enum gui_bitmap_flags flags)
+ {
+ 	nsfb_t *bm;
++
++	if ((size_t)width * (size_t)height * 4 > BADGE_BITMAP_MAX) {
++		NSLOG(netsurf, INFO, "bitmap %dx%d too large for the badge", width, height);
++		return NULL;
++	}
+ 
+ 	bm = nsfb_new(NSFB_SURFACE_RAM);
+ 	if (bm == NULL) {

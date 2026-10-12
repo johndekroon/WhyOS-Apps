@@ -1,0 +1,10 @@
+#!/bin/sh
+# NetSurf from the store: cookies and history go to the app's config
+# directory (APP_CONFIG) instead of /root/.netsurf. Without APP_CONFIG (an
+# older menu) it behaves as before. Builtins only, then exec: no shell
+# stays behind in the memory pool.
+if [ -n "$APP_CONFIG" ]; then
+	HOME=$APP_CONFIG
+	export HOME
+fi
+exec "${0%/*}/netsurf" "$@"

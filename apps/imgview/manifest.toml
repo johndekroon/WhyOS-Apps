@@ -1,0 +1,80 @@
+# Picture viewer (why2025-linux sdapps/imgview). Not in the menu's lists:
+# Files opens photos with it.
+format = 1
+id = "imgview"
+name = "Picture viewer"
+version = "1.0.0"
+build = 1
+summary = "Shows JPEG and PNG pictures, opened from Files"
+description = """
+Shows photos and pictures on the panel: JPEG and PNG, fitted to the
+screen, with the other pictures in the same folder under the arrow keys.
+JPEGs are turned upright from their EXIF orientation.
+
+Pictures are scaled down while they are read, so even a 12-megapixel
+phone photo fits in the badge's memory. Files opens pictures with it; it
+has no entry in the menu's lists."""
+author = "badge port"
+license = "MIT AND IJG AND libpng-2.0 AND Zlib AND OFL-1.1 AND LGPL-2.1-or-later"
+license_file = "imgview.txt"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/imgview/source"
+changelog = "First store release."
+
+type = "app"
+category = "media"
+tags = ["photos", "pictures", "viewer", "jpeg", "png"]
+install_location = "sd"
+
+[launch]
+exec = "imgview"
+args = "%f"
+opens = ["jpg", "jpeg", "png"]
+menu = "none"
+stack_kb = 64
+
+[requires]
+os_api = 1
+memory_kb = 2500          # estimate: at most twice the screen decoded, plus the program
+features = ["display", "keyboard"]
+
+[[bundled]]
+name = "libjpeg (IJG)"
+version = "9f"
+license = "IJG"
+source = "http://www.ijg.org/files/jpegsrc.v9f.tar.gz"
+license_file = "libjpeg.txt"
+
+[[bundled]]
+name = "libpng"
+version = "1.6.58"
+license = "libpng-2.0"
+source = "http://downloads.sourceforge.net/project/libpng/libpng16/1.6.58/libpng-1.6.58.tar.xz"
+license_file = "libpng.txt"
+
+[[bundled]]
+name = "zlib"
+version = "1.3.2"
+license = "Zlib"
+source = "https://zlib.net/fossils/zlib-1.3.2.tar.gz"
+license_file = "zlib.txt"
+
+[[bundled]]
+name = "uClibc-ng"
+version = "1.0.57"
+license = "LGPL-2.1-or-later"
+source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
+license_file = "uClibc-ng.txt"
+
+[[bundled]]
+name = "JetBrains Mono (font)"
+version = "variable"
+license = "OFL-1.1"
+source = "https://github.com/JetBrains/JetBrainsMono"
+license_file = "jetbrains-mono.txt"
+
+[[bundled]]
+name = "Space Grotesk (font)"
+version = "variable"
+license = "OFL-1.1"
+source = "https://github.com/floriankarsten/space-grotesk"
+license_file = "space-grotesk.txt"
