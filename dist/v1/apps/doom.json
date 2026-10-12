@@ -1,0 +1,83 @@
+{
+ "author": "id Software (DOOM), maximevince (fbDOOM), badge port",
+ "bundled": [
+  {
+   "license": "LicenseRef-DOOM-shareware",
+   "license_file": "doom1-wad.txt",
+   "license_url": "licenses/doom/doom1-wad.txt",
+   "name": "DOOM shareware WAD (doom1.wad)",
+   "source": "http://www.jbserver.com/downloads/games/doom/misc/shareware/doom19s.zip",
+   "version": "1.9"
+  },
+  {
+   "license": "MIT",
+   "license_file": "doom-launcher.txt",
+   "license_url": "licenses/doom/doom-launcher.txt",
+   "name": "Badge launcher (doom.c)",
+   "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/doom/source",
+   "version": "2ce6a3b"
+  },
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/doom/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  }
+ ],
+ "category": "action",
+ "description": "The first episode of DOOM, from id Software's shareware release 1.9, on\nfbDOOM, a port of the DOOM source code to the Linux framebuffer.\n\nKeys: arrows move and turn, Ctrl fires, Space opens doors, Enter selects\nin the menus, Esc opens the menu, Backspace or Quit Game ends it, and\nthe logo key goes back to the start menu. Saved games go to the app's\nfolder on the SD card. There is no sound.\n\nDOOM needs a free block of at least 2 MB of memory for its zone: close\nother apps first if it does not start.",
+ "format": 1,
+ "homepage": "https://github.com/maximevince/fbDOOM",
+ "icon": null,
+ "id": "doom",
+ "install_location": "sd",
+ "launch": {
+  "exec": "doom",
+  "icon": "games",
+  "info": "shareware episode",
+  "menu": "games",
+  "rotation": "auto",
+  "terminal": false
+ },
+ "license": "GPL-2.0-or-later AND MIT AND LicenseRef-DOOM-shareware AND LGPL-2.1-or-later",
+ "license_url": "licenses/doom/fbdoom.txt",
+ "name": "DOOM",
+ "requires": {
+  "features": [
+   "sd-card",
+   "display",
+   "keyboard"
+  ],
+  "memory_kb": 6500,
+  "os_api": 1
+ },
+ "screenshots": [],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/doom/source",
+ "summary": "The shareware episode of DOOM (1993), Knee-Deep in the Dead",
+ "tags": [
+  "doom",
+  "fps",
+  "shooter",
+  "retro",
+  "id-software"
+ ],
+ "type": "game",
+ "upstream_version": "fbDOOM git 1728016",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "First store release; it was in the OS image before.",
+   "package": {
+    "installed_size": 4787534,
+    "sha256": "bca984288c8797ebf0b88408e4b0c9af1714b09e31184c8b8ecc0447bbe05c6b",
+    "size": 2031633,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/doom-1.9.0.wpk"
+   },
+   "published": "2026-10-12T14:33:37Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/doom-1.9.0-source.tar.gz",
+   "version": "1.9.0"
+  }
+ ]
+}

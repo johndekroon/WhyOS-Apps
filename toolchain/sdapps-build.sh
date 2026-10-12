@@ -2,7 +2,8 @@
 # Build the apps that live on the SD card (sdapps/README.md), in the build
 # VM, with the toolchain of a badge build (Tools/usb/br.sh badge first).
 #
-#   sdapps/build.sh [gnuboy] [netsurf] [nmap] [imgview] [links]   default: all
+#   sdapps/build.sh [gnuboy] [netsurf] [nmap] [imgview] [links] [nethack]
+#                   [doom] [sensorpanel] [buspirate]                       default: all
 #
 # Sources are fetched at pinned versions into ~/sdapps/src; the result is
 # ~/br-badge/sdapps/badge/apps/<app>/, to copy to the card's badge/apps/.
@@ -345,7 +346,120 @@ PY
 	ls -l "$d"
 }
 
-for app in "${@:-gnuboy netsurf nmap imgview links}"; do
+# NetHack 3.6.7 with its tty interface, in appterm's window (nethack/
+# app.conf); the map is 80 columns and scrolls (CLIPPING) in appterm's 73.
+# Source changes in nethack/0001-badge.patch: termcap through NetHack's
+# own tclib.c (no ncurses here), saves and scores in APP_DATA, SIGTERM
+# saves the game, the arrow keys move (nethack/badge.c); no shell, mail,
+# suspend or compress program (no fork), zlib compresses the saves.
+# makedefs, dgn_comp, lev_comp and dlb run during the build and write
+# structs with longs into the level files: they are built for the badge
+# as static ELF and run through qemu-user (binfmt), so the data has the
+# badge's sizes. The VM needs qemu-user.
+NETHACK_URL=https://www.nethack.org/download/3.6.7/nethack-367-src.tgz
+NETHACK_SHA=98cf67df6debf9668a61745aa84c09bcab362e5d33f5b944ec5155d44d2aacb2
+
+build_nethack() {
+	local s d=$DEST/nethack Z=$BR_OUT/staging/usr
+	[ -e /proc/sys/fs/binfmt_misc/qemu-riscv32 ] || { echo "no qemu-user: apt install qemu-user" >&2; exit 1; }
+	s=$SRC/$(get "$NETHACK_URL" "$NETHACK_SHA")
+	patch -d "$s" -p1 -s < "$HERE/nethack/0001-badge.patch"
+	cp "$s/sys/unix/Makefile.top" "$s/Makefile"
+	cp "$s/sys/unix/Makefile.dat" "$s/dat/Makefile"
+	cp "$s/sys/unix/Makefile.src" "$s/src/Makefile"
+	cp "$s/sys/unix/Makefile.utl" "$s/util/Makefile"
+	cp "$s/sys/unix/Makefile.doc" "$s/doc/Makefile"
+	local nf=(CC="$CC" LINK="$CC" YACC="bison -y" LEX=flex
+		CFLAGS="$LIBCFLAGS -I../include -I$Z/include -DDLB -DZLIB_COMP -DNOMAIL -DNOSHELL")
+	# the tools, as ELF for qemu-user
+	make -s -C "$s/util" "${nf[@]}" LFLAGS="-static" makedefs dgn_comp lev_comp dlb
+	# the game: BFLT, with tclib (termcap), the badge glue and zlib
+	"$CC" $LIBCFLAGS -I"$s/include" -I"$Z/include" -DDLB -DZLIB_COMP -DNOMAIL -DNOSHELL \
+		-c "$s/sys/share/tclib.c" -o "$s/src/tclib.o"
+	"$CC" $LIBCFLAGS -I"$s/include" -I"$Z/include" -DDLB -DZLIB_COMP -DNOMAIL -DNOSHELL \
+		-c "$HERE/nethack/badge.c" -o "$s/src/badge.o"
+	make -s -C "$s/src" "${nf[@]}" WINOBJ='$(WINTTYOBJ)' WINTTYLIB= LIBS="tclib.o badge.o -L$Z/lib -lz" \
+		LFLAGS="-static -Wl,--gc-sections -Wl,--no-relax -Wl,-elf2flt=-r" nethack
+	zero_page "$s/src/nethack.gdb"
+	"$T-flthdr" -s 131072 "$s/src/nethack"	# its stack (make splits -s N)
+	# the data: level files, the dungeon, then all of it in one nhdat
+	make -s -C "$s/dat" "${nf[@]}" all
+	make -s -C "$s" "${nf[@]}" dlb
+	rm -rf "$d"
+	mkdir -p "$d"
+	cp "$s/src/nethack" "$s/dat/nhdat" "$s/dat/license" "$d/"
+	cp "$HERE/nethack/start" "$HERE/nethack/termcap" "$HERE/nethack/sysconf" \
+		"$HERE/nethack/nethackrc" "$HERE/nethack/app.conf" "$d/"
+	ls -l "$d"
+}
+
+# The sensor panel: BME680 and BMI270 readings, live (it was in the image).
+build_sensorpanel() {
+	local d=$DEST/sensorpanel
+	mkdir -p "$d"
+	flat 16384
+	"$CC" "${CFLAGS[@]}" -Wall "$HERE/sensorpanel/sensorpanel.c" "${LDFLAT[@]}" -o "$d/sensorpanel"
+	zero_page "$d/sensorpanel.gdb"
+	rm -f "$d/sensorpanel.gdb"
+	cp "$HERE/sensorpanel/app.conf" "$d/"
+	ls -l "$d"
+}
+
+# The Bus Pirate 6 screens of the start menu, on their own: the menu's
+# source with -DBP_APP (the menu itself leaves them out, -DHAS_BP=0).
+build_buspirate() {
+	local d=$DEST/buspirate O=$HERE/../patches/buildroot/overlay-src
+	mkdir -p "$d"
+	flat 16384
+	"$CC" "${CFLAGS[@]}" -Wall -DBP_APP -I"$O" "$O/home.c" "${LDFLAT[@]}" -o "$d/buspirate"
+	zero_page "$d/buspirate.gdb"
+	rm -f "$d/buspirate.gdb"
+	cp "$HERE/buspirate/app.conf" "$d/"
+	ls -l "$d"
+}
+
+# DOOM: fbDOOM (no SDL, the framebuffer and the VT's keys) with our patch
+# (global-patches/fbdoom), the shareware WAD, and doom.c to start it. Was
+# a Buildroot package in the image (buildroot-tree/0002) until 2026-10-12.
+FBDOOM_REV=17280163bc95e5d954d2efaa0633489b763b4cd1
+FBDOOM_SHA=77f57cee68fed438dffdba96f6070b8975c16652a63ddf4fb967994e5585a38a
+WAD_URL=http://www.jbserver.com/downloads/games/doom/misc/shareware/doom19s.zip
+WAD_SHA=cacf0142b31ca1af00796b4a0339e07992ac5f21bc3f81e7532fe1b5e1b486e6
+
+build_doom() {
+	local d=$DEST/doom s=$SRC/fbDOOM-$FBDOOM_REV f=$SRC/dl/fbdoom-$FBDOOM_REV.tar.gz w=$SRC/dl/doom19s.zip
+	mkdir -p "$SRC/dl" "$d"
+	[ -f "$f" ] || curl -sSfL -o "$f" "https://github.com/maximevince/fbDOOM/archive/$FBDOOM_REV.tar.gz"
+	echo "$FBDOOM_SHA  $f" | sha256sum -c --quiet -
+	rm -rf "$s"
+	tar -C "$SRC" -xzf "$f"
+	for p in "$HERE"/../patches/buildroot/global-patches/fbdoom/*.patch; do
+		patch -s -d "$s" -p1 < "$p"
+	done
+	# its Makefile takes link flags only through CC, where "-s N" would
+	# split: the stack (DOOM recurses; 64 KB as the package had) via flthdr
+	make -s -C "$s/fbdoom" CC="$CC ${CFLAGS[*]} -Wl,--gc-sections -Wl,--no-relax -Wl,-elf2flt=-r" \
+		NOSDL=1 fbdoom
+	zero_page "$s/fbdoom/fbdoom.gdb"
+	"$T-flthdr" -s 65536 "$s/fbdoom/fbdoom"
+	cp "$s/fbdoom/fbdoom" "$d/"
+	flat 16384
+	"$CC" "${CFLAGS[@]}" -Wall "$HERE/doom/doom.c" "${LDFLAT[@]}" -o "$d/doom"
+	zero_page "$d/doom.gdb"
+	rm -f "$d/doom.gdb"
+	[ -f "$w" ] || curl -sSfL -o "$w" "$WAD_URL"
+	echo "$WAD_SHA  $w" | sha256sum -c --quiet -
+	rm -rf "$SRC/wad" && mkdir -p "$SRC/wad"
+	unzip -p "$w" 'DOOMS_19.[12]' > "$SRC/wad/doom.zip"
+	unzip -q -o -d "$SRC/wad" "$SRC/wad/doom.zip" DOOM1.WAD README.TXT
+	cp "$SRC/wad/DOOM1.WAD" "$d/doom1.wad"
+	cp "$s/README.TXT" "$d/README-fbdoom.txt"
+	cp "$SRC/wad/README.TXT" "$d/README-shareware.txt"
+	cp "$HERE/doom/app.conf" "$d/"
+	ls -l "$d"
+}
+
+for app in "${@:-gnuboy netsurf nmap imgview links nethack doom sensorpanel buspirate}"; do
 	for a in $app; do
 		case $a in
 		gnuboy) build_gnuboy ;;
@@ -354,6 +468,10 @@ for app in "${@:-gnuboy netsurf nmap imgview links}"; do
 		nmap) build_nmap ;;
 		imgview) build_imgview ;;
 		links) build_links ;;
+		nethack) build_nethack ;;
+		doom) build_doom ;;
+		sensorpanel) build_sensorpanel ;;
+		buspirate) build_buspirate ;;
 		*) echo "unknown app $a" >&2; exit 2 ;;
 		esac
 	done

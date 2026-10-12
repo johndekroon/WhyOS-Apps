@@ -1,6 +1,86 @@
 {
  "apps": [
   {
+   "author": "why2025-linux contributors",
+   "category": "hardware",
+   "commands": [],
+   "details_sha256": "6cbf6539d634e7bbf59254813f4b89d73ef781020881e09e2bb98544f8c97c4a",
+   "id": "buspirate",
+   "install_location": "sd",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 505203,
+     "sha256": "512f3d2324e443da7eef8a3d36b1fce964327625d1b8f6c53c0e0c7d99cd566d",
+     "size": 222209,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/buspirate-1.0.0.wpk"
+    },
+    "version": "1.0.0"
+   },
+   "menu_icon": "chip",
+   "name": "Bus Pirate",
+   "requires": {
+    "features": [
+     "usb-host",
+     "display",
+     "keyboard"
+    ],
+    "memory_kb": 1500,
+    "os_api": 1
+   },
+   "summary": "Power supply, logic analyzer, LEDs and console for a Bus Pirate 6",
+   "tags": [
+    "bus-pirate",
+    "logic-analyzer",
+    "power-supply",
+    "ws2812",
+    "usb"
+   ],
+   "terminal": false,
+   "type": "app",
+   "updated": "2026-10-12"
+  },
+  {
+   "author": "id Software (DOOM), maximevince (fbDOOM), badge port",
+   "category": "action",
+   "commands": [],
+   "details_sha256": "5d0cf3e94c31719cab274161c02105c9e321a44fea01252d36530ba074ec802c",
+   "id": "doom",
+   "install_location": "sd",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 4787534,
+     "sha256": "bca984288c8797ebf0b88408e4b0c9af1714b09e31184c8b8ecc0447bbe05c6b",
+     "size": 2031633,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/doom-1.9.0.wpk"
+    },
+    "version": "1.9.0"
+   },
+   "menu_icon": "games",
+   "name": "DOOM",
+   "requires": {
+    "features": [
+     "sd-card",
+     "display",
+     "keyboard"
+    ],
+    "memory_kb": 6500,
+    "os_api": 1
+   },
+   "summary": "The shareware episode of DOOM (1993), Knee-Deep in the Dead",
+   "tags": [
+    "doom",
+    "fps",
+    "shooter",
+    "retro",
+    "id-software"
+   ],
+   "terminal": false,
+   "type": "game",
+   "updated": "2026-10-12"
+  },
+  {
    "author": "gnuboy authors (rofl0r/gnuboy), badge port",
    "category": "emulators",
    "commands": [],
@@ -197,6 +277,45 @@
    "updated": "2026-10-12"
   },
   {
+   "author": "why2025-linux contributors",
+   "category": "sensors",
+   "commands": [],
+   "details_sha256": "429563c7a87b609bdf560f92ffaca3471d6505322fcb8e84d6069975c8f6bda2",
+   "id": "sensorpanel",
+   "install_location": "sd",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 110665,
+     "sha256": "3cca75d59ab809a67e41330a0028181eb0e392114b7d7bb0d56931eebc5e91a7",
+     "size": 41463,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/sensorpanel-1.0.0.wpk"
+    },
+    "version": "1.0.0"
+   },
+   "menu_icon": "sensors",
+   "name": "Sensor panel",
+   "requires": {
+    "features": [
+     "display",
+     "environment-sensor",
+     "accelerometer"
+    ],
+    "memory_kb": 1200,
+    "os_api": 1
+   },
+   "summary": "Live readings of the badge's environment and motion sensors",
+   "tags": [
+    "sensors",
+    "bme680",
+    "bmi270",
+    "demo"
+   ],
+   "terminal": false,
+   "type": "app",
+   "updated": "2026-10-12"
+  },
+  {
    "author": "WhyOS-Apps",
    "category": "store",
    "commands": [],
@@ -238,7 +357,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "3a6ddad8aabd3c71f44e356f3f543d968fbbd8d3f3327a2ed3b5af870ab368bb",
  "format": 1,
- "generated": "2026-10-12T14:09:38Z",
- "serial": 4,
+ "generated": "2026-10-12T14:33:39Z",
+ "serial": 5,
  "source": "whyos"
 }

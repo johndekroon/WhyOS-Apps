@@ -1,0 +1,82 @@
+{
+ "author": "why2025-linux contributors",
+ "bundled": [
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/buspirate/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "jetbrains-mono.txt",
+   "license_url": "licenses/buspirate/jetbrains-mono.txt",
+   "name": "JetBrains Mono (font)",
+   "source": "https://github.com/JetBrains/JetBrainsMono",
+   "version": "2.211"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "space-grotesk.txt",
+   "license_url": "licenses/buspirate/space-grotesk.txt",
+   "name": "Space Grotesk (font)",
+   "source": "https://github.com/floriankarsten/space-grotesk",
+   "version": "2.000"
+  }
+ ],
+ "category": "hardware",
+ "description": "Control a Bus Pirate 6 on the badge's bottom USB port from the keypad,\nwith tiles like the home screen:\n\n- Power supply: on and off, 0.8 to 5.0 V, a current limit, pull-ups; the\n  voltage and current it measures, every second.\n- Logic analyzer: 8 channels at 10 kHz to 50 MHz, a trigger on one pin,\n  saved to /root/capture.bin; scroll and zoom with the arrows.\n- LEDs: WS2812 or APA102 strips or the Bus Pirate's own LEDs, colour,\n  brightness and count.\n- Console: the Bus Pirate's own terminal, in colour, for everything else.\n- Pins and Info: the voltage on every pin, and the output of \"i\".\n\nEsc on the tiles or the logo key closes it.",
+ "format": 1,
+ "homepage": "https://buspirate.com",
+ "icon": null,
+ "id": "buspirate",
+ "install_location": "sd",
+ "launch": {
+  "exec": "buspirate",
+  "icon": "chip",
+  "info": "Bus Pirate 6 on the bottom port",
+  "menu": "apps",
+  "rotation": "auto",
+  "terminal": false
+ },
+ "license": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
+ "license_url": "licenses/buspirate/buspirate.txt",
+ "name": "Bus Pirate",
+ "requires": {
+  "features": [
+   "usb-host",
+   "display",
+   "keyboard"
+  ],
+  "memory_kb": 1500,
+  "os_api": 1
+ },
+ "screenshots": [],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/buspirate/source",
+ "summary": "Power supply, logic analyzer, LEDs and console for a Bus Pirate 6",
+ "tags": [
+  "bus-pirate",
+  "logic-analyzer",
+  "power-supply",
+  "ws2812",
+  "usb"
+ ],
+ "type": "app",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "First store release; it was part of the start menu before.",
+   "package": {
+    "installed_size": 505203,
+    "sha256": "512f3d2324e443da7eef8a3d36b1fce964327625d1b8f6c53c0e0c7d99cd566d",
+    "size": 222209,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/buspirate-1.0.0.wpk"
+   },
+   "published": "2026-10-12T14:33:37Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/buspirate-1.0.0-source.tar.gz",
+   "version": "1.0.0"
+  }
+ ]
+}

@@ -1,0 +1,62 @@
+# DOOM: fbDOOM with the shareware WAD (why2025-linux sdapps/doom), in the
+# OS image until 2026-10-12.
+format = 1
+id = "doom"
+name = "DOOM"
+version = "1.9.0"
+build = 1
+summary = "The shareware episode of DOOM (1993), Knee-Deep in the Dead"
+description = """
+The first episode of DOOM, from id Software's shareware release 1.9, on
+fbDOOM, a port of the DOOM source code to the Linux framebuffer.
+
+Keys: arrows move and turn, Ctrl fires, Space opens doors, Enter selects
+in the menus, Esc opens the menu, Backspace or Quit Game ends it, and
+the logo key goes back to the start menu. Saved games go to the app's
+folder on the SD card. There is no sound.
+
+DOOM needs a free block of at least 2 MB of memory for its zone: close
+other apps first if it does not start."""
+author = "id Software (DOOM), maximevince (fbDOOM), badge port"
+license = "GPL-2.0-or-later AND MIT AND LicenseRef-DOOM-shareware AND LGPL-2.1-or-later"
+license_file = "fbdoom.txt"
+homepage = "https://github.com/maximevince/fbDOOM"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/doom/source"
+upstream_version = "fbDOOM git 1728016"
+changelog = "First store release; it was in the OS image before."
+
+type = "game"
+category = "action"
+tags = ["doom", "fps", "shooter", "retro", "id-software"]
+install_location = "sd"
+
+[launch]
+exec = "doom"
+info = "shareware episode"
+icon = "games"
+
+[requires]
+os_api = 1
+memory_kb = 6500          # fbdoom 0.8 MB, screen 1 MB, a 2 to 4 MB zone
+features = ["sd-card", "display", "keyboard"]
+
+[[bundled]]
+name = "DOOM shareware WAD (doom1.wad)"
+version = "1.9"
+license = "LicenseRef-DOOM-shareware"
+source = "http://www.jbserver.com/downloads/games/doom/misc/shareware/doom19s.zip"
+license_file = "doom1-wad.txt"
+
+[[bundled]]
+name = "Badge launcher (doom.c)"
+version = "2ce6a3b"
+license = "MIT"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/doom/source"
+license_file = "doom-launcher.txt"
+
+[[bundled]]
+name = "uClibc-ng"
+version = "1.0.57"
+license = "LGPL-2.1-or-later"
+source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
+license_file = "uClibc-ng.txt"

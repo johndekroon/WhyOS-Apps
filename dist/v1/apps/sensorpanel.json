@@ -1,0 +1,66 @@
+{
+ "author": "why2025-linux contributors",
+ "bundled": [
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/sensorpanel/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  }
+ ],
+ "category": "sensors",
+ "description": "Shows the BME680's temperature, humidity and pressure and the BMI270's\nacceleration on all three axes, about three times a second, with a graph\nof the last 20 temperatures. The BME680 sits on the board, so it reads\nwarmer than the room.\n\nEsc or the logo key closes it.",
+ "format": 1,
+ "homepage": "https://github.com/mrbreaker/why2025-linux",
+ "icon": null,
+ "id": "sensorpanel",
+ "install_location": "sd",
+ "launch": {
+  "esc": "quit",
+  "exec": "sensorpanel",
+  "icon": "sensors",
+  "info": "temperature, humidity, motion",
+  "menu": "apps",
+  "rotation": "auto",
+  "terminal": false
+ },
+ "license": "GPL-2.0-only AND LGPL-2.1-or-later",
+ "license_url": "licenses/sensorpanel/sensorpanel.txt",
+ "name": "Sensor panel",
+ "requires": {
+  "features": [
+   "display",
+   "environment-sensor",
+   "accelerometer"
+  ],
+  "memory_kb": 1200,
+  "os_api": 1
+ },
+ "screenshots": [],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/sensorpanel/source",
+ "summary": "Live readings of the badge's environment and motion sensors",
+ "tags": [
+  "sensors",
+  "bme680",
+  "bmi270",
+  "demo"
+ ],
+ "type": "app",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "First store release; it was in the OS image before.",
+   "package": {
+    "installed_size": 110665,
+    "sha256": "3cca75d59ab809a67e41330a0028181eb0e392114b7d7bb0d56931eebc5e91a7",
+    "size": 41463,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/sensorpanel-1.0.0.wpk"
+   },
+   "published": "2026-10-12T14:33:39Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/sensorpanel-1.0.0-source.tar.gz",
+   "version": "1.0.0"
+  }
+ ]
+}

@@ -1,0 +1,49 @@
+From: John <john.de.kroon@cyberant.com>
+Subject: [PATCH] i_system: I_Quit and I_Error must exit
+
+Without ORIGCODE (undefined in config.h) both returned or spun:
+
+- I_Quit ran the exit functions, which free the video buffer, and
+  returned into the game loop. Backspace and Quit Game both go through
+  it. On the badge (NOMMU, no memory protection) the stray writes hung
+  the kernel until the watchdog reset it.
+- I_Error spun at full CPU forever, a black screen until killed, e.g.
+  when the zone did not fit ("Unable to allocate 4 MiB of RAM for
+  zone"). Exiting lets the start menu retry with a smaller zone.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+--- a/fbdoom/i_system.c
++++ b/fbdoom/i_system.c
+@@ -259,9 +259,13 @@
+ 
+ #if ORIGCODE
+     SDL_Quit();
++#endif
+ 
++    /* Without ORIGCODE this returned into the game loop, which went on
++     * drawing into the video buffer the exit functions just freed. On
++     * NOMMU there is no fault to stop that: it corrupted memory and hung
++     * the badge (Backspace or Quit Game, then the watchdog reset). */
+     exit(0);
+-#endif
+ }
+ 
+ #if !defined(_WIN32) && !defined(__MACOSX__)
+@@ -457,13 +461,11 @@
+     // abort();
+ #if ORIGCODE
+     SDL_Quit();
++#endif
+ 
++    /* Without ORIGCODE this spun forever at full CPU, a black screen
++     * until killed (e.g. "Unable to allocate 4 MiB of RAM for zone"). */
+     exit(-1);
+-#else
+-    while (true)
+-    {
+-    }
+-#endif
+ }
+ 
+ //

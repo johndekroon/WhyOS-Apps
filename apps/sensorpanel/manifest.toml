@@ -1,0 +1,44 @@
+# The sensor panel (why2025-linux sdapps/sensorpanel), in the image's
+# Apps list until 2026-10-12.
+format = 1
+id = "sensorpanel"
+name = "Sensor panel"
+version = "1.0.0"
+build = 1
+summary = "Live readings of the badge's environment and motion sensors"
+description = """
+Shows the BME680's temperature, humidity and pressure and the BMI270's
+acceleration on all three axes, about three times a second, with a graph
+of the last 20 temperatures. The BME680 sits on the board, so it reads
+warmer than the room.
+
+Esc or the logo key closes it."""
+author = "why2025-linux contributors"
+license = "GPL-2.0-only AND LGPL-2.1-or-later"
+license_file = "sensorpanel.txt"
+homepage = "https://github.com/mrbreaker/why2025-linux"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/sensorpanel/source"
+changelog = "First store release; it was in the OS image before."
+
+type = "app"
+category = "sensors"
+tags = ["sensors", "bme680", "bmi270", "demo"]
+install_location = "sd"
+
+[launch]
+exec = "sensorpanel"
+info = "temperature, humidity, motion"
+icon = "sensors"
+esc = "quit"
+
+[requires]
+os_api = 1
+memory_kb = 1200          # its own image and a 1 MB screen buffer (derived)
+features = ["display", "environment-sensor", "accelerometer"]
+
+[[bundled]]
+name = "uClibc-ng"
+version = "1.0.57"
+license = "LGPL-2.1-or-later"
+source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
+license_file = "uClibc-ng.txt"
