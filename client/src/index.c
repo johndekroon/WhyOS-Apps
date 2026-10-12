@@ -11,6 +11,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <unistd.h>
 
 #include <mbedtls/sha256.h>
 #include <zlib.h>
@@ -117,6 +118,7 @@ void index_free(struct index *ix)
 	free(ix->generated);
 	free(ix->base_url);
 	free(ix->featured);
+	free(ix->categories_sha256);
 	memset(ix, 0, sizeof(*ix));
 }
 
@@ -140,6 +142,7 @@ int index_parse(struct index *ix, const char *data, size_t len, char *err, size_
 	ix->generated = dup_tok(&j, 0, "generated");
 	ix->base_url = dup_tok(&j, 0, "base_url");
 	ix->featured = join_arr(&j, json_get(&j, 0, "featured"));
+	ix->categories_sha256 = dup_tok(&j, 0, "categories_sha256");
 	apps = json_get(&j, 0, "apps");
 	if (!json_is_arr(&j, apps)) {
 		snprintf(err, errn, "the index has no apps");
@@ -329,28 +332,82 @@ static int sha_ok(const char *data, size_t len, const char *want)
 	return !strcmp(hex, want);
 }
 
-/* the details of an app (repository.md §5.2), from the cache or fetched */
-int details_get(const struct app *a, char **data, size_t *len, char *err, size_t errn)
+/* file (relative to the source) from the cache when it matches sha, else fetched and cached */
+static int cached_get(const struct source *src, const char *file, const char *sha, size_t max,
+		      char **data, size_t *len, char *err, size_t errn)
 {
-	char file[64], path[512], url[512], dir[512];
+	char path[512], url[512], dir[512], *slash;
 
-	snprintf(file, sizeof(file), "apps/%s.json", a->id);
-	src_cache(path, sizeof(path), a->src, file);
-	if (!read_file(path, data, len, DETAILS_MAX)) {
-		if (sha_ok(*data, *len, a->details_sha256))
+	src_cache(path, sizeof(path), src, file);
+	if (!read_file(path, data, len, max)) {
+		if (sha_ok(*data, *len, sha))
 			return 0;
 		free(*data);
 	}
-	snprintf(url, sizeof(url), "%s%s", a->src->url, file);
-	if (net_get_mem(a->src, url, data, len, DETAILS_MAX, err, errn))
+	snprintf(url, sizeof(url), "%s%s", src->url, file);
+	if (net_get_mem(src, url, data, len, max, err, errn))
 		return -1;
-	if (!sha_ok(*data, *len, a->details_sha256)) {
+	if (!sha_ok(*data, *len, sha)) {
 		free(*data);
-		snprintf(err, errn, "%s: the details do not match the index (refresh with store update)", a->id);
+		snprintf(err, errn, "%s does not match the index (refresh with store update)", file);
 		return -1;
 	}
-	snprintf(dir, sizeof(dir), "%s/%s/apps", P.cache_dir, a->src->id);
+	snprintf(dir, sizeof(dir), "%s", path);
+	if ((slash = strrchr(dir, '/')))
+		*slash = 0;
 	if (!mkdir_p(dir))
 		write_atomic(path, *data, *len);
+	return 0;
+}
+
+/* the details of an app (repository.md §5.2), from the cache or fetched */
+int details_get(const struct app *a, char **data, size_t *len, char *err, size_t errn)
+{
+	char file[64];
+
+	snprintf(file, sizeof(file), "apps/%s.json", a->id);
+	if (!cached_get(a->src, file, a->details_sha256, DETAILS_MAX, data, len, err, errn))
+		return 0;
+	if (strstr(err, "does not match"))
+		snprintf(err, errn, "%s: the details do not match the index (refresh with store update)", a->id);
+	return -1;
+}
+
+/* categories.json of an index (repository.md §4), checked against categories_sha256 */
+int categories_get(const struct index *ix, char **data, size_t *len, char *err, size_t errn)
+{
+	if (!ix->categories_sha256) {
+		snprintf(err, errn, "the index names no categories");
+		return -1;
+	}
+	return cached_get(ix->src, "categories.json", ix->categories_sha256, DETAILS_MAX, data, len,
+			  err, errn);
+}
+
+/*
+ * An icon or screenshot (rel: "icons/x.qoi", relative to the source) as a
+ * cached file; its path in out. The index has no hash for these: they are
+ * pictures, checked by the QOI decoder, and fetched again after "clear cache".
+ */
+int asset_get(const struct source *src, const char *rel, char *out, size_t n, char *err, size_t errn)
+{
+	char url[512], dir[512], *slash;
+
+	if (strstr(rel, "..") || rel[0] == '/' || strchr(rel, ':')) {
+		snprintf(err, errn, "a strange path in the index: %s", rel);
+		return -1;
+	}
+	src_cache(out, n, src, rel);
+	if (file_size(out) > 0)
+		return 0;
+	snprintf(dir, sizeof(dir), "%s", out);
+	if ((slash = strrchr(dir, '/')))
+		*slash = 0;
+	mkdir_p(dir);
+	snprintf(url, sizeof(url), "%s%s", src->url, rel);
+	if (net_get(src, url, out, 0, 0, 0, err, errn)) {
+		unlink(out);
+		return -1;
+	}
 	return 0;
 }

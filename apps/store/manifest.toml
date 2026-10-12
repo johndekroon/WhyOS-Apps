@@ -1,0 +1,78 @@
+# The app store itself (client/), in flash so it works without a card.
+# It updates itself like any app (docs/client.md §2): on NOMMU the running
+# program is in RAM, so its file can be replaced under it.
+format = 1
+id = "store"
+name = "App store"
+version = "0.2.0"
+build = 1
+summary = "Find, install and update apps and games"
+description = """
+The WhyOS app store: browse and search the apps and games, install them on
+the SD card, update them, and see what is on your badge. It opens from
+Apps > App store and Settings > My apps; "store" in a shell does the same
+from the command line (store --help).
+
+It fetches the store's index over HTTPS and checks every package against
+it before anything is installed."""
+author = "WhyOS-Apps"
+license = "MIT AND (Apache-2.0 OR GPL-2.0-or-later) AND Zlib AND LGPL-2.1-or-later AND OFL-1.1"
+license_file = "store.txt"
+homepage = "https://github.com/johndekroon/WhyOS-Apps"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/client"
+changelog = "First release with screens: Discover, Apps and Games, Search, app pages, My apps and settings."
+
+type = "system"
+category = "store"
+tags = ["store", "apps", "packages"]
+permissions = ["network"]
+install_location = "flash"
+
+[launch]
+exec = "store"
+info = "install apps and games"
+icon = "store"
+
+[requires]
+os_api = 1
+memory_kb = 1536
+features = ["wifi", "display", "keyboard"]
+
+[[bundled]]
+name = "Mbed TLS"
+version = "3.6.6"
+license = "Apache-2.0 OR GPL-2.0-or-later"
+source = "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.6/mbedtls-3.6.6.tar.bz2"
+license_file = "mbedtls.txt"
+
+[[bundled]]
+name = "zlib"
+version = "1.3.2"
+license = "Zlib"
+source = "https://zlib.net/fossils/zlib-1.3.2.tar.gz"
+license_file = "zlib.txt"
+
+[[bundled]]
+name = "jsmn"
+license = "MIT"
+source = "https://github.com/zserge/jsmn"
+license_file = "jsmn.txt"
+
+[[bundled]]
+name = "uClibc-ng"
+version = "1.0.57"
+license = "LGPL-2.1-or-later"
+source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
+license_file = "uClibc-ng.txt"
+
+[[bundled]]
+name = "Space Grotesk (rendered into the program)"
+license = "OFL-1.1"
+source = "https://github.com/floriankarsten/space-grotesk"
+license_file = "OFL-SpaceGrotesk.txt"
+
+[[bundled]]
+name = "JetBrains Mono (rendered into the program)"
+license = "OFL-1.1"
+source = "https://github.com/JetBrains/JetBrainsMono"
+license_file = "OFL-JetBrainsMono.txt"

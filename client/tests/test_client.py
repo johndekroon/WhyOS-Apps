@@ -500,3 +500,38 @@ def test_replacing_a_hand_installed_app_asks(env):
     assert env.store("verify", "hello").returncode == 0
     assert not os.path.exists(os.path.join(env.sd, "badge", "apps", ".hello.old"))
 
+
+
+STORE_APP = '''format = 1
+id = "store"
+name = "App store"
+version = "0.2.0"
+build = 1
+summary = "The store"
+description = "Test."
+author = "tests"
+license = "MIT"
+source = "https://example.org/store"
+type = "system"
+category = "store"
+install_location = "flash"
+
+[launch]
+exec = "store"
+
+[requires]
+os_api = 1
+memory_kb = 1
+'''
+
+
+def test_maintain_adopts_the_store_an_image_brought(env):
+    write_app(env.repo, "store", STORE_APP, {"store": "#!/bin/sh\necho store\n", "LICENSES/store.txt": "MIT\n"})
+    env.publish()
+    env.store("--yes", "install", "store")
+    os.unlink(env.reg("store"))          # as an OS image leaves it: files and .package/, no registry
+    assert "found on this card" in env.store("list").stdout
+    r = env.store("maintain")
+    assert "registered itself" in r.stdout
+    assert os.path.isfile(env.reg("store"))
+    assert "installed" in env.store("list").stdout

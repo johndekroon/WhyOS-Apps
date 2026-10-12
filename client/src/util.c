@@ -339,26 +339,44 @@ int run_hook(const char *dir, const char *prog, char *const env[], char *const e
 	return -1;
 }
 
+void (*say_hook)(int is_warn, const char *text);
+
+static void said(int is_warn, const char *fmt, va_list ap)
+{
+	char buf[512];
+
+	vsnprintf(buf, sizeof(buf), fmt, ap);
+	say_hook(is_warn, buf);
+}
+
 void say(const char *fmt, ...)
 {
 	va_list ap;
 
 	va_start(ap, fmt);
-	vprintf(fmt, ap);
+	if (say_hook) {
+		said(0, fmt, ap);
+	} else {
+		vprintf(fmt, ap);
+		putchar('\n');
+	}
 	va_end(ap);
-	putchar('\n');
 }
 
 void warn(const char *fmt, ...)
 {
 	va_list ap;
 
-	fflush(stdout);
-	fputs("store: ", stderr);
 	va_start(ap, fmt);
-	vfprintf(stderr, fmt, ap);
+	if (say_hook) {
+		said(1, fmt, ap);
+	} else {
+		fflush(stdout);
+		fputs("store: ", stderr);
+		vfprintf(stderr, fmt, ap);
+		fputc('\n', stderr);
+	}
 	va_end(ap);
-	fputc('\n', stderr);
 }
 
 /* split s in place at spaces; returns the number of words */

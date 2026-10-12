@@ -195,12 +195,50 @@
    "terminal": true,
    "type": "app",
    "updated": "2026-10-12"
+  },
+  {
+   "author": "WhyOS-Apps",
+   "category": "store",
+   "commands": [],
+   "details_sha256": "aa2bd6162287d15601b8e9ff314c0ea8e6e51f6fefade9b5c7f1261bb6f99526",
+   "id": "store",
+   "install_location": "flash",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 974180,
+     "sha256": "b62ee275ad90ef8be891bf1806133d360d76d8c3b785618e1221ef5842385898",
+     "size": 507413,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.0.wpk"
+    },
+    "version": "0.2.0"
+   },
+   "menu_icon": "store",
+   "name": "App store",
+   "requires": {
+    "features": [
+     "wifi",
+     "display",
+     "keyboard"
+    ],
+    "memory_kb": 1536,
+    "os_api": 1
+   },
+   "summary": "Find, install and update apps and games",
+   "tags": [
+    "store",
+    "apps",
+    "packages"
+   ],
+   "terminal": false,
+   "type": "system",
+   "updated": "2026-10-12"
   }
  ],
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "5702b0630f6f2d9f6e862a9ee0e200f9de199948ac60ffdb5ad937024489d474",
  "format": 1,
- "generated": "2026-10-12T12:08:42Z",
- "serial": 1,
+ "generated": "2026-10-12T13:25:01Z",
+ "serial": 2,
  "source": "whyos"
 }

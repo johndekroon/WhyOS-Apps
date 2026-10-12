@@ -47,6 +47,7 @@ long long fs_free(const char *path);
 int run_hook(const char *dir, const char *prog, char *const env[], char *const extra_args[]);
 void say(const char *fmt, ...);		/* stdout */
 void warn(const char *fmt, ...);	/* stderr, "store: " */
+extern void (*say_hook)(int is_warn, const char *text);	/* the UI: instead of stdout/stderr */
 int split_words(char *s, char **words, int max);
 
 /* ---- json.c ---- */
@@ -144,6 +145,7 @@ struct app {
 struct index {
 	int format, serial, n;
 	char *generated, *base_url, *featured;	/* featured: space-separated ids */
+	char *categories_sha256;
 	struct app *apps;
 	const struct source *src;
 };
@@ -156,6 +158,8 @@ struct app *index_find(const char *id, const char *source);
 int index_parse(struct index *ix, const char *data, size_t len, char *err, size_t errn);
 void index_free(struct index *ix);
 int details_get(const struct app *a, char **data, size_t *len, char *err, size_t errn);
+int categories_get(const struct index *ix, char **data, size_t *len, char *err, size_t errn);
+int asset_get(const struct source *src, const char *rel, char *out, size_t n, char *err, size_t errn);
 
 /* ---- registry.c (device.md §2.2, §4, §5.4, §5.7) ---- */
 #define MAX_CARDS 8
@@ -201,6 +205,8 @@ struct opts {
 	int json;
 	progress_fn progress;
 	void *progress_arg;
+	int (*ask)(const char *question, void *arg);	/* the UI: 1 to go ahead */
+	void *ask_arg;
 };
 const char *state_name(enum state s);
 enum state app_state(const char *id, struct reg *r, struct app **a);
@@ -214,6 +220,15 @@ int store_delete_legacy(const char *id);
 int write_wrappers(const struct json *m, const char *app_dir_path);
 int remove_wrappers(const char *id);
 int legacy_list(char ids[][33], int max, int with_package);
+
+/* ---- qoi.c ---- */
+struct picture {
+	int w, h;
+	unsigned short *rgb;	/* RGB565 */
+	unsigned char *alpha;	/* NULL without an alpha channel */
+};
+int qoi_decode(const char *path, struct picture *pic);
+void picture_free(struct picture *pic);
 
 /* ---- cli.c / ui.c ---- */
 int cli_main(int argc, char **argv);

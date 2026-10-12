@@ -538,6 +538,8 @@ static int confirm(const struct opts *o, const char *what)
 {
 	if (o->yes)
 		return 1;
+	if (o->ask)
+		return o->ask(what, o->ask_arg);
 	warn("%s: run again with --yes to go ahead", what);
 	return 0;
 }
@@ -1033,6 +1035,10 @@ int store_maintain(void)
 
 	if (P.sd_present)
 		card_id(card, 1);
+	/* the store an OS image put in /data (why2025-linux post-build.sh)
+	 * comes with .package/ but no registry entry: it takes itself in */
+	if (app_state("store", 0, 0) == ST_UNREGISTERED && !store_adopt("store"))
+		say("the store registered itself");
 	if (!journal_read(op, id, &build)) {
 		struct opts o = { .yes = 1 };
 

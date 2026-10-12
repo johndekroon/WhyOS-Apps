@@ -1,0 +1,104 @@
+{
+ "author": "WhyOS-Apps",
+ "bundled": [
+  {
+   "license": "Apache-2.0 OR GPL-2.0-or-later",
+   "license_file": "mbedtls.txt",
+   "license_url": "licenses/store/mbedtls.txt",
+   "name": "Mbed TLS",
+   "source": "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.6/mbedtls-3.6.6.tar.bz2",
+   "version": "3.6.6"
+  },
+  {
+   "license": "Zlib",
+   "license_file": "zlib.txt",
+   "license_url": "licenses/store/zlib.txt",
+   "name": "zlib",
+   "source": "https://zlib.net/fossils/zlib-1.3.2.tar.gz",
+   "version": "1.3.2"
+  },
+  {
+   "license": "MIT",
+   "license_file": "jsmn.txt",
+   "license_url": "licenses/store/jsmn.txt",
+   "name": "jsmn",
+   "source": "https://github.com/zserge/jsmn"
+  },
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/store/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "OFL-SpaceGrotesk.txt",
+   "license_url": "licenses/store/OFL-SpaceGrotesk.txt",
+   "name": "Space Grotesk (rendered into the program)",
+   "source": "https://github.com/floriankarsten/space-grotesk"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "OFL-JetBrainsMono.txt",
+   "license_url": "licenses/store/OFL-JetBrainsMono.txt",
+   "name": "JetBrains Mono (rendered into the program)",
+   "source": "https://github.com/JetBrains/JetBrainsMono"
+  }
+ ],
+ "category": "store",
+ "description": "The WhyOS app store: browse and search the apps and games, install them on\nthe SD card, update them, and see what is on your badge. It opens from\nApps > App store and Settings > My apps; \"store\" in a shell does the same\nfrom the command line (store --help).\n\nIt fetches the store's index over HTTPS and checks every package against\nit before anything is installed.",
+ "format": 1,
+ "homepage": "https://github.com/johndekroon/WhyOS-Apps",
+ "icon": null,
+ "id": "store",
+ "install_location": "flash",
+ "launch": {
+  "exec": "store",
+  "icon": "store",
+  "info": "install apps and games",
+  "menu": "none",
+  "rotation": "auto",
+  "terminal": false
+ },
+ "license": "MIT AND (Apache-2.0 OR GPL-2.0-or-later) AND Zlib AND LGPL-2.1-or-later AND OFL-1.1",
+ "license_url": "licenses/store/store.txt",
+ "name": "App store",
+ "permissions": [
+  "network"
+ ],
+ "requires": {
+  "features": [
+   "wifi",
+   "display",
+   "keyboard"
+  ],
+  "memory_kb": 1536,
+  "os_api": 1
+ },
+ "screenshots": [],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/client",
+ "summary": "Find, install and update apps and games",
+ "tags": [
+  "store",
+  "apps",
+  "packages"
+ ],
+ "type": "system",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "First release with screens: Discover, Apps and Games, Search, app pages, My apps and settings.",
+   "package": {
+    "installed_size": 974180,
+    "sha256": "b62ee275ad90ef8be891bf1806133d360d76d8c3b785618e1221ef5842385898",
+    "size": 507413,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.0.wpk"
+   },
+   "published": "2026-10-12T13:25:01Z",
+   "source_archive": null,
+   "version": "0.2.0"
+  }
+ ]
+}
