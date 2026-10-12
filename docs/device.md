@@ -90,7 +90,7 @@ JFFS2 only rewrites one small file per change.
 
 ### 2.3 Sources
 
-A source is a catalogue: id, base URL and trusted keys. The client has
+A source is a catalogue: id and base URL. The client has
 the default source built in; files in `/etc/whyos/sources.d/` (system)
 and `$HOME/.whyos/store/sources.d/` (user) add sources or override the
 URL (a mirror), as `KEY=value` lines like the menu's other config files:
@@ -99,9 +99,12 @@ URL (a mirror), as `KEY=value` lines like the menu's other config files:
 # $HOME/.whyos/store/sources.d/whyos-mirror.conf
 ID=whyos
 URL=https://mirror.example.org/whyos-apps/v1/
-KEYS="RWQf6LRCGA9i5..."
 ENABLED=1
+# CAFILE=/path/ca.pem   a test source with its own CA (client.md §6)
 ```
+
+Without signatures (repository.md §6) a source is exactly as trustworthy
+as whoever runs it: add a mirror only from someone you trust.
 
 App ids are unique per source. When two sources offer the same id, the
 UI shows both with the source name; the registry records which was

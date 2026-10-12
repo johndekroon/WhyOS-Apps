@@ -1,0 +1,116 @@
+{
+ "author": "Nmap Project, badge port",
+ "bundled": [
+  {
+   "license": "BSD-3-Clause",
+   "license_file": "libpcap.txt",
+   "license_url": "licenses/nmap/libpcap.txt",
+   "name": "libpcap",
+   "source": "https://nmap.org/dist/nmap-7.95.tar.bz2",
+   "version": "1.10.4 (in nmap 7.95)"
+  },
+  {
+   "license": "BSD-3-Clause",
+   "license_file": "libdnet.txt",
+   "license_url": "licenses/nmap/libdnet.txt",
+   "name": "libdnet (nmap libdnet-stripped)",
+   "source": "https://nmap.org/dist/nmap-7.95.tar.bz2",
+   "version": "nmap 7.95"
+  },
+  {
+   "license": "BSD-3-Clause",
+   "license_file": "liblinear.txt",
+   "license_url": "licenses/nmap/liblinear.txt",
+   "name": "LIBLINEAR",
+   "source": "https://nmap.org/dist/nmap-7.95.tar.bz2",
+   "version": "2.47 (in nmap 7.95)"
+  },
+  {
+   "license": "BSD-3-Clause WITH PCRE2-exception",
+   "license_file": "pcre2.txt",
+   "license_url": "licenses/nmap/pcre2.txt",
+   "name": "PCRE2",
+   "source": "https://nmap.org/dist/nmap-7.95.tar.bz2",
+   "version": "10.43 (in nmap 7.95)"
+  },
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/nmap/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  },
+  {
+   "license": "MIT",
+   "license_file": "badge-port.txt",
+   "license_url": "licenses/nmap/badge-port.txt",
+   "name": "Badge port (fast exit)",
+   "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps",
+   "version": "2be6d7c"
+  }
+ ],
+ "category": "network",
+ "commands": [
+  {
+   "args": "--datadir %d/share --unprivileged --nsock-engine poll",
+   "exec": "nmap",
+   "name": "nmap"
+  }
+ ],
+ "description": "Scans hosts and ports on the network the badge is connected to.\n\nOnly TCP connect scans work (--unprivileged is always added): raw packets\nneed a memory-mapped packet ring, which the badge's kernel cannot give.\nNo scripts (NSE). From the menu, nmap shows its help and leaves a shell\nin which \"nmap <target>\" scans; in a shell over SSH or the serial\nconsole the nmap command works the same way.",
+ "format": 1,
+ "homepage": "https://nmap.org",
+ "icon": null,
+ "id": "nmap",
+ "install_location": "sd",
+ "launch": {
+  "args": "--datadir %d/share --unprivileged --nsock-engine poll",
+  "exec": "nmap",
+  "icon": "globe",
+  "info": "network scanner",
+  "menu": "tools",
+  "rotation": "auto",
+  "terminal": "shell"
+ },
+ "license": "LicenseRef-NPSL-0.95 AND BSD-3-Clause AND (BSD-3-Clause WITH PCRE2-exception) AND LGPL-2.1-or-later AND MIT",
+ "license_url": "licenses/nmap/nmap.txt",
+ "name": "nmap",
+ "permissions": [
+  "network"
+ ],
+ "requires": {
+  "features": [
+   "wifi",
+   "sd-card"
+  ],
+  "memory_kb": 7000,
+  "os_api": 1
+ },
+ "screenshots": [],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/nmap/source",
+ "summary": "Network scanner (TCP connect scans)",
+ "tags": [
+  "scanner",
+  "network",
+  "security",
+  "ports"
+ ],
+ "type": "app",
+ "upstream_version": "7.95",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "First store release.",
+   "package": {
+    "installed_size": 5840105,
+    "sha256": "bd05d8c15bf833c9ed2d3c7e6ac34e1ec479b3219bb595edc5accc8d1b8d4f86",
+    "size": 1988484,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/nmap-1.0.0.wpk"
+   },
+   "published": "2026-10-12T12:08:42Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/nmap-1.0.0-source.tar.gz",
+   "version": "1.0.0"
+  }
+ ]
+}

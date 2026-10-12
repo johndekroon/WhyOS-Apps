@@ -1,0 +1,51 @@
+{
+  "format": 1,
+  "types": [
+    {
+      "id": "app",
+      "name": "Apps",
+      "icon": "info",
+      "menu": "apps",
+      "categories": [
+        { "id": "internet", "name": "Internet", "icon": "globe" },
+        { "id": "network", "name": "Network tools", "icon": "ethernet", "menu": "tools" },
+        { "id": "hardware", "name": "Hardware & electronics", "icon": "chip" },
+        { "id": "radio", "name": "Radio & RFID", "icon": "bluetooth" },
+        { "id": "security", "name": "Security", "icon": "terminal", "menu": "tools" },
+        { "id": "media", "name": "Photos & media", "icon": "palette" },
+        { "id": "productivity", "name": "Text & productivity", "icon": "keyboard" },
+        { "id": "sensors", "name": "Sensors & science", "icon": "sensors" },
+        { "id": "development", "name": "Development", "icon": "terminal" },
+        { "id": "utilities", "name": "Utilities", "icon": "disk", "menu": "tools" },
+        { "id": "other", "name": "Other", "icon": "info" }
+      ]
+    },
+    {
+      "id": "game",
+      "name": "Games",
+      "icon": "games",
+      "menu": "games",
+      "categories": [
+        { "id": "action", "name": "Action", "icon": "games" },
+        { "id": "arcade", "name": "Arcade", "icon": "games" },
+        { "id": "puzzle", "name": "Puzzle", "icon": "games" },
+        { "id": "strategy", "name": "Strategy", "icon": "games" },
+        { "id": "text", "name": "Text adventures", "icon": "keyboard" },
+        { "id": "emulators", "name": "Emulators", "icon": "gameboy" },
+        { "id": "other", "name": "Other", "icon": "games" }
+      ]
+    },
+    {
+      "id": "system",
+      "name": "System",
+      "icon": "chip",
+      "menu": "none",
+      "hidden": true,
+      "categories": [
+        { "id": "store", "name": "Store", "icon": "info" },
+        { "id": "data", "name": "Data packs", "icon": "disk" },
+        { "id": "other", "name": "Other", "icon": "chip" }
+      ]
+    }
+  ]
+}

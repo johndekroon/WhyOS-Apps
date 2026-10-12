@@ -1,0 +1,118 @@
+{
+ "author": "Twibright Labs (Links), badge port",
+ "bundled": [
+  {
+   "license": "Apache-2.0",
+   "license_file": "openssl.txt",
+   "license_url": "licenses/links/openssl.txt",
+   "name": "OpenSSL",
+   "source": "https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz",
+   "version": "3.5.6"
+  },
+  {
+   "license": "Zlib",
+   "license_file": "zlib.txt",
+   "license_url": "licenses/links/zlib.txt",
+   "name": "zlib",
+   "source": "https://zlib.net/fossils/zlib-1.3.2.tar.gz",
+   "version": "1.3.2"
+  },
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/links/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  },
+  {
+   "license": "MPL-2.0",
+   "license_file": "ca-certificates.txt",
+   "license_url": "licenses/links/ca-certificates.txt",
+   "name": "Mozilla CA certificate store (curl.se cacert.pem)",
+   "source": "https://curl.se/docs/caextract.html",
+   "version": "2026-09-25"
+  },
+  {
+   "license": "MIT",
+   "license_file": "badge-port.txt",
+   "license_url": "licenses/links/badge-port.txt",
+   "name": "Badge port (no-fork wrapper, start script and page)",
+   "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps",
+   "version": "2be6d7c"
+  }
+ ],
+ "category": "internet",
+ "commands": [
+  {
+   "exec": "start",
+   "name": "links"
+  }
+ ],
+ "description": "A fast text-mode web browser. From the menu it opens in a terminal window\non its start page, and Files opens web pages with it. In a shell (serial\nconsole or SSH), \"links <address>\" runs it in your own terminal.\n\nHTTPS goes through OpenSSL with Mozilla's list of certificate\nauthorities. Links keeps small caches so it fits in the badge's memory\nnext to other programs.",
+ "format": 1,
+ "homepage": "http://links.twibright.com",
+ "icon": null,
+ "id": "links",
+ "install_location": "sd",
+ "launch": {
+  "args": "%f",
+  "exec": "start",
+  "icon": "globe",
+  "info": "web browser (text)",
+  "menu": "apps",
+  "opens": [
+   "html",
+   "htm",
+   "xhtml"
+  ],
+  "rotation": "auto",
+  "terminal": "close"
+ },
+ "license": "GPL-2.0-or-later AND Apache-2.0 AND Zlib AND LGPL-2.1-or-later AND MPL-2.0 AND MIT",
+ "license_url": "licenses/links/links.txt",
+ "name": "Links",
+ "permissions": [
+  "network"
+ ],
+ "requires": {
+  "features": [
+   "wifi",
+   "sd-card",
+   "keyboard"
+  ],
+  "memory_kb": 4000,
+  "os_api": 1
+ },
+ "screenshots": [],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/links/source",
+ "storage": {
+  "config": {
+   "max_kb": 64
+  }
+ },
+ "summary": "Text web browser with HTTPS, for the terminal",
+ "tags": [
+  "browser",
+  "web",
+  "text",
+  "terminal"
+ ],
+ "type": "app",
+ "upstream_version": "2.30",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "First store release. Also available as the links command in a shell.",
+   "package": {
+    "installed_size": 3624215,
+    "sha256": "54a8c27cf0d268dbd45f42417e903fe63e5ac544529e4a74da096d862dcd10b1",
+    "size": 1895601,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/links-1.0.0.wpk"
+   },
+   "published": "2026-10-12T12:08:41Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/links-1.0.0-source.tar.gz",
+   "version": "1.0.0"
+  }
+ ]
+}

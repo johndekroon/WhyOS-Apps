@@ -1,0 +1,83 @@
+{
+ "author": "gnuboy authors (rofl0r/gnuboy), badge port",
+ "bundled": [
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/gnuboy/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  }
+ ],
+ "category": "emulators",
+ "description": "Plays Game Boy and Game Boy Color games, scaled 4x to 640x576 in the\nmiddle of the panel. The emulation runs at full speed and the screen is\ndrawn at 30 frames a second. There is no sound.\n\nPut your .gb and .gbc files in the roms folder of this app: on the SD card\nin badge/appdata/gnuboy/roms. Battery saves go to roms/saves.\n\nKeys: arrows are the D-pad, circle or X is A, cross or Z is B, Enter is\nStart, Space or Backspace is Select. Square saves a state, triangle loads\nit, Esc quits.",
+ "format": 1,
+ "homepage": "https://github.com/rofl0r/gnuboy",
+ "icon": null,
+ "id": "gnuboy",
+ "install_location": "sd",
+ "launch": {
+  "args": "--source %d/badge.rc --savedir=%D/roms/saves %f",
+  "exec": "gnuboy",
+  "files": "%D/roms",
+  "icon": "gameboy",
+  "info": "gnuboy",
+  "menu": "games",
+  "rotation": "auto",
+  "stack_kb": 64,
+  "terminal": false,
+  "types": [
+   "gb",
+   "gbc"
+  ]
+ },
+ "license": "GPL-2.0-or-later AND LGPL-2.1-or-later",
+ "license_url": "licenses/gnuboy/gnuboy.txt",
+ "name": "Game Boy",
+ "requires": {
+  "features": [
+   "sd-card",
+   "display",
+   "keyboard"
+  ],
+  "memory_kb": 1000,
+  "os_api": 1
+ },
+ "screenshots": [],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/gnuboy/source",
+ "storage": {
+  "data": {
+   "folders": [
+    "roms",
+    "roms/saves"
+   ],
+   "user_folders": [
+    "roms"
+   ]
+  }
+ },
+ "summary": "Game Boy and Game Boy Color emulator",
+ "tags": [
+  "emulator",
+  "gameboy",
+  "retro"
+ ],
+ "type": "game",
+ "upstream_version": "git c367bb4",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "First store release.",
+   "package": {
+    "installed_size": 274906,
+    "sha256": "e34369af2c1d918aaad010d576dea3c65a5bd47539f29f504f0c94255d16f8c6",
+    "size": 136209,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/gnuboy-1.0.0.wpk"
+   },
+   "published": "2026-10-12T12:08:41Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/gnuboy-1.0.0-source.tar.gz",
+   "version": "1.0.0"
+  }
+ ]
+}

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://johndekroon.github.io/WhyOS-Apps/schema/index.schema.json",
+  "$id": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/schema/index.schema.json",
   "title": "WhyOS app store index",
   "description": "v1/index.json (docs/repository.md §5.1). Clients ignore unknown keys, so this schema allows them.",
   "type": "object",

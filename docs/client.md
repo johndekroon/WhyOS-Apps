@@ -8,7 +8,7 @@ scripts exercise the code the user runs.
 
 ```
 store                        the UI (what the menu starts)
-store update                 fetch and verify the index
+store update                 fetch the index (and check its serial)
 store search <words>         search the cached index
 store info <id>              details, versions, state
 store install <id>[@<ver>]   install or update
@@ -43,7 +43,7 @@ so a fresh badge has a store without a computer.
 | Clock | Must be set before TLS (certificate validity) | `netd` sets it once after connecting; the store waits for it or says why it cannot connect |
 | Redirects | Follow up to 5, HTTPS only | GitHub release downloads redirect |
 | Resume | HTTP Range on `.part` files | Wi-Fi on the badge goes through the C6 and can drop |
-| Signature | Monocypher: Ed25519 (and BLAKE2b for minisign's prehashed mode) | ~30 KB |
+| Integrity | SHA-256 of every package and detail file from the index (mbedTLS has SHA-256); `serial` against a stale index | No signature (repository.md §6) |
 | Decompress | inflate (zlib or a small inflater such as `tinf`) | Streaming |
 | Archive | ustar reader, streaming, with the checks of package.md §1.2 | ~300 lines |
 | JSON | streaming tokenizer (jsmn-style) | The index is parsed in one pass into a compact in-memory table |

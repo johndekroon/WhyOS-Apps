@@ -25,7 +25,7 @@ backed by a GitHub repository.
 - **Remove means everything:** program, data on the card, settings in
   flash, caches, logs and the registry entry.
 - **Future-proof:** versioned formats, several sources (mirrors,
-  third-party stores), signed metadata, and room for permissions, ratings
+  third-party stores), checksummed metadata, and room for permissions, ratings
   and source builds without breaking old clients. Only WhyOS on the badge
   is targeted; there are no other platforms.
 
@@ -40,10 +40,10 @@ background updates, shared libraries between apps. See
 | Term | Meaning |
 |---|---|
 | **App id** | Unique, permanent name of an app in a source: `[a-z0-9][a-z0-9-]{1,31}`, e.g. `gnuboy` |
-| **Source** | A published catalogue: base URL plus signing key. The default source is this repository |
+| **Source** | A published catalogue: a base URL. The default source is this repository's `dist/v1/` |
 | **Package** | One file (`.wpk`) with one version of an app |
 | **Manifest** | The app's metadata: identity, category, launch, requirements, storage. Authored as TOML, shipped as JSON |
-| **Index** | The signed list of all apps in a source, built by CI |
+| **Index** | The list of all apps in a source, with the SHA-256 of every package, built by `tools/publish.py` |
 | **Registry** | The record of installed apps in the home directory, one file per app |
 | **Store client** | The `store` program on the badge: CLI and UI |
 | **Type** | Top-level category: `app` or `game` (and `system`, hidden) |
@@ -54,26 +54,28 @@ The keywords MUST, SHOULD and MAY are used as in RFC 2119.
 ## How the parts fit together
 
 ```
- this repository (GitHub)                  published (GitHub)                    badge
- ─────────────────────────                 ──────────────────                    ─────
- apps/<id>/manifest.toml ─┐                Pages: /v1/index.json(.gz)            store client
- apps/<id>/icon.png       ├─► CI ─────────►       /v1/index.json.minisig ──────► verify signature
- apps/<id>/screenshots/   │   validate,           /v1/apps/<id>.json             cache index on SD
- apps/<id>/build.sh or    │   build/pack,         /v1/icons/<id>.qoi             search, browse
-   prebuilt artifact ─────┘   sign                /v1/screens/<id>-<n>.qoi
-                                            Releases: <id>-<ver>.wpk ───────────► download, check sha256,
-                                                                                   install on SD card,
-                                                                                   record in $HOME
+ this repository (GitHub)                                                         badge
+ ─────────────────────────                                                        ─────
+ apps/<id>/manifest.toml ─┐                    dist/v1/index.json(.gz)            store client
+ apps/<id>/icon.png       ├─► tools/publish.py ─► dist/v1/apps/<id>.json ─ git ─► fetch over HTTPS
+ apps/<id>/screenshots/   │   validate, pack,     dist/v1/packages/*.wpk    push   (raw.githubusercontent.com),
+ apps/<id>/artifact.toml ─┘   hash, convert       dist/v1/icons/, screens/         check SHA-256, install
+                                                                                    on SD, record in $HOME
 ```
 
 1. An author adds or updates `apps/<id>/` through a pull request.
-2. CI validates it, builds or fetches the package, and on merge publishes
-   the package as a release asset and rebuilds the index.
-3. CI signs the index. The index holds each package's SHA-256, so one
-   signature covers everything a client downloads.
-4. The client fetches the index over HTTPS, checks the signature with a
-   key it already has, and installs packages into fixed places on the
-   card and in the home directory ([device.md](device.md)).
+2. A maintainer runs `tools/publish.py`, which validates the apps, packs
+   each new version into `dist/v1/packages/` and rewrites the index and the
+   detail files, and commits `apps/` and `dist/` together.
+3. The push publishes: the badge reads `dist/v1/` from the repository over
+   HTTPS. The index holds the SHA-256 of every package and detail file.
+4. The client fetches the index over HTTPS (TLS checked against the CA
+   roots it carries), checks each package against the index's SHA-256, and
+   installs it into fixed places on the card and in the home directory
+   ([device.md](device.md)).
+
+There is no signature: what the badge installs is as trustworthy as the
+repository and TLS to GitHub (repository.md §6).
 
 ## Versioning of this specification
 

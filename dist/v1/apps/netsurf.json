@@ -1,0 +1,242 @@
+{
+ "author": "NetSurf developers, badge port",
+ "bundled": [
+  {
+   "license": "MIT",
+   "license_file": "libcss.txt",
+   "license_url": "licenses/netsurf/libcss.txt",
+   "name": "libcss",
+   "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+   "version": "netsurf-all 3.11"
+  },
+  {
+   "license": "MIT",
+   "license_file": "libdom.txt",
+   "license_url": "licenses/netsurf/libdom.txt",
+   "name": "libdom",
+   "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+   "version": "netsurf-all 3.11"
+  },
+  {
+   "license": "MIT",
+   "license_file": "libhubbub.txt",
+   "license_url": "licenses/netsurf/libhubbub.txt",
+   "name": "libhubbub",
+   "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+   "version": "netsurf-all 3.11"
+  },
+  {
+   "license": "MIT",
+   "license_file": "libnsbmp.txt",
+   "license_url": "licenses/netsurf/libnsbmp.txt",
+   "name": "libnsbmp",
+   "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+   "version": "netsurf-all 3.11"
+  },
+  {
+   "license": "MIT",
+   "license_file": "libnsfb.txt",
+   "license_url": "licenses/netsurf/libnsfb.txt",
+   "name": "libnsfb",
+   "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+   "version": "netsurf-all 3.11"
+  },
+  {
+   "license": "MIT",
+   "license_file": "libnsgif.txt",
+   "license_url": "licenses/netsurf/libnsgif.txt",
+   "name": "libnsgif",
+   "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+   "version": "netsurf-all 3.11"
+  },
+  {
+   "license": "MIT",
+   "license_file": "libnslog.txt",
+   "license_url": "licenses/netsurf/libnslog.txt",
+   "name": "libnslog",
+   "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+   "version": "netsurf-all 3.11"
+  },
+  {
+   "license": "MIT",
+   "license_file": "libnspsl.txt",
+   "license_url": "licenses/netsurf/libnspsl.txt",
+   "name": "libnspsl",
+   "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+   "version": "netsurf-all 3.11"
+  },
+  {
+   "license": "MIT",
+   "license_file": "libnsutils.txt",
+   "license_url": "licenses/netsurf/libnsutils.txt",
+   "name": "libnsutils",
+   "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+   "version": "netsurf-all 3.11"
+  },
+  {
+   "license": "MIT",
+   "license_file": "libparserutils.txt",
+   "license_url": "licenses/netsurf/libparserutils.txt",
+   "name": "libparserutils",
+   "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+   "version": "netsurf-all 3.11"
+  },
+  {
+   "license": "MIT",
+   "license_file": "libwapcaplet.txt",
+   "license_url": "licenses/netsurf/libwapcaplet.txt",
+   "name": "libwapcaplet",
+   "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+   "version": "netsurf-all 3.11"
+  },
+  {
+   "license": "MIT AND Unicode-DFS-2015",
+   "license_file": "libutf8proc.txt",
+   "license_url": "licenses/netsurf/libutf8proc.txt",
+   "name": "libutf8proc",
+   "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+   "version": "netsurf-all 3.11"
+  },
+  {
+   "license": "Apache-2.0 OR GPL-2.0-or-later",
+   "license_file": "mbedtls.txt",
+   "license_url": "licenses/netsurf/mbedtls.txt",
+   "name": "Mbed TLS",
+   "source": "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.6/mbedtls-3.6.6.tar.bz2",
+   "version": "3.6.6"
+  },
+  {
+   "license": "curl",
+   "license_file": "curl.txt",
+   "license_url": "licenses/netsurf/curl.txt",
+   "name": "curl",
+   "source": "https://curl.se/download/curl-8.20.0.tar.xz",
+   "version": "8.20.0"
+  },
+  {
+   "license": "libpng-2.0",
+   "license_file": "libpng.txt",
+   "license_url": "licenses/netsurf/libpng.txt",
+   "name": "libpng",
+   "source": "http://downloads.sourceforge.net/project/libpng/libpng16/1.6.58/libpng-1.6.58.tar.xz",
+   "version": "1.6.58"
+  },
+  {
+   "license": "IJG",
+   "license_file": "libjpeg.txt",
+   "license_url": "licenses/netsurf/libjpeg.txt",
+   "name": "libjpeg (IJG)",
+   "source": "http://www.ijg.org/files/jpegsrc.v9f.tar.gz",
+   "version": "9f"
+  },
+  {
+   "license": "MIT",
+   "license_file": "expat.txt",
+   "license_url": "licenses/netsurf/expat.txt",
+   "name": "Expat",
+   "source": "https://github.com/libexpat/libexpat/releases/download/R_2_8_1/expat-2.8.1.tar.xz",
+   "version": "2.8.1"
+  },
+  {
+   "license": "Zlib",
+   "license_file": "zlib.txt",
+   "license_url": "licenses/netsurf/zlib.txt",
+   "name": "zlib",
+   "source": "https://zlib.net/fossils/zlib-1.3.2.tar.gz",
+   "version": "1.3.2"
+  },
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/netsurf/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  },
+  {
+   "license": "MPL-2.0",
+   "license_file": "ca-certificates.txt",
+   "license_url": "licenses/netsurf/ca-certificates.txt",
+   "name": "Mozilla CA certificate store (curl.se cacert.pem)",
+   "source": "https://curl.se/docs/caextract.html",
+   "version": "2026-09-25"
+  },
+  {
+   "license": "MIT",
+   "license_file": "badge-port.txt",
+   "license_url": "licenses/netsurf/badge-port.txt",
+   "name": "Badge port (surface, iconv, OOM handler, start)",
+   "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps",
+   "version": "2be6d7c"
+  }
+ ],
+ "category": "internet",
+ "description": "A web browser with its own layout engine: HTML, CSS, PNG, JPEG and GIF,\nHTTPS through Mbed TLS. No JavaScript, WebP, SVG or video, to save memory.\n\nThe badge has no mouse, so the browser brings a pointer: the arrows move\nit (faster while held), circle clicks or drags, triangle and cross scroll\na page up and down, square and diamond go back and forward, and the cloud\nkey opens the address bar. Fn with the arrows sends the arrow keys\nthemselves.\n\nLarge pages such as Wikipedia do not fit in the badge's memory; NetSurf\nthen stops with an error instead of hanging.",
+ "format": 1,
+ "homepage": "https://www.netsurf-browser.org",
+ "icon": null,
+ "id": "netsurf",
+ "install_location": "sd",
+ "launch": {
+  "args": "-f badge -w 720 -h 720 -b 16 %u",
+  "exec": "start",
+  "icon": "globe",
+  "info": "web browser",
+  "menu": "apps",
+  "opens": [
+   "html",
+   "htm",
+   "xhtml",
+   "svg"
+  ],
+  "rotation": "auto",
+  "stack_kb": 256,
+  "terminal": false
+ },
+ "license": "GPL-2.0-only AND MIT AND Unicode-DFS-2015 AND (Apache-2.0 OR GPL-2.0-or-later) AND curl AND libpng-2.0 AND IJG AND Zlib AND LGPL-2.1-or-later AND MPL-2.0",
+ "license_url": "licenses/netsurf/netsurf.txt",
+ "name": "NetSurf",
+ "permissions": [
+  "network"
+ ],
+ "requires": {
+  "features": [
+   "wifi",
+   "sd-card",
+   "display",
+   "keyboard"
+  ],
+  "memory_kb": 5000,
+  "os_api": 1
+ },
+ "screenshots": [],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/netsurf/source",
+ "storage": {
+  "config": {
+   "max_kb": 128
+  }
+ },
+ "summary": "Graphical web browser with HTTPS, without JavaScript",
+ "tags": [
+  "browser",
+  "web",
+  "https"
+ ],
+ "type": "app",
+ "upstream_version": "3.11",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "First store release. Cookies and history move to the app's settings folder.",
+   "package": {
+    "installed_size": 3359315,
+    "sha256": "a3e43dbc0eb1e226229c6795fe8043acb3d540e6f61e869d2b0da54b98d6086f",
+    "size": 1622355,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/netsurf-1.0.0.wpk"
+   },
+   "published": "2026-10-12T12:08:42Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/netsurf-1.0.0-source.tar.gz",
+   "version": "1.0.0"
+  }
+ ]
+}

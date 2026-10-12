@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://johndekroon.github.io/WhyOS-Apps/schema/categories.schema.json",
+  "$id": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/schema/categories.schema.json",
   "title": "WhyOS app store category tree",
   "type": "object",
   "required": ["format", "types"],

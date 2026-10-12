@@ -1,0 +1,206 @@
+{
+ "apps": [
+  {
+   "author": "gnuboy authors (rofl0r/gnuboy), badge port",
+   "category": "emulators",
+   "commands": [],
+   "details_sha256": "9d787aa1b23b1eeadb72dffd7320ce45685b4ff7909e67faa59ec33cc947326d",
+   "id": "gnuboy",
+   "install_location": "sd",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 274906,
+     "sha256": "e34369af2c1d918aaad010d576dea3c65a5bd47539f29f504f0c94255d16f8c6",
+     "size": 136209,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/gnuboy-1.0.0.wpk"
+    },
+    "version": "1.0.0"
+   },
+   "menu_icon": "gameboy",
+   "name": "Game Boy",
+   "requires": {
+    "features": [
+     "sd-card",
+     "display",
+     "keyboard"
+    ],
+    "memory_kb": 1000,
+    "os_api": 1
+   },
+   "summary": "Game Boy and Game Boy Color emulator",
+   "tags": [
+    "emulator",
+    "gameboy",
+    "retro"
+   ],
+   "terminal": false,
+   "type": "game",
+   "updated": "2026-10-12"
+  },
+  {
+   "author": "badge port",
+   "category": "media",
+   "commands": [],
+   "details_sha256": "41cfcfbd988af65a9f6d900dbc34ae0b2cbf93c65e4f024c7643ab95ee312b2b",
+   "id": "imgview",
+   "install_location": "sd",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 415145,
+     "sha256": "f2205309d5cecc7e51af5d281cf92e1b8b1f5ad7b5f1e5bea79d9da2e8977aff",
+     "size": 230515,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/imgview-1.0.0.wpk"
+    },
+    "version": "1.0.0"
+   },
+   "name": "Picture viewer",
+   "requires": {
+    "features": [
+     "display",
+     "keyboard"
+    ],
+    "memory_kb": 2500,
+    "os_api": 1
+   },
+   "summary": "Shows JPEG and PNG pictures, opened from Files",
+   "tags": [
+    "photos",
+    "pictures",
+    "viewer",
+    "jpeg",
+    "png"
+   ],
+   "terminal": false,
+   "type": "app",
+   "updated": "2026-10-12"
+  },
+  {
+   "author": "Twibright Labs (Links), badge port",
+   "category": "internet",
+   "commands": [
+    "links"
+   ],
+   "details_sha256": "09ea4447c1e1b590123663119fbc714f9f27364cddaa208b73a3ee8ea16537e9",
+   "id": "links",
+   "install_location": "sd",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 3624215,
+     "sha256": "54a8c27cf0d268dbd45f42417e903fe63e5ac544529e4a74da096d862dcd10b1",
+     "size": 1895601,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/links-1.0.0.wpk"
+    },
+    "version": "1.0.0"
+   },
+   "menu_icon": "globe",
+   "name": "Links",
+   "requires": {
+    "features": [
+     "wifi",
+     "sd-card",
+     "keyboard"
+    ],
+    "memory_kb": 4000,
+    "os_api": 1
+   },
+   "summary": "Text web browser with HTTPS, for the terminal",
+   "tags": [
+    "browser",
+    "web",
+    "text",
+    "terminal"
+   ],
+   "terminal": true,
+   "type": "app",
+   "updated": "2026-10-12"
+  },
+  {
+   "author": "NetSurf developers, badge port",
+   "category": "internet",
+   "commands": [],
+   "details_sha256": "54cb4149848b228d9d601aa52ee46071de023d1017e0217973d24038ba19d80c",
+   "id": "netsurf",
+   "install_location": "sd",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 3359315,
+     "sha256": "a3e43dbc0eb1e226229c6795fe8043acb3d540e6f61e869d2b0da54b98d6086f",
+     "size": 1622355,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/netsurf-1.0.0.wpk"
+    },
+    "version": "1.0.0"
+   },
+   "menu_icon": "globe",
+   "name": "NetSurf",
+   "requires": {
+    "features": [
+     "wifi",
+     "sd-card",
+     "display",
+     "keyboard"
+    ],
+    "memory_kb": 5000,
+    "os_api": 1
+   },
+   "summary": "Graphical web browser with HTTPS, without JavaScript",
+   "tags": [
+    "browser",
+    "web",
+    "https"
+   ],
+   "terminal": false,
+   "type": "app",
+   "updated": "2026-10-12"
+  },
+  {
+   "author": "Nmap Project, badge port",
+   "category": "network",
+   "commands": [
+    "nmap"
+   ],
+   "details_sha256": "6966b1d3d39bd9bd4096ee3bb354113501f57935522f8bc5b8ebd4a1c260eff9",
+   "id": "nmap",
+   "install_location": "sd",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 5840105,
+     "sha256": "bd05d8c15bf833c9ed2d3c7e6ac34e1ec479b3219bb595edc5accc8d1b8d4f86",
+     "size": 1988484,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/nmap-1.0.0.wpk"
+    },
+    "version": "1.0.0"
+   },
+   "menu_icon": "globe",
+   "name": "nmap",
+   "requires": {
+    "features": [
+     "wifi",
+     "sd-card"
+    ],
+    "memory_kb": 7000,
+    "os_api": 1
+   },
+   "summary": "Network scanner (TCP connect scans)",
+   "tags": [
+    "scanner",
+    "network",
+    "security",
+    "ports"
+   ],
+   "terminal": true,
+   "type": "app",
+   "updated": "2026-10-12"
+  }
+ ],
+ "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
+ "categories_sha256": "5702b0630f6f2d9f6e862a9ee0e200f9de199948ac60ffdb5ad937024489d474",
+ "format": 1,
+ "generated": "2026-10-12T12:08:42Z",
+ "serial": 1,
+ "source": "whyos"
+}

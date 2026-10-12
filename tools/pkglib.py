@@ -11,7 +11,8 @@ import stat
 import tarfile
 import tomllib
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# the repository; tests point it at a copy
+ROOT = os.environ.get("WHYOS_APPS_ROOT") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 MAX_ENTRIES = 4096
 MAX_UNPACKED = 256 * 1024 * 1024
@@ -146,3 +147,150 @@ def read_archive(path):
             else:
                 problems.append("%s: not a regular file or directory" % m.name)
     return entries, problems + check_tree(entries)
+
+
+# ---------------------------------------------------------------------------
+# Packing (docs/package.md §1, §2.9) and publishing (docs/repository.md §5)
+
+INFO_MAX = 32
+
+
+def files_of_archive(path):
+    """[(rel, size, sha256, data)] of the regular files in a files/ archive, plus
+    [rel] of its directories, in archive order. The archive must already pass
+    read_archive()."""
+    files, dirs = [], []
+    with tarfile.open(path, "r:gz") as tar:
+        for m in tar.getmembers():
+            name = m.name.rstrip("/")
+            if name == "files":
+                continue
+            rel = name[len("files/"):]
+            if m.isdir():
+                dirs.append(rel)
+            elif m.isfile():
+                data = tar.extractfile(m).read()
+                files.append((rel, len(data), hashlib.sha256(data).hexdigest(), data))
+    return files, dirs
+
+
+def category_of(categories, type_id, category_id):
+    for t in categories["types"]:
+        if t["id"] == type_id:
+            for c in t["categories"]:
+                if c["id"] == category_id:
+                    return t, c
+    return None, None
+
+
+def short_info(summary):
+    """launch.info default: the summary cut to INFO_MAX at a word."""
+    if len(summary) <= INFO_MAX:
+        return summary
+    cut = summary[:INFO_MAX - 1].rsplit(" ", 1)[0].rstrip(",;:")
+    return cut + "…"
+
+
+def manifest_json(m, categories, files, published):
+    """The manifest as shipped (docs/package.md §2.9): manifest.toml plus the
+    defaults a client would otherwise have to know, plus generated fields.
+    files: [(rel, size, sha256, data)]. size.download is not in it (the
+    package cannot hold its own size); the index and details have it."""
+    out = json.loads(json.dumps(m))   # deep copy, TOML types are JSON types here
+    launch = out.setdefault("launch", {})
+    t, c = category_of(categories, m["type"], m["category"])
+    launch.setdefault("info", short_info(m["summary"]))
+    launch.setdefault("terminal", False)
+    launch.setdefault("rotation", "auto")
+    launch.setdefault("menu", (c or {}).get("menu") or (t or {}).get("menu") or "apps")
+    out.setdefault("install_location", "sd")
+    st = out.get("storage", {})
+    if "config" in st:
+        st["config"].setdefault("max_kb", 16)
+    out["published"] = published
+    out["size"] = {"installed": sum(f[1] for f in files)}
+    out["files"] = {"sha256": {f[0]: f[2] for f in files}}
+    return out
+
+
+def _tarinfo(name, size=None):
+    info = tarfile.TarInfo(name)
+    info.mtime = 0
+    info.uid = info.gid = 0
+    info.uname = info.gname = ""
+    if size is None:
+        info.type = tarfile.DIRTYPE
+        info.mode = 0o755
+    else:
+        info.size = size
+        info.mode = 0o644
+    return info
+
+
+def write_package(manifest, files, dirs, out_path):
+    """A .wpk: gzip'd ustar with manifest.json first, then files/ (package.md §1.1).
+    Reproducible: fixed order, times and owners."""
+    body = json.dumps(manifest, indent=1, sort_keys=True, ensure_ascii=False).encode() + b"\n"
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w", format=tarfile.USTAR_FORMAT) as tar:
+        tar.addfile(_tarinfo("manifest.json", len(body)), io.BytesIO(body))
+        tar.addfile(_tarinfo("files"))
+        entries = [(d, None, None) for d in dirs] + [(f[0], f[1], f[3]) for f in files]
+        for rel, size, data in sorted(entries, key=lambda e: e[0]):
+            if size is None:
+                tar.addfile(_tarinfo("files/" + rel))
+            else:
+                tar.addfile(_tarinfo("files/" + rel, size), io.BytesIO(data))
+    with open(out_path, "wb") as raw:
+        with gzip.GzipFile(filename="", mode="wb", fileobj=raw, mtime=0, compresslevel=9) as gz:
+            gz.write(buf.getvalue())
+
+
+def check_package(path, expect_sha256=None):
+    """The checks a client makes on a .wpk (package.md §1): problems, or [].
+    manifest.json first and well-formed; only manifest.json and files/ (others
+    reserved, ignored); entry rules; every file's size and SHA-256 as in the
+    manifest; no file the manifest does not list."""
+    problems = []
+    if expect_sha256 and sha256_file(path) != expect_sha256:
+        return ["SHA-256 of the package does not match the index"]
+    try:
+        tar = tarfile.open(path, "r:gz")
+        members = tar.getmembers()
+    except (tarfile.TarError, OSError, EOFError) as e:
+        return ["not a gzip'd tar archive: %s" % e]
+    with tar:
+        if not members or members[0].name != "manifest.json" or not members[0].isfile():
+            return ["manifest.json is not the first entry"]
+        try:
+            m = json.loads(tar.extractfile(members[0]).read())
+        except ValueError as e:
+            return ["manifest.json: %s" % e]
+        want = m.get("files", {}).get("sha256", {})
+        entries, seen = {}, set()
+        for mem in members[1:]:
+            name = mem.name.rstrip("/")
+            if name == "files" and mem.isdir():
+                continue
+            if not name.startswith("files/"):
+                if name.startswith("/") or ".." in name.split("/"):
+                    problems.append("%s: absolute path or '..'" % mem.name)
+                continue        # reserved for later formats: ignored
+            rel = name[len("files/"):]
+            if mem.isdir():
+                entries[rel] = None
+            elif mem.isfile():
+                entries[rel] = mem.size
+                if rel not in want:
+                    problems.append("%s: not in the manifest's files.sha256" % rel)
+                else:
+                    data = tar.extractfile(mem).read()
+                    if hashlib.sha256(data).hexdigest() != want[rel]:
+                        problems.append("%s: SHA-256 differs from the manifest" % rel)
+                    seen.add(rel)
+            else:
+                problems.append("%s: not a regular file or directory" % mem.name)
+        problems += check_tree(entries)
+        for rel in sorted(set(want) - seen):
+            problems.append("%s: in the manifest but not in the package" % rel)
+    return problems

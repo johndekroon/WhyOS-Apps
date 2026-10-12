@@ -309,12 +309,14 @@ app's own storage.
 
 ### 2.9 Generated fields
 
-CI adds these to `manifest.json`; authors do not write them:
+`tools/publish.py` adds these to `manifest.json` (with the defaults of
+`[launch]` filled in: `info`, `terminal`, `rotation`, `menu`); authors do
+not write them:
 
 | Field | Meaning |
 |---|---|
 | `published` | ISO 8601 date-time of publication |
-| `size.download`, `size.installed` | Bytes of the `.wpk` and of the unpacked `files/` |
+| `size.installed` | Bytes of the unpacked `files/`. The size of the `.wpk` itself is in the index and details (`package.size`): the package cannot hold its own size |
 | `files.sha256` | Path → SHA-256 for every file under `files/`; the client checks it while unpacking and stores it as `.package/files.sha256` (used by `store verify`) |
 
 The SHA-256 of the whole `.wpk` is in the index, not in the manifest

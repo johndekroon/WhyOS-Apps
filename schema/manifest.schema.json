@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://johndekroon.github.io/WhyOS-Apps/schema/manifest.schema.json",
+  "$id": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/schema/manifest.schema.json",
   "title": "WhyOS app manifest",
   "description": "The JSON form of apps/<id>/manifest.toml (docs/package.md §2). Strict for authoring: unknown keys are errors here, while clients ignore them. Generated fields (published, size, files) are added by CI.",
   "type": "object",
@@ -144,9 +144,9 @@
     "published": { "type": "string", "format": "date-time" },
     "size": {
       "type": "object", "additionalProperties": false,
-      "required": ["download", "installed"],
+      "required": ["installed"],
       "properties": {
-        "download": { "type": "integer", "minimum": 0 },
+        "download": { "type": "integer", "minimum": 0, "description": "Not in the package's own manifest.json, which cannot hold its own size: in the index and details as package.size" },
         "installed": { "type": "integer", "minimum": 0 }
       }
     },

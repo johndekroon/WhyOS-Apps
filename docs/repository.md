@@ -14,12 +14,14 @@ apps/<id>/licenses/            licence texts that go into files/LICENSES/ (packa
 apps/<id>/source/              badge-specific source and SOURCES.md, when not published elsewhere (§1.2)
 apps/<id>/README.md            optional notes for maintainers (not shown in the store)
 categories.json                the category tree (§3)
-keys/<key id>.pub              public signing keys (minisign format)
+featured.json                  optional: app ids for the store's Discover page
+dist/v1/                       the published source (§5), written by tools/publish.py
 schema/                        JSON Schemas
 toolchain/                     how the apps' toolchain is built: Buildroot config, uClibc patch, build script
-tools/                         validate.py, import-sdapp.py; later the packer and index builder (host tools)
+tools/                         validate.py, import-sdapp.py, pack.py, publish.py, serve.py, local-source.sh
+tests/                         tests of the tools, and the good and malicious packages the client is tested with
 docs/                          this specification
-.github/workflows/             CI
+.github/workflows/             the check workflow (§4)
 ```
 
 - One directory per app id. The directory name MUST equal `id`.
@@ -108,55 +110,59 @@ so the store's tabs stay tidy.
 - `icon` is one of the menu's built-in icon names.
 - Each type has a category `other` as a fallback.
 
-## 4. CI
+## 4. Checking and publishing
 
-On every pull request:
+Publishing is a git push; there is no publishing job and no secret.
 
-1. Validate each changed `manifest.toml` against the schema (after
-   conversion to JSON) and against `categories.json`.
-2. Check ids: directory name, uniqueness, no reuse of withdrawn ids;
-   `build` higher than the published one.
-3. Fetch or build `files/`, apply the entry rules of
-   [package.md](package.md) §1.2, compute sizes and hashes, check
-   `launch.exec` exists, and check BFLT binaries (header, stack size, no
-   absolute `jalr` into the first 2 KB: the same check as why2025-linux
-   `sdapps/build.sh`).
-4. Pack the `.wpk` and run the client's own package checker on it (the
-   same code, built for the host).
-5. Convert icon and screenshots (§5.3), check their sizes; without an
-   icon, render the menu icon named in `launch.icon`.
-6. Check licences: every `license_file` is in `files/LICENSES/`, every
-   SPDX id is covered, and native packages have `source` or `source/`.
+**Publish** (a maintainer, after review):
 
-On merge to `main`, additionally:
+1. `tools/publish.py` runs the checks of `validate.py` on every app
+   (schema, category, archive rules, programs, licence files, source),
+   then for each app:
+   - refuses a version that is already published with different contents
+     (raise `version` and `build`), or a `build` not higher than the
+     published ones;
+   - packs the new version into `dist/v1/packages/<id>-<version>.wpk`
+     (`manifest.json` first, generated fields added) and keeps older
+     versions;
+   - writes `dist/v1/apps/<id>.json`, the licence texts, the source
+     archive and the QOI images;
+   then rewrites `dist/v1/index.json(.gz)`, raising `serial` only when
+   something changed. Running it twice changes nothing.
+2. Commit `apps/` and `dist/` together, and push to `main`. That is the
+   publication.
 
-7. Create a release per new app version, tag `<id>/v<version>`, with the
-   `.wpk` file and, with `source/`, the source archive as assets.
-8. Rebuild the index and detail files, sign the index, publish to Pages.
+**Check** (`.github/workflows/check.yml`, every push and pull request):
+`validate.py`, the tests in `tests/`, the client's package checker
+(built for the host) on every package in `dist/`, and a check that `dist/`
+is what `publish.py` makes from `apps/` (so a forgotten publish fails).
 
-The signing key is a repository secret available only to the publish
-job on `main`.
+Not yet: building packages from source in CI (phase 3, roadmap).
 
 ## 5. Published files
 
-Base URL of the default source: `https://johndekroon.github.io/WhyOS-Apps/v1/`.
+Base URL of the default source:
+`https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/`
+(the repository must be public). GitHub caches these files for a few
+minutes, so a push takes that long to reach badges.
 
 ```
-v1/index.json            the index (§5.1)
-v1/index.json.gz         the same, gzip; clients SHOULD fetch this one
-v1/index.json.minisig    signature over index.json (uncompressed)
-v1/apps/<id>.json        details per app (§5.2)
-v1/icons/<id>.qoi        icon, 96×96, for lists and the info page
-v1/icons/<id>@2.qoi      icon, 192×192, for a featured banner
-v1/screens/<id>-<n>.qoi  screenshot, 360×360 (half size, fits the info page)
-v1/categories.json       copy of the category tree
+v1/index.json                      the index (§5.1)
+v1/index.json.gz                   the same, gzip; clients SHOULD fetch this one
+v1/apps/<id>.json                  details per app (§5.2)
+v1/packages/<id>-<version>.wpk     the packages, every published version
+v1/sources/<id>-<version>-source.tar.gz   the source archive, for apps with source/
+v1/licenses/<id>/<file>            licence texts of the latest version
+v1/icons/<id>.qoi                  icon, 96×96, for lists and the info page
+v1/icons/<id>@2.qoi                icon, 192×192, for a featured banner
+v1/screens/<id>-<n>.qoi            screenshot, 360×360 (half size, fits the info page)
+v1/categories.json                 copy of the category tree
 ```
 
-Packages are release assets:
-`https://github.com/johndekroon/WhyOS-Apps/releases/download/<id>%2Fv<version>/<file>.wpk`.
-GitHub answers with a redirect to `objects.githubusercontent.com`; clients
-MUST follow redirects (HTTPS only). URLs in the index are absolute, so a
-mirror can host packages elsewhere.
+URLs of packages in the index are absolute, so a mirror can host
+packages elsewhere, and packages could later move to release assets or
+Git LFS without a format change. Every published version stays in git;
+that is accepted for now (a few MB per version).
 
 ### 5.1 Index
 
@@ -170,8 +176,7 @@ it stays small (aim: under 1 KB per app).
   "source": "whyos",
   "serial": 1042,
   "generated": "2026-10-12T10:00:00Z",
-  "expires": "2026-11-12T10:00:00Z",
-  "base_url": "https://johndekroon.github.io/WhyOS-Apps/v1/",
+  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
   "categories_sha256": "…",
   "apps": [
     {
@@ -192,7 +197,7 @@ it stays small (aim: under 1 KB per app).
         "version": "1.0.4",
         "build": 5,
         "package": {
-          "url": "https://github.com/johndekroon/WhyOS-Apps/releases/download/gnuboy%2Fv1.0.4/gnuboy-1.0.4.wpk",
+          "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/gnuboy-1.0.4.wpk",
           "sha256": "…",
           "size": 214000,
           "installed_size": 420000
@@ -206,10 +211,13 @@ it stays small (aim: under 1 KB per app).
 - `terminal` is true for command-line apps (`launch.terminal` other than
   `false`, or only `[[commands]]`); `commands` lists the command names, so
   search finds `nmap` by its command and CI can check names are unique.
-- `serial` increases with every publication. A client MUST refuse an
-  index with a lower `serial` than the one it has cached (rollback
-  protection), and SHOULD warn when `expires` has passed (a stale mirror
-  or a frozen index).
+- `serial` increases with every publication that changes something. A
+  client MUST refuse an index with a lower `serial` than the one it has
+  cached (a stale mirror or cache). `expires` is optional and not written
+  now.
+- `install_location` and `menu_icon` (the menu icon named in
+  `launch.icon`, the fallback when there is no `icon`) are in the index
+  too, so lists need no details.
 - `withdrawn` apps appear with `"withdrawn": "<reason>"` and no
   `latest`, so clients can offer removal.
 - Relative paths (`icon`) are relative to `base_url`.
@@ -221,8 +229,8 @@ it stays small (aim: under 1 KB per app).
 texts, published next to the details), `permissions`, `storage`, `screenshots`
 (list of paths), and `versions`: every published version with `version`,
 `build`, `published`, `changelog` and its package (URL, SHA-256, size).
-It is covered by the signature through `details_sha256` in the index
-entry. Older versions stay downloadable, so a user can roll back by hand
+The client checks it against `details_sha256` in the index entry.
+Bundled components carry `license_url` (a path under `licenses/`). Older versions stay downloadable, so a user can roll back by hand
 (`store install gnuboy@1.0.3`); the client never downgrades on its own.
 
 ### 5.3 Images
@@ -233,19 +241,21 @@ PNGs from the repository to **QOI** (a simple lossless format, a decoder
 is about 100 lines of C) at the sizes the UI uses. The PNGs remain the
 source; when the UI changes size, CI regenerates.
 
-## 6. Signing
+## 6. Integrity
 
-- Format: **minisign** (Ed25519). CI signs with `minisign -S`; the badge
-  verifies with Monocypher. A minisign key id in every signature allows
-  several keys and key rotation.
-- Public keys live in `keys/` and are compiled into the client's default
-  `sources.d` ([device.md](device.md) §2.3).
-- Rotation: publish the new key in `keys/`, ship a client that trusts
-  both, sign with the new key once enough clients have it, then drop the
-  old one. A compromised key is handled the same way, faster, plus a
-  store release that distrusts it.
-- What is signed: `index.json`. The index contains the SHA-256 of every
-  package and of every detail file; images are not signed (they are only
-  displayed, never executed).
-- TLS protects the download path; the signature protects the content,
-  including when packages come from a mirror.
+There is no signature (decided 2026-10-12: publishing should be a plain
+git push, without keys or a publishing job).
+
+- The index and the details come over HTTPS from the source's base URL;
+  the client checks TLS against the CA roots it carries.
+- The index holds the SHA-256 of every package and detail file; the
+  client refuses a package or details file that does not match, and every
+  file it unpacks is checked against the manifest's `files.sha256`.
+- `serial` stops a client from going back to an older index.
+- What this does not protect against: someone who can push to this
+  repository, or who controls a mirror the user added, can publish
+  anything. Review and branch protection on `main` are the safeguard.
+
+A signed index can be added later without breaking clients: an
+`index.json.minisig` next to the index and a `KEYS` field in source
+files, both ignored by clients that do not know them.
