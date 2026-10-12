@@ -4,8 +4,8 @@
 format = 1
 id = "store"
 name = "App store"
-version = "0.2.2"
-build = 3
+version = "0.2.3"
+build = 4
 summary = "Find, install and update apps and games"
 description = """
 The WhyOS app store: browse and search the apps and games, install them on
@@ -20,7 +20,7 @@ license = "MIT AND (Apache-2.0 OR GPL-2.0-or-later) AND Zlib AND LGPL-2.1-or-lat
 license_file = "store.txt"
 homepage = "https://github.com/johndekroon/WhyOS-Apps"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/client"
-changelog = "Updating the store no longer asks about flash. Apps put on the card by hand show as installed by hand in My apps too."
+changelog = "An install that a lost card or a power cut interrupted is undone properly: the old version comes back, or a first install is forgotten instead of showing as needing repair."
 
 type = "system"
 category = "store"

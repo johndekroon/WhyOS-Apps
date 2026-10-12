@@ -91,6 +91,19 @@
  "type": "system",
  "versions": [
   {
+   "build": 4,
+   "changelog": "An install that a lost card or a power cut interrupted is undone properly: the old version comes back, or a first install is forgotten instead of showing as needing repair.",
+   "package": {
+    "installed_size": 974804,
+    "sha256": "677e143123146333d411db1d186d938cde566212bea0267fc764830e77dae3f3",
+    "size": 507787,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.3.wpk"
+   },
+   "published": "2026-10-12T14:47:35Z",
+   "source_archive": null,
+   "version": "0.2.3"
+  },
+  {
    "build": 3,
    "changelog": "Updating the store no longer asks about flash. Apps put on the card by hand show as installed by hand in My apps too.",
    "package": {

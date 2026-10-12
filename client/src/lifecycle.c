@@ -1077,6 +1077,34 @@ int store_maintain(void)
 					reg_write(&r);
 				}
 			}
+			if (!ok) {
+				/* back to what was there: the old version if it was
+				 * moved aside, else nothing (a first install whose files
+				 * never landed, as when the card went away mid-way) */
+				struct reg rr;
+
+				if (P.sd_present)
+					tidy_dir(P.sd_apps);
+				tidy_dir(P.flash_apps);
+				if (!reg_read(id, &rr) && rr.build == build &&
+				    (!strcmp(rr.location, "flash") || P.sd_present)) {
+					char *text;
+					struct json m;
+
+					app_dir(dir, sizeof(dir), id, rr.location);
+					if (!read_installed(dir, &text, &m)) {
+						json_str(&m, json_get(&m, 0, "version"), rr.version,
+							 sizeof(rr.version));
+						rr.build = (int)json_int(&m, json_get(&m, 0, "build"), 0);
+						reg_write(&rr);
+						json_free(&m);
+						free(text);
+					} else {
+						reg_delete(id);
+						remove_wrappers(id);
+					}
+				}
+			}
 			say("an interrupted install of %s: %s", id, ok ? "finished" : "undone");
 		}
 		journal_clear();

@@ -404,6 +404,35 @@ def test_interrupted_install_is_undone_or_finished(env):
     assert env.store("verify", "hello").returncode == 0
 
 
+def test_interrupted_install_that_never_landed(env):
+    # the card went away after the registry was written but before the
+    # files were on it (seen on a badge, 2026-10-12): undone means gone
+    env.store("install", "hello")
+    with open(os.path.join(env.sd, "badge", ".store", "journal"), "w") as f:
+        f.write("install hello 1\n")
+    shutil.rmtree(env.app("hello"))
+    assert "undone" in env.store("maintain").stdout
+    assert not os.path.exists(env.reg("hello"))
+    assert not os.path.exists(env.wrapper("hello-cmd"))
+    assert "hello" not in env.store("list").stdout
+
+
+def test_interrupted_update_goes_back_to_the_old_version(env):
+    env.store("install", "hello")
+    apps = os.path.join(env.sd, "badge", "apps")
+    reg = json.load(open(env.reg("hello")))
+    reg["version"], reg["build"] = "1.1.0", 2     # registry already says the new one
+    with open(env.reg("hello"), "w") as f:
+        json.dump(reg, f)
+    with open(os.path.join(env.sd, "badge", ".store", "journal"), "w") as f:
+        f.write("install hello 2\n")
+    os.rename(env.app("hello"), os.path.join(apps, ".hello.old"))
+    assert "undone" in env.store("maintain").stdout
+    reg = json.load(open(env.reg("hello")))
+    assert (reg["version"], reg["build"]) == ("1.0.0", 1)
+    assert env.store("verify", "hello").returncode == 0
+
+
 def test_adopt_and_legacy(env):
     env.store("install", "hello")
     os.unlink(env.reg("hello"))
