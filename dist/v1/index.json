@@ -162,18 +162,18 @@
    "commands": [
     "nmap"
    ],
-   "details_sha256": "6966b1d3d39bd9bd4096ee3bb354113501f57935522f8bc5b8ebd4a1c260eff9",
+   "details_sha256": "afbaf91647771fc790c52b832fdfa2ca21800eed5569b9f4b370037dc5d313e1",
    "id": "nmap",
    "install_location": "sd",
    "latest": {
-    "build": 1,
+    "build": 2,
     "package": {
      "installed_size": 5840105,
-     "sha256": "bd05d8c15bf833c9ed2d3c7e6ac34e1ec479b3219bb595edc5accc8d1b8d4f86",
-     "size": 1988484,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/nmap-1.0.0.wpk"
+     "sha256": "e29419aed2b9c07a1687281da5b295cc623d8ab7a629c73e5058bf3ca8d23fe5",
+     "size": 1988595,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/nmap-1.0.1.wpk"
     },
-    "version": "1.0.0"
+    "version": "1.0.1"
    },
    "menu_icon": "globe",
    "name": "nmap",
@@ -200,18 +200,18 @@
    "author": "WhyOS-Apps",
    "category": "store",
    "commands": [],
-   "details_sha256": "aa2bd6162287d15601b8e9ff314c0ea8e6e51f6fefade9b5c7f1261bb6f99526",
+   "details_sha256": "962c310c422e6815e02ac5427cc57a8073ba9bc2c4178ab271e7353c9ff777b8",
    "id": "store",
    "install_location": "flash",
    "latest": {
-    "build": 1,
+    "build": 2,
     "package": {
-     "installed_size": 974180,
-     "sha256": "b62ee275ad90ef8be891bf1806133d360d76d8c3b785618e1221ef5842385898",
-     "size": 507413,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.0.wpk"
+     "installed_size": 974444,
+     "sha256": "87c0c27450c467ecbd60ac947f8d97212551496b065aeba0576e39bc9f6c7110",
+     "size": 507568,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.1.wpk"
     },
-    "version": "0.2.0"
+    "version": "0.2.1"
    },
    "menu_icon": "store",
    "name": "App store",
@@ -236,9 +236,9 @@
   }
  ],
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
- "categories_sha256": "5702b0630f6f2d9f6e862a9ee0e200f9de199948ac60ffdb5ad937024489d474",
+ "categories_sha256": "3a6ddad8aabd3c71f44e356f3f543d968fbbd8d3f3327a2ed3b5af870ab368bb",
  "format": 1,
- "generated": "2026-10-12T13:25:01Z",
- "serial": 2,
+ "generated": "2026-10-12T14:00:07Z",
+ "serial": 3,
  "source": "whyos"
 }

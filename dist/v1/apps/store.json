@@ -22,7 +22,8 @@
    "license_file": "jsmn.txt",
    "license_url": "licenses/store/jsmn.txt",
    "name": "jsmn",
-   "source": "https://github.com/zserge/jsmn"
+   "source": "https://github.com/zserge/jsmn",
+   "version": "jsmn.h with SHA-256 c04533e9181e…"
   },
   {
    "license": "LGPL-2.1-or-later",
@@ -37,14 +38,16 @@
    "license_file": "OFL-SpaceGrotesk.txt",
    "license_url": "licenses/store/OFL-SpaceGrotesk.txt",
    "name": "Space Grotesk (rendered into the program)",
-   "source": "https://github.com/floriankarsten/space-grotesk"
+   "source": "https://github.com/floriankarsten/space-grotesk",
+   "version": "2.000"
   },
   {
    "license": "OFL-1.1",
    "license_file": "OFL-JetBrainsMono.txt",
    "license_url": "licenses/store/OFL-JetBrainsMono.txt",
    "name": "JetBrains Mono (rendered into the program)",
-   "source": "https://github.com/JetBrains/JetBrainsMono"
+   "source": "https://github.com/JetBrains/JetBrainsMono",
+   "version": "2.211"
   }
  ],
  "category": "store",
@@ -87,6 +90,19 @@
  ],
  "type": "system",
  "versions": [
+  {
+   "build": 2,
+   "changelog": "Apps put on the card by hand show as installed by hand, with Open first. Versions of all bundled parts listed.",
+   "package": {
+    "installed_size": 974444,
+    "sha256": "87c0c27450c467ecbd60ac947f8d97212551496b065aeba0576e39bc9f6c7110",
+    "size": 507568,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.1.wpk"
+   },
+   "published": "2026-10-12T14:00:07Z",
+   "source_archive": null,
+   "version": "0.2.1"
+  },
   {
    "build": 1,
    "changelog": "First release with screens: Discover, Apps and Games, Search, app pages, My apps and settings.",

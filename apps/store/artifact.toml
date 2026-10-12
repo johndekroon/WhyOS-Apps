@@ -1,4 +1,4 @@
 # The prebuilt files/ archive (docs/repository.md §1.1), written by tools/import-sdapp.py
 path = "files.tar.gz"
-sha256 = "10cd8b5e78e14c86575d9d128bf5616e49bf8444caef82625b019ae0d78cbe9e"
+sha256 = "a92d4242e30507eff8a8f92f5f0859e0ab581d48f3db941e764f3aadf3395f7c"
 built_from = "WhyOS-Apps client/build.sh with why2025-linux overlay-src (usb-host), 2026-10-12"

@@ -106,7 +106,9 @@ so the store's tabs stay tidy.
   retire one, mark it `"hidden": true` and move its apps.
 - `menu` says where the start menu lists apps of this type or category
   by default (`apps`, `games`, `tools`, `none`); a category may override
-  its type's.
+  its type's. No category uses `tools` (2026-10-12): Settings > Tools in the
+  menu is for the badge's own utilities, and apps from the store, network
+  tools such as nmap included, belong under Apps or Games.
 - `icon` is one of the menu's built-in icon names.
 - Each type has a category `other` as a fallback.
 

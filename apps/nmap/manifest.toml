@@ -3,8 +3,8 @@
 format = 1
 id = "nmap"
 name = "nmap"
-version = "1.0.0"
-build = 1
+version = "1.0.1"
+build = 2
 summary = "Network scanner (TCP connect scans)"
 description = """
 Scans hosts and ports on the network the badge is connected to.
@@ -20,7 +20,7 @@ license_file = "nmap.txt"
 homepage = "https://nmap.org"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/nmap/source"
 upstream_version = "7.95"
-changelog = "First store release."
+changelog = "In the menu under Apps (Network tools) instead of Settings > Tools."
 
 type = "app"
 category = "network"

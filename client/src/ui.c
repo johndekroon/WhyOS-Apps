@@ -1200,6 +1200,13 @@ static void state_value(struct row *r, enum state s, const struct app *a, const 
 		snprintf(r->value, sizeof(r->value), "Needs repair");
 		r->value_c = WB_COLOR_ERROR;
 		break;
+	case ST_LEGACY:		/* on the badge, put there by hand: installed all the same */
+		snprintf(r->value, sizeof(r->value), "Installed by hand");
+		r->value_c = WB_COLOR_OK;
+		break;
+	case ST_UNREGISTERED:
+		snprintf(r->value, sizeof(r->value), "Found on this card");
+		break;
 	default:
 		snprintf(r->value, sizeof(r->value), "%s", a ? S_(a->summary) : "");
 		break;
@@ -1743,9 +1750,13 @@ static void build_app(void)
 		add(R_ACTION, "Delete", &r_trash, A_DELETE);
 		break;
 	case ST_LEGACY:
-		if (a)
-			add(R_ACTION, "Replace with the store version", &r_refresh, A_REPLACE);
+		r = add(R_INFO, "Installed by hand", &r_check, A_NONE);
+		snprintf(r->value, sizeof(r->value), "%s", a ? "Not updated by the store" : "Not from the store");
 		add(R_ACTION, "Open", &r_store, A_OPEN);
+		if (a) {
+			r = add(R_ACTION, "Replace with the store version", &r_refresh, A_REPLACE);
+			snprintf(r->value, sizeof(r->value), "Gets updates");
+		}
 		add(R_ACTION, "Delete", &r_trash, A_DELETE);
 		break;
 	case ST_WITHDRAWN:

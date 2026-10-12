@@ -8,15 +8,15 @@
       "menu": "apps",
       "categories": [
         { "id": "internet", "name": "Internet", "icon": "globe" },
-        { "id": "network", "name": "Network tools", "icon": "ethernet", "menu": "tools" },
+        { "id": "network", "name": "Network tools", "icon": "ethernet" },
         { "id": "hardware", "name": "Hardware & electronics", "icon": "chip" },
         { "id": "radio", "name": "Radio & RFID", "icon": "bluetooth" },
-        { "id": "security", "name": "Security", "icon": "terminal", "menu": "tools" },
+        { "id": "security", "name": "Security", "icon": "terminal" },
         { "id": "media", "name": "Photos & media", "icon": "palette" },
         { "id": "productivity", "name": "Text & productivity", "icon": "keyboard" },
         { "id": "sensors", "name": "Sensors & science", "icon": "sensors" },
         { "id": "development", "name": "Development", "icon": "terminal" },
-        { "id": "utilities", "name": "Utilities", "icon": "disk", "menu": "tools" },
+        { "id": "utilities", "name": "Utilities", "icon": "disk" },
         { "id": "other", "name": "Other", "icon": "info" }
       ]
     },
