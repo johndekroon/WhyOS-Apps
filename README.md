@@ -9,7 +9,7 @@ the index and downloads packages from this repository over HTTPS
 
 Status (2026-10-12): **phases 1 and 2 done** ([docs/roadmap.md](docs/roadmap.md)).
 The specification is draft 1.0. `apps/` has the SD-card apps of
-why2025-linux (NetHack, nano and a calculator among them, 2026-10-12) and the store itself,
+why2025-linux (NetHack, nano, a calculator and MicroPython among them, 2026-10-12) and the store itself,
 published in `dist/v1/`. The `store`
 client ([client/](client/README.md)) installs, updates and removes them on
 a badge, from the command line and from its full-screen UI, which opens
@@ -28,7 +28,7 @@ the first store in the image.
 | [docs/roadmap.md](docs/roadmap.md) | Phases, open questions, non-goals |
 | [schema/](schema/) | JSON Schemas for the manifest, the index and the category tree |
 | [categories.json](categories.json) | The category tree |
-| [apps/](apps/) | The apps: gnuboy, NetSurf, Links, nmap, imgview, DOOM, the sensor panel, the Bus Pirate, NetHack, nano, the calculator, and the store itself |
+| [apps/](apps/) | The apps: gnuboy, NetSurf, Links, nmap, imgview, DOOM, the sensor panel, the Bus Pirate, NetHack, nano, the calculator, MicroPython, and the store itself |
 | [client/](client/README.md) | The `store` program: CLI and UI, for the badge and the host |
 | [toolchain/](toolchain/README.md) | How the apps' toolchain is built (part of their corresponding source) |
 | [tools/](tools/) | `validate.py` (check apps against the spec), `publish.py` (pack and write `dist/v1/`), `import-sdapp.py` (package an app built by why2025-linux), `serve.py`/`local-source.sh` (a test source) |

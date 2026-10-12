@@ -236,6 +236,49 @@
    "updated": "2026-10-12"
   },
   {
+   "author": "Damien P. George and the MicroPython contributors, badge port",
+   "category": "development",
+   "commands": [
+    "micropython",
+    "python"
+   ],
+   "details_sha256": "a872be5409899859b55e1ea5f87576ea8d4f6a289d7d5d397ca758d17666eb19",
+   "id": "micropython",
+   "install_location": "sd",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 805927,
+     "sha256": "3697117d59bc7562f0eb5788adae1f97654d8cf40e7d6337fed10d77ad23a320",
+     "size": 446439,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/micropython-1.29.0.wpk"
+    },
+    "version": "1.29.0"
+   },
+   "menu_icon": "terminal",
+   "name": "MicroPython",
+   "requires": {
+    "features": [
+     "sd-card",
+     "keyboard"
+    ],
+    "memory_kb": 3000,
+    "os_api": 1
+   },
+   "summary": "Python 3 on the badge: an interactive prompt and your own scripts",
+   "tags": [
+    "python",
+    "micropython",
+    "programming",
+    "repl",
+    "scripting",
+    "terminal"
+   ],
+   "terminal": true,
+   "type": "app",
+   "updated": "2026-10-12"
+  },
+  {
    "author": "The GNU nano developers, badge port",
    "category": "productivity",
    "commands": [
@@ -476,7 +519,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "3a6ddad8aabd3c71f44e356f3f543d968fbbd8d3f3327a2ed3b5af870ab368bb",
  "format": 1,
- "generated": "2026-10-12T21:45:51Z",
- "serial": 9,
+ "generated": "2026-10-12T21:52:35Z",
+ "serial": 10,
  "source": "whyos"
 }

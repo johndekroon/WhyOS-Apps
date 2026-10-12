@@ -1,0 +1,123 @@
+{
+ "author": "Damien P. George and the MicroPython contributors, badge port",
+ "bundled": [
+  {
+   "license": "Apache-2.0 OR GPL-2.0-or-later",
+   "license_file": "mbedtls.txt",
+   "license_url": "licenses/micropython/mbedtls.txt",
+   "name": "Mbed TLS",
+   "source": "https://github.com/micropython/micropython/releases/download/v1.29.0/micropython-1.29.0.tar.xz",
+   "version": "3.6.6"
+  },
+  {
+   "license": "MIT",
+   "license_file": "micropython-lib.txt",
+   "license_url": "licenses/micropython/micropython-lib.txt",
+   "name": "micropython-lib (mip, ssl, frozen into the program)",
+   "source": "https://github.com/micropython/micropython/releases/download/v1.29.0/micropython-1.29.0.tar.xz",
+   "version": "1.29.0"
+  },
+  {
+   "license": "Zlib AND BSD-3-Clause",
+   "license_file": "third-party.txt",
+   "license_url": "licenses/micropython/third-party.txt",
+   "name": "uzlib and re1.5",
+   "source": "https://github.com/micropython/micropython/releases/download/v1.29.0/micropython-1.29.0.tar.xz",
+   "version": "1.29.0"
+  },
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/micropython/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  },
+  {
+   "license": "MIT",
+   "license_file": "badge-port.txt",
+   "license_url": "licenses/micropython/badge-port.txt",
+   "name": "Badge port (start script, build options)",
+   "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/micropython/source",
+   "version": "fa51576"
+  }
+ ],
+ "category": "development",
+ "commands": [
+  {
+   "exec": "start",
+   "name": "micropython"
+  },
+  {
+   "exec": "start",
+   "name": "python"
+  }
+ ],
+ "description": "MicroPython is a lean implementation of Python 3. From the menu it opens\nthe interactive prompt (the REPL): type Python and see the result at\nonce, with history (arrow keys), Tab completion and automatic\nindentation. Ctrl+D closes it, Ctrl+E pastes a block of code. In a shell\n(serial console or SSH) \"micropython\" or \"python\" starts the prompt in\nyour own terminal, and \"python script.py\" runs a script.\n\nPut your scripts in badge/appdata/micropython on the SD card: the prompt\nstarts there, so \"import myscript\" runs myscript.py. Files also runs a\n.py file under Open with, and leaves the prompt open afterwards. Modules\nin the lib folder there can be imported from anywhere, and\n\"python -m mip install <package>\" installs packages from micropython-lib\ninto it (Wi-Fi needed).\n\nIncluded: json, re, socket and ssl (HTTPS), asyncio, hashlib, time,\nos, math, struct, binascii, deflate, select and more, and the\n@micropython.native and viper decorators for fast code. Not included:\nthreads, ffi, and CPython's larger standard library. The heap is 2 MB;\nMICROPY_HEAP=4M before the command gives a script more.",
+ "format": 1,
+ "homepage": "https://micropython.org",
+ "icon": null,
+ "id": "micropython",
+ "install_location": "sd",
+ "launch": {
+  "args": "--menu %f",
+  "exec": "start",
+  "icon": "terminal",
+  "info": "Python 3 interpreter",
+  "menu": "apps",
+  "opens_also": [
+   "py"
+  ],
+  "rotation": "auto",
+  "terminal": "close"
+ },
+ "license": "MIT AND (Apache-2.0 OR GPL-2.0-or-later) AND BSD-3-Clause AND Zlib AND LGPL-2.1-or-later",
+ "license_url": "licenses/micropython/micropython.txt",
+ "name": "MicroPython",
+ "requires": {
+  "features": [
+   "sd-card",
+   "keyboard"
+  ],
+  "memory_kb": 3000,
+  "os_api": 1
+ },
+ "screenshots": [
+  "screens/micropython-1.qoi",
+  "screens/micropython-2.qoi"
+ ],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/micropython/source",
+ "storage": {
+  "data": {
+   "folders": [
+    "lib"
+   ]
+  }
+ },
+ "summary": "Python 3 on the badge: an interactive prompt and your own scripts",
+ "tags": [
+  "python",
+  "micropython",
+  "programming",
+  "repl",
+  "scripting",
+  "terminal"
+ ],
+ "type": "app",
+ "upstream_version": "1.29.0",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "First store release.",
+   "package": {
+    "installed_size": 805927,
+    "sha256": "3697117d59bc7562f0eb5788adae1f97654d8cf40e7d6337fed10d77ad23a320",
+    "size": 446439,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/micropython-1.29.0.wpk"
+   },
+   "published": "2026-10-12T21:52:34Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/micropython-1.29.0-source.tar.gz",
+   "version": "1.29.0"
+  }
+ ]
+}

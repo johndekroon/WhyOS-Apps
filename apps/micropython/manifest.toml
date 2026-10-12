@@ -1,0 +1,100 @@
+# MicroPython 1.29.0 (why2025-linux sdapps/micropython), the Python REPL in
+# the menu's terminal window, and the "micropython" and "python" commands
+# in any shell. Files runs a .py file with it (Open with).
+format = 1
+id = "micropython"
+name = "MicroPython"
+version = "1.29.0"
+build = 1
+summary = "Python 3 on the badge: an interactive prompt and your own scripts"
+description = """
+MicroPython is a lean implementation of Python 3. From the menu it opens
+the interactive prompt (the REPL): type Python and see the result at
+once, with history (arrow keys), Tab completion and automatic
+indentation. Ctrl+D closes it, Ctrl+E pastes a block of code. In a shell
+(serial console or SSH) "micropython" or "python" starts the prompt in
+your own terminal, and "python script.py" runs a script.
+
+Put your scripts in badge/appdata/micropython on the SD card: the prompt
+starts there, so "import myscript" runs myscript.py. Files also runs a
+.py file under Open with, and leaves the prompt open afterwards. Modules
+in the lib folder there can be imported from anywhere, and
+"python -m mip install <package>" installs packages from micropython-lib
+into it (Wi-Fi needed).
+
+Included: json, re, socket and ssl (HTTPS), asyncio, hashlib, time,
+os, math, struct, binascii, deflate, select and more, and the
+@micropython.native and viper decorators for fast code. Not included:
+threads, ffi, and CPython's larger standard library. The heap is 2 MB;
+MICROPY_HEAP=4M before the command gives a script more."""
+author = "Damien P. George and the MicroPython contributors, badge port"
+license = "MIT AND (Apache-2.0 OR GPL-2.0-or-later) AND BSD-3-Clause AND Zlib AND LGPL-2.1-or-later"
+license_file = "micropython.txt"
+homepage = "https://micropython.org"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/micropython/source"
+upstream_version = "1.29.0"
+changelog = "First store release."
+
+type = "app"
+category = "development"
+tags = ["python", "micropython", "programming", "repl", "scripting", "terminal"]
+install_location = "sd"
+
+[launch]
+exec = "start"
+args = "--menu %f"
+info = "Python 3 interpreter"
+icon = "terminal"
+terminal = "close"
+opens_also = ["py"]
+
+[[commands]]
+name = "micropython"
+exec = "start"
+
+[[commands]]
+name = "python"
+exec = "start"
+
+[requires]
+os_api = 1
+memory_kb = 3000          # peak 2.8 MB in the simulator: the 0.7 MB program and its 2 MB heap
+features = ["sd-card", "keyboard"]
+
+[storage.data]
+folders = ["lib"]
+
+[[bundled]]
+name = "Mbed TLS"
+version = "3.6.6"
+license = "Apache-2.0 OR GPL-2.0-or-later"
+source = "https://github.com/micropython/micropython/releases/download/v1.29.0/micropython-1.29.0.tar.xz"
+license_file = "mbedtls.txt"
+
+[[bundled]]
+name = "micropython-lib (mip, ssl, frozen into the program)"
+version = "1.29.0"
+license = "MIT"
+source = "https://github.com/micropython/micropython/releases/download/v1.29.0/micropython-1.29.0.tar.xz"
+license_file = "micropython-lib.txt"
+
+[[bundled]]
+name = "uzlib and re1.5"
+version = "1.29.0"
+license = "Zlib AND BSD-3-Clause"
+source = "https://github.com/micropython/micropython/releases/download/v1.29.0/micropython-1.29.0.tar.xz"
+license_file = "third-party.txt"
+
+[[bundled]]
+name = "uClibc-ng"
+version = "1.0.57"
+license = "LGPL-2.1-or-later"
+source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
+license_file = "uClibc-ng.txt"
+
+[[bundled]]
+name = "Badge port (start script, build options)"
+version = "fa51576"
+license = "MIT"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/micropython/source"
+license_file = "badge-port.txt"

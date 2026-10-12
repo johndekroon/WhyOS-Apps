@@ -1,0 +1,25 @@
+#!/bin/sh
+# MicroPython from the menu, from Files (Open with, on a .py file), or as
+# the micropython and python commands (app.conf). Your own modules go in
+# lib/ in APP_DATA, where mip installs them too; from the menu the REPL
+# starts in APP_DATA, so a script there imports by its name.
+d=${0%/*}
+: "${APP_DATA:=/mnt/sd/badge/appdata/micropython}"
+[ -d "$APP_DATA/lib" ] || mkdir -p "$APP_DATA/lib" 2>/dev/null
+# The modules built into the program (mip, asyncio, ...), the current
+# directory, then lib/. mip installs into the first entry ending in /lib.
+export MICROPYPATH="${MICROPYPATH:-.frozen::$APP_DATA/lib}"
+# The heap: 2 MB of the 12 MB that all programs share (docs/APPS.md).
+# MICROPY_HEAP=4M for more.
+h=${MICROPY_HEAP:-2M}
+if [ "$1" = --menu ]; then
+	shift
+	if [ $# -eq 0 ]; then
+		cd "$APP_DATA" 2>/dev/null
+		exec "$d/micropython" -X heapsize="$h"
+	fi
+	# a script from Files: the REPL after it, so its output stays readable
+	# until Ctrl-D closes the window
+	exec "$d/micropython" -X heapsize="$h" -i "$@"
+fi
+exec "$d/micropython" -X heapsize="$h" "$@"
