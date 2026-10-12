@@ -487,3 +487,16 @@ def test_bad_packages_from_the_tools(env, tmp_path):
     for name, verdict in json.load(open(out / "cases.json")).items():
         r = env.store("check-package", str(out / (name + ".wpk")), check=False)
         assert (r.returncode == 0) == (verdict == "accept"), (name, r.stdout)
+
+
+def test_replacing_a_hand_installed_app_asks(env):
+    leg = env.app("hello")
+    os.makedirs(leg)
+    open(os.path.join(leg, "app.conf"), "w").write('NAME="Hello by hand"\nEXEC=run\n')
+    r = env.store("install", "hello", check=False)
+    assert r.returncode == 2 and "installed by hand" in r.stderr
+    assert open(os.path.join(leg, "app.conf")).read().startswith('NAME="Hello by hand"')
+    env.store("--yes", "install", "hello")
+    assert env.store("verify", "hello").returncode == 0
+    assert not os.path.exists(os.path.join(env.sd, "badge", "apps", ".hello.old"))
+

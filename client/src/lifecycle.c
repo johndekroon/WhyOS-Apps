@@ -653,6 +653,16 @@ int store_install(const char *spec, const struct opts *o, int auto_installed)
 
 	snprintf(parent, sizeof(parent), "%s", !strcmp(loc, "sd") ? P.sd_apps : P.flash_apps);
 	snprintf(target, sizeof(target), "%s/%s", parent, id);
+	if (!had && is_dir(target)) {
+		char p[512], q[200];
+
+		/* legacy or found on this card (device.md §5.8): replace only when asked */
+		snprintf(q, sizeof(q), "%s replaces the %s already in %s", id,
+			 is_dir(path_join(p, sizeof(p), target, ".package")) ? "copy" : "app installed by hand",
+			 target);
+		if (!confirm(o, q))
+			return 2;
+	}
 	snprintf(stage, sizeof(stage), "%s/.%s.new", parent, id);
 	snprintf(old, sizeof(old), "%s/.%s.old", parent, id);
 	if (journal_write("install", id, t.build)) {

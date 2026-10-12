@@ -273,7 +273,10 @@ long long fs_free(const char *path)
 {
 	struct statvfs v;
 
-	return statvfs(path, &v) ? -1 : (long long)v.f_bavail * (long long)v.f_frsize;
+	/* -1: unknown. ramfs (tmpfs without an MMU) reports no blocks at all */
+	if (statvfs(path, &v) || !v.f_blocks)
+		return -1;
+	return (long long)v.f_bavail * (long long)v.f_frsize;
 }
 
 /*
