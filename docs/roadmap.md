@@ -49,6 +49,15 @@ rotation lock.
 - **Card insertion.** There is no automount: the card is mounted at boot or
   from Settings > Disks. `store maintain` runs at boot, when the store
   starts, and when Disks mounts the card.
+- **The SD card dropping out on large writes.** Installing DOOM (about
+  2 MB to the card) twice ended with a write error, after which Linux
+  dropped the card until it was put in again (2026-10-12; why2025-linux
+  `Docs/16-linux.md` 16.16). nmap's 2 MB went fine before. Card, contact
+  or SD driver: not known yet, needs another card. The journal and
+  `maintain` dealt with it; since store 0.2.3 the registry follows too.
+  DOOM, the sensor panel and the Bus Pirate came from the OS image into
+  the store on the same day; the sensor panel and the Bus Pirate
+  installed from the store on the badge, DOOM only by hand so far.
 - **Moving data of hand-installed apps.** Replacing a hand-installed app
   keeps the data where the old app put it (gnuboy's ROMs in `/mnt/sd/roms`,
   the store version uses `appdata/gnuboy/roms`). The store could offer to
