@@ -1116,7 +1116,14 @@ static int ask_cb(const char *question, void *arg)
 
 	(void)arg;
 	snprintf(title, sizeof(title), "%s", (const char *)arg ? (const char *)arg : "Go ahead?");
-	r = ask("APP STORE", title, question, "Go ahead");
+	{
+		char q[200];
+
+		snprintf(q, sizeof(q), "%s", question);
+		if (q[0] >= 'a' && q[0] <= 'z')
+			q[0] = (char)(q[0] - 32);
+		r = ask("APP STORE", title, q, "Go ahead");
+	}
 	O.kind = was;
 	return r;
 }
@@ -1511,7 +1518,8 @@ static void build_myapps(void)
 			r = add(R_ACTION, other[i], &r_folder, A_APP);
 			conf_name(other[i], r->label, sizeof(r->label));
 			snprintf(r->arg, sizeof(r->arg), "%s", other[i]);
-			snprintf(r->value, sizeof(r->value), index_find(other[i], 0) ? "In the store" : "Installed by hand");
+			snprintf(r->value, sizeof(r->value), "Installed by hand");
+			r->value_c = WB_COLOR_OK;
 		}
 	}
 	{

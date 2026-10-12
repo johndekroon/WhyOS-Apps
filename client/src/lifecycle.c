@@ -648,7 +648,8 @@ int store_install(const char *spec, const struct opts *o, int auto_installed)
 			     need / 1024, have / 1024);
 			return 1;
 		}
-		if (!strcmp(loc, "flash") && t.installed > 128 * 1024 &&
+		/* only when it is new there: an update replaces what is in flash already */
+		if (!strcmp(loc, "flash") && t.installed > 128 * 1024 && !had &&
 		    !confirm(o, "it goes into flash, which is small"))
 			return 2;
 	}
