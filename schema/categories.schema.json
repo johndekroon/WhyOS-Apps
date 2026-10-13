@@ -41,7 +41,8 @@
         "name": { "type": "string", "maxLength": 32 },
         "icon": { "$ref": "#/$defs/icon" },
         "menu": { "$ref": "#/$defs/menu" },
-        "hidden": { "type": "boolean" }
+        "hidden": { "type": "boolean" },
+        "aliases": { "type": "array", "items": { "$ref": "#/$defs/slug" }, "uniqueItems": true }
       }
     }
   }

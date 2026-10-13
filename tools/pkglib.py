@@ -175,10 +175,12 @@ def files_of_archive(path):
 
 
 def category_of(categories, type_id, category_id):
+    """The type and category a manifest names; a retired id (an alias,
+    repository.md §3) gives the category that took it over."""
     for t in categories["types"]:
         if t["id"] == type_id:
             for c in t["categories"]:
-                if c["id"] == category_id:
+                if c["id"] == category_id or category_id in c.get("aliases", ()):
                     return t, c
     return None, None
 

@@ -13,7 +13,7 @@ backed by a GitHub repository.
 ## Goals
 
 - **Store experience on the badge:** browse by type (app or game) and
-  subcategory, search, an info page per app with screenshots, install,
+  category (at most four per type), search, an info page per app with screenshots, install,
   update, open, remove.
 - **Install to the microSD card.** The badge's flash is small (a few MB
   free) and only holds small settings and the store itself.

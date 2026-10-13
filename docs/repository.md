@@ -88,7 +88,9 @@ is the complete corresponding source ([package.md](package.md) §2.10).
 
 `categories.json` ([schema](../schema/categories.schema.json)) is the
 fixed tree of types and categories. Manifests may only use what is in it,
-so the store's tabs stay tidy.
+so the store's tabs stay tidy: at most four categories per type
+(2026-10-13), including `other`. Categories are for browsing the store;
+the start menu lists installed apps by name only.
 
 ```json
 {
@@ -102,8 +104,13 @@ so the store's tabs stay tidy.
 }
 ```
 
-- `id`s are permanent. A category can be renamed (`name`) freely; to
-  retire one, mark it `"hidden": true` and move its apps.
+- `id`s are permanent. A category can be renamed (`name`) freely. To
+  retire one, list its id under `aliases` of the category that takes it
+  over: manifests that name it stay valid, and `publish.py` writes the
+  new id into the index and the app's details. A published package keeps
+  the id it was built with (a package never changes); new versions
+  should use the new id. On 2026-10-13 eleven app and seven game
+  categories became four each this way.
 - `menu` says where the start menu lists apps of this type or category
   by default (`apps`, `games`, `tools`, `none`); a category may override
   its type's. No category uses `tools` (2026-10-12): Settings > Tools in the

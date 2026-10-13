@@ -115,7 +115,7 @@ Changes in why2025-linux, outside this repository (all done on its
 | `APP_*` environment and `%D %C %T` placeholders | `apprun.c`, argument expansion in `home.c` | Runtime contract (device.md §6) |
 | Rotation lock while an app runs | `apprun.c` (`ROTATION=locked` → `/tmp/rotation-lock`), `sleepd.c` (honour it) | Apps and games that use the accelerometer (package.md §2.3) |
 | More than 24 apps | `MAX_APPS` in `home.c` | A store makes 24 too few; a dynamic list or a higher fixed limit |
-| Read `ID`, `TYPE`, `SUBCATEGORY` from `app.conf` | `home.c` | Group the menu's lists by subcategory; open the store's page for an app |
+| Read `ID`, `TYPE`, `SUBCATEGORY` from `app.conf` | `home.c` | Open the store's page for an app. The menu does not group by subcategory (2026-10-13): categories are for browsing the store |
 | Store tile or entry in the menu | `home.c` | Start `store`; "My apps" also reachable from Settings |
 | `$HOME/.whyos/bin` on `PATH` | `/etc/profile.d/whyos-apps.sh` in the rootfs overlay (login and interactive shells); `DEFAULT_PATH` in `dropbear-localoptions.h`, path written out (commands run directly over SSH) | Commands of command-line apps in every shell (package.md §2.3.1) |
 | `/etc/whyos-release` | rootfs overlay | OS version and API level (device.md §6.3) |

@@ -26,7 +26,7 @@
    "version": "2.000"
   }
  ],
- "category": "utilities",
+ "category": "tools",
  "description": "Type a sum on the keyboard and press Enter (or =). Earlier sums stay on\nscreen like a paper tape; Up and Down bring them back to change them.\nStarting with + * / or ^ goes on from the last answer.\n\nIt knows + - * / ^, brackets, n% (n/100), n! and mod; pi, e and ans\n(the last answer); sqrt, cbrt, abs, exp, ln, log, log2, sin, cos, tan,\nasin, acos, atan, sinh, cosh, tanh, round, floor and ceil. 2pi and\n3(4+5) multiply. Numbers can be written as 0xff, 0b1010 or 1.5e3, and a\nwhole-number answer also shows in hexadecimal and binary.\n\nAngles are in degrees; Tab switches to radians. Esc clears the line,\nand on an empty line closes the calculator, as the logo key does.",
  "format": 1,
  "homepage": "https://github.com/johndekroon/WhyOS-Apps",

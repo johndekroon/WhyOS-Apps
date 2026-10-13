@@ -7,17 +7,10 @@
       "icon": "info",
       "menu": "apps",
       "categories": [
-        { "id": "internet", "name": "Internet", "icon": "globe" },
-        { "id": "network", "name": "Network tools", "icon": "ethernet" },
-        { "id": "hardware", "name": "Hardware & electronics", "icon": "chip" },
-        { "id": "radio", "name": "Radio & RFID", "icon": "bluetooth" },
-        { "id": "security", "name": "Security", "icon": "terminal" },
-        { "id": "media", "name": "Photos & media", "icon": "palette" },
-        { "id": "productivity", "name": "Text & productivity", "icon": "keyboard" },
-        { "id": "sensors", "name": "Sensors & science", "icon": "sensors" },
-        { "id": "development", "name": "Development", "icon": "terminal" },
-        { "id": "utilities", "name": "Utilities", "icon": "disk" },
-        { "id": "other", "name": "Other", "icon": "info" }
+        { "id": "internet", "name": "Internet & network", "icon": "globe", "aliases": ["network", "security"] },
+        { "id": "hardware", "name": "Hardware & sensors", "icon": "chip", "aliases": ["radio", "sensors"] },
+        { "id": "tools", "name": "Tools", "icon": "keyboard", "aliases": ["productivity", "development", "utilities"] },
+        { "id": "other", "name": "Media & other", "icon": "palette", "aliases": ["media"] }
       ]
     },
     {
@@ -26,11 +19,8 @@
       "icon": "games",
       "menu": "games",
       "categories": [
-        { "id": "action", "name": "Action", "icon": "games" },
-        { "id": "arcade", "name": "Arcade", "icon": "games" },
-        { "id": "puzzle", "name": "Puzzle", "icon": "games" },
-        { "id": "strategy", "name": "Strategy", "icon": "games" },
-        { "id": "text", "name": "Text adventures", "icon": "keyboard" },
+        { "id": "action", "name": "Action & arcade", "icon": "games", "aliases": ["arcade"] },
+        { "id": "puzzle", "name": "Puzzle & strategy", "icon": "games", "aliases": ["strategy", "text"] },
         { "id": "emulators", "name": "Emulators", "icon": "gameboy" },
         { "id": "other", "name": "Other", "icon": "games" }
       ]

@@ -10,7 +10,7 @@
    "version": "1.0.57"
   }
  ],
- "category": "sensors",
+ "category": "hardware",
  "description": "Shows the BME680's temperature, humidity and pressure and the BMI270's\nacceleration on all three axes, about three times a second, with a graph\nof the last 20 temperatures. The BME680 sits on the board, so it reads\nwarmer than the room.\n\nEsc or the logo key closes it.",
  "format": 1,
  "homepage": "https://github.com/mrbreaker/why2025-linux",

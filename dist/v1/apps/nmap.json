@@ -50,7 +50,7 @@
    "version": "2be6d7c"
   }
  ],
- "category": "network",
+ "category": "internet",
  "commands": [
   {
    "args": "--datadir %d/share --unprivileged --nsock-engine poll",

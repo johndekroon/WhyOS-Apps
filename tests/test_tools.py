@@ -133,3 +133,26 @@ def test_bad_packages_are_refused(tmp_path):
     for name, verdict in cases.items():
         problems = pkglib.check_package(str(tmp_path / (name + ".wpk")))
         assert (problems == []) == (verdict == "accept"), (name, problems)
+
+
+def test_category_tree_stays_small():
+    """At most four visible categories per type, and every retired id
+    (alias) maps to exactly one category (repository.md §3)."""
+    tree = pkglib.load_json(os.path.join(ROOT, "categories.json"))
+    for t in tree["types"]:
+        cats = [c for c in t["categories"] if not c.get("hidden")]
+        assert t.get("hidden") or len(cats) <= 4, t["id"]
+        ids = [c["id"] for c in t["categories"]] + [a for c in t["categories"] for a in c.get("aliases", [])]
+        assert len(ids) == len(set(ids)), t["id"]
+
+
+def test_alias_category_is_published_as_its_new_id(repo):
+    m = os.path.join(repo, "apps", "gnuboy", "manifest.toml")
+    with open(m) as f:
+        s = f.read()
+    with open(m, "w") as f:
+        f.write(s.replace('category = "emulators"', 'category = "arcade"'))
+    _, out = publish(repo)
+    with open(os.path.join(out, "index.json")) as f:
+        entry = [a for a in json.load(f)["apps"] if a["id"] == "gnuboy"][0]
+    assert entry["category"] == "action"

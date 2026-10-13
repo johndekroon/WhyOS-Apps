@@ -42,7 +42,7 @@
    "version": "fa51576"
   }
  ],
- "category": "development",
+ "category": "tools",
  "commands": [
   {
    "exec": "start",

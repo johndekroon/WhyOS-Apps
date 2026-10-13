@@ -192,6 +192,9 @@ def publish_app(app_id, out, base, categories, schema):
                      "source_archive": source_url})
     versions.sort(key=lambda v: -v["build"])
     details = {k: manifest[k] for k in DETAIL_FIELDS if k in manifest}
+    # the package keeps the id it was published with; the store shows the current one
+    category = pkglib.category_of(categories, m["type"], m["category"])[1]["id"]
+    details["category"] = category
     details.update(format=1, id=app_id, launch=manifest["launch"], bundled=bundled,
                    license_url=lic.get(m.get("license_file", app_id + ".txt")),
                    screenshots=screens, icon=icon, versions=versions)
@@ -200,7 +203,7 @@ def publish_app(app_id, out, base, categories, schema):
 
     entry = {
         "id": app_id, "name": m["name"], "summary": m["summary"], "type": m["type"],
-        "category": m["category"], "tags": m.get("tags", []), "author": m["author"],
+        "category": category, "tags": m.get("tags", []), "author": m["author"],
         "terminal": manifest["launch"]["terminal"] is not False or
         (manifest["launch"]["menu"] == "none" and bool(m.get("commands"))),
         "commands": [c["name"] for c in m.get("commands", [])],

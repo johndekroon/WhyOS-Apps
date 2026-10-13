@@ -42,9 +42,9 @@
   },
   {
    "author": "WhyOS-Apps contributors",
-   "category": "utilities",
+   "category": "tools",
    "commands": [],
-   "details_sha256": "1f266234082921b799cd3d8a6a65a0747cf5d49bdd2eaa3fb6b4669e2bda8b98",
+   "details_sha256": "28e0e0c2522f827efc6b229a86b49542c5967f59e3e4b99ac9f7abf9391fa429",
    "id": "calc",
    "install_location": "sd",
    "latest": {
@@ -158,9 +158,9 @@
   },
   {
    "author": "badge port",
-   "category": "media",
+   "category": "other",
    "commands": [],
-   "details_sha256": "41cfcfbd988af65a9f6d900dbc34ae0b2cbf93c65e4f024c7643ab95ee312b2b",
+   "details_sha256": "4822a78147e9e3518407408d41185c411d1e4c97918d30002b30f04ce09e5b7b",
    "id": "imgview",
    "install_location": "sd",
    "latest": {
@@ -237,12 +237,12 @@
   },
   {
    "author": "Damien P. George and the MicroPython contributors, badge port",
-   "category": "development",
+   "category": "tools",
    "commands": [
     "micropython",
     "python"
    ],
-   "details_sha256": "a872be5409899859b55e1ea5f87576ea8d4f6a289d7d5d397ca758d17666eb19",
+   "details_sha256": "559ce284b45050ae2dcf57351433cafb01e00548ef4916b8a2771839738b536e",
    "id": "micropython",
    "install_location": "sd",
    "latest": {
@@ -280,11 +280,11 @@
   },
   {
    "author": "The GNU nano developers, badge port",
-   "category": "productivity",
+   "category": "tools",
    "commands": [
     "nano"
    ],
-   "details_sha256": "2a5ed8d42eecfa558ba7e0cacf9f928a865b102820e26b64eef36f6525466e12",
+   "details_sha256": "993ef812116338c0b05e768ba211986e934e4c59a97581a7e429ce4b9a89c40e",
    "id": "nano",
    "install_location": "sd",
    "latest": {
@@ -320,11 +320,11 @@
   },
   {
    "author": "The NetHack DevTeam, badge port",
-   "category": "strategy",
+   "category": "puzzle",
    "commands": [
     "nethack"
    ],
-   "details_sha256": "1e00ae6671708d6f011419f0e28d8a25099dcd944c11de2989c60d5f551b88c9",
+   "details_sha256": "4547b59e6b4b1e6771beac1d1042e306df46daeb2b2ae521777f893e4141e21b",
    "id": "nethack",
    "install_location": "sd",
    "latest": {
@@ -400,11 +400,11 @@
   },
   {
    "author": "Nmap Project, badge port",
-   "category": "network",
+   "category": "internet",
    "commands": [
     "nmap"
    ],
-   "details_sha256": "afbaf91647771fc790c52b832fdfa2ca21800eed5569b9f4b370037dc5d313e1",
+   "details_sha256": "55e97d03120b91cf04ce199fae09c5411b4ea769e9291f3399d7a899a69e2391",
    "id": "nmap",
    "install_location": "sd",
    "latest": {
@@ -440,9 +440,9 @@
   },
   {
    "author": "why2025-linux contributors",
-   "category": "sensors",
+   "category": "hardware",
    "commands": [],
-   "details_sha256": "429563c7a87b609bdf560f92ffaca3471d6505322fcb8e84d6069975c8f6bda2",
+   "details_sha256": "b18ed09cd3e3ae87b9a28ba6c82c84136a72a41e65011e454b34eb55d32fb343",
    "id": "sensorpanel",
    "install_location": "sd",
    "latest": {
@@ -517,9 +517,9 @@
   }
  ],
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
- "categories_sha256": "3a6ddad8aabd3c71f44e356f3f543d968fbbd8d3f3327a2ed3b5af870ab368bb",
+ "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-10-12T21:52:35Z",
- "serial": 10,
+ "generated": "2026-10-13T06:57:11Z",
+ "serial": 11,
  "source": "whyos"
 }

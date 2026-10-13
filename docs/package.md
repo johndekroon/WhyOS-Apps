@@ -90,7 +90,7 @@ the strict schema reports this as an unknown key.
 | Field | Req. | Meaning |
 |---|---|---|
 | `type` | yes | `app`, `game` or `system`. `system` packages (the store itself, later drivers or fonts) are not shown in the browse tabs |
-| `category` | yes | A category id that exists under this type in [categories.json](../categories.json) |
+| `category` | yes | A category id (or a retired id listed under `aliases`) under this type in [categories.json](../categories.json) |
 | `tags` | no | Up to 8 lowercase words for search (`emulator`, `gameboy`) |
 | `content_warning` | no | Free text shown on the info page (e.g. flashing images) |
 

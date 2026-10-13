@@ -37,8 +37,7 @@ def check_app(app_id, schema, categories):
     if "withdrawn" in m:
         return p
 
-    types = {t["id"]: {c["id"] for c in t["categories"]} for t in categories["types"]}
-    if m.get("category") not in types.get(m.get("type"), set()):
+    if pkglib.category_of(categories, m.get("type"), m.get("category"))[1] is None:
         p.append("category %r does not exist under type %r" % (m.get("category"), m.get("type")))
 
     art_path = os.path.join(d, "artifact.toml")
