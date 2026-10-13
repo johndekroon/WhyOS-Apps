@@ -91,6 +91,19 @@
  "type": "system",
  "versions": [
   {
+   "build": 5,
+   "changelog": "Long lists show part of the next card, so you can see there is more to scroll to. Four categories per type.",
+   "package": {
+    "installed_size": 975156,
+    "sha256": "c26908cebfb0b069926e346c24c81fdc9240ad5398ba7abc37869d6fe9249d83",
+    "size": 508013,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.4.wpk"
+   },
+   "published": "2026-10-13T07:34:27Z",
+   "source_archive": null,
+   "version": "0.2.4"
+  },
+  {
    "build": 4,
    "changelog": "An install that a lost card or a power cut interrupted is undone properly: the old version comes back, or a first install is forgotten instead of showing as needing repair.",
    "package": {

@@ -646,7 +646,7 @@ static void hints(void)
 static void draw_list(void)
 {
 	struct frame *f = TOP;
-	int ys[LIST_MAX], y = 0, top, bottom = H - WB_HINT_BAR_H - 8, scroll = 0;
+	int ys[LIST_MAX], hs[LIST_MAX], y = 0, top, bottom = H - WB_HINT_BAR_H - 8, scroll, cut, keep;
 
 	top = WB_STATUS_BAR_H + 20;
 	eyebrow(WB_CONTENT_PAD, top, L.eyebrow);
@@ -676,23 +676,24 @@ static void draw_list(void)
 		if (i && L.rows[i].kind == R_GROUP)
 			y += 24 - 10;
 		ys[i] = y;
-		y += row_h(&L.rows[i]) + 10;
+		hs[i] = row_h(&L.rows[i]);
+		y += hs[i] + 10;
 	}
-	if (f->focus >= 0 && f->focus < L.n && ys[f->focus] + row_h(&L.rows[f->focus]) > bottom - top)
-		scroll = ys[f->focus] + row_h(&L.rows[f->focus]) - (bottom - top);
 	/* a group label stays with the row under it */
-	if (scroll && f->focus > 0 && L.rows[f->focus - 1].kind == R_GROUP &&
-	    top + ys[f->focus - 1] - scroll < top)
-		scroll = ys[f->focus - 1];
+	keep = f->focus > 0 && f->focus < L.n && L.rows[f->focus - 1].kind == R_GROUP ? f->focus - 1 : f->focus;
+	scroll = list_scroll(ys, hs, L.n, f->focus < L.n ? f->focus : -1, keep, bottom - top, &cut);
+	/* cards cut off at either end show only their part inside the list */
+	clip_rows(scroll ? top : 0, L.n && y - 10 - scroll > bottom - top ? top + cut : H);
 	for (int i = 0; i < L.n; i++) {
 		int ry = top + ys[i] - scroll;
 
-		if (ry < top)
+		if (ry + hs[i] <= top && scroll)
 			continue;
-		if (ry + row_h(&L.rows[i]) > bottom)
+		if (ry >= top + cut)
 			break;
 		draw_row(&L.rows[i], ry, i == f->focus);
 	}
+	clip_end();
 	if (!L.n && f->v == V_SEARCH && query[0])
 		text(&f_ui18, WB_CONTENT_PAD, top, "Nothing found", WB_COLOR_TEXT_LOW, 0);
 }

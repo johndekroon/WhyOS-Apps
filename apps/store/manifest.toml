@@ -4,8 +4,8 @@
 format = 1
 id = "store"
 name = "App store"
-version = "0.2.3"
-build = 4
+version = "0.2.4"
+build = 5
 summary = "Find, install and update apps and games"
 description = """
 The WhyOS app store: browse and search the apps and games, install them on
@@ -20,7 +20,7 @@ license = "MIT AND (Apache-2.0 OR GPL-2.0-or-later) AND Zlib AND LGPL-2.1-or-lat
 license_file = "store.txt"
 homepage = "https://github.com/johndekroon/WhyOS-Apps"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/client"
-changelog = "An install that a lost card or a power cut interrupted is undone properly: the old version comes back, or a first install is forgotten instead of showing as needing repair."
+changelog = "Long lists show part of the next card, so you can see there is more to scroll to. Four categories per type."
 
 type = "system"
 category = "store"
