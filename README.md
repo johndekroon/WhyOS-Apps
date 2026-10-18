@@ -13,7 +13,7 @@ why2025-linux (NetHack, nano, a calculator and MicroPython among them, 2026-10-1
 published in `dist/v1/`. The `store`
 client ([client/](client/README.md)) installs, updates and removes them on
 a badge, from the command line and from its full-screen UI, which opens
-from the menu (Apps > App store, Settings > My apps). why2025-linux puts
+from the menu (Apps > App store, Settings > Storage & devices > My apps). why2025-linux puts
 the first store in the image.
 
 ## Documents

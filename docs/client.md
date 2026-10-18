@@ -119,7 +119,7 @@ Changes in why2025-linux, outside this repository (all done on its
 | Store tile or entry in the menu | `home.c` | Start `store`; "My apps" also reachable from Settings |
 | `$HOME/.whyos/bin` on `PATH` | `/etc/profile.d/whyos-apps.sh` in the rootfs overlay (login and interactive shells); `DEFAULT_PATH` in `dropbear-localoptions.h`, path written out (commands run directly over SSH) | Commands of command-line apps in every shell (package.md §2.3.1) |
 | `/etc/whyos-release` | rootfs overlay | OS version and API level (device.md §6.3) |
-| `store maintain` after the card is mounted | `S15sdcard` at boot (with `HOME=/root`), and the menu's Settings > Disks when it mounts the card. There is no automount when a card is inserted while the badge runs | Finish interrupted work, pending cleanups |
+| `store maintain` after the card is mounted | `S15sdcard` at boot (with `HOME=/root`), and the menu's Settings > Storage & devices > Disks when it mounts the card. There is no automount when a card is inserted while the badge runs | Finish interrupted work, pending cleanups |
 | The first store in `/data` | `post-build.sh` runs `stage-store.py` | A fresh badge has a store |
 | "Open" from the store | `home.c` reads `/tmp/store-open` when the store ends | The store cannot start apps itself: apprun and the menu do that |
 

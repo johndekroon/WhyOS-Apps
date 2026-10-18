@@ -47,12 +47,12 @@ rotation lock.
   Until it is (or that code is copied in here), only the CLI builds from
   this repository alone; `dist/` has the built store.
 - **Card insertion.** There is no automount: the card is mounted at boot or
-  from Settings > Disks. `store maintain` runs at boot, when the store
+  from Settings > Storage & devices > Disks. `store maintain` runs at boot, when the store
   starts, and when Disks mounts the card.
 - **The SD card dropping out on large writes.** Installing DOOM (about
   2 MB to the card) twice ended with a write error, after which Linux
-  dropped the card until it was put in again (2026-10-12; why2025-linux
-  `Docs/16-linux.md` 16.16). nmap's 2 MB went fine before. Card, contact
+  dropped the card until it was put in again (2026-10-12; WhyBadge
+  `Docs/10-opslag-geheugen-stroom.md` 10.6). nmap's 2 MB went fine before. Card, contact
   or SD driver: not known yet, needs another card. The journal and
   `maintain` dealt with it; since store 0.2.3 the registry follows too.
   DOOM, the sensor panel and the Bus Pirate came from the OS image into
