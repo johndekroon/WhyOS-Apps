@@ -3,8 +3,8 @@
 format = 1
 id = "buspirate"
 name = "Bus Pirate"
-version = "1.0.0"
-build = 1
+version = "1.1.0"
+build = 2
 summary = "Power supply, logic analyzer, LEDs and console for a Bus Pirate 6"
 description = """
 Control a Bus Pirate 6 on the badge's bottom USB port from the keypad,
@@ -25,7 +25,7 @@ license = "MIT AND OFL-1.1 AND LGPL-2.1-or-later"
 license_file = "buspirate.txt"
 homepage = "https://buspirate.com"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/buspirate/source"
-changelog = "First store release; it was part of the start menu before."
+changelog = "New key layout after the badge design: ▲ power supply, ✕ logic analyzer, ● console, ♣ pins, ■ menus, ◆ help on every screen."
 
 type = "app"
 category = "hardware"

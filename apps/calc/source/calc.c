@@ -16,6 +16,10 @@
  * angle unit is degrees; Tab switches to radians and back. A whole
  * number result also shows in hexadecimal and binary. Up and Down bring
  * back earlier sums, Esc clears the line (on an empty line it closes).
+ * The symbol keys follow the design (Docs/06-design-system.md 6.6): the
+ * circle opens the log (the calculator keeps none: an empty screen), the
+ * cloud its settings (the angle unit, a pop-up list), the diamond the
+ * help; the left three do nothing here.
  *
  * The panel is drawn one band of BAND_H rows at a time through wbdraw.h's
  * clipping, as appterm does, so there is no 1 MB frame buffer next to it.
@@ -39,6 +43,8 @@
 #define W		WB_SCREEN_W
 #define H		WB_SCREEN_H
 #include "wbdraw.h"
+#include "lora_state.h"
+#include "wbstatus.h"
 
 #ifndef CALC_HOST
 #include <poll.h>
@@ -92,7 +98,12 @@ static struct {
 	int have_ans, rad;
 	const char *err;		/* after Enter: what is wrong */
 	char preview[40], bases[96];
+	int sc;				/* SC_CALC, SC_LOG, SC_SETTINGS */
+	int help;			/* the diamond's pop-up is open */
+	int pick, pick_focus;		/* the angle unit's pop-up is open */
 } C;
+
+enum { SC_CALC, SC_LOG, SC_SETTINGS };
 
 /* ---- numbers as text ---------------------------------------------------- */
 
@@ -617,7 +628,7 @@ static void recall(int dir)
 
 static struct {
 	char hhmm[6];
-	int clock_ok, wifi_up;
+	int clock_ok, wifi_up /* bars, -1 none: wbstatus.h */, lora;
 } U;
 
 /* s at most w px wide: its end, with "…" in front when cut */
@@ -710,27 +721,115 @@ static void draw_input(void)
 		     WB_COLOR_TEXT_LOW, 0);
 }
 
+/* status bar, as home's: WhyOS left; LoRa, Wi-Fi and the clock right */
+static void status_bar(void)
+{
+	const struct wb_font *n = &f_ui18b;
+	int cy = WB_STATUS_BAR_H / 2;
+
+	text(n, text(n, WB_CHROME_PAD, text_top(n, cy), "Why", WB_COLOR_TEXT_HI, -3),
+	     text_top(n, cy), "OS", WB_COLOR_CYAN, -3);
+	status_right(U.hhmm, U.clock_ok, U.wifi_up, U.lora);
+}
+
+static const char *const units[2] = { "Degrees", "Radians" };
+
+/* The cloud key's screen: the angle unit, chosen in a pop-up list. */
+static void draw_settings(void)
+{
+	static const struct hint hints[] = { { "Enter", "change", 0 }, { "Esc", "back", 1 } };
+	int top = WB_STATUS_BAR_H + 20, x = WB_CONTENT_PAD, w = W - 2 * WB_CONTENT_PAD, y, cy, rx;
+
+	fill(0, 0, W, H, WB_COLOR_VOID);
+	status_bar();
+	eyebrow(x, top, "CALCULATOR");
+	text(&f_ui36b, x, top + 18 + 6, "Settings", WB_COLOR_TEXT_HI, -11);
+	y = top + 18 + 6 + 44 + 24;
+	cy = y + 34;
+	box_focus(x, y, w, 68, WB_RADIUS_MD, &GLOW_ROW);
+	rx = x + w - 20 - 20;
+	icon(&r_chevron, rx, cy - 10, WB_COLOR_TEXT_LOW, 255);
+	rx -= 16 + text_w(&f_ui18, units[C.rad], 0);
+	text(&f_ui18, rx, text_top(&f_ui18, cy), units[C.rad], WB_COLOR_TEXT_HI, 0);
+	text(&f_ui22, x + 20, text_top(&f_ui22, cy), "Angle unit", WB_COLOR_TEXT_HI, 0);
+	text(&f_ui18, x + 20, y + 68 + 12, "For sin, cos, tan and their inverses. Tab switches it too.",
+	     WB_COLOR_TEXT_LOW, 0);
+	hint_bar(hints, 2);
+}
+
+/* The diamond key: what this screen does and its keys. */
+static void draw_help(void)
+{
+	static const struct help_key calc_keys[] = {
+		{ "Enter", "Work the sum out (= does too)" },
+		{ "\xe2\x86\x91\xe2\x86\x93", "Bring back earlier sums" },
+		{ "\xe2\x86\x90\xe2\x86\x92", "Move the cursor (with Fn: to an end)" },
+		{ "Backspace", "Erase before the cursor" },
+		{ "Tab", "Degrees or radians" },
+		{ "Esc", "Clear the line; on an empty line, close" },
+		{ "#4", "Log (the calculator keeps none)" },
+		{ "#5", "Settings: the angle unit" },
+		{ "#6", "This help" },
+		{ "Logo", "Back to the menu" },
+	};
+	static const struct help_key set_keys[] = {
+		{ "Enter", "Choose the angle unit" },
+		{ "Esc", "Back to the calculator" },
+		{ "#4", "Log" },
+		{ "#6", "This help" },
+		{ "Logo", "Back to the menu" },
+	};
+	static const struct help_key log_keys[] = {
+		{ "Esc", "Back to the calculator" },
+		{ "#5", "Settings" },
+		{ "#6", "This help" },
+		{ "Logo", "Back to the menu" },
+	};
+
+	if (C.sc == SC_SETTINGS)
+		help_popup("Settings", "The calculator's settings. They last until it closes.",
+			   set_keys, sizeof(set_keys) / sizeof(set_keys[0]));
+	else if (C.sc == SC_LOG)
+		help_popup("Log", "The calculator keeps no log: its sums are on the tape.",
+			   log_keys, sizeof(log_keys) / sizeof(log_keys[0]));
+	else
+		help_popup("Calculator", "Type a sum and press Enter; it goes on the tape above. "
+			   "Starting with + * / or ^ goes on from the last result.",
+			   calc_keys, sizeof(calc_keys) / sizeof(calc_keys[0]));
+}
+
 static void draw_band(int y0, int y1)
 {
-	const struct wb_icon *wi = &i_wifi22;
 	static const struct hint hints[] = {
 		{ "Enter", "=", 0 }, { "\xe2\x86\x91\xe2\x86\x93", "earlier", 0 },
-		{ "Tab", "deg/rad", 0 }, { "Esc", "clear", 0 }, { "Logo", "close", 1 },
+		{ "Tab", "deg/rad", 0 }, { "Esc", "clear", 1 },
 	};
+	static const struct hint empty_hints[] = {
+		{ "Enter", "=", 0 }, { "\xe2\x86\x91\xe2\x86\x93", "earlier", 0 },
+		{ "Tab", "deg/rad", 0 }, { "Esc", "close", 1 },
+	};
+	static const struct hint pick_hints[] = { { "Enter", "choose", 0 }, { "Esc", "cancel", 1 } };
 	const char *chip = C.rad ? "RAD" : "DEG";
 
-	fill(0, y0, W, y1 - y0, WB_COLOR_VOID);
-	/* status bar, as home's: WhyOS left, Wi-Fi and the clock right */
-	{
-		const struct wb_font *n = &f_ui18b, *f = &f_mono16b;
-		int cy = WB_STATUS_BAR_H / 2, cx = W - WB_CHROME_PAD - text_w(f, U.hhmm, 0);
+	if (C.sc == SC_LOG) {
+		empty_screen("CALCULATOR", "Log", "No log yet.");
+		status_bar();
+	} else if (C.sc == SC_SETTINGS) {
+		draw_settings();
+		if (C.pick) {
+			struct menu_item it[2] = { { .label = "Degrees" }, { .label = "Radians" } };
 
-		text(n, text(n, WB_CHROME_PAD, text_top(n, cy), "Why", WB_COLOR_TEXT_HI, -3),
-		     text_top(n, cy), "OS", WB_COLOR_CYAN, -3);
-		text(f, cx, text_top(f, cy), U.hhmm, U.clock_ok ? WB_COLOR_TEXT_HI : WB_COLOR_TEXT_LOW, 0);
-		icon(wi, cx - 14 - wi->w, (WB_STATUS_BAR_H - wi->h) / 2,
-		     U.wifi_up ? WB_COLOR_CYAN : WB_COLOR_TEXT_LOW, 255);
+			menu_popup("CALCULATOR", "Angle unit", "2 options", it, 0, 2, C.pick_focus, C.rad,
+				   0, 0, pick_hints, 2);
+		}
 	}
+	if (C.sc != SC_CALC) {
+		if (C.help)
+			draw_help();
+		return;
+	}
+	fill(0, y0, W, y1 - y0, WB_COLOR_VOID);
+	status_bar();
 	eyebrow(PANEL_X + 8, 54, "APPS");
 	text(&f_ui28b, PANEL_X + 6, 72, "Calculator", WB_COLOR_TEXT_HI, -8);
 	{
@@ -749,7 +848,12 @@ static void draw_band(int y0, int y1)
 	text(&f_mono13, LEFT, HELP_Y,
 	     "+ - * / ^ ( )  n%  n!  mod  pi e ans  sqrt ln log sin cos tan",
 	     WB_COLOR_TEXT_LOW, 0);
-	hint_bar(hints, 5);
+	if (C.len || C.err)
+		hint_bar(hints, 4);
+	else
+		hint_bar(empty_hints, 4);
+	if (C.help)
+		draw_help();
 }
 
 /* ---- output: the panel, or a PPM on the host ---------------------------- */
@@ -812,11 +916,59 @@ static int times_x(void)
 	return !(C.in[i - 1] == '0' && (i == 1 || (!is_digit(C.in[i - 2]) && C.in[i - 2] != '.')));
 }
 
-/* One key; 0 to go on, 1 to close, 2 when only the line changed. */
+/*
+ * The keys of the pop-ups and of the log and settings screens; -1 when the
+ * calculator itself takes it.
+ */
+static int other_key(int code)
+{
+	if (C.help) {		/* only an explanation: Esc or the diamond closes it */
+		if (code == KEY_ESC || code == KEY_SYM_HELP)
+			C.help = 0;
+		return 3;
+	}
+	if (C.pick) {
+		if (code == KEY_UP || code == KEY_DOWN)
+			C.pick_focus ^= 1;
+		else if (code == KEY_ENTER) {
+			C.rad = C.pick_focus;
+			preview();
+			C.pick = 0;
+		} else if (code == KEY_ESC)
+			C.pick = 0;
+		return 3;
+	}
+	switch (code) {
+	case KEY_SYM_LOG:
+		C.sc = SC_LOG;
+		return 3;
+	case KEY_SYM_SETTINGS:
+		C.sc = SC_SETTINGS;
+		return 3;
+	case KEY_SYM_HELP:
+		C.help = 1;
+		return 3;
+	}
+	if (C.sc == SC_CALC)
+		return -1;
+	if (code == KEY_ESC)
+		C.sc = SC_CALC;
+	else if (code == KEY_ENTER && C.sc == SC_SETTINGS) {
+		C.pick = 1;
+		C.pick_focus = C.rad;
+	}
+	return 3;
+}
+
+/* One key; 0 to go on, 1 to close, 2 when only the line changed, 3 for the
+ * whole screen. */
 static int key(int code)
 {
 	char ch, s[4] = "";
+	int r = other_key(code);
 
+	if (r >= 0)
+		return r;
 	switch (code) {
 	case KEY_ENTER:
 		enter();
@@ -889,8 +1041,8 @@ static void save_ppm(const char *path)
 }
 
 /* calc-host KEYS OUT.ppm: KEYS is typed; \n Enter, \e Esc, \t Tab, \b
- * Backspace, \u Up, \d Down, \l Left, \r Right. Prints the line, the
- * preview and the tape. */
+ * Backspace, \u Up, \d Down, \l Left, \r Right, \1..\6 the symbol keys.
+ * Prints the screen, the angle unit, the line, the preview and the tape. */
 int main(int argc, char **argv)
 {
 	const char *k = argc > 1 ? argv[1] : "";
@@ -904,7 +1056,8 @@ int main(int argc, char **argv)
 			k++;
 			code = *k == 'n' ? KEY_ENTER : *k == 'e' ? KEY_ESC : *k == 't' ? KEY_TAB :
 			       *k == 'b' ? KEY_BACKSPACE : *k == 'u' ? KEY_UP : *k == 'd' ? KEY_DOWN :
-			       *k == 'l' ? KEY_LEFT : *k == 'r' ? KEY_RIGHT : -1;
+			       *k == 'l' ? KEY_LEFT : *k == 'r' ? KEY_RIGHT :
+			       *k >= '1' && *k <= '6' ? KEY_SYM_MENU + (*k - '1') : -1;
 		} else {
 			for (int c = 0; c < 64 && code < 0; c++) {
 				if (key_char(c, 0) == *k)
@@ -925,7 +1078,12 @@ int main(int argc, char **argv)
 	if (argc > 2)
 		save_ppm(argv[2]);
 	{
-		char out[1024] = "line ";
+		char out[1024] = "screen ";
+
+		strcat(out, C.sc == SC_LOG ? "log" : C.sc == SC_SETTINGS ? "settings" : "calc");
+		strcat(out, C.help ? " help" : C.pick ? " pick" : "");
+		strcat(out, C.rad ? "\nunit rad" : "\nunit deg");
+		strcat(out, "\nline ");
 
 		strcat(out, C.in);
 		strcat(out, "\npreview ");
@@ -984,8 +1142,8 @@ static int status_read(void)
 {
 	time_t t = time(0);
 	struct tm tm;
-	char st[16], old[6];
-	int wifi = U.wifi_up, ok = U.clock_ok;
+	char old[6];
+	int wifi = U.wifi_up, ok = U.clock_ok, lora = U.lora;
 
 	memcpy(old, U.hhmm, sizeof(old));
 	localtime_r(&t, &tm);
@@ -996,8 +1154,9 @@ static int status_read(void)
 	U.hhmm[3] = (char)('0' + tm.tm_min / 10);
 	U.hhmm[4] = (char)('0' + tm.tm_min % 10);
 	U.hhmm[5] = 0;
-	U.wifi_up = read_line("/sys/class/net/wlan0/operstate", st, sizeof(st)) > 0 && !strcmp(st, "up");
-	return wifi != U.wifi_up || ok != U.clock_ok || memcmp(old, U.hhmm, sizeof(old));
+	U.wifi_up = wifi_bars();	/* -1: not connected, else the lit arcs */
+	U.lora = lora_on();
+	return wifi != U.wifi_up || ok != U.clock_ok || lora != U.lora || memcmp(old, U.hhmm, sizeof(old));
 }
 
 int main(void)
@@ -1021,7 +1180,7 @@ int main(void)
 	p.events = POLLIN;
 	while (!stop_sig) {
 		struct ev evs[16];
-		int k = poll(&p, 1, 5000), got, tape = 0, line = 0, quit = 0;
+		int k = poll(&p, 1, 5000), got, tape = 0, line = 0, quit = 0, all = 0;
 
 		if (k <= 0) {
 			if (status_read())
@@ -1045,6 +1204,8 @@ int main(void)
 					quit = 1;
 				else if (r == 2)
 					line = 1;
+				else if (r == 3)
+					all = 1;
 				else
 					tape = 1;
 			}
@@ -1052,6 +1213,12 @@ int main(void)
 		if (quit)
 			break;
 		/* typing redraws the line only: a whole screen is ~14 bands */
+		if (all) {
+			flush_rows(0, H);
+			continue;
+		}
+		if (tape || line)	/* Esc's word: clear or close */
+			flush_rows(H - WB_HINT_BAR_H, H);
 		if (tape)
 			flush_rows(PANEL_Y, PANEL_Y + PANEL_H);
 		else if (line)

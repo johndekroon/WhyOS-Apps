@@ -1,8 +1,8 @@
 # gnuboy on the WHY2025 badge: what the keypad does (sdapps/README.md).
 # The symbol keys reach Linux as F1..F6: f1 = square, f2 = triangle,
-# f3 = cross, f4 = circle, f5 = cloud, f6 = diamond.
+# f3 = cross, f4 = circle, f5 = cloud, f6 = diamond. Esc (the pause
+# screen) and f6 (the keys) are handled in badge.c and never reach gnuboy.
 
-bind esc quit
 bind up +up
 bind down +down
 bind left +left

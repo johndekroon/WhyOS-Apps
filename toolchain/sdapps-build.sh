@@ -105,17 +105,18 @@ build_gnuboy() {
 	local s=$SRC/gnuboy d=$DEST/gnuboy objs=()
 	fetch gnuboy "$GNUBOY_REPO" "$GNUBOY_REV"
 	mkdir -p "$s/sys/badge" "$d"
-	cp "$HERE/gnuboy/badge.c" "$s/sys/badge/badge.c"
+	cp "$HERE/gnuboy/badge.c" "$HERE/pause/pause.c" "$HERE/pause/pause.h" "$s/sys/badge/"
 	for f in lcd refresh lcdc palette cpu mem rtc hw sound events keytable menu \
 		 loader save debug emu main rccmds rckeys rcvars rcfile exports split \
 		 path inflate miniz_tinfl xz/xz_crc32 xz/xz_crc64 xz/xz_dec_lzma2 \
 		 xz/xz_dec_stream xz/xz_dec_bcj sys/nix/nix sys/dummy/nosound \
-		 sys/dummy/nojoy sys/badge/badge; do
+		 sys/dummy/nojoy sys/badge/badge sys/badge/pause; do
 		objs+=("$s/$f.c")
 	done
 	flat 65536
+	# pause.c (sdapps/pause) draws with the menu's wbdraw.h and fonts (overlay-src)
 	"$CC" "${CFLAGS[@]}" -O2 -DIS_LITTLE_ENDIAN -DIS_LINUX -I"$s" -I"$s/sys/nix" \
-		"${objs[@]}" "${LDFLAT[@]}" -o "$d/gnuboy"
+		-I"$HERE/../patches/buildroot/overlay-src" "${objs[@]}" "${LDFLAT[@]}" -o "$d/gnuboy"
 	zero_page "$d/gnuboy.gdb"
 	cp "$HERE/gnuboy/badge.rc" "$HERE/gnuboy/app.conf" "$d/"
 	ls -l "$d"
@@ -128,7 +129,7 @@ build_netsurf() {
 	local s=$SRC/netsurf-all-3.11 d=$DEST/netsurf
 	build_deps
 	[ -d "$s" ] || (cd "$SRC" && curl -sSfLO "$NETSURF_URL" && tar xzf netsurf-all-3.11.tar.gz)
-	cp "$HERE/netsurf/badge.c" "$s/libnsfb/src/surface/badge.c"
+	cp "$HERE/netsurf/badge.c" "$HERE/pause/pause.h" "$s/libnsfb/src/surface/"
 	grep -q badge.c "$s/libnsfb/src/surface/Makefile" ||
 		sed -i 's/^SURFACE_HANDLER_yes := surface.c ram.c$/& badge.c/' "$s/libnsfb/src/surface/Makefile"
 	cp "$HERE/netsurf/Makefile.config" "$s/netsurf/Makefile.config"
@@ -146,6 +147,9 @@ build_netsurf() {
 	done
 	# a failed allocation ends NetSurf at once (netsurf/oom.c)
 	"$CC" $LIBCFLAGS -c "$HERE/netsurf/oom.c" -o "$SRC/oom.o"
+	# Esc's pause screen (sdapps/pause), drawn with the menu's wbdraw.h
+	"$CC" $LIBCFLAGS -I"$HERE/../patches/buildroot/overlay-src" -c "$HERE/pause/pause.c" \
+		-o "$SRC/pause.o"
 	# a small iconv in place of GNU libiconv (netsurf/iconv.c): first on
 	# the library path, so -liconv finds it
 	"$CC" $LIBCFLAGS -c "$HERE/netsurf/iconv.c" -o "$SRC/iconv.o"
@@ -171,7 +175,7 @@ build_netsurf() {
 	PATH=$SRC/xbin:$PATH PKG_CONFIG_PATH=$P/lib/pkgconfig CC=riscv32-buildroot-linux-uclibc-gcc \
 	CFLAGS="$LIBCFLAGS -I$P/include -D_GNU_SOURCE" \
 	LDFLAGS="-L$P/lib -static -Wl,-u,badge_rtns -Wl,--gc-sections -Wl,--no-relax -Wl,-elf2flt=-r \
-		$SRC/oom.o -Wl,--wrap=malloc,--wrap=calloc,--wrap=realloc" \
+		$SRC/oom.o $SRC/pause.o -Wl,--wrap=malloc,--wrap=calloc,--wrap=realloc" \
 	make -C "$s" TARGET=framebuffer HOST=riscv32-buildroot-linux-uclibc "$@"
 	zero_page "$s/netsurf/nsfb.gdb"
 	# its stack (elf2flt -s has a space make would split)

@@ -91,6 +91,19 @@
  "type": "system",
  "versions": [
   {
+   "build": 6,
+   "changelog": "The symbol keys after the badge design: ■ in a category opens a sort pop-up, ● the store's log, ♣ settings, ◆ help. Esc first clears a search.",
+   "package": {
+    "installed_size": 997716,
+    "sha256": "634deb0ef28af07230047b50277ff580c15f4c745cab118a2a610ee4c0f2caa1",
+    "size": 518939,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.5.wpk"
+   },
+   "published": "2026-10-18T18:26:04Z",
+   "source_archive": null,
+   "version": "0.2.5"
+  },
+  {
    "build": 5,
    "changelog": "Long lists show part of the next card, so you can see there is more to scroll to. Four categories per type.",
    "package": {

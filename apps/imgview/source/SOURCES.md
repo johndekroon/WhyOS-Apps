@@ -3,7 +3,7 @@
 Together with the downloads below, this directory is the complete
 corresponding source of the `imgview` package (docs/package.md §2.10). The
 files here are the badge-specific ones, copied from why2025-linux
-`sdapps/` at commit `2be6d7c`; the toolchain and the build script are in
+`sdapps/` at commit `be892b8`; the toolchain and the build script are in
 [toolchain/](../../../toolchain/README.md).
 
 | Upstream | URL | SHA-256 or commit |

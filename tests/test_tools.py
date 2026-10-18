@@ -4,6 +4,7 @@
 """
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -35,6 +36,10 @@ def repo(tmp_path):
         shutil.copy(os.path.join(ROOT, f), root / f)
     shutil.copytree(os.path.join(ROOT, "schema"), root / "schema")
     shutil.copytree(os.path.join(ROOT, "apps", "gnuboy"), root / "apps" / "gnuboy")
+    # the tests below count from version 1.0.0, build 1, whatever gnuboy is at
+    m = root / "apps" / "gnuboy" / "manifest.toml"
+    m.write_text(re.sub(r'^version = ".*"\nbuild = \d+$', 'version = "1.0.0"\nbuild = 1',
+                        m.read_text(), count=1, flags=re.M))
     return str(root)
 
 

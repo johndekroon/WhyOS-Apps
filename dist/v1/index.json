@@ -4,18 +4,18 @@
    "author": "why2025-linux contributors",
    "category": "hardware",
    "commands": [],
-   "details_sha256": "6cbf6539d634e7bbf59254813f4b89d73ef781020881e09e2bb98544f8c97c4a",
+   "details_sha256": "7e2ea5273ace3461f9ec3ee47a27f5ba2a233c53e7f6a61bd9ea3edf36f5f9d9",
    "id": "buspirate",
    "install_location": "sd",
    "latest": {
-    "build": 1,
+    "build": 2,
     "package": {
-     "installed_size": 505203,
-     "sha256": "512f3d2324e443da7eef8a3d36b1fce964327625d1b8f6c53c0e0c7d99cd566d",
-     "size": 222209,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/buspirate-1.0.0.wpk"
+     "installed_size": 530679,
+     "sha256": "f8688e9c16d6b0f5687d2cc416d3f45e338a10ae8d2ff25153bb1cc02c30b2d6",
+     "size": 235823,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/buspirate-1.1.0.wpk"
     },
-    "version": "1.0.0"
+    "version": "1.1.0"
    },
    "menu_icon": "chip",
    "name": "Bus Pirate",
@@ -38,24 +38,24 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-10-12"
+   "updated": "2026-10-18"
   },
   {
    "author": "WhyOS-Apps contributors",
    "category": "tools",
    "commands": [],
-   "details_sha256": "28e0e0c2522f827efc6b229a86b49542c5967f59e3e4b99ac9f7abf9391fa429",
+   "details_sha256": "ad07a34c718583738e7baf05209537c6168f6080f4f48454962bf1f6107e646f",
    "id": "calc",
    "install_location": "sd",
    "latest": {
-    "build": 1,
+    "build": 2,
     "package": {
-     "installed_size": 374271,
-     "sha256": "a641d19170e3b9ec98b6d26b8e17765a962d7ad8d0a4eb16d60b2a32e88c9e90",
-     "size": 167479,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.0.0.wpk"
+     "installed_size": 399059,
+     "sha256": "0af1b0d3765f8196255544bf4450f34a34bbabfdaeaf1c4c078450c7bd131bc3",
+     "size": 179678,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.1.0.wpk"
     },
-    "version": "1.0.0"
+    "version": "1.1.0"
    },
    "menu_icon": "count",
    "name": "Calculator",
@@ -76,7 +76,7 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-10-12"
+   "updated": "2026-10-18"
   },
   {
    "author": "id Software (DOOM), maximevince (fbDOOM), badge port",
@@ -122,18 +122,18 @@
    "author": "gnuboy authors (rofl0r/gnuboy), badge port",
    "category": "emulators",
    "commands": [],
-   "details_sha256": "9d787aa1b23b1eeadb72dffd7320ce45685b4ff7909e67faa59ec33cc947326d",
+   "details_sha256": "cedd223c9b58e3d63320c8d3642649c199f2b30f3d203662483be8df1aea0c07",
    "id": "gnuboy",
    "install_location": "sd",
    "latest": {
-    "build": 1,
+    "build": 2,
     "package": {
-     "installed_size": 274906,
-     "sha256": "e34369af2c1d918aaad010d576dea3c65a5bd47539f29f504f0c94255d16f8c6",
-     "size": 136209,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/gnuboy-1.0.0.wpk"
+     "installed_size": 415246,
+     "sha256": "b09b9381691fab1acbf13f1cb1cf0d251f70b1b0e4be8d30a166bc4bf2a1ce70",
+     "size": 202352,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/gnuboy-1.1.0.wpk"
     },
-    "version": "1.0.0"
+    "version": "1.1.0"
    },
    "menu_icon": "gameboy",
    "name": "Game Boy",
@@ -154,24 +154,24 @@
    ],
    "terminal": false,
    "type": "game",
-   "updated": "2026-10-12"
+   "updated": "2026-10-18"
   },
   {
    "author": "badge port",
    "category": "other",
    "commands": [],
-   "details_sha256": "4822a78147e9e3518407408d41185c411d1e4c97918d30002b30f04ce09e5b7b",
+   "details_sha256": "fdc83c6ad5373dad679e3d1bc6b96fb4f2c97757bb974c79334e028adf783b24",
    "id": "imgview",
    "install_location": "sd",
    "latest": {
-    "build": 1,
+    "build": 2,
     "package": {
-     "installed_size": 415145,
-     "sha256": "f2205309d5cecc7e51af5d281cf92e1b8b1f5ad7b5f1e5bea79d9da2e8977aff",
-     "size": 230515,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/imgview-1.0.0.wpk"
+     "installed_size": 522481,
+     "sha256": "1a90d1eb3bcc1d360014ec6f75cc87fde35c364710cf5ec87dbb0c02c483f6ad",
+     "size": 266576,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/imgview-1.1.0.wpk"
     },
-    "version": "1.0.0"
+    "version": "1.1.0"
    },
    "name": "Picture viewer",
    "requires": {
@@ -192,7 +192,7 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-10-12"
+   "updated": "2026-10-18"
   },
   {
    "author": "Twibright Labs (Links), badge port",
@@ -363,18 +363,18 @@
    "author": "NetSurf developers, badge port",
    "category": "internet",
    "commands": [],
-   "details_sha256": "54cb4149848b228d9d601aa52ee46071de023d1017e0217973d24038ba19d80c",
+   "details_sha256": "be12d11f44e2b568d4e798b3bc480e4fafc7730a628284e72853f66f3f550605",
    "id": "netsurf",
    "install_location": "sd",
    "latest": {
-    "build": 1,
+    "build": 2,
     "package": {
-     "installed_size": 3359315,
-     "sha256": "a3e43dbc0eb1e226229c6795fe8043acb3d540e6f61e869d2b0da54b98d6086f",
-     "size": 1622355,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/netsurf-1.0.0.wpk"
+     "installed_size": 3497307,
+     "sha256": "d9e2eb8da5d27cc143e4d9f602fe03c9d4a34ba937c96640e3e5af009d2268be",
+     "size": 1688054,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/netsurf-1.1.0.wpk"
     },
-    "version": "1.0.0"
+    "version": "1.1.0"
    },
    "menu_icon": "globe",
    "name": "NetSurf",
@@ -396,7 +396,7 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-10-12"
+   "updated": "2026-10-18"
   },
   {
    "author": "Nmap Project, badge port",
@@ -481,18 +481,18 @@
    "author": "WhyOS-Apps",
    "category": "store",
    "commands": [],
-   "details_sha256": "d1f13a6eae9eaa7e27df8d986820014dcc2c999193e2b06b70ebcb4d32d12366",
+   "details_sha256": "f09ca1a727df3e8aafecbc58c7be0601d2e5818de15848e3f6a7268afcbe7d1b",
    "id": "store",
    "install_location": "flash",
    "latest": {
-    "build": 5,
+    "build": 6,
     "package": {
-     "installed_size": 975156,
-     "sha256": "c26908cebfb0b069926e346c24c81fdc9240ad5398ba7abc37869d6fe9249d83",
-     "size": 508013,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.4.wpk"
+     "installed_size": 997716,
+     "sha256": "634deb0ef28af07230047b50277ff580c15f4c745cab118a2a610ee4c0f2caa1",
+     "size": 518939,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.5.wpk"
     },
-    "version": "0.2.4"
+    "version": "0.2.5"
    },
    "menu_icon": "store",
    "name": "App store",
@@ -513,13 +513,13 @@
    ],
    "terminal": false,
    "type": "system",
-   "updated": "2026-10-13"
+   "updated": "2026-10-18"
   }
  ],
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-10-13T07:34:27Z",
- "serial": 12,
+ "generated": "2026-10-18T18:26:05Z",
+ "serial": 13,
  "source": "whyos"
 }

@@ -28,7 +28,7 @@
  * screen close it again.
  *
  * Drawing: a 720x720 RGB565 shadow buffer, written to /dev/fb0 with one
- * pwrite per frame (no fbdev mmap on NOMMU), like launcher and
+ * pwrite per frame (no fbdev mmap on NOMMU), like
  * sensorpanel. The console is switched to KD_GRAPHICS so fbcon does not
  * draw over the menu. Fonts, icons and the glow fall-off come
  * pre-rendered from home_assets.h (home-assets/gen.py); the rest is
@@ -108,6 +108,9 @@
 #define HAS_BP		1
 #endif
 #include "settings.h"
+#include "lora_presets.h"
+#include "lora_state.h"
+#include "wbstatus.h"
 
 /* ------------------------------------------------------------------ */
 /* Number formatting (no stdio in the FLAT build)                      */
@@ -147,12 +150,14 @@ struct sys {
 	char user[40];			/* the name setting, first letter capital */
 	char temp[16];			/* "21.4°C" (BME680), or empty */
 	int wifi_up;
+	int wifi_bars;			/* the status bar's: -1 not connected (wbstatus.h) */
 	char wifi_state[24];
 	char wifi_ip[20];
 	char wifi_mac[24];
 	int bl, bl_max;			/* panel backlight */
 	int kbd;			/* keyboard backlight */
 	int ble_pid;			/* ble_adv, 0 if not running */
+	int lora;			/* the mesh daemon runs: radio on (lora_state.h) */
 	int n_usb;
 	char usb[6][2][40];		/* product, "vvvv:pppp" */
 };
@@ -191,7 +196,6 @@ struct app {
 	/* written by the app store (WhyOS-Apps docs/package.md §2.3) */
 	char id[33];			/* ID; else the directory's name */
 	char type[8];			/* TYPE: app, game, system */
-	char subcat[24];		/* SUBCATEGORY: groups the lists */
 	int rotation_lock;		/* ROTATION=locked */
 };
 
@@ -406,7 +410,7 @@ static char key_char(int code, int shift)
 /* Disks (Tools > Disks), shared with the preview                      */
 
 #define MAX_DISKS	6
-#define MAX_FS		14
+#define MAX_FS		15
 
 /* A removable disk: the SD card or a USB drive (one per LUN of a card
  * reader, so a hub with several drives gives several). */
@@ -941,6 +945,20 @@ static void fs_usage(struct fsinfo *f)
 			f->size = (unsigned long long)st.f_blocks * st.f_bsize;
 			f->used = (unsigned long long)(st.f_blocks - st.f_bfree) * st.f_bsize;
 		}
+		/* tmpfs on NOMMU has no size of its own (df says 0): it takes
+		 * memory, so show the memory, as MemTotal and MemAvailable */
+		if (!f->size && !strcmp(f->type, "tmpfs") && read_str("/proc/meminfo", buf, sizeof(buf)) > 0) {
+			const char *t = strstr(buf, "MemTotal:"), *a = strstr(buf, "MemAvailable:");
+
+			if (t && a) {
+				for (t += 9; *t == ' '; t++)
+					;
+				for (a += 13; *a == ' '; a++)
+					;
+				f->size = (unsigned long long)strtol_(t) * 1024;
+				f->used = f->size - (unsigned long long)strtol_(a) * 1024;
+			}
+		}
 		return;
 	}
 	if (f->dev[0])
@@ -954,11 +972,15 @@ static void media_reap(void)
 
 	if (read_str("/proc/mounts", buf, sizeof(buf)) <= 0)
 		return;
-	while ((line = mounts_next(line, dev, mnt, sizeof(dev))))
+	while ((line = mounts_next(line, dev, mnt, sizeof(dev)))) {
 		if (!strncmp(mnt, USB_MNT, sizeof(USB_MNT) - 1) && access(dev, F_OK)) {
 			umount2(mnt, MNT_DETACH);
 			rmdir(mnt);
 		}
+		/* the card's partition went (the card failed or was pulled) */
+		if (!strcmp(mnt, SD_MNT) && !strncmp(dev, "/dev/", 5) && access(dev, F_OK))
+			umount2(mnt, MNT_DETACH);
+	}
 }
 
 static unsigned long long read_ull(const char *path)
@@ -1069,7 +1091,7 @@ static void parts_add(int di)
 		d = opendir(path);
 		if (!d)
 			return;
-		while ((e = readdir(d)) && D.n < MAX_FS - 2) {
+		while ((e = readdir(d)) && D.n < MAX_FS - 3) {
 			const char *s = e->d_name + len;
 			struct fsinfo *f;
 			char sz[80];
@@ -1102,7 +1124,7 @@ static void parts_add(int di)
 			D.fs[j] = D.fs[j - 1];
 			D.fs[j - 1] = t;
 		}
-	if (D.n == first && k->size && D.n < MAX_FS - 2) {	/* no partition table */
+	if (D.n == first && k->size && D.n < MAX_FS - 3) {	/* no partition table */
 		struct fsinfo *f = &D.fs[D.n++];
 
 		memset(f, 0, sizeof(*f));
@@ -1131,15 +1153,81 @@ static int disk_before(const struct diskinfo *a, const struct diskinfo *b)
 	return strcmp(a->name, b->name) < 0;
 }
 
-static void disks_read(void)
+/*
+ * What disks_read() saw: the disks, their sizes and partitions, and the
+ * mounts. Reading a disk's boot sector or opening it (which makes the
+ * kernel read its partition table again) is cheap on a healthy disk, but
+ * a failing SD card answers every sector with a timeout and retries: the
+ * menu then waited seconds for every key, as it read the disks at every
+ * refresh. So the disks are read again only when this changes.
+ */
+static long now_ms(void);
+
+static int disks_sig(char *sig, int max)
 {
 	DIR *d = opendir("/sys/block");
 	struct dirent *e;
+	char *p = sig, buf[2048];
+	int again = 0;
+
+	*p = 0;
+	while (d && (e = readdir(d)) && p < sig + max - 160) {
+		char path[96];
+		DIR *pd;
+		struct dirent *pe;
+		unsigned long long size;
+
+		if (strncmp(e->d_name, "mmcblk", 6) && strncmp(e->d_name, "sd", 2))
+			continue;
+		cat(cat(path, "/sys/block/"), e->d_name);
+		p = cat(cat(p, e->d_name), "=");
+		cat(path + strlen(path), "/size");
+		size = read_ull(path);
+		p = utoa(p, (unsigned)(size >> 11), 1);	/* MB */
+		/* a USB drive with no medium: opened at every refresh (disk_add) */
+		again |= e->d_name[0] == 's' && !size;
+		path[strlen(path) - 5] = 0;
+		pd = opendir(path);
+		while (pd && (pe = readdir(pd)) && p < sig + max - 80)
+			if (!strncmp(pe->d_name, e->d_name, strlen(e->d_name)))
+				p = cat(cat(p, " "), pe->d_name);
+		if (pd)
+			closedir(pd);
+		p = cat(p, ";");
+	}
+	if (d)
+		closedir(d);
+	if (read_str("/proc/mounts", buf, sizeof(buf)) > 0)
+		for (char *l = buf; *l && p < sig + max - 2; l++)
+			*p++ = *l;
+	*p = 0;
+	return again;
+}
+
+static void disks_read(void)
+{
+	static char last[3072];
+	static long usage_at;
+	char sig[3072];
+	DIR *d;
+	struct dirent *e;
 	struct fsinfo *f;
 
+	media_reap();
+	if (!disks_sig(sig, sizeof(sig)) && D.n && !strcmp(sig, last)) {
+		if (now_ms() - usage_at >= 5000) {	/* usage only: statfs */
+			usage_at = now_ms();
+			for (int i = 0; i < D.n; i++)
+				if (D.fs[i].mnt[0])
+					fs_usage(&D.fs[i]);
+		}
+		return;
+	}
+	memcpy(last, sig, sizeof(last));
+	usage_at = now_ms();
+	d = opendir("/sys/block");
 	D.n_disk = D.n = 0;
 	D.have_fsck = access("/sbin/fsck.fat", X_OK) == 0;
-	media_reap();
 	if (d) {
 		while ((e = readdir(d)))
 			if (!strncmp(e->d_name, "mmcblk", 6) || !strncmp(e->d_name, "sd", 2))
@@ -1155,20 +1243,20 @@ static void disks_read(void)
 		}
 	for (int i = 0; i < D.n_disk; i++)
 		parts_add(i);
-	f = &D.fs[D.n++];
-	memset(f, 0, sizeof(*f));
-	f->disk = -1;
-	cat(f->label, "System (read-only)");
-	cat(f->mnt, "/");
-	cat(f->type, "squashfs");
-	fs_usage(f);
-	f = &D.fs[D.n++];
-	memset(f, 0, sizeof(*f));
-	f->disk = -1;
-	cat(f->label, "Data: /data, /etc, /root");
-	cat(f->mnt, "/data");
-	cat(f->type, "JFFS2");
-	fs_usage(f);
+	/* the badge's own: flash (/data, with /etc and /root), memory, the image */
+	for (int i = 0; i < 3; i++) {
+		static const char *const lab[3] = { "Badge storage", "Memory", "System" };
+		static const char *const mnt[3] = { "/data", "/tmp", "/" };
+		static const char *const type[3] = { "JFFS2", "tmpfs", "squashfs" };
+
+		f = &D.fs[D.n++];
+		memset(f, 0, sizeof(*f));
+		f->disk = -1;
+		cat(f->label, lab[i]);
+		cat(f->mnt, mnt[i]);
+		cat(f->type, type[i]);
+		fs_usage(f);
+	}
 }
 
 static void disk_notice(const char *a, const char *b, int bad)
@@ -1287,14 +1375,43 @@ static int run_wait(char *const argv[], const char *log)
 static void draw_message(const char *eyebrow_s, const char *msg);
 static void blit(void);
 
-/* fsck.fat -a: repair what it can without asking. */
+/* What a check's exit status means, as the disk screen's notice. */
+static void disk_check_result(int rc)
+{
+	char log[2048];
+	int fd = open("/tmp/fsck.log", O_RDONLY), n = fd >= 0 ? read(fd, log, sizeof(log) - 1) : 0;
+
+	if (fd >= 0)
+		close(fd);
+	log[n > 0 ? n : 0] = 0;
+	if (rc == 0)
+		disk_notice("No errors found", "", 0);
+	else if (rc == 1)
+		disk_notice("Errors repaired (log: /tmp/fsck.log)", "", 0);
+	else if (strstr(log, "allocate memory"))
+		disk_notice("Not enough memory to check it: restart the badge and try again", "", 1);
+	else
+		disk_notice("Could not repair it: format it (log: /tmp/fsck.log)", "", 1);
+}
+
+/*
+ * fsck.fat -a: repair what it can without asking. It holds the whole FAT
+ * and a word per cluster in memory, in blocks of up to 2 MB for a 16 GB
+ * card; with the menu in memory there is no free block that big, and a
+ * check that died half-way had already written some of its repairs
+ * (2026-10-13). So in the session the check runs in our place, as an app
+ * does, and a shell brings us back with --disk-checked=<status> <dev>
+ * <was mounted>, which mounts it again and shows the result.
+ */
 static void disk_check(const struct fsinfo *f)
 {
 	struct fsinfo g = *f;		/* D is read again while we draw */
+	static char cmd[200];
 	char dev[24], msg[48];
 	char *fat[] = { "/sbin/fsck.fat", "-a", "-w", dev, 0 };
 	char *exfat[] = { "/usr/sbin/fsck.exfat", "-y", dev, 0 };
-	int was = f->mnt[0] != 0, rc;
+	char *sh[] = { "/bin/sh", "-c", cmd, 0 };
+	int was = f->mnt[0] != 0, ex = !strcmp(g.type, "exFAT");
 
 	strcpy(dev, f->dev);
 	if (was && fs_unmount(f) < 0)
@@ -1302,15 +1419,16 @@ static void disk_check(const struct fsinfo *f)
 	cat(cat(cat(msg, "Checking the "), disk_noun(f)), "\xe2\x80\xa6");
 	draw_message("DISKS", msg);
 	blit();
-	rc = run_wait(!strcmp(g.type, "exFAT") ? exfat : fat, "/tmp/fsck.log");
+	if (session) {
+		char *o = cat(cat(cmd, ex ? "/usr/sbin/fsck.exfat -y " : "/sbin/fsck.fat -a -w "), dev);
+
+		o = cat(cat(o, " >/tmp/fsck.log 2>&1; exec /usr/bin/home --session --disk-checked=$? "), dev);
+		cat(o, was ? " 1" : " 0");
+		execv(sh[0], sh);	/* our fds are close-on-exec */
+	}
+	disk_check_result(run_wait(ex ? exfat : fat, "/tmp/fsck.log"));
 	if (was)
 		fs_mount(&g);
-	if (rc == 0)
-		disk_notice("No errors found", "", 0);
-	else if (rc == 1)
-		disk_notice("Errors repaired (log: /tmp/fsck.log)", "", 0);
-	else
-		disk_notice("Could not repair it: format it (log: /tmp/fsck.log)", "", 1);
 }
 
 /*
@@ -2167,9 +2285,12 @@ static void conf_save(int kind)
 		kill(pid, SIGHUP);
 }
 
-/* One request to wpa_supplicant; reply NUL-terminated. -1 if it is not up. */
+/* One request to wpa_supplicant; reply NUL-terminated. -1 if it is not up.
+ * A socket name per request (pid, count): a reply that comes after the
+ * timeout must not land on the next request (wbstatus.h). */
 static int wpa_cmd(const char *cmd, char *reply, int max, int timeout_ms)
 {
+	static unsigned seq;
 	struct sockaddr_un me = { .sun_family = AF_UNIX }, wpa = { .sun_family = AF_UNIX };
 	struct pollfd p;
 	int s, n = -1;
@@ -2179,7 +2300,8 @@ static int wpa_cmd(const char *cmd, char *reply, int max, int timeout_ms)
 	if (s < 0)
 		return -1;
 	q = cat(me.sun_path, "/tmp/home-wpa-");
-	utoa(q, (unsigned)getpid(), 1);
+	q = cat(utoa(q, (unsigned)getpid(), 1), "-");
+	utoa(q, seq++ % 1000, 1);
 	unlink(me.sun_path);
 	cat(wpa.sun_path, WPA_CTRL);
 	if (bind(s, (struct sockaddr *)&me, sizeof(me)) == 0 &&
@@ -2602,8 +2724,6 @@ static int app_parse(struct app *ap, const char *dir)
 			conf_value(ap->id, sizeof(ap->id), l + 3);
 		if (!strncmp(l, "TYPE=", 5))
 			conf_value(ap->type, sizeof(ap->type), l + 5);
-		if (!strncmp(l, "SUBCATEGORY=", 12))
-			conf_value(ap->subcat, sizeof(ap->subcat), l + 12);
 		if (!strncmp(l, "ROTATION=", 9))
 			conf_value(rot, sizeof(rot), l + 9);
 		l = nl ? nl + 1 : 0;
@@ -2792,6 +2912,8 @@ static void sys_read(void)
 	S.bl = read_int(BL, BL_DEFAULT);
 	S.kbd = read_int(KBD_BL, 0);
 	S.ble_pid = find_proc("ble_adv");
+	S.lora = lora_on();
+	S.wifi_bars = wifi_bars();
 	apps_read();
 	if (F.app >= n_apps)
 		F.app = -1;
@@ -2814,6 +2936,7 @@ static void sys_read(void)
 	cat(S.user, "John");
 	cat(S.temp, "21.4\xc2\xb0" "C");
 	S.wifi_up = 1;
+	S.wifi_bars = 2;
 	cat(S.wifi_state, "up");
 	cat(S.wifi_ip, "192.168.88.36");
 	cat(S.wifi_mac, "a0:85:e3:12:34:56");
@@ -2821,6 +2944,7 @@ static void sys_read(void)
 	S.bl = 153;
 	S.kbd = 0;
 	S.ble_pid = 0;
+	S.lora = 1;
 	{
 		static const struct { const char *name, *info, *icon, *files; int cat; } apps[] = {
 			{ "Game Boy", "gnuboy", "gameboy", "/mnt/sd/roms", CAT_GAMES },
@@ -2886,8 +3010,9 @@ static void sys_read(void)
 		{ 0, "/dev/mmcblk0p1", "/mnt/sd", "FAT32", "SD card", 15715221504ULL, 5505024ULL },
 		{ 1, "/dev/sda1", "/media/sda1", "exFAT", "USB drive", 8002732032ULL, 3221225472ULL },
 		{ 2, "/dev/sdb1", "", "FAT16", "USB drive", 100597760ULL, 0 },
-		{ -1, "", "/", "squashfs", "System (read-only)", 2752512ULL, 2752512ULL },
-		{ -1, "", "/data", "JFFS2", "Data: /data, /etc, /root", 4587520ULL, 2293760ULL },
+		{ -1, "", "/data", "JFFS2", "Badge storage", 4587520ULL, 2293760ULL },
+		{ -1, "", "/tmp", "tmpfs", "Memory", 9437184ULL, 1048576ULL },
+		{ -1, "", "/", "squashfs", "System", 2752512ULL, 2752512ULL },
 	};
 
 	D.have_fsck = 1;
@@ -2898,7 +3023,7 @@ static void sys_read(void)
 		D.disk[i].usb = i > 0;
 		D.disk[i].size = dk[i].size;
 	}
-	D.n = 5;
+	D.n = 6;
 	for (int i = 0; i < D.n; i++) {
 		struct fsinfo *f = &D.fs[i];
 
@@ -2963,22 +3088,21 @@ static void sys_read(void)
 /* Chrome: status bar and hint bar                                     */
 
 /*
- * WhyOS on the left ("OS" in cyan); on the right Wi-Fi and, rightmost,
- * the clock (design/canvas). No LoRa or battery gauge under Linux: the
- * C6 runs esp-hosted and the IP5306 has no data interface.
+ * WhyOS on the left ("OS" in cyan); on the right LoRa while the radio is on
+ * (pink, docs/LORA.md), Wi-Fi by signal strength (none when not connected:
+ * wbstatus.h) and, rightmost, the clock (design/canvas).
+ * The design sets "LoRa" in regular 16 px mono; the font set has the
+ * clock's semibold at that size, used here. No battery gauge: the IP5306
+ * has no data interface.
  */
 static void status_bar(void)
 {
-	const struct wb_font *f = &f_mono16b, *n = &f_ui18b;
-	const struct wb_icon *w = &i_wifi22;
+	const struct wb_font *n = &f_ui18b;
 	int cy = WB_STATUS_BAR_H / 2;
-	int cx = W - WB_CHROME_PAD - text_w(f, S.hhmm, 0);
 
 	text(n, text(n, WB_CHROME_PAD, text_top(n, cy), "Why", WB_COLOR_TEXT_HI, -3),
 	     text_top(n, cy), "OS", WB_COLOR_CYAN, -3);
-	text(f, cx, text_top(f, cy), S.hhmm, S.clock_ok ? WB_COLOR_TEXT_HI : WB_COLOR_TEXT_LOW, 0);
-	icon(w, cx - 14 - w->w, (WB_STATUS_BAR_H - w->h) / 2,
-	     S.wifi_up ? WB_COLOR_CYAN : WB_COLOR_TEXT_LOW, 255);
+	status_right(S.hhmm, S.clock_ok, S.wifi_bars, S.lora);
 }
 
 static const char *fit(const struct wb_font *f, const char *s, int max_w, char *buf, int size);
@@ -3074,7 +3198,8 @@ static void draw_tiles(const char *eb, const char *line, const struct tile *ts,
 			box_focus(x, y, TILE_W, WB_HOME_TILE_H, WB_RADIUS_LG, &GLOW_TILE);
 		else
 			box_plain(x, y, TILE_W, WB_HOME_TILE_H, WB_RADIUS_LG, WB_COLOR_SURFACE1);
-		icon(t->key, x + TILE_W - 14 - t->key->w, y + 14, t->color, 178);
+		if (t->key)	/* the symbol key that opens it, if one does */
+			icon(t->key, x + TILE_W - 14 - t->key->w, y + 14, t->color, 178);
 		icon(t->ic, x + (TILE_W - t->ic->w) / 2, iy, t->color, 255);
 		text(lf, x + (TILE_W - text_w(lf, t->label, 0)) / 2,
 		     text_top(lf, ly), t->label, WB_COLOR_TEXT_HI, 0);
@@ -3088,24 +3213,21 @@ static void draw_tiles(const char *eb, const char *line, const struct tile *ts,
 	hint_bar(hs, nh);
 }
 
-static const struct hint tile_hints[] = {
-	{ "SYMS", "open", 0 }, { "\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "select", 0 },
-	{ "Enter", "open", 0 }, { "Esc", "back", 1 },
-};
-
+/* 6.8: on the home screen the six symbol keys open their tiles; Esc does
+ * nothing there, except close the menu when it is a pop-up. */
 static void draw_home(int focus)
 {
-	static const struct hint popup_hints[] = {
-		{ "SYMS", "open", 0 }, { "\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "select", 0 },
-		{ "Enter", "open", 0 }, { "Esc", "close", 1 },
+	static const struct hint session_hints[] = {
+		{ "SYMS", "open", 0 }, { "Enter", "open", 0 },
 	};
-	struct hint hints[3] = { tile_hints[0], tile_hints[1], tile_hints[2] };
+	static const struct hint popup_hints[] = {
+		{ "SYMS", "open", 0 }, { "Enter", "open", 0 }, { "Esc", "close", 1 },
+	};
 
-	hints[2].right = 1;
 	if (popup)
-		draw_tiles(0, 0, tiles, 0, 0, focus, popup_hints, 4);
+		draw_tiles(0, 0, tiles, 0, 0, focus, popup_hints, 3);
 	else
-		draw_tiles(0, 0, tiles, 0, 0, focus, hints, 3);
+		draw_tiles(0, 0, tiles, 0, 0, focus, session_hints, 2);
 }
 
 #ifndef HOME_PREVIEW
@@ -3155,15 +3277,16 @@ static const char *fit(const struct wb_font *f, const char *s, int max_w, char *
 
 /*
  * The design's dialog (Dialog.dc.html) over whatever was drawn: backdrop,
- * eyebrow, title, then either option rows (n > 0) or nothing -- callers
- * add their own body below the returned y.
+ * eyebrow, title, room for a body of body_h, then option rows (n > 0).
+ * Callers draw their body at the returned y.
  */
 static int dialog(const char *eb, const char *title, int body_h,
 		  const char *const *labels, const struct wb_icon *const *ics,
-		  int n, int focus)
+		  int n, int focus, int danger)
 {
-	int h = 32 + 18 + 6 + 36 + 24 + (n ? n * 68 + (n - 1) * 12 : body_h) + 32;
-	int y = (H - h) / 2, by = y + 32 + 18 + 6 + 36 + 24;
+	int gap = n && body_h ? 24 : 0;
+	int h = 32 + 18 + 6 + 36 + 24 + body_h + gap + (n ? n * 68 + (n - 1) * 12 : 0) + 32;
+	int y = (H - h) / 2, body = y + 32 + 18 + 6 + 36 + 24, by = body + body_h + gap;
 	char tbuf[96];
 
 	dim(WB_COLOR_CONSOLE, 184);	/* rgba(6,6,13,0.72) */
@@ -3178,12 +3301,13 @@ static int dialog(const char *eb, const char *title, int body_h,
 			box_focus(DLG_X + 32, by, DLG_W - 64, 68, WB_RADIUS_MD, &GLOW_ROW);
 		else
 			box_plain(DLG_X + 32, by, DLG_W - 64, 68, WB_RADIUS_MD, WB_COLOR_SURFACE1);
+		/* the destructive choice in red (6.5: Dialog) */
 		icon(ics[i], DLG_X + 32 + 20, by + (68 - 26) / 2,
-		     on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 255);
+		     i == danger ? WB_COLOR_ERROR : on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 255);
 		text(&f_ui22, DLG_X + 32 + 20 + 26 + 16, text_top(&f_ui22, by + 34),
-		     labels[i], WB_COLOR_TEXT_HI, 0);
+		     labels[i], i == danger ? WB_COLOR_ERROR : WB_COLOR_TEXT_HI, 0);
 	}
-	return y + 32 + 18 + 6 + 36 + 24;
+	return body;
 }
 
 static const struct hint choice_hints[] = {
@@ -3197,7 +3321,7 @@ static void draw_power(int home_focus, int focus)
 	static const struct wb_icon *const ics[2] = { &r_restart, &r_power };
 
 	draw_home(home_focus);
-	dialog("POWER", "Turn off the badge?", 0, labels, ics, 2, focus);
+	dialog("POWER", "Turn off the badge?", 0, labels, ics, 2, focus, -1);
 	hint_bar(choice_hints, 3);
 }
 
@@ -3215,8 +3339,9 @@ static void draw_message(const char *eyebrow_s, const char *msg)
 /* Lists                                                               */
 
 enum kind { R_GROUP, R_ACTION, R_TOGGLE, R_SLIDER, R_INFO, R_NETWORK, R_USAGE,
-	    R_CHOICE,		/* R_CHOICE: a value that the arrows change */
-	    R_FILE };		/* R_FILE: a file in Files: its size, no chevron */
+	    R_CHOICE,		/* R_CHOICE: one of a list, chosen in a pop-up (Enter) */
+	    R_FILE,		/* R_FILE: a file in Files: its size, no chevron */
+	    R_DRIVE };		/* R_DRIVE: Files' Drives: path, free space, usage */
 enum act {
 	A_NONE, A_BLE, A_USB, A_BRIGHT, A_KBD,
 	A_NET_WIFI, A_NET_USB, A_WIFI_ON, A_SCAN, A_NETWORK, A_IP, A_DHCP,
@@ -3224,11 +3349,16 @@ enum act {
 	A_BP, A_PSU, A_VOLT, A_LIMIT, A_PULL, A_LTYPE, A_LCOLOR, A_LBRIGHT,
 	A_LCOUNT, A_LOFF, A_APP, A_FILE, A_ASK,
 	A_BROWSE, A_OPENWITH, A_FILEOPS, A_RENAME, A_MKDIR, A_SETTING,
-	A_STORE, A_MYAPPS,
+	A_STORE, A_MYAPPS, A_LORA, A_SUB, A_LORA_PRESET, A_LORA_POWER, A_TZ,
+	A_DRIVE, A_HIDDEN, A_NETOPS, A_LA_SET,
+	A_LA_RATE, A_LA_TRIG, A_LA_EDGE, A_LA_SIZE,
 };
 enum list_id { L_APPS, L_GAMES, L_BROWSE, L_SETTINGS, L_USB,
 	       L_NET_WIFI, L_NET_USB, L_IP_WIFI, L_IP_USB, L_DISKS, L_DISK,
-	       L_BP_PSU, L_BP_LED, L_FILES };
+	       L_BP_PSU, L_BP_LED, L_FILES,
+	       /* Settings' submenus (A_SUB: idx is the list) */
+	       L_SET_GENERAL, L_SET_CONN, L_SET_DISPLAY, L_SET_STORAGE, L_LORA,
+	       L_FILES_SET };	/* Files' own settings (the cloud key) */
 
 struct row {
 	enum kind kind;
@@ -3240,7 +3370,6 @@ struct row {
 	int lock, dim;		/* R_NETWORK: secured; cannot be joined */
 	char text[40];		/* label storage when it is built here */
 	enum act act;
-	int key;		/* symbol key 1..6 that changes it from anywhere in the list */
 	int swatch;		/* R_CHOICE: 1 a colour swatch (sw_c), 2 a rainbow */
 	uint32_t sw_c;
 	int compact;		/* Files: 56 px instead of 68 */
@@ -3249,19 +3378,107 @@ struct row {
 #define LIST_MAX	96		/* Apps with many store apps, in groups */
 
 struct list {
+	enum list_id id;
 	const char *eyebrow, *title;
+	const char *title_r;		/* right of the title (Files: free space) */
+	const char *path, *path_tag;	/* under the title in mono; a pink label */
 	const char *notice;
 	int notice_bad;
 	struct row rows[LIST_MAX];
 	int n;
-	int keyed;		/* rows have symbol keys: the hint bar says so;
-				 * 3: Files (Enter open, square options) */
+	int sb_total, sb_first;		/* Files: the scroll bar over all entries, in px */
 };
 
 static time_t scanning_until;	/* "Scanning..." on the Wi-Fi screen */
 static const char *games_notice;	/* how the last game ended */
 static const char *tools_notice;	/* an app in Settings > Tools did not start */
 static struct settings SET;		/* general settings, read for Settings */
+
+/* Is LoRa on in Settings? (The radio itself: S.lora.) */
+static int lora_wanted(void)
+{
+	struct setting *v = settings_find(&SET, "lora");
+
+	return v && !strcmp(v->value, "on");
+}
+/* The radio settings (lora_presets.h): lora.radio, lora.power. */
+static void lora_radio(struct lora_radio *r, int *dbm)
+{
+	struct setting *v = settings_find(&SET, "lora.radio");
+	struct setting *pw = settings_find(&SET, "lora.power");
+
+	if (!v || lora_radio_parse(v->value, r))
+		lora_radio_parse(LORA_RADIO_DEFAULT, r);
+	*dbm = pw && pw->value[0] ? atoi(pw->value) : LORA_POWER_DEFAULT;
+}
+
+/* The time zones on offer (/usr/share/badge/zones, from overlay-src/zones.py):
+ * their names, read once. */
+#define ZONES_FILE	"/usr/share/badge/zones"
+#define ZONES_MAX	96
+static char zone_names[ZONES_MAX][32];
+static char zone_city[ZONES_MAX][32];	/* "St Johns": the part after the last / */
+static char zone_region[ZONES_MAX][16];	/* "America"; "" for UTC */
+static char zone_off[ZONES_MAX][12];	/* "UTC-3:30" */
+static int n_zones = -1;
+
+static void tz_offset(char *out, const char *rule);
+
+static void zones_read(void)
+{
+	static char buf[4096];
+	char *p, *e;
+
+	if (n_zones >= 0)
+		return;
+	n_zones = 0;
+#ifdef HOME_PREVIEW
+	strcpy(buf, "UTC\tUTC0\nEurope/London\tGMT0BST,M3.5.0/1,M10.5.0\n"
+		    "Europe/Amsterdam\tCET-1CEST,M3.5.0,M10.5.0/3\nEurope/Brussels\tCET-1CEST,M3.5.0,M10.5.0/3\n"
+		    "Europe/Helsinki\tEET-2EEST,M3.5.0/3,M10.5.0/4\nAsia/Kolkata\tIST-5:30\n"
+		    "America/St_Johns\tNST3:30NDT,M3.2.0,M11.1.0\nAmerica/New_York\tEST5EDT,M3.2.0,M11.1.0\n"
+		    "America/Sao_Paulo\t<-03>3\nAsia/Tokyo\tJST-9\nAustralia/Sydney\tAEST-10AEDT,M10.1.0,M4.1.0/3\n");
+#else
+	if (read_str(ZONES_FILE, buf, sizeof(buf)) < 0)
+		return;
+#endif
+	for (p = buf; *p && n_zones < ZONES_MAX; p = *e ? e + 1 : e) {
+		char *tab = strchr(p, '\t');
+
+		e = strchr(p, '\n');
+		if (!e)			/* read_str drops the last newline */
+			e = p + strlen(p);
+		if (*p != '#' && tab && tab < e && tab - p < (int)sizeof(zone_names[0])) {
+			char *z = zone_names[n_zones], *slash, *c;
+
+			memcpy(z, p, (size_t)(tab - p));
+			z[tab - p] = 0;
+			tz_offset(zone_off[n_zones], tab + 1);	/* stops at the rule's end */
+			slash = strrchr(z, '/');
+			if (slash && slash - z < (int)sizeof(zone_region[0])) {
+				memcpy(zone_region[n_zones], z, (size_t)(slash - z));
+				zone_region[n_zones][slash - z] = 0;
+			}
+			cat(zone_city[n_zones], slash ? slash + 1 : z);
+			for (c = zone_city[n_zones]; *c; c++)
+				*c = *c == '_' ? ' ' : *c;
+			n_zones++;
+		}
+	}
+}
+
+/* the setting timezone: "auto" or a zone; and the one found for auto */
+static const char *tz_setting(const char *key)
+{
+	struct setting *v = settings_find(&SET, key);
+
+	return v ? v->value : "";
+}
+
+/* changed while the radio runs: the daemon restarts with them when the
+ * LoRa screen is left, not at every arrow press */
+static int lora_dirty;
+
 static char app_notice[96];		/* how the last app ended */
 static const char *apps_notice;		/* the Bus Pirate did not answer */
 
@@ -3303,6 +3520,7 @@ static const struct wb_icon *app_icon(const struct app *ap)
 		{ "led", &r_led }, { "disk", &r_drive }, { "sdcard", &r_sdcard },
 		{ "ethernet", &r_ethernet }, { "palette", &r_palette }, { "power", &r_power },
 		{ "bolt", &r_bolt }, { "keyboard", &r_keyboard }, { "sun", &r_sun },
+		{ "lora", &r_lora },
 	};
 
 	for (unsigned i = 0; i < sizeof(icons) / sizeof(icons[0]); i++)
@@ -3311,60 +3529,19 @@ static const struct wb_icon *app_icon(const struct app *ap)
 	return &r_count;
 }
 
-/* The installed apps of a category, as list rows. */
 /*
- * The store's subcategories (WhyOS-Apps categories.json), in its order,
- * as the lists' group labels. Apps without one (installed by hand) come
- * last, under OTHER when there are groups at all.
+ * The installed apps of a category, as list rows, by name. The store's
+ * categories (SUBCATEGORY in app.conf) are for browsing the store only.
  */
-static const char *const subcats[][2] = {
-	{ "internet", "INTERNET" }, { "network", "NETWORK TOOLS" },
-	{ "hardware", "HARDWARE & ELECTRONICS" }, { "radio", "RADIO & RFID" },
-	{ "security", "SECURITY" }, { "media", "PHOTOS & MEDIA" },
-	{ "productivity", "TEXT & PRODUCTIVITY" }, { "sensors", "SENSORS & SCIENCE" },
-	{ "development", "DEVELOPMENT" }, { "utilities", "UTILITIES" },
-	{ "action", "ACTION" }, { "arcade", "ARCADE" }, { "puzzle", "PUZZLE" },
-	{ "strategy", "STRATEGY" }, { "text", "TEXT ADVENTURES" }, { "emulators", "EMULATORS" },
-};
-#define N_SUBCATS ((int)(sizeof(subcats) / sizeof(subcats[0])))
-
-static int subcat_rank(const struct app *ap)
-{
-	for (int i = 0; i < N_SUBCATS; i++)
-		if (!strcmp(ap->subcat, subcats[i][0]))
-			return i;
-	return N_SUBCATS;	/* "other", unknown, or none */
-}
-
 static void add_apps(struct list *l, int category)
 {
-	int order[MAX_APPS], n = 0, grouped = 0, group = -1;
-
 	for (int i = 0; i < n_apps; i++)
 		if (A[i].cat == category && strcmp(A[i].id, "store")) {
-			int k = n++;
+			struct row *r = add(l, R_ACTION, A[i].name, app_icon(&A[i]), A_APP);
 
-			grouped |= A[i].subcat[0] != 0;
-			/* by group, then by name (A is sorted by name) */
-			while (k > 0 && subcat_rank(&A[order[k - 1]]) > subcat_rank(&A[i])) {
-				order[k] = order[k - 1];
-				k--;
-			}
-			order[k] = i;
+			r->idx = i;
+			cat(r->value, A[i].info);
 		}
-	for (int k = 0; k < n; k++) {
-		const struct app *ap = &A[order[k]];
-		struct row *r;
-
-		if (grouped && subcat_rank(ap) != group) {
-			group = subcat_rank(ap);
-			add(l, R_GROUP, group < N_SUBCATS ? subcats[group][1] :
-			    category == CAT_TOOLS ? "OTHER TOOLS" : "OTHER", 0, A_NONE);
-		}
-		r = add(l, R_ACTION, ap->name, app_icon(ap), A_APP);
-		r->idx = order[k];
-		cat(r->value, ap->info);
-	}
 }
 
 /* the store (WhyOS-Apps), when installed: its index in A, or -1 */
@@ -3392,7 +3569,7 @@ struct br_ent {
 };
 
 static struct {
-	char dir[256];			/* absolute; "/" at the top */
+	char dir[256];			/* absolute; "" is Drives, above "/" */
 	struct br_ent e[BR_MAX];
 	int n, more;			/* entries; left out for want of room */
 	int sel, off;			/* focused entry; first one in the list */
@@ -3402,9 +3579,16 @@ static struct {
 	int notice_bad;
 	char clip[256];			/* Copy/Cut: waiting for Paste */
 	int clip_cut;
-	char title[64], where[96];
+	char title[64], where[96], free_s[24], tag[96];
 	int focus_row;			/* row of e[sel] in the list built last */
+	int hidden;			/* show .names (Files' settings: files.hidden) */
+	int drive;			/* Drives: the focused row's D.fs index */
 } BR;
+
+static int br_drives(void)
+{
+	return !BR.dir[0];
+}
 
 static const char *br_ext(const char *name)
 {
@@ -3514,7 +3698,9 @@ static int br_list_dir(void)
 		char path[320];
 		struct stat st;
 
-		if (de->d_name[0] == '.' || strlen(de->d_name) >= sizeof(e->name))
+		if ((de->d_name[0] == '.' && (!BR.hidden || !de->d_name[1] ||
+					      (de->d_name[1] == '.' && !de->d_name[2]))) ||
+		    strlen(de->d_name) >= sizeof(e->name))
 			continue;
 		if (BR.n == BR_MAX) {
 			BR.more++;
@@ -3539,6 +3725,10 @@ static int br_list_dir(void)
 static void br_read(void)
 {
 	BR.stale = 0;
+	if (br_drives()) {
+		BR.n = BR.more = 0;
+		return;
+	}
 	if (br_list_dir() < 0) {
 		BR.notice[0] = 0;
 		cat(cat(BR.notice, "Cannot open "), BR.dir);
@@ -3556,33 +3746,42 @@ static void br_read(void)
 		BR.sel = 0;
 }
 
-/* The root (mounted file system) dir is in, or 0. */
-static const struct br_ent *br_root_of(const char *dir)
+/* A file system's name in Files: its disk's ("SD card", "SanDisk Ultra"),
+ * with the partition when the disk has more than one. */
+static char *fs_name(char *out, const struct fsinfo *f)
 {
-	static struct br_ent best;
+	const struct diskinfo *dk = fs_disk(f);
+	int parts = 0;
+
+	if (!dk)
+		return cat(out, f->label);
+	for (int i = 0; i < D.n; i++)
+		parts += D.fs[i].disk == f->disk;
+	out = cat(out, dk->label);
+	return parts > 1 ? cat(cat(out, ", "), f->label) : out;
+}
+
+/* The mounted file system dir is in (the longest mount point), or 0. */
+static const struct fsinfo *br_fs_of(const char *dir)
+{
+	const struct fsinfo *best = 0;
 	size_t bn = 0;
 
 	for (int i = 0; i < D.n; i++) {
 		size_t n = strlen(D.fs[i].mnt);
 
-		if (n && n > bn && !strncmp(dir, D.fs[i].mnt, n) && (dir[n] == '/' || !dir[n]) &&
-		    n < sizeof(best.path)) {
-			memset(&best, 0, sizeof(best));
-			cat(best.name, D.fs[i].label);
-			cat(best.path, D.fs[i].mnt);
+		if (n == 1)	/* "/": everything is in it */
+			n = 0;
+		if (D.fs[i].mnt[0] && (n > bn || !best) && !strncmp(dir, D.fs[i].mnt, n) &&
+		    (dir[n] == '/' || !dir[n])) {
+			best = &D.fs[i];
 			bn = n;
 		}
 	}
-	if (!bn && !strncmp(dir, "/tmp", 4)) {
-		memset(&best, 0, sizeof(best));
-		cat(best.name, "Memory (/tmp)");
-		cat(best.path, "/tmp");
-		bn = 4;
-	}
-	return bn ? &best : 0;
+	return best;
 }
 
-/* Go into dir (absolute), focusing want if given. */
+/* Go into dir (absolute; "" Drives), focusing want if given. */
 static void br_go(const char *dir, const char *want)
 {
 	memset(BR.dir, 0, sizeof(BR.dir));
@@ -3591,17 +3790,26 @@ static void br_go(const char *dir, const char *want)
 	if (want)
 		strncpy(BR.want, want, sizeof(BR.want) - 1);
 	BR.sel = BR.off = 0;
+	BR.drive = -1;
 	BR.stale = 1;
 }
 
-/* One level up, on the folder we came from; 0 when already at "/". */
+/* Esc: one level up, on the folder we came from; from "/" to Drives, on
+ * the system. 0 when already at Drives. */
 static int br_up(void)
 {
 	char *slash = strrchr(BR.dir, '/');
 	char name[64] = "";
 
-	if (!BR.dir[1] || !slash)
+	if (br_drives())
 		return 0;
+	if (!BR.dir[1] || !slash) {
+		br_go("", 0);
+		for (int i = 0; i < D.n; i++)
+			if (!strcmp(D.fs[i].mnt, "/"))
+				BR.drive = i;
+		return 1;
+	}
 	strncpy(name, slash + 1, sizeof(name) - 1);
 	*slash = 0;
 	br_go(BR.dir[0] ? BR.dir : "/", name);
@@ -3617,42 +3825,86 @@ static const struct fsinfo *br_mount_at(const char *path)
 	return 0;
 }
 
+/* Drives (6.10): every disk's file systems, then the badge's own. */
+static void br_build_drives(struct list *l)
+{
+	struct row *r;
+
+	l->title = "Drives";
+	add(l, R_GROUP, "REMOVABLE", 0, A_NONE);
+	if (!D.n_disk || D.disk[0].usb)
+		add(l, R_INFO, "No SD card", &r_sdcard, A_NONE);
+	for (int k = 0; k < D.n_disk; k++) {
+		const struct diskinfo *dk = &D.disk[k];
+		int any = 0;
+
+		for (int i = 0; i < D.n; i++) {
+			if (D.fs[i].disk != k)
+				continue;
+			r = add(l, R_DRIVE, 0, dk->usb ? &r_usbstick : &r_sdcard, A_DRIVE);
+			fs_name(r->text, &D.fs[i]);
+			r->label = r->text;
+			r->idx = i;
+			any = 1;
+		}
+		if (!any) {
+			r = add(l, R_INFO, dk->label, dk->usb ? &r_usbstick : &r_sdcard, A_NONE);
+			cat(r->value, dk->size ? "No partitions" : "No medium");
+		}
+	}
+	add(l, R_GROUP, "BADGE", 0, A_NONE);
+	for (int i = 0; i < D.n; i++)
+		if (D.fs[i].disk < 0) {
+			r = add(l, R_DRIVE, D.fs[i].label, !strcmp(D.fs[i].mnt, "/tmp") ? &r_chip : &r_drive,
+				A_DRIVE);
+			r->idx = i;
+		}
+	if (BR.drive < 0 || BR.drive >= D.n)
+		BR.drive = D.n_disk && D.fs[0].disk == 0 ? 0 : D.n - 3;
+	BR.focus_row = -1;
+	for (int i = 0; i < l->n; i++)
+		if (l->rows[i].kind == R_DRIVE && l->rows[i].idx == BR.drive)
+			BR.focus_row = i;
+}
+
 static void br_build(struct list *l)
 {
 	struct row *r;
-	const struct br_ent *root;
+	const struct fsinfo *fs;
 	int last;
 
 	if (BR.stale)
 		br_read();
 	l->eyebrow = "FILES";
-	l->keyed = 3;
 	if (BR.notice[0]) {
 		l->notice = BR.notice;
 		l->notice_bad = BR.notice_bad;
-	} else if (BR.clip[0]) {
-		static char clip_msg[96];
+	}
+	if (br_drives()) {
+		br_build_drives(l);
+		return;
+	}
+	if (BR.clip[0]) {	/* the clipboard, in pink next to the path */
 		const char *base = strrchr(BR.clip, '/');
 
-		clip_msg[0] = 0;
-		cat(cat(cat(clip_msg, BR.clip_cut ? "To move: " : "To copy: "), base ? base + 1 : BR.clip),
-		    " (options: Paste here)");
-		l->notice = clip_msg;
-		l->notice_bad = 0;
+		BR.tag[0] = 0;
+		cat(cat(BR.tag, BR.clip_cut ? "Cut: " : "Copied: "), base ? base + 1 : BR.clip);
+		l->path_tag = BR.tag;
 	}
 	{
 		const char *base = strrchr(BR.dir, '/');
+		char t[64] = "";
+		size_t tn, wn = strlen(BR.dir);
 
-		root = br_root_of(BR.dir);
-		/* a mount point by its name ("SD card"), "/" as Files */
-		const char *t = !BR.dir[1] ? "Files" : root && !strcmp(root->path, BR.dir) ? root->name :
-				base && base[1] ? base + 1 : BR.dir;
-		size_t tn = strlen(t), wn = strlen(BR.dir);
-
-		/* long ones cut: fit() shortens the title, the path keeps its end */
-		tn = tn < sizeof(BR.title) - 1 ? tn : sizeof(BR.title) - 1;
-		memcpy(BR.title, t, tn);
-		BR.title[tn] = 0;
+		/* a drive's top by its name ("SD card"), else the folder's */
+		fs = br_fs_of(BR.dir);
+		if (fs && !strcmp(fs->mnt, BR.dir))
+			fs_name(t, fs);
+		else
+			strncpy(t, base && base[1] ? base + 1 : BR.dir, sizeof(t) - 1);
+		tn = strlen(t);
+		memcpy(BR.title, t, tn + 1);
+		/* long paths keep their end */
 		if (wn < sizeof(BR.where)) {
 			memcpy(BR.where, BR.dir, wn + 1);
 		} else {
@@ -3660,7 +3912,23 @@ static void br_build(struct list *l)
 			memcpy(BR.where + 3, BR.dir + wn - (sizeof(BR.where) - 4), sizeof(BR.where) - 3);
 		}
 		l->title = BR.title;
-		add(l, R_GROUP, BR.where, 0, A_NONE);
+		l->path = BR.where;
+		BR.free_s[0] = 0;
+		if (fs && fs->size >= fs->used && strcmp(fs->type, "squashfs"))
+			cat(human(BR.free_s, fs->size - fs->used), " free");
+		else if (fs)
+			cat(BR.free_s, "read-only");
+		l->title_r = BR.free_s;
+	}
+	if (BR.more) {
+		static char more[64];
+
+		more[0] = 0;
+		cat(utoa(more, (unsigned)BR.more, 1), " more not shown: the list holds 256");
+		if (!l->notice) {
+			l->notice = more;
+			l->notice_bad = 1;
+		}
 	}
 	if (BR.n == 0) {
 		add(l, R_INFO, "Empty folder", &r_info, A_NONE);
@@ -3674,6 +3942,9 @@ static void br_build(struct list *l)
 	if (BR.off < 0)
 		BR.off = 0;
 	last = BR.off + BR_SHOWN < BR.n ? BR.off + BR_SHOWN : BR.n;
+	/* the scroll bar stands for all entries, not the 20 in the list */
+	l->sb_total = BR.n * (56 + 10) - 10;
+	l->sb_first = BR.off * (56 + 10);
 	for (int i = BR.off; i < last; i++) {
 		const struct br_ent *e = &BR.e[i];
 
@@ -3693,15 +3964,21 @@ static void br_build(struct list *l)
 			human(r->value, e->size);
 		}
 	}
-	if (BR.more || last < BR.n) {
-		static char more[48];
-		char *p = more;
+}
 
-		more[0] = 0;
-		p = utoa(p, (unsigned)(BR.n - last + BR.more), 1);
-		cat(p, BR.more ? " more (not all can be listed)" : " more below");
-		add(l, R_INFO, more, 0, A_NONE);
-	}
+/* "SD card, 1 USB drive" and so on */
+static void disks_value(char *p)
+{
+	int n_usb = 0;
+
+	for (int i = 0; i < D.n_disk; i++)
+		n_usb += D.disk[i].usb;
+	if (D.n_disk > n_usb)
+		p = cat(p, n_usb ? "SD card, " : "SD card");
+	if (n_usb)
+		cat(utoa(p, (unsigned)n_usb, 1), n_usb > 1 ? " USB drives" : " USB drive");
+	if (!D.n_disk)
+		cat(p, "no SD card");
 }
 
 static void build(struct list *l, enum list_id id)
@@ -3709,12 +3986,13 @@ static void build(struct list *l, enum list_id id)
 	struct ipconf *c;
 	struct row *r;
 	char *p;
-	int n_usb = 0;
 
 	l->n = 0;
+	l->id = id;
 	l->notice = 0;
 	l->notice_bad = 0;
-	l->keyed = 0;
+	l->title_r = l->path = l->path_tag = 0;
+	l->sb_total = l->sb_first = 0;
 	switch (id) {
 	case L_APPS:
 		l->eyebrow = "APPS";
@@ -3768,7 +4046,6 @@ static void build(struct list *l, enum list_id id)
 	case L_BP_PSU:
 		l->eyebrow = "BUS PIRATE";
 		l->title = "Power supply";
-		l->keyed = 1;
 		if (B.notice[0]) {
 			l->notice = B.notice;
 			l->notice_bad = B.notice_bad;
@@ -3780,28 +4057,23 @@ static void build(struct list *l, enum list_id id)
 			cat(r->value, "Off");
 		r = add(l, R_TOGGLE, "Power supply", &r_power, A_PSU);
 		r->on = B.psu;
-		r->key = 1;
 		r = add(l, R_SLIDER, "Voltage", &r_bolt, A_VOLT);
 		r->on = (B.dv - 8) * 100 / 42;
 		cat(volts(r->value, B.dv), " V");
-		r->key = 2;
 		r = add(l, R_SLIDER, "Current limit", &r_fuse, A_LIMIT);
 		r->on = B.ma * 100 / 500;
 		if (B.ma)
 			cat(utoa(r->value, (unsigned)B.ma, 1), " mA");
 		else
 			cat(r->value, "No limit");
-		r->key = 3;
 		r = add(l, R_TOGGLE, "Pull-up resistors (10k)", &r_pullup, A_PULL);
 		r->on = B.pullups;
-		r->key = 4;
 		break;
 	case L_BP_LED: {
 		char wires[40];
 
 		l->eyebrow = "BUS PIRATE";
 		l->title = "LEDs";
-		l->keyed = 2;		/* its rows open pop-ups */
 		bp_wiring(wires, sizeof(wires));
 		if (B.notice[0]) {
 			l->notice = B.notice;
@@ -3812,7 +4084,6 @@ static void build(struct list *l, enum list_id id)
 		}
 		r = add(l, R_ACTION, "Type", &r_led, A_LTYPE);
 		cat(r->value, led_types[B.led_type]);
-		r->key = 1;
 		r = add(l, R_ACTION, "Colour", &r_palette, A_LCOLOR);
 		if (B.led_color == CUSTOM)
 			hexn(cat(r->value, "#"), B.led_custom, 6);
@@ -3820,20 +4091,15 @@ static void build(struct list *l, enum list_id id)
 			cat(r->value, led_colors[B.led_color].name);
 		r->swatch = B.led_color == RAINBOW ? 2 : 1;
 		r->sw_c = led_color_rgb();
-		r->key = 2;
 		r = add(l, R_ACTION, "Brightness", &r_sun, A_LBRIGHT);
 		cat(utoa(r->value, (unsigned)B.led_pct, 1), "%");
-		r->key = 3;
 		if (B.led_type != LT_ONBOARD) {
 			r = add(l, R_ACTION, "LEDs on the strip", &r_count, A_LCOUNT);
 			utoa(r->value, (unsigned)B.led_n, 1);
-			r->key = 4;
-			r = add(l, R_TOGGLE, "Power supply", &r_power, A_PSU);
+				r = add(l, R_TOGGLE, "Power supply", &r_power, A_PSU);
 			r->on = B.psu;
-			r->key = 5;
-		}
+			}
 		r = add(l, R_ACTION, "All off", &r_trash, A_LOFF);
-		r->key = 6;
 		break;
 	}
 	case L_GAMES:
@@ -3888,7 +4154,9 @@ static void build(struct list *l, enum list_id id)
 		for (int i = 0; i < D.n; i++) {
 			if (D.fs[i].disk >= 0)
 				continue;
-			r = add(l, R_USAGE, D.fs[i].label, &r_drive, A_NONE);
+			r = add(l, R_USAGE, 0, &r_drive, A_NONE);
+			cat(cat(cat(r->text, D.fs[i].label), " "), D.fs[i].mnt);
+			r->label = r->text;
 			r->idx = i;
 		}
 		break;
@@ -3935,20 +4203,62 @@ static void build(struct list *l, enum list_id id)
 		l->title = "Settings";
 		l->notice = tools_notice;
 		l->notice_bad = 1;
+		settings_load(&SET);
+		r = add(l, R_ACTION, "General", &r_user, A_SUB);
+		r->idx = L_SET_GENERAL;
+		{
+			struct setting *v = settings_find(&SET, "name");
+
+			cat(r->value, v && v->value[0] ? v->value : "Name not set");
+		}
+		r = add(l, R_ACTION, "Connection", &r_wifi, A_SUB);
+		r->idx = L_SET_CONN;
+		p = cat(r->value, !N.conf[NK_WIFI].enabled ? "Wi-Fi off" : N.ssid[0] ? N.ssid : "Not connected");
+		if (lora_wanted())
+			cat(p, ", LoRa");
+		r = add(l, R_ACTION, "Display & keyboard", &r_sun, A_SUB);
+		r->idx = L_SET_DISPLAY;
+		cat(utoa(cat(r->value, "Brightness "), S.bl_max ? (unsigned)((S.bl * 100 + S.bl_max / 2) / S.bl_max) : 0, 1),
+		    "%");
+		r = add(l, R_ACTION, "Storage & devices", &r_sdcard, A_SUB);
+		r->idx = L_SET_STORAGE;
+		disks_value(r->value);
+		for (int i = 0; i < n_apps; i++)
+			if (A[i].cat == CAT_TOOLS) {
+				add(l, R_GROUP, "TOOLS", 0, A_NONE);
+				add_apps(l, CAT_TOOLS);
+				break;
+			}
+		break;
+	case L_SET_GENERAL:
+		l->eyebrow = "SETTINGS";
+		l->title = "General";
 		/* general settings with the menu flag (settings.h); Enter edits */
 		settings_load(&SET);
-		for (int i = 0, group = 0; i < SET.n; i++) {
+		for (int i = 0; i < SET.n; i++) {
 			if (!SET.s[i].menu)
 				continue;
-			if (!group++)
-				add(l, R_GROUP, "GENERAL", 0, A_NONE);
 			r = add(l, R_ACTION, SET.s[i].label,
 				!strcmp(SET.s[i].key, "name") ? &r_user : &r_info, A_SETTING);
 			r->idx = i;
 			strncpy(r->value, SET.s[i].value[0] ? SET.s[i].value : "Not set",
 				sizeof(r->value) - 1);
 		}
-		add(l, R_GROUP, "CONNECTION", 0, A_NONE);
+		{
+			const char *tz = tz_setting("timezone"), *found = tz_setting("timezone.auto");
+
+			r = add(l, R_CHOICE, "Time zone", &r_globe, A_TZ);
+			if (!tz[0] || !strcmp(tz, "auto"))
+				cat(cat(r->value, "Automatic, "), found[0] ? found : "not known yet");
+			else
+				for (int k = 0; tz[k] && k < (int)sizeof(r->value) - 1; k++)
+					r->value[k] = tz[k];	/* zones fit: the longest is 30 */
+		}
+		break;
+	case L_SET_CONN:
+		l->eyebrow = "SETTINGS";
+		l->title = "Connection";
+		settings_load(&SET);
 		r = add(l, R_ACTION, "Wi-Fi", &r_wifi, A_NET_WIFI);
 		cat(r->value, !N.conf[NK_WIFI].enabled ? "Off" : N.ssid[0] ? N.ssid : "Not connected");
 		r = add(l, R_ACTION, "Wired (USB)", &r_ethernet, A_NET_USB);
@@ -3956,43 +4266,85 @@ static void build(struct list *l, enum list_id id)
 			      N.usb_link ? "No address" : "No cable");
 		r = add(l, R_TOGGLE, "Bluetooth beacon", &r_bluetooth, A_BLE);
 		r->on = S.ble_pid > 0;
-		add(l, R_GROUP, "DISPLAY & KEYBOARD", 0, A_NONE);
+		r = add(l, R_ACTION, "LoRa", &r_lora, A_SUB);
+		r->idx = L_LORA;
+		if (lora_wanted()) {
+			struct lora_radio lr;
+			int dbm, pi;
+
+			lora_radio(&lr, &dbm);
+			pi = lora_preset_of(lr.freq_khz, lr.bw_hz, lr.sf, lr.cr);
+			cat(utoa(cat(cat(r->value, pi >= 0 ? lora_presets[pi].name : "Custom"), ", "),
+				 (unsigned)abs(dbm), 1), " dBm");
+		} else {
+			cat(r->value, "Off");
+		}
+		break;
+	case L_LORA: {
+		struct lora_radio lr;
+		int dbm, pi;
+
+		l->eyebrow = "CONNECTION";
+		l->title = "LoRa";
+		settings_load(&SET);
+		lora_radio(&lr, &dbm);
+		pi = lora_preset_of(lr.freq_khz, lr.bw_hz, lr.sf, lr.cr);
+		if (lora_dirty)
+			l->notice = "The radio takes the new settings when you leave this screen";
+		else if (dbm > 14 && lr.freq_khz >= 863000 && lr.freq_khz <= 870000 &&
+			 (lr.freq_khz < 869400 || lr.freq_khz > 869650))
+			l->notice = "Europe allows 14 dBm here (more only at 869.4-869.65 MHz)";
+		r = add(l, R_TOGGLE, "LoRa radio", &r_lora, A_LORA);
+		r->on = lora_wanted();
+		add(l, R_GROUP, "RADIO", 0, A_NONE);
+		r = add(l, R_CHOICE, "Preset", &r_sig3, A_LORA_PRESET);
+		cat(r->value, pi >= 0 ? lora_presets[pi].name : "Custom");
+		r = add(l, R_INFO, "Radio", &r_info, A_NONE);
+		p = utoa(r->value, lr.freq_khz / 1000, 1);
+		*p++ = '.';
+		*p++ = '0' + lr.freq_khz % 1000 / 100;
+		*p++ = '0' + lr.freq_khz % 100 / 10;
+		*p++ = '0' + lr.freq_khz % 10;
+		*p = 0;
+		p = utoa(cat(p, " MHz, SF"), (unsigned)lr.sf, 1);
+		p = utoa(cat(p, ", BW "), lr.bw_hz / 1000, 1);
+		if (lr.bw_hz % 1000)
+			p = utoa(cat(p, "."), lr.bw_hz % 1000 / 100, 1);
+		utoa(cat(p, ", CR 4/"), (unsigned)lr.cr, 1);
+		r = add(l, R_SLIDER, "Transmit power", &r_bolt, A_LORA_POWER);
+		r->on = (dbm - LORA_POWER_MIN) * 100 / (LORA_POWER_MAX - LORA_POWER_MIN);
+		if (dbm < 0)
+			cat(r->value, "-");
+		cat(utoa(r->value + strlen(r->value), (unsigned)abs(dbm), 1), " dBm");
+		break;
+	}
+	case L_FILES_SET:
+		l->eyebrow = "FILES";
+		l->title = "Files settings";
+		r = add(l, R_TOGGLE, "Show hidden files", &r_file, A_HIDDEN);
+		r->on = BR.hidden;
+		r = add(l, R_INFO, "Names that start with a dot", &r_info, A_NONE);
+		break;
+	case L_SET_DISPLAY:
+		l->eyebrow = "SETTINGS";
+		l->title = "Display & keyboard";
 		r = add(l, R_SLIDER, "Brightness", &r_sun, A_BRIGHT);
 		r->on = S.bl_max ? (S.bl * 100 + S.bl_max / 2) / S.bl_max : 0;
 		p = utoa(r->value, (unsigned)r->on, 1);
 		cat(p, "%");
 		r = add(l, R_TOGGLE, "Keyboard light", &r_keyboard, A_KBD);
 		r->on = S.kbd > 0;
-		add(l, R_GROUP, "STORAGE & DEVICES", 0, A_NONE);
+		break;
+	case L_SET_STORAGE:
+		l->eyebrow = "SETTINGS";
+		l->title = "Storage & devices";
 		r = add(l, R_ACTION, "Disks", &r_sdcard, A_DISKS);
-		for (int i = 0; i < D.n_disk; i++)
-			n_usb += D.disk[i].usb;
-		p = r->value;
-		if (D.n_disk > n_usb)
-			p = cat(p, n_usb ? "SD card, " : "SD card");
-		if (n_usb)
-			cat(utoa(p, (unsigned)n_usb, 1), n_usb > 1 ? " USB drives" : " USB drive");
-		if (!D.n_disk)
-			cat(p, "no SD card");
+		disks_value(r->value);
 		if (store_app() >= 0)
 			add(l, R_ACTION, "My apps", &r_store, A_MYAPPS);
 		r = add(l, R_ACTION, "USB devices", &r_usb, A_USB);
 		p = utoa(r->value, (unsigned)S.n_usb, 1);
 		cat(p, " connected");
-		{
-			int tools = 0, grouped = 0;
-
-			for (int i = 0; i < n_apps; i++)
-				if (A[i].cat == CAT_TOOLS) {
-					tools = 1;
-					grouped |= A[i].subcat[0] != 0;
-				}
-			/* grouped tools bring their own headings (NETWORK TOOLS, OTHER TOOLS) */
-			if (tools && !grouped)
-				add(l, R_GROUP, "TOOLS", 0, A_NONE);
-			if (tools)
-				add_apps(l, CAT_TOOLS);
-		}
 		break;
 	case L_NET_WIFI:
 		l->eyebrow = "SETTINGS";
@@ -4089,13 +4441,13 @@ static int focusable(const struct row *r)
 {
 	return r->kind == R_ACTION || r->kind == R_TOGGLE || r->kind == R_SLIDER ||
 	       r->kind == R_NETWORK || r->kind == R_CHOICE || r->kind == R_FILE ||
-	       (r->kind == R_USAGE && r->act != A_NONE);
+	       r->kind == R_DRIVE || (r->kind == R_USAGE && r->act != A_NONE);
 }
 
 static int row_h(const struct row *r)
 {
 	return r->kind == R_GROUP ? 17 : r->kind == R_SLIDER || r->kind == R_USAGE ? 98 :
-	       r->compact ? 56 : 68;
+	       r->kind == R_DRIVE ? 104 : r->compact ? 56 : 68;
 }
 
 static void toggle(int x, int cy, int on)
@@ -4125,7 +4477,7 @@ static void swatch(int x, int cy, int kind, uint32_t c)
 static void draw_row(const struct row *r, int y, int on)
 {
 	int x = WB_CONTENT_PAD, w = W - 2 * WB_CONTENT_PAD, h = row_h(r);
-	int top = r->kind == R_SLIDER || r->kind == R_USAGE ? y + 18 + 16 : y + h / 2;
+	int top = r->kind == R_SLIDER || r->kind == R_USAGE || r->kind == R_DRIVE ? y + 18 + 16 : y + h / 2;
 	int rx = x + w - 20, lx = x + 20 + (r->ic ? 26 + 16 : 0);
 	uint32_t ic_c = on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID;
 	char buf[80];
@@ -4144,12 +4496,6 @@ static void draw_row(const struct row *r, int y, int on)
 		icon(r->ic, x + 20, top - 13, ic_c, 255);
 
 	/* right-hand side first, so the label knows how much room it has */
-	if (r->key) {		/* its symbol key, in the key's colour */
-		const struct wb_icon *k = tiles[r->key - 1].key;
-
-		icon(k, rx - k->w, top - k->h / 2, tiles[r->key - 1].color, 230);
-		rx -= k->w + 16;
-	}
 	switch (r->kind) {
 	case R_ACTION:
 		icon(&r_chevron, rx - 20, top - 10, WB_COLOR_TEXT_LOW, 255);
@@ -4178,7 +4524,9 @@ static void draw_row(const struct row *r, int y, int on)
 		toggle(rx - 56, top, r->on);
 		rx -= 56 + 16;
 		break;
-	case R_CHOICE:
+	case R_CHOICE:		/* Enter opens the choices: the chevron says so */
+		icon(&r_chevron, rx - 20, top - 10, WB_COLOR_TEXT_LOW, 255);
+		rx -= 20 + 16;
 		rx -= text_w(&f_ui18, r->value, 0);
 		text(&f_ui18, rx, text_top(&f_ui18, top), r->value,
 		     on ? WB_COLOR_TEXT_HI : WB_COLOR_TEXT_MID, 0);
@@ -4233,6 +4581,36 @@ static void draw_row(const struct row *r, int y, int on)
 			box(tx, ty, tw * pct / 100 < 8 ? 8 : tw * pct / 100, 8, 4, c, 255, 0, 0, 0);
 		break;
 	}
+	case R_DRIVE: {		/* name, path and file system, free space, usage */
+		const struct fsinfo *f = &D.fs[r->idx];
+		int tx = x + 24, tw = w - 48, ty = y + 104 - 18 - 8;
+		int pct = f->size ? (int)(f->used * 100 / f->size) : 0;
+		int full = pct >= 90 && strcmp(f->type, "squashfs");
+		char v[48];
+
+		icon(&r_chevron, rx - 20, top - 10, WB_COLOR_TEXT_LOW, 255);
+		rx -= 20 + 16;
+		if (!f->mnt[0])
+			cat(v, "Not mounted");
+		else if (!strcmp(f->type, "squashfs"))
+			cat(v, "Read-only");
+		else
+			cat(human(v, f->size > f->used ? f->size - f->used : 0), " free");
+		rx -= text_w(&f_ui18, v, 0);
+		text(&f_ui18, rx, text_top(&f_ui18, top), v, full ? WB_COLOR_WARN : WB_COLOR_TEXT_MID, 0);
+		rx -= 16;
+		v[0] = 0;
+		if (f->mnt[0])
+			cat(cat(cat(v, f->mnt), "  "), f->type);
+		else
+			cat(cat(cat(v, f->dev), "  "), f->type);
+		text(&f_mono13, lx, top + 16, v, WB_COLOR_TEXT_LOW, 0);
+		box(tx, ty, tw, 8, 4, WB_COLOR_LINE, 255, 0, 0, 0);
+		if (f->mnt[0] && pct)
+			box(tx, ty, tw * pct / 100 < 8 ? 8 : tw * pct / 100, 8, 4,
+			    full ? WB_COLOR_WARN : on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 255, 0, 0, 0);
+		break;
+	}
 	default:
 		break;
 	}
@@ -4246,71 +4624,112 @@ static void draw_row(const struct row *r, int y, int on)
 		     r->dim ? WB_COLOR_TEXT_LOW : WB_COLOR_TEXT_HI, 0);
 }
 
+/* What Enter does on a row, for the hint bar; 0 nothing. */
+static const char *enter_word(const struct row *r)
+{
+	switch (r->kind) {
+	case R_TOGGLE:
+		return "switch";
+	case R_SLIDER:
+		return 0;
+	case R_CHOICE:
+		return "choose";
+	case R_NETWORK:
+		return N.nets[r->idx].current ? 0 : "connect";
+	default:
+		break;
+	}
+	switch (r->act) {
+	case A_SCAN:
+		return "scan";
+	case A_FSCK:
+		return "check";
+	case A_FORMAT:
+		return "format";
+	case A_LOFF:
+		return "turn off";
+	case A_LTYPE: case A_LCOLOR: case A_LBRIGHT: case A_LCOUNT:
+		return "change";
+	case A_APP: case A_FILE: case A_STORE: case A_MYAPPS: case A_BP:
+		return "start";
+	default:
+		return "open";
+	}
+}
+
+/* Does the square key open a context menu here? (6.6) */
+static int list_menu(const struct list *l, const struct row *r)
+{
+	if (l->id == L_BROWSE)
+		return !br_drives();
+	return r && r->kind == R_NETWORK;
+}
+
+/*
+ * The hint bar (6.8): only what differs per screen. Enter with its word,
+ * the square key's options and the triangle and cross the screen uses on
+ * the left; Esc on the right. No up/down and none of the circle, cloud
+ * and diamond keys: they do the same everywhere, and the help lists them.
+ */
 static void list_hints(const struct list *l, int focus)
 {
-	static const struct hint nav[] = {
-		{ "\xe2\x86\x91\xe2\x86\x93", "select", 0 }, { "Enter", "open", 0 },
-		{ "Esc", "back", 1 },
-	};
-	static const struct hint adj[] = {
-		{ "\xe2\x86\x91\xe2\x86\x93", "select", 0 },
-		{ "\xe2\x86\x90 \xe2\x86\x92", "adjust", 0 }, { "Esc", "back", 1 },
-	};
-	static const struct hint join[] = {
-		{ "\xe2\x86\x91\xe2\x86\x93", "select", 0 }, { "Enter", "connect", 0 },
-		{ "Esc", "back", 1 },
-	};
-	static const struct hint saved[] = {
-		{ "\xe2\x86\x91\xe2\x86\x93", "select", 0 }, { "Enter", "options", 0 },
-		{ "Esc", "back", 1 },
-	};
-	static const struct hint info[] = { { "Esc", "back", 1 } };
-	static const struct hint keyed[] = {
-		{ "SYMS", "change", 0 }, { "\xe2\x86\x91\xe2\x86\x93", "select", 0 },
-		{ "\xe2\x86\x90 \xe2\x86\x92", "adjust", 0 }, { "Esc", "back", 1 },
-	};
-	static const struct hint popups[] = {
-		{ "SYMS", "change", 0 }, { "\xe2\x86\x91\xe2\x86\x93", "select", 0 },
-		{ "Enter", "change", 0 }, { "Esc", "back", 1 },
-	};
-	static const struct hint files[] = {
-		{ "Enter", "open", 0 }, { "#1", "options", 0 }, { "#2", "SD card", 0 },
-		{ "#3", "/", 0 }, { "Esc", "back", 1 },
-	};
 	const struct row *r = focus >= 0 ? &l->rows[focus] : 0;
+	struct hint h[6];
+	int n = 0;
+	const char *w = r ? enter_word(r) : 0;
 
-	static const struct hint files_empty[] = {
-		{ "#1", "options", 0 }, { "#2", "SD card", 0 }, { "#3", "/", 0 }, { "Esc", "back", 1 },
-	};
-
-	if (l->keyed == 3)
-		r ? hint_bar(files, 5) : hint_bar(files_empty, 4);
-	else if (l->keyed == 2)
-		hint_bar(popups, 4);
-	else if (l->keyed)
-		hint_bar(keyed, 4);
-	else if (!r)
-		hint_bar(info, 1);
-	else if (r->kind == R_SLIDER || r->kind == R_TOGGLE || r->kind == R_CHOICE)
-		hint_bar(adj, 3);
-	else if (r->kind == R_NETWORK)
-		hint_bar(N.nets[r->idx].saved_id >= 0 ? saved : join, 3);
-	else
-		hint_bar(nav, 3);
+	if (r && r->kind == R_SLIDER)
+		h[n++] = (struct hint){ "\xe2\x86\x90 \xe2\x86\x92", "adjust", 0 };
+	if (w)
+		h[n++] = (struct hint){ "Enter", w, 0 };
+	if (list_menu(l, r))
+		h[n++] = (struct hint){ "#1", "options", 0 };
+	if (l->id == L_BROWSE) {
+		h[n++] = (struct hint){ "#2", "/", 0 };
+		h[n++] = (struct hint){ "#3", "home", 0 };
+	} else if (HAS_BP && l->id == L_BP_PSU) {
+		h[n++] = (struct hint){ "#2", B.psu ? "power off" : "power on", 0 };
+	}
+	h[n++] = (struct hint){ "Esc", l->id == L_BROWSE && !br_drives() ? "up" :
+				APP_MODE && l->id == L_APPS ? "close" : "back", 1 };
+	hint_bar(h, n);
 }
 
 static void draw_list(const struct list *l, int focus)
 {
-	int ys[LIST_MAX], y = 0, top, bottom = H - WB_HINT_BAR_H - 8, scroll = 0;
+	int ys[LIST_MAX], hs[LIST_MAX], y = 0, top, bottom = H - WB_HINT_BAR_H - 8, scroll, cut;
+	char buf[96];
 
 	fill(0, 0, W, H, WB_COLOR_VOID);
 	status_bar();
 	top = WB_STATUS_BAR_H + 20;
 	eyebrow(WB_CONTENT_PAD, top, l->eyebrow);
-	text(&f_ui36b, WB_CONTENT_PAD, top + 18 + 6, l->title, WB_COLOR_TEXT_HI, -11);
+	{
+		int rw = l->title_r && l->title_r[0] ? text_w(&f_ui20, l->title_r, 0) : 0;
+
+		if (rw)
+			text(&f_ui20, W - WB_CONTENT_PAD - rw, top + 18 + 6 + 12, l->title_r,
+			     WB_COLOR_TEXT_MID, 0);
+		text(&f_ui36b, WB_CONTENT_PAD, top + 18 + 6,
+		     fit(&f_ui36b, l->title, W - 2 * WB_CONTENT_PAD - (rw ? rw + 24 : 0), buf, sizeof(buf)),
+		     WB_COLOR_TEXT_HI, -11);
+	}
 	top += 18 + 6 + 44;
+	if (l->path) {		/* the full path in mono, the clipboard after it */
+		int tw = l->path_tag ? text_w(&f_ui16, l->path_tag, 0) + 24 : 0;
+		int x = text(&f_mono14, WB_CONTENT_PAD, top + 6,
+			     fit(&f_mono14, l->path, W - 2 * WB_CONTENT_PAD - (tw ? tw + 16 : 0), buf, sizeof(buf)),
+			     WB_COLOR_TEXT_LOW, 0);
+
+		if (tw) {
+			box(x + 16, top, tw, 28, 14, WB_COLOR_PINK, 36, WB_COLOR_PINK, 1, 0);
+			text(&f_ui16, x + 16 + 12, text_top(&f_ui16, top + 14), l->path_tag, WB_COLOR_PINK, 0);
+		}
+		top += 28;
+	}
 	if (l->notice) {
-		text(&f_ui18, WB_CONTENT_PAD, top + 8, l->notice,
+		text(&f_ui18, WB_CONTENT_PAD, top + 8,
+		     fit(&f_ui18, l->notice, W - 2 * WB_CONTENT_PAD, buf, sizeof(buf)),
 		     l->notice_bad ? WB_COLOR_ERROR : WB_COLOR_OK, 0);
 		top += 8 + 24;
 	}
@@ -4321,19 +4740,28 @@ static void draw_list(const struct list *l, int focus)
 		if (i && l->rows[i].kind == R_GROUP)
 			y += 24 - 10;		/* group gap replaces row gap */
 		ys[i] = y;
-		y += row_h(&l->rows[i]) + 10;
+		hs[i] = row_h(&l->rows[i]);
+		y += hs[i] + 10;
 	}
-	if (focus >= 0 && ys[focus] + row_h(&l->rows[focus]) > bottom - top)
-		scroll = ys[focus] + row_h(&l->rows[focus]) - (bottom - top);
+	scroll = list_scroll(ys, hs, l->n, focus, focus, bottom - top, &cut);
+	/* cards cut off at either end show only their part inside the list */
+	clip_rows(scroll ? top : 0, l->n && y - 10 - scroll > bottom - top ? top + cut : H);
 	for (int i = 0; i < l->n; i++) {
 		int ry = top + ys[i] - scroll;
 
-		if (ry < top)
+		if (ry + hs[i] <= top && scroll)
 			continue;
-		if (ry + row_h(&l->rows[i]) > bottom)
+		if (ry >= top + cut)
 			break;
 		draw_row(&l->rows[i], ry, i == focus);
 	}
+	clip_end();
+	/* a narrow scroll bar right of a list that does not fit */
+	if (l->sb_total)
+		scrollbar(W - WB_CONTENT_PAD + 18, top, bottom - top, l->sb_total + 10, bottom - top,
+			  l->sb_first + scroll);
+	else
+		scrollbar(W - WB_CONTENT_PAD + 18, top, bottom - top, y, bottom - top, scroll);
 	list_hints(l, focus);
 }
 
@@ -4364,9 +4792,18 @@ struct input {
 	char title[96];
 	char buf[128];
 	int len, secret, show;
+	int cur;		/* the cursor, before buf[cur]; the arrows move it */
 	int fresh;		/* the value shown is replaced by the first key typed */
 	const char *err;
 };
+
+/* Rename: where the extension starts (it is grey), or len. */
+static int input_ext(const struct input *in)
+{
+	const char *dot = strrchr(in->buf, '.');
+
+	return in->act == A_RENAME && dot && dot != in->buf ? (int)(dot - in->buf) : in->len;
+}
 
 static void draw_input(const struct input *in)
 {
@@ -4382,24 +4819,41 @@ static void draw_input(const struct input *in)
 	static const struct hint secret_shown[] = {
 		{ "Enter", "connect", 0 }, { "Tab", "hide", 0 }, { "Esc", "cancel", 1 },
 	};
-	int fx = DLG_X + 32, fw = DLG_W - 64, fy, tx, max = fw - 40;
+	int fx = DLG_X + 32, fw = DLG_W - 64, fy, tx, max = fw - 40, ext = input_ext(in), from = 0, cx;
 	char shown[3 * sizeof(in->buf) + 1], *p = shown;
-	const char *t;
+	int unit = in->secret && !in->show ? 3 : 1;	/* bytes per character shown */
 
-	fy = dialog(in->eb, in->title, 56 + (in->err ? 34 : 0), 0, 0, 0, 0);
+	fy = dialog(in->eb, in->title, 56 + (in->err ? 34 : 0), 0, 0, 0, 0, -1);
 	box_focus(fx, fy, fw, 56, WB_RADIUS_MD, &GLOW_ROW);
-	if (in->secret && !in->show) {
+	if (unit == 3) {
 		for (int i = 0; i < in->len; i++)
 			p = cat(p, "\xe2\x80\xa2");
 	} else {
 		cat(shown, in->buf);
 	}
-	/* keep the end (and the cursor) in view */
-	t = shown;
-	while (*t && text_w(&f_mono18, t, 0) > max)
-		next_cp(&t);
-	tx = text(&f_mono18, fx + 20, text_top(&f_mono18, fy + 28), t, WB_COLOR_TEXT_HI, 0);
-	fill(tx + 2, fy + 16, 2, 24, WB_COLOR_CYAN);
+	/* scroll so the cursor shows: drop characters off the front */
+	for (;;) {
+		char c = shown[in->cur * unit];
+
+		shown[in->cur * unit] = 0;
+		cx = text_w(&f_mono18, shown + from * unit, 0);
+		shown[in->cur * unit] = c;
+		if (cx <= max || from >= in->cur)
+			break;
+		from++;
+	}
+	/* the name, then the extension in grey (Rename) */
+	{
+		char c = shown[ext * unit];
+		int e = ext > from ? ext : from;
+
+		c = shown[e * unit];
+		shown[e * unit] = 0;
+		tx = text(&f_mono18, fx + 20, text_top(&f_mono18, fy + 28), shown + from * unit, WB_COLOR_TEXT_HI, 0);
+		shown[e * unit] = c;
+		text(&f_mono18, tx, text_top(&f_mono18, fy + 28), shown + e * unit, WB_COLOR_TEXT_LOW, 0);
+	}
+	fill(fx + 20 + cx + 1, fy + 16, 2, 24, WB_COLOR_CYAN);
 	if (in->err)
 		text(&f_ui18, fx, fy + 56 + 10, in->err, WB_COLOR_ERROR, 0);
 	if (in->secret)
@@ -4409,84 +4863,233 @@ static void draw_input(const struct input *in)
 }
 
 /*
- * A pop-up list to choose from (LED type, colour): the dialog of the Power
- * screen, with compact rows that scroll when there are more than six.
+ * A pop-up list (6.6): the square key's context menu, or the choices of an
+ * enumeration (LED type and colour, time zone, LoRa preset), drawn by
+ * wbdraw.h's menu_popup. A long one filters as you type.
  */
-#define PICK_MAX	16
+#define PICK_MAX	(ZONES_MAX + 1)
 
 struct pick {
 	enum act act;			/* what is chosen */
 	const char *eb, *title;
-	int n, focus, cur;		/* cur: the present choice, marked */
-	const char *labels[PICK_MAX];
-	int swatch[PICK_MAX];		/* as swatch(); 0 none */
-	uint32_t sw_c[PICK_MAX];
+	int n, focus, cur;		/* focus, cur: in the shown (filtered) list */
+	struct menu_item it[PICK_MAX];
+	int map[PICK_MAX], shown;	/* the items that match the filter */
+	int cur_item;			/* the present choice, an index into it[]; -1 none */
+	int filterable;
+	char filter[32];
+	char count[24];
 };
 
 static struct pick P;
 
+/* Is needle in hay, ignoring case? */
+static int has_ci(const char *hay, const char *needle)
+{
+	size_t n = strlen(needle);
+
+	for (; *hay; hay++)
+		if (!strncasecmp(hay, needle, n))
+			return 1;
+	return !n;
+}
+
+/* Apply the filter; the focus stays on the same item when it still shows. */
+static void pick_filter(void)
+{
+	int was = P.shown && P.focus >= 0 && P.focus < P.shown ? P.map[P.focus] : P.cur_item;
+
+	P.shown = 0;
+	P.focus = P.cur = -1;
+	for (int i = 0; i < P.n; i++) {
+		const struct menu_item *it = &P.it[i];
+
+		/* the label, or the small word after it (a zone's region); not
+		 * Automatic's, which names the zone it found */
+		if (P.filter[0] && !has_ci(it->label, P.filter) &&
+		    !(it->sub && !(P.act == A_TZ && i == 0) && has_ci(it->sub, P.filter)))
+			continue;
+		if (i == was)
+			P.focus = P.shown;
+		if (i == P.cur_item)
+			P.cur = P.shown;
+		P.map[P.shown++] = i;
+	}
+	if (P.focus < 0)
+		P.focus = 0;
+}
+
+/* The item chosen in the pop-up: an index into P.it, or -1. */
+static int pick_item(void)
+{
+	return P.focus >= 0 && P.focus < P.shown ? P.map[P.focus] : -1;
+}
+
+/* Start a pop-up: n items in P.it, cur the present one (-1 none). */
+static void pick_open(enum act a, const char *eb, const char *title, int cur)
+{
+	P.act = a;
+	P.eb = eb;
+	P.title = title;
+	P.cur_item = cur;
+	P.filter[0] = 0;
+	P.shown = 0;
+	P.focus = -1;
+	P.count[0] = 0;
+	P.filterable = P.n > 8;		/* "more than about eight": typing filters */
+	if (P.filterable)
+		cat(utoa(P.count, (unsigned)P.n, 1), " options");
+	pick_filter();
+}
+
+static struct menu_item *pick_add(const char *label)
+{
+	struct menu_item *it = &P.it[P.n < PICK_MAX ? P.n++ : PICK_MAX - 1];
+
+	memset(it, 0, sizeof(*it));
+	it->label = label;
+	return it;
+}
+
+static void pick_reset(void)
+{
+	memset(&P, 0, sizeof(P));
+}
+
 static void draw_pick(void)
 {
-	static const struct hint hints[] = {
-		{ "\xe2\x86\x91\xe2\x86\x93", "select", 0 }, { "Enter", "choose", 0 },
-		{ "Esc", "cancel", 1 },
+	static const struct hint menu_hints[] = {
+		{ "Enter", "choose", 0 }, { "Esc", "cancel", 1 },
 	};
-	int vis = P.n < 6 ? P.n : 6, rh = 56, gap = 8;
-	int first = P.focus - vis / 2, by, x0 = DLG_X + 32, w = DLG_W - 64;
+	static const struct hint filter_hints[] = {
+		{ "Enter", "choose", 0 }, { "Backspace", "erase", 0 }, { "Esc", "cancel", 1 },
+	};
 
-	if (first > P.n - vis)
-		first = P.n - vis;
-	if (first < 0)
-		first = 0;
-	by = dialog(P.eb, P.title, vis * rh + (vis - 1) * gap, 0, 0, 0, 0);
-	for (int i = first; i < first + vis; i++) {
-		int y = by + (i - first) * (rh + gap), cy = y + rh / 2, x = x0 + 20;
-
-		if (i == P.focus)
-			box_focus(x0, y, w, rh, WB_RADIUS_MD, &GLOW_ROW);
-		else
-			box_plain(x0, y, w, rh, WB_RADIUS_MD, WB_COLOR_SURFACE1);
-		if (P.swatch[i]) {
-			swatch(x, cy, P.swatch[i], P.sw_c[i]);
-			x += 22 + 16;
-		}
-		text(&f_ui22, x, text_top(&f_ui22, cy), P.labels[i], WB_COLOR_TEXT_HI, 0);
-		if (i == P.cur)
-			text(&f_ui18, x0 + w - 20 - text_w(&f_ui18, "current", 0),
-			     text_top(&f_ui18, cy), "current", WB_COLOR_TEXT_LOW, 0);
-	}
-	if (first > 0)
-		text(&f_ui18, x0 + w - 24, by - 26, "\xe2\x86\x91", WB_COLOR_TEXT_MID, 0);
-	if (first + vis < P.n)
-		text(&f_ui18, x0 + w - 24, by + vis * (rh + gap) - 2, "\xe2\x86\x93", WB_COLOR_TEXT_MID, 0);
-	hint_bar(hints, 3);
+	menu_popup(P.eb, P.title, P.count[0] ? P.count : 0, P.it, P.map, P.shown, P.focus, P.cur,
+		   P.filterable ? P.filter : 0, P.act == A_TZ ? "Type a city to filter" : "Type to filter",
+		   P.filterable ? filter_hints : menu_hints, P.filterable ? 3 : 2);
 }
 
 /* Fill P for the LED type or colour. */
 static void pick_led(enum act a)
 {
-	memset(&P, 0, sizeof(P));
-	P.act = a;
-	P.eb = "LEDS";
+	pick_reset();
 	if (a == A_LTYPE) {
-		P.title = "LED type";
-		P.n = 3;
 		for (int i = 0; i < 3; i++)
-			P.labels[i] = led_types[i];
-		P.cur = P.focus = B.led_type;
+			pick_add(led_types[i]);
+		pick_open(a, "LEDS", "LED type", B.led_type);
 		return;
 	}
-	P.title = "Colour";
-	P.n = N_COLORS + 1;
 	for (int i = 0; i < N_COLORS; i++) {
-		P.labels[i] = led_colors[i].name;
-		P.swatch[i] = i == RAINBOW ? 2 : 1;
-		P.sw_c[i] = led_colors[i].rgb;
+		struct menu_item *it = pick_add(led_colors[i].name);
+
+		it->swatch = i == RAINBOW ? 2 : 1;
+		it->sw_c = led_colors[i].rgb;
 	}
-	P.labels[CUSTOM] = "Custom (RRGGBB)\xe2\x80\xa6";
-	P.swatch[CUSTOM] = 1;
-	P.sw_c[CUSTOM] = B.led_custom;
-	P.cur = P.focus = B.led_color;
+	pick_add("Custom (RRGGBB)\xe2\x80\xa6")->swatch = 1;
+	P.it[CUSTOM].sw_c = B.led_custom;
+	pick_open(a, "LEDS", "Colour", B.led_color);
+	P.filterable = 0;
+	P.count[0] = 0;
+}
+
+/* "UTC+5:30" from a POSIX TZ rule's standard offset ("IST-5:30", "<-03>3"). */
+static void tz_offset(char *out, const char *rule)
+{
+	const char *p = rule;
+	int sign = 1, h = 0, m = 0;
+
+	if (*p == '<') {
+		while (*p && *p != '>')
+			p++;
+		if (*p)
+			p++;
+	} else {
+		while ((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z'))
+			p++;
+	}
+	if (*p == '-' || *p == '+')
+		sign = *p++ == '-' ? -1 : 1;
+	while (*p >= '0' && *p <= '9')
+		h = h * 10 + *p++ - '0';
+	if (*p == ':')
+		for (p++; *p >= '0' && *p <= '9'; p++)
+			m = m * 10 + *p - '0';
+	/* POSIX counts west as positive: UTC+1 is "CET-1" */
+	out = cat(out, "UTC");
+	if (!h && !m)
+		return;
+	*out++ = sign < 0 ? '+' : '-';
+	out = utoa(out, (unsigned)h, 1);
+	if (m)
+		utoa(cat(out, ":"), (unsigned)m, 2);
+}
+
+/* Time zone: Automatic, then the zones; each with its offset from UTC. */
+static void pick_tz(void)
+{
+	static char found[40];
+	const char *tz;
+	int cur = 0;
+	struct menu_item *it;
+
+	settings_load(&SET);
+	zones_read();
+	tz = tz_setting("timezone");
+	pick_reset();
+	it = pick_add("Automatic");
+	found[0] = 0;
+	cat(found, tz_setting("timezone.auto")[0] ? tz_setting("timezone.auto") : "from the network");
+	it->sub = found;
+	for (int k = 0; k < n_zones; k++) {
+		it = pick_add(zone_city[k]);
+		it->sub = zone_region[k][0] ? zone_region[k] : 0;
+		cat(it->value, zone_off[k]);
+		if (!strcmp(zone_names[k], tz))
+			cur = k + 1;
+	}
+	pick_open(A_TZ, "GENERAL", "Time zone", cur);
+}
+
+/* LoRa preset: the presets of lora_presets.h, with their frequency. */
+static void pick_preset(void)
+{
+	struct lora_radio lr;
+	int dbm;
+
+	settings_load(&SET);
+	lora_radio(&lr, &dbm);
+	pick_reset();
+	for (int i = 0; i < LORA_N_PRESETS; i++) {
+		struct menu_item *it = pick_add(lora_presets[i].name);
+		char *p = utoa(it->value, lora_presets[i].freq_khz / 1000, 1);
+
+		*p++ = '.';
+		utoa(p, lora_presets[i].freq_khz % 1000, 3);
+		it->sub = 0;
+	}
+	pick_open(A_LORA_PRESET, "LORA", "Preset", lora_preset_of(lr.freq_khz, lr.bw_hz, lr.sf, lr.cr));
+}
+
+/*
+ * Turning LoRa on: sending without an antenna can damage the radio for good
+ * (Docs/03-veiligheid.md 3.5), so ask first. Cancel has the focus by
+ * default. Turning it off asks nothing.
+ */
+static void draw_lora_confirm(int focus)
+{
+	static const char *const labels[2] = { "Cancel", "Antenna connected, turn on" };
+	static const struct wb_icon *const ics[2] = { &r_chevron, &r_lora };
+	static const char *const lines[] = {
+		"Once on, the radio can transmit at any time.",
+		"Without an antenna on the SMA connector",
+		"that can damage the LoRa chip for good.",
+	};
+	int y = dialog("LORA", "Is the antenna connected?", 3 * 30, labels, ics, 2, focus, -1);
+
+	for (int i = 0; i < 3; i++)
+		text(&f_ui20, DLG_X + 32, y + i * 30, lines[i], WB_COLOR_TEXT_MID, 0);
+	hint_bar(choice_hints, 3);
 }
 
 /* Formatting erases the disk: Cancel has the focus by default. */
@@ -4498,30 +5101,26 @@ static void draw_format_confirm(int focus)
 	const struct diskinfo *dk = i < 0 ? 0 : fs_disk(&D.fs[i]);
 	int usb = dk && dk->usb;
 
-	dialog("DISKS", usb ? "Erase the USB drive?" : "Erase the SD card?", 0, labels, ics, 2, focus);
-	hint_bar(choice_hints, 3);
-}
-
-/* Network options: Connect / Forget (just Forget for the current one). */
-static void draw_choice(const char *ssid, int current, int focus)
-{
-	static const char *const labels[2] = { "Connect", "Forget" };
-	static const struct wb_icon *const ics[2] = { &r_wifi, &r_trash };
-
-	dialog("WI-FI", ssid, 0, labels + current, ics + current, 2 - current, focus);
+	dialog("DISKS", usb ? "Erase the USB drive?" : "Erase the SD card?", 0, labels, ics, 2, focus, 1);
 	hint_bar(choice_hints, 3);
 }
 
 /* ------------------------------------------------------------------ */
 /* Bus Pirate screens                                                  */
 
+/*
+ * The Bus Pirate's tiles follow the keys' rules (6.6): the triangle and
+ * cross for the screens used most, the circle for its console (its log),
+ * the cloud for Pins (its configuration); LEDs and Info open with Enter.
+ * Tiles without a key are drawn in the neutral colour.
+ */
 static const struct tile bp_tiles[6] = {
-	{ "Power supply",   &i_bolt,     &k_square,   WB_COLOR_KEY_SQUARE },
-	{ "Logic analyzer", &i_logic,    &k_triangle, WB_COLOR_KEY_TRIANGLE },
-	{ "LEDs",           &i_led,      &k_cross,    WB_COLOR_KEY_CROSS },
+	{ "Power supply",   &i_bolt,     &k_triangle, WB_COLOR_KEY_TRIANGLE },
+	{ "Logic analyzer", &i_logic,    &k_cross,    WB_COLOR_KEY_CROSS },
+	{ "LEDs",           &i_led,      0,           WB_COLOR_TEXT_MID },
 	{ "Console",        &i_terminal, &k_circle,   WB_COLOR_KEY_CIRCLE },
 	{ "Pins",           &i_gauge,    &k_cloud,    WB_COLOR_KEY_CLOUD },
-	{ "Info",           &i_info,     &k_diamond,  WB_COLOR_KEY_DIAMOND },
+	{ "Info",           &i_info,     0,           WB_COLOR_TEXT_MID },
 };
 
 static void draw_bp(int focus)
@@ -4557,7 +5156,12 @@ static void draw_bp(int focus)
 		*p++ = *q;
 	*p = 0;
 	cat(cat(line, B.board[0] ? B.board : "Bus Pirate"), " on the bottom port");
-	draw_tiles("BUS PIRATE", line, bp_tiles, subs, c, focus, tile_hints, 4);
+	{
+		static const struct hint hints[] = { { "Enter", "open", 0 }, { "Esc", "close", 1 } };
+		static const struct hint back[] = { { "Enter", "open", 0 }, { "Esc", "back", 1 } };
+
+		draw_tiles("BUS PIRATE", line, bp_tiles, subs, c, focus, APP_MODE ? hints : back, 2);
+	}
 }
 
 /* Title block of the Bus Pirate's own screens; returns the y below it. */
@@ -4572,15 +5176,17 @@ static int bp_header(const char *title)
 	return top + 18 + 6 + 44;
 }
 
-/* A setting with its symbol key, as a chip; returns its right edge. */
+/* A setting as a chip, with the symbol key that acts on it (0: none);
+ * returns its right edge. */
 static int chip(int x, int y, int key, const char *s, int lit)
 {
-	int w = 14 + 8 + text_w(&f_ui16, s, 0) + 24;
+	int w = (key ? 14 + 8 : 0) + text_w(&f_ui16, s, 0) + 24;
 
 	box(x, y, w, 36, WB_RADIUS_SM, lit ? WB_COLOR_SURFACE2 : WB_COLOR_SURFACE1, 255,
 	    lit ? WB_COLOR_PINK : WB_COLOR_LINE, 1, 0);
-	icon(tiles[key - 1].key, x + 12, y + 11, tiles[key - 1].color, 255);
-	text(&f_ui16, x + 12 + 14 + 8, text_top(&f_ui16, y + 18), s, WB_COLOR_TEXT_HI, 0);
+	if (key)
+		icon(tiles[key - 1].key, x + 12, y + 11, tiles[key - 1].color, 255);
+	text(&f_ui16, x + 12 + (key ? 14 + 8 : 0), text_top(&f_ui16, y + 18), s, WB_COLOR_TEXT_HI, 0);
 	return x + w;
 }
 
@@ -4597,26 +5203,30 @@ static long long la_ns(int s)
 
 static void draw_la(void)
 {
+	/* 6.6: triangle the main action, cross the second; the capture
+	 * settings are options (square); the arrows scroll and zoom */
 	static const struct hint hints[] = {
-		{ "SYMS", "set", 0 }, { "\xe2\x86\x90 \xe2\x86\x92", "scroll", 0 },
-		{ "\xe2\x86\x91\xe2\x86\x93", "zoom", 0 }, { "Esc", "back", 1 },
+		{ "#2", "capture", 0 }, { "#3", "save", 0 }, { "#1", "options", 0 },
+		{ "\xe2\x86\x90\xe2\x86\x92", "scroll", 0 }, { "\xe2\x86\x91\xe2\x86\x93", "zoom", 0 },
+		{ "Esc", "back", 1 },
 	};
 	int y = bp_header("Logic analyzer") + 4, x = WB_CONTENT_PAD;
 	char buf[48], *p;
 
-	x = chip(x, y, 1, "Capture", 0) + 8;
+	x = chip(x, y, 2, "Capture", 0) + 8;
+	x = chip(x, y, 3, "Save", 0) + 8;
 	hz(buf, la_rates[LA.rate_i]);
-	x = chip(x, y, 2, buf, 0) + 8;
+	x = chip(x, y, 0, buf, 0) + 8;
+	buf[0] = 0;
 	if (LA.trig < 0)
 		cat(buf, "No trigger");
 	else
 		utoa(cat(buf, "IO"), (unsigned)LA.trig, 1);
-	x = chip(x, y, 3, buf, LA.trig >= 0) + 8;
-	x = chip(x, y, 4, LA.falling ? "Falling" : "Rising", 0) + 8;
+	x = chip(x, y, 0, buf, LA.trig >= 0) + 8;
+	x = chip(x, y, 0, LA.falling ? "Falling" : "Rising", 0) + 8;
 	p = utoa(buf, (unsigned)la_sizes[LA.size_i] / 1024, 1);
 	cat(p, "k");
-	x = chip(x, y, 5, buf, 0) + 8;
-	chip(x, y, 6, "Save", 0);
+	chip(x, y, 0, buf, 0);
 
 	if (LA.status[0])
 		text(&f_ui16, WB_CONTENT_PAD, y + 36 + 12, LA.status,
@@ -4674,13 +5284,13 @@ static void draw_la(void)
 			p = cat(utoa(p, 1u << -LA.zoom, 1), " px/sample");
 		text(&f_mono13, (W - text_w(&f_mono13, buf, 0)) / 2, ay, buf, WB_COLOR_TEXT_LOW, 0);
 	}
-	hint_bar(hints, 4);
+	hint_bar(hints, 6);
 }
 
 static void draw_pins(void)
 {
 	static const struct hint hints[] = {
-		{ "#5", "pull-ups", 0 }, { "#1", "power supply", 0 }, { "Esc", "back", 1 },
+		{ "#2", "power supply", 0 }, { "#3", "pull-ups", 0 }, { "Esc", "back", 1 },
 	};
 	int top = bp_header("Pins"), cw = (W - 2 * WB_CONTENT_PAD - 2 * 16) / 3, ch = 118;
 	char line[96], *p;
@@ -4727,6 +5337,268 @@ static void draw_bpinfo(void)
 		     fit(&f_ui18, B.info[i], W - 2 * WB_CONTENT_PAD, buf, sizeof(buf)),
 		     i == 0 ? WB_COLOR_TEXT_HI : WB_COLOR_TEXT_MID, 0);
 	hint_bar(hints, 1);
+}
+
+enum screen { SC_HOME, SC_POWER, SC_LIST, SC_INPUT, SC_FORMAT,
+	      SC_BP, SC_LA, SC_PINS, SC_BPINFO,	/* the Bus Pirate's tiles and screens */
+	      SC_PICK,			/* a pop-up list (struct pick) */
+	      SC_CONFIRM,		/* Files: delete? */
+	      SC_LORA,			/* LoRa on: antenna connected? */
+	      SC_LOG,			/* the circle key: a log */
+	      SC_HELP };		/* the diamond key: help over the screen */
+
+/* ---- the circle key: a log; the diamond key: help (6.6) ---------------- */
+
+#define LOG_LINES	200
+#define LOG_ROW		24
+#define LOG_TOP		(WB_STATUS_BAR_H + 20 + 18 + 6 + 44 + 24)
+#define LOG_ROWS	((H - WB_HINT_BAR_H - 8 - LOG_TOP) / LOG_ROW)
+static char log_buf[16384];
+static const char *log_line[LOG_LINES];
+static int log_n, log_top;		/* lines; the first one shown */
+static const char *log_eb, *log_title;
+static const char *log_none = "No log yet.";	/* the line when there is none */
+
+/* Read the end of path for the log screen; no file or an empty one
+ * shows "No log yet." */
+static void log_open(const char *path, const char *eb, const char *title)
+{
+	int fd = path ? open(path, O_RDONLY | O_CLOEXEC) : -1, n = 0;
+	off_t end = 0;
+	char *p;
+
+	log_eb = eb;
+	log_title = title;
+	log_none = "No log yet.";
+	log_n = log_top = 0;
+	log_buf[0] = 0;
+	if (fd >= 0) {
+		end = lseek(fd, 0, SEEK_END);
+		lseek(fd, end > (off_t)sizeof(log_buf) - 1 ? end - (off_t)sizeof(log_buf) + 1 : 0, SEEK_SET);
+		n = (int)read(fd, log_buf, sizeof(log_buf) - 1);
+		close(fd);
+		log_buf[n > 0 ? n : 0] = 0;
+	}
+	p = log_buf;
+	if (n > 0 && end > n)		/* started mid-line: drop that part */
+		while (*p && *p != '\n')
+			p++;
+	while (*p) {
+		char *e = p;
+
+		while (*e && *e != '\n')
+			e++;
+		if (e > p) {
+			for (char *q = p; q < e; q++)	/* tabs, ANSI and such */
+				if ((unsigned char)*q < 0x20)
+					*q = ' ';
+			if (log_n == LOG_LINES) {	/* keep the last ones */
+				memmove(log_line, log_line + 1, sizeof(log_line) - sizeof(log_line[0]));
+				log_n--;
+			}
+			log_line[log_n++] = p;
+		}
+		if (!*e)
+			break;
+		*e = 0;
+		p = e + 1;
+	}
+	log_top = log_n > LOG_ROWS ? log_n - LOG_ROWS : 0;	/* the newest in view */
+}
+
+static void draw_log(void)
+{
+	static const struct hint hints[] = {
+		{ "\xe2\x86\x91\xe2\x86\x93", "scroll", 0 }, { "Esc", "back", 1 },
+	};
+	char buf[120];
+
+	if (!log_n) {
+		empty_screen(log_eb, log_title, log_none);
+		status_bar();
+		return;
+	}
+	fill(0, 0, W, H, WB_COLOR_VOID);
+	status_bar();
+	eyebrow(WB_CONTENT_PAD, WB_STATUS_BAR_H + 20, log_eb);
+	text(&f_ui36b, WB_CONTENT_PAD, WB_STATUS_BAR_H + 20 + 18 + 6, log_title, WB_COLOR_TEXT_HI, -11);
+	for (int i = 0; i < LOG_ROWS && log_top + i < log_n; i++)
+		text(&f_mono14, WB_CONTENT_PAD, LOG_TOP + i * LOG_ROW,
+		     fit(&f_mono14, log_line[log_top + i], W - 2 * WB_CONTENT_PAD, buf, sizeof(buf)),
+		     WB_COLOR_TEXT_MID, 0);
+	scrollbar(W - WB_CONTENT_PAD + 18, LOG_TOP, LOG_ROWS * LOG_ROW, log_n, LOG_ROWS, log_top);
+	if (log_n > LOG_ROWS)
+		hint_bar(hints, 2);
+	else
+		hint_bar(hints + 1, 1);
+}
+
+static char last_app[64];	/* the directory of the app that ran last */
+
+/* The log behind the circle key on a menu screen. */
+static void log_for(enum list_id id)
+{
+	static char app_log[96], title[48];
+
+	switch (id) {
+	case L_BROWSE:
+	case L_FILES_SET:
+		log_open("/tmp/files.log", "FILES", "Copy, move and delete");
+		break;
+	case L_DISKS:
+	case L_DISK:
+		log_open("/tmp/fsck.log", "DISKS", "Check and repair");
+		break;
+	case L_LORA:
+		log_open("/tmp/lora.log", "LORA", "LoRa radio");
+		break;
+	case L_APPS:
+	case L_GAMES:
+	case L_FILES:
+		if (!last_app[0]) {
+			log_open(0, id == L_GAMES ? "GAMES" : "APPS", "No app has run yet");
+			break;
+		}
+		app_log[0] = title[0] = 0;
+		cat(cat(cat(app_log, "/tmp/app-"), last_app), ".log");
+		for (int i = 0; i < n_apps; i++)
+			if (strrchr(A[i].dir, '/') && !strcmp(strrchr(A[i].dir, '/') + 1, last_app))
+				strncpy(title, A[i].name, sizeof(title) - 1);
+		log_open(app_log, "LAST APP", title[0] ? title : last_app);
+		break;
+	default:
+		log_open(0, "SETTINGS", "Log");
+		break;
+	}
+}
+
+/* Help (the diamond key) for a menu screen: what it is for and its keys. */
+static struct help_key help_keys[14];
+static int help_n;
+
+static void hk(const char *keys, const char *what)
+{
+	if (help_n < (int)(sizeof(help_keys) / sizeof(help_keys[0])))
+		help_keys[help_n++] = (struct help_key){ keys, what };
+}
+
+static const char *list_about(enum list_id id)
+{
+	switch (id) {
+	case L_APPS: return "The apps on the badge and the SD card. Get more in the App store.";
+	case L_GAMES: return "The games on the badge and the SD card.";
+	case L_FILES: return "The files this app opens, from the folder it looks in.";
+	case L_BROWSE: return br_drives() ? "All storage: the SD card, USB drives and the badge's own. "
+					    "Enter mounts a drive when needed and opens it." :
+				       "Every file on the badge, as it is. Enter opens a folder, or a file "
+				       "with the app that opens it.";
+	case L_FILES_SET: return "How Files shows folders.";
+	case L_SETTINGS: return "The badge's settings, by subject.";
+	case L_SET_GENERAL: return "Your name, shown on the home screen, and the time zone of the clock.";
+	case L_SET_CONN: return "Wi-Fi, a network adapter on the bottom port, the Bluetooth beacon and LoRa.";
+	case L_SET_DISPLAY: return "The screen's brightness and the keyboard light.";
+	case L_SET_STORAGE: return "Disks, the apps from the store and what is on the bottom USB port.";
+	case L_NET_WIFI: return "Wi-Fi networks in range. Enter connects; the options forget a saved one.";
+	case L_NET_USB: return "A USB network adapter on the bottom port.";
+	case L_IP_WIFI:
+	case L_IP_USB: return "How this connection gets its address: automatically (DHCP) or fixed.";
+	case L_DISKS: return "The SD card, USB drives and the badge's own storage, and how full they are.";
+	case L_DISK: return "Mount, check or format this drive. Formatting erases everything on it.";
+	case L_USB: return "What is connected to the bottom USB port.";
+	case L_LORA: return "The LoRa radio. Turn it on only with the antenna connected.";
+	case L_BP_PSU: return "The Bus Pirate's power supply on Vout, its current limit and pull-ups.";
+	case L_BP_LED: return "An LED strip on the Bus Pirate. Every change is sent at once.";
+	}
+	return 0;
+}
+
+/* The keys every screen has, after its own. */
+static void hk_fixed(const char *esc)
+{
+	hk("#4", "Log of this screen or app");
+	hk("#5", "Settings");
+	hk("#6", "This help");
+	hk("Esc", esc);
+	hk("Logo", "Home screen");
+}
+
+static void help_list(const struct list *l, int focus)
+{
+	const struct row *r = focus >= 0 ? &l->rows[focus] : 0;
+	int slider = 0;
+
+	help_n = 0;
+	for (int i = 0; i < l->n; i++)
+		slider |= l->rows[i].kind == R_SLIDER;
+	if (r) {
+		hk("\xe2\x86\x91\xe2\x86\x93", "Choose a row");
+		hk("Enter", l->id == L_BROWSE ? "Open" : "Open, switch or choose: what the row says");
+		if (!(l->id == L_BROWSE && br_drives()))
+			hk("\xe2\x86\x90\xe2\x86\x92", slider ? "Adjust a slider; elsewhere a page up or down" :
+							      "A page up or down");
+	}
+	if (list_menu(l, r))
+		hk("#1", l->id == L_BROWSE ? "Options: open with, rename, copy, delete\xe2\x80\xa6" :
+					     "Options: connect, forget");
+	if (l->id == L_BROWSE) {
+		hk("#2", "Go to /");
+		hk("#3", "Go to your home folder, /root");
+	}
+	if (HAS_BP && l->id == L_BP_PSU)
+		hk("#2", "Power supply on or off");
+	hk_fixed(l->id == L_BROWSE && !br_drives() ? "Up a folder; from / to Drives" : "Back");
+	help_popup(l->title, list_about(l->id), help_keys, help_n);
+}
+
+static void help_bp(enum screen sc)
+{
+	const char *title = "Bus Pirate", *about = "A Bus Pirate 6 on the bottom USB port.";
+
+	help_n = 0;
+	switch (sc) {
+	case SC_LA:
+		title = "Logic analyzer";
+		about = "Captures IO0-IO7 with the Bus Pirate's logic analyzer. Sampling starts at the trigger.";
+		hk("#2", "Capture");
+		hk("#3", "Save to /root/capture.bin");
+		hk("#1", "Options: sample rate, trigger, edge, samples");
+		hk("\xe2\x86\x90\xe2\x86\x92", "Scroll");
+		hk("\xe2\x86\x91\xe2\x86\x93", "Zoom");
+		hk("Esc", "Cancel a capture that waits, or back");
+		break;
+	case SC_PINS:
+		title = "Pins";
+		about = "The voltage on Vout and every IO pin, and what the mode uses each for.";
+		hk("#2", "Power supply on or off");
+		hk("#3", "Pull-up resistors on or off");
+		hk("Esc", "Back");
+		break;
+	case SC_BPINFO:
+		title = "Info";
+		about = "What the Bus Pirate says about itself.";
+		hk("Esc", "Back");
+		break;
+	default:
+		hk("\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "Choose a tile");
+		hk("Enter", "Open it");
+		hk("#2", "Power supply");
+		hk("#3", "Logic analyzer");
+		hk("Esc", APP_MODE ? "Close the app" : "Back");
+		break;
+	}
+	hk("#4", "Console: the Bus Pirate's own terminal");
+	hk("#5", "Pins and pull-ups");
+	hk("#6", "This help");
+	hk("Logo", "Home screen");
+	help_popup(title, about, help_keys, help_n);
+}
+
+static void help_log(void)
+{
+	help_n = 0;
+	hk("\xe2\x86\x91\xe2\x86\x93", "Scroll");
+	hk_fixed("Back");
+	help_popup(log_title, "The end of the log, newest at the bottom.", help_keys, help_n);
 }
 
 /* ------------------------------------------------------------------ */
@@ -4821,12 +5693,27 @@ static void shot(const char *dir, const char *name, enum list_id id, int focus_s
 	save(dir, name);
 }
 
+/* A list with help over it, as the diamond key shows it. */
+static void help_shot(const char *dir, const char *name, enum list_id id, int focus_step)
+{
+	static struct list l;
+	int f;
+
+	build(&l, id);
+	f = id == L_BROWSE ? BR.focus_row : first_focus(&l);
+	for (int i = 0; i < focus_step; i++)
+		f = move_focus(&l, f, 1);
+	draw_list(&l, f);
+	help_list(&l, f);
+	save(dir, name);
+}
+
 int main(int argc, char **argv)
 {
 	static uint16_t buf[W * H];
 	const char *dir = argc > 1 ? argv[1] : ".";
 	struct input in = { .act = A_NETWORK, .eb = "WI-FI", .title = "Password for Nordic Village",
-			    .buf = "hunter22", .len = 8, .secret = 1 };
+			    .buf = "hunter22", .len = 8, .cur = 8, .secret = 1 };
 	static struct list l;
 
 	selftest();
@@ -4845,28 +5732,58 @@ int main(int argc, char **argv)
 	draw_power(5, 0);
 	save(dir, "power");
 	shot(dir, "settings", L_SETTINGS, 0);
-	shot(dir, "settings-slider", L_SETTINGS, 3);
+	help_shot(dir, "settings-help", L_SETTINGS, 0);
+	shot(dir, "settings-general", L_SET_GENERAL, 0);
+	build(&l, L_SET_GENERAL);
+	draw_list(&l, 1);
+	pick_tz();
+	P.focus = P.cur = 3;	/* Amsterdam */
+	draw_pick();
+	save(dir, "settings-tz");
+	strcpy(P.filter, "am");
+	pick_filter();
+	draw_list(&l, 1);
+	draw_pick();
+	save(dir, "settings-tz-filter");
+	shot(dir, "settings-conn", L_SET_CONN, 3);
+	shot(dir, "settings-lora", L_LORA, 1);
+	shot(dir, "settings-lora-power", L_LORA, 2);
+	build(&l, L_LORA);
+	draw_list(&l, 2);
+	pick_preset();
+	draw_pick();
+	save(dir, "settings-lora-preset");
+	shot(dir, "settings-slider", L_SET_DISPLAY, 0);
+	shot(dir, "settings-storage", L_SET_STORAGE, 0);
 	shot(dir, "apps", L_APPS, 0);
 	shot(dir, "games", L_GAMES, 1);
 	shot(dir, "files", L_FILES, 0);
+	br_go("", 0);
+	shot(dir, "browse-drives", L_BROWSE, 0);
 	br_go("/", 0);
 	shot(dir, "browse-root", L_BROWSE, 0);
 	br_go("/mnt/sd", 0);
 	BR.sel = 4;
+	cat(BR.clip, "/mnt/sd/notes.txt");
 	shot(dir, "browse-dir", L_BROWSE, 0);
+	help_shot(dir, "browse-help", L_BROWSE, 0);
 	build(&l, L_BROWSE);	/* the square key's options */
 	draw_list(&l, BR.focus_row);
-	memset(&P, 0, sizeof(P));
-	P.eb = "FILES";
-	P.title = BR.e[BR.sel].name;
-	P.cur = -1;
+	pick_reset();
 	{
 		static const char *const ops[] = { "Open with\xe2\x80\xa6", "Rename", "Copy", "Cut",
-						   "New folder", "Delete" };
+						   "Paste here", "New folder", "Delete" };
 
-		for (unsigned i = 0; i < sizeof(ops) / sizeof(ops[0]); i++)
-			P.labels[P.n++] = ops[i];
+		for (unsigned i = 0; i < sizeof(ops) / sizeof(ops[0]); i++) {
+			struct menu_item *it = pick_add(ops[i]);
+
+			it->sep = i == 4 || i == 6;
+			it->danger = i == 6;
+		}
+		P.it[4].sub = "notes.txt";
 	}
+	pick_open(A_FILEOPS, "FILES", BR.e[BR.sel].name, -1);
+	P.filterable = 0;
 	draw_pick();
 	save(dir, "browse-options");
 	{
@@ -4874,10 +5791,25 @@ int main(int argc, char **argv)
 		static const struct wb_icon *const ics[2] = { &r_chevron, &r_trash };
 
 		draw_list(&l, BR.focus_row);
-		dialog("FILES", "Delete IMG_2041.jpg?", 0, labels, ics, 2, 0);
+		dialog("FILES", "Delete IMG_2041.jpg?", 0, labels, ics, 2, 0, 1);
 		hint_bar(choice_hints, 3);
 		save(dir, "browse-delete");
 	}
+	memset(&in, 0, sizeof(in));
+	in.act = A_RENAME;
+	in.eb = "FILES";
+	cat(in.title, "Rename");
+	cat(in.buf, "IMG_2041.jpg");
+	in.len = (int)strlen(in.buf);
+	in.cur = input_ext(&in);
+	draw_list(&l, BR.focus_row);
+	draw_input(&in);
+	save(dir, "browse-rename");
+	BR.clip[0] = 0;
+	shot(dir, "files-settings", L_FILES_SET, 0);
+	log_open(0, "FILES", "Copy, move and delete");
+	draw_log();
+	save(dir, "log-empty");
 	shot(dir, "net-wifi", L_NET_WIFI, 3);
 	shot(dir, "net-usb", L_NET_USB, 0);
 	shot(dir, "ip-usb", L_IP_USB, 1);
@@ -4894,6 +5826,17 @@ int main(int argc, char **argv)
 	draw_list(&l, 4);
 	draw_format_confirm(0);
 	save(dir, "format-confirm");
+	build(&l, L_LORA);
+	draw_list(&l, first_focus(&l));
+	draw_lora_confirm(0);
+	save(dir, "lora-confirm");
+	memset(&in, 0, sizeof(in));
+	in.act = A_NETWORK;
+	in.eb = "WI-FI";
+	cat(in.title, "Password for Nordic Village");
+	cat(in.buf, "hunter22");
+	in.len = in.cur = 8;
+	in.secret = 1;
 	build(&l, L_NET_WIFI);
 	draw_list(&l, 5);
 	draw_input(&in);
@@ -4904,7 +5847,7 @@ int main(int argc, char **argv)
 	cat(in.title, "Address");
 	in.buf[0] = 0;
 	cat(in.buf, "10.0.0.");
-	in.len = 7;
+	in.len = in.cur = 7;
 	in.err = "Use a.b.c.d/len, for example 192.168.1.20/24";
 	build(&l, L_IP_USB);
 	draw_list(&l, 2);
@@ -4917,19 +5860,18 @@ int main(int argc, char **argv)
 	cat(in.title, "nmap arguments");
 	memset(in.buf, 0, sizeof(in.buf));
 	cat(in.buf, "-F 192.168.1.1");
-	in.len = (int)strlen(in.buf);
+	in.len = in.cur = (int)strlen(in.buf);
 	build(&l, L_SETTINGS);
 	draw_list(&l, 0);
 	draw_input(&in);
 	save(dir, "input-ask");
-	build(&l, L_NET_WIFI);
-	draw_list(&l, 4);
-	draw_choice("why2025", 0, 0);
-	save(dir, "choice");
 	draw_message("POWER", "Shutting down\xe2\x80\xa6");
 	save(dir, "message");
 	draw_bp(0);
 	save(dir, "bp");
+	draw_bp(0);
+	help_bp(SC_BP);
+	save(dir, "bp-help");
 	shot(dir, "bp-psu", L_BP_PSU, 1);
 	B.led_set = LT_WS2812;
 	B.led_color = RAINBOW;
@@ -4951,7 +5893,7 @@ int main(int argc, char **argv)
 	in.eb = "LEDS";
 	cat(in.title, "Brightness, 1 to 100 %");
 	cat(in.buf, "25");
-	in.len = 2;
+	in.len = in.cur = 2;
 	draw_list(&l, 2);
 	draw_input(&in);
 	save(dir, "bp-led-bright");
@@ -5394,6 +6336,85 @@ static void bp_console(void)
 	ioctl(ev_fd, EVIOCGRAB, 1);
 }
 
+/* Remember the choice (it survives a restart: S60lora reads it at boot) and
+ * start or stop the mesh daemon, which holds the radio. */
+static void lora_set(int on)
+{
+	char *argv[] = { "/etc/init.d/S60lora", on ? "start" : "stop", 0 };
+
+	settings_load(&SET);
+	if (settings_set(&SET, "lora", on ? "on" : "off") || settings_save(&SET))
+		return;
+	run_wait(argv, "/tmp/lora-toggle.log");
+	S.lora = lora_on();
+	lora_dirty = 0;		/* it started with the settings as they are */
+}
+
+/* Time zone i of the pop-up (-1: Automatic). /etc/TZ follows at once (tz
+ * apply); Automatic with nothing found yet asks (tz detect, in the
+ * background). */
+static void tz_set(int i)
+{
+	char *apply[] = { "/usr/bin/tz", "apply", 0 }, *detect[] = { "/usr/bin/tz", "detect", 0 };
+
+	settings_load(&SET);
+	zones_read();
+	if (i >= n_zones)
+		return;
+	if (settings_set(&SET, "timezone", i < 0 ? "auto" : zone_names[i]) || settings_save(&SET))
+		return;
+	run_wait(apply, "/tmp/tz.log");
+	if (i < 0 && !tz_setting("timezone.auto")[0])
+		spawn(detect);
+}
+
+/* Preset dir (A_LORA_PRESET: its index), or the transmit power a dBm up or
+ * down. Kept in the settings; a running daemon gets them when the LoRa
+ * screen is left (lora_apply). */
+static void lora_change(enum act a, int dir)
+{
+	struct lora_radio lr;
+	char v[40], *p;
+	int dbm, i;
+
+	settings_load(&SET);
+	lora_radio(&lr, &dbm);
+	if (a == A_LORA_PRESET) {
+		i = dir;
+		if (i < 0 || i >= LORA_N_PRESETS)
+			return;
+		v[0] = 0;
+		p = utoa(v, lora_presets[i].freq_khz, 1);
+		p = utoa(cat(p, " "), lora_presets[i].bw_hz, 1);
+		p = utoa(cat(p, " "), lora_presets[i].sf, 1);
+		utoa(cat(p, " "), lora_presets[i].cr, 1);
+		if (settings_set(&SET, "lora.radio", v))
+			return;
+	} else {
+		dbm += dir;
+		if (dbm < LORA_POWER_MIN || dbm > LORA_POWER_MAX)
+			return;
+		v[0] = 0;
+		utoa(v, (unsigned)dbm, 1);
+		if (settings_set(&SET, "lora.power", v))
+			return;
+	}
+	if (settings_save(&SET))
+		return;
+	if (lora_on())
+		lora_dirty = 1;
+}
+
+static void lora_apply(void)
+{
+	char *argv[] = { "/etc/init.d/S60lora", "restart", 0 };
+
+	lora_dirty = 0;
+	if (lora_wanted())
+		run_wait(argv, "/tmp/lora-toggle.log");
+	S.lora = lora_on();
+}
+
 static void ble_toggle(void)
 {
 	char *argv[] = { "/usr/bin/ble_adv", 0 };
@@ -5401,7 +6422,7 @@ static void ble_toggle(void)
 	if (S.ble_pid > 0)
 		kill(S.ble_pid, SIGTERM);
 	else
-		spawn(argv);	/* keeps running after the menu, as in launcher */
+		spawn(argv);	/* keeps running after the menu */
 }
 
 static void brightness_step(int dir)
@@ -5516,11 +6537,6 @@ static int setup(void)
 	return 0;
 }
 
-enum screen { SC_HOME, SC_POWER, SC_LIST, SC_CHOICE, SC_INPUT, SC_FORMAT,
-	      SC_BP, SC_LA, SC_PINS, SC_BPINFO,	/* the Bus Pirate's tiles and screens */
-	      SC_PICK,			/* a pop-up list (struct pick) */
-	      SC_CONFIRM };		/* Files: delete? */
-
 /*
  * A symbol key, an arrow or Enter on a Bus Pirate list row: how is -1
  * (left), 1 (right, Enter) or 0 (its symbol key: the next preset).
@@ -5587,6 +6603,9 @@ static void input_start(struct input *in, enum act act, int kind, const char *eb
 	strncpy(in->buf, value, sizeof(in->buf) - 1);
 	in->len = (int)strlen(in->buf);
 	in->secret = secret;
+	in->cur = in->len;
+	if (act == A_RENAME)		/* before the extension (6.10) */
+		in->cur = input_ext(in);
 }
 
 /*
@@ -5693,13 +6712,12 @@ static int br_candidates(int all)
 
 static void br_pick_apps(void)
 {
-	memset(&P, 0, sizeof(P));
-	P.act = A_OPENWITH;
-	P.eb = "FILES";
-	P.title = "Open with";
-	P.cur = -1;
+	pick_reset();
 	for (int i = 0; i < br_ncand && i < PICK_MAX; i++)
-		P.labels[P.n++] = A[br_cand[i]].name;
+		pick_add(A[br_cand[i]].name);
+	pick_open(A_OPENWITH, "FILES", "Open with", -1);
+	P.filterable = 0;
+	P.count[0] = 0;
 }
 
 /* Enter on an entry: into a folder, or open a file with its app. */
@@ -5747,14 +6765,13 @@ static void br_options(enum screen *sc)
 	static const char *const names[] = {
 		"Open with\xe2\x80\xa6", "Rename", "Copy", "Cut", "Paste here", "New folder", "Delete",
 	};
+	static char paste[64];
 	int have = BR.n > 0, n = 0;
 
+	/* 6.6: first the item's options, under a line the screen's own
+	 * (Paste here, New folder), and Delete last, in red */
 	BR.notice[0] = 0;
-	memset(&P, 0, sizeof(P));
-	P.act = A_FILEOPS;
-	P.eb = "FILES";
-	P.title = have ? BR.e[BR.sel].name : BR.title;
-	P.cur = -1;
+	pick_reset();
 	if (have && BR.e[BR.sel].reg)
 		br_ops[n++] = OP_OPENWITH;
 	if (have) {
@@ -5767,8 +6784,22 @@ static void br_options(enum screen *sc)
 	br_ops[n++] = OP_MKDIR;
 	if (have)
 		br_ops[n++] = OP_DELETE;
-	for (int i = 0; i < n; i++)
-		P.labels[P.n++] = names[br_ops[i]];
+	for (int i = 0; i < n; i++) {
+		struct menu_item *it = pick_add(names[br_ops[i]]);
+
+		it->sep = i && (br_ops[i] == OP_DELETE || ((br_ops[i] == OP_PASTE || br_ops[i] == OP_MKDIR) &&
+							  br_ops[i - 1] != OP_PASTE));
+		it->danger = br_ops[i] == OP_DELETE;
+		if (br_ops[i] == OP_PASTE) {	/* what would be pasted */
+			const char *base = strrchr(BR.clip, '/');
+
+			paste[0] = 0;
+			strncat(paste, base ? base + 1 : BR.clip, sizeof(paste) - 1);
+			it->sub = paste;
+		}
+	}
+	pick_open(A_FILEOPS, "FILES", have ? BR.e[BR.sel].name : BR.title, -1);
+	P.filterable = 0;
 	*sc = SC_PICK;
 }
 
@@ -5844,11 +6875,13 @@ static void br_pick_done(struct input *in, enum screen *sc)
 {
 	*sc = SC_LIST;
 	if (P.act == A_OPENWITH) {
-		if (P.focus < br_ncand && br_sel_path())
-			br_start(br_cand[P.focus], in, sc);
+		if (pick_item() >= 0 && pick_item() < br_ncand && br_sel_path())
+			br_start(br_cand[pick_item()], in, sc);
 		return;
 	}
-	switch (br_ops[P.focus]) {
+	if (pick_item() < 0)
+		return;
+	switch (br_ops[pick_item()]) {
 	case OP_OPENWITH:
 		if (!br_candidates(1)) {
 			br_say("No app opens this kind of file: ", BR.e[BR.sel].name, 1);
@@ -5866,7 +6899,7 @@ static void br_pick_done(struct input *in, enum screen *sc)
 		if (br_sel_path()) {
 			memset(BR.clip, 0, sizeof(BR.clip));
 			strncpy(BR.clip, br_target, sizeof(BR.clip) - 1);
-			BR.clip_cut = br_ops[P.focus] == OP_CUT;
+			BR.clip_cut = br_ops[pick_item()] == OP_CUT;
 		}
 		break;
 	case OP_PASTE:
@@ -5920,7 +6953,7 @@ static void draw_delete_confirm(int focus)
 
 	strncat(t, BR.n ? BR.e[BR.sel].name : "", sizeof(t) - 9);
 	strcat(t, "?");
-	dialog("FILES", t, 0, labels, ics, 2, focus);
+	dialog("FILES", t, 0, labels, ics, 2, focus, 1);
 	hint_bar(choice_hints, 3);
 }
 
@@ -5955,27 +6988,160 @@ static int bp_popup(enum act a, struct input *in, enum screen *sc)
 	}
 }
 
+/* Wi-Fi: the square key on a network: Connect, Forget (6.6). */
+static char net_ssid[64];
+
+static void net_options(const struct wnet *w)
+{
+	pick_reset();
+	memset(net_ssid, 0, sizeof(net_ssid));
+	strncpy(net_ssid, w->ssid, sizeof(net_ssid) - 1);
+	if (!w->current)
+		pick_add("Connect");
+	if (w->saved_id >= 0) {
+		struct menu_item *it = pick_add("Forget");
+
+		it->danger = 1;
+		it->sep = !w->current;
+	}
+	pick_open(A_NETOPS, "WI-FI", net_ssid, -1);
+}
+
+/* The logic analyzer's options (the square key), and each one's choices. */
+static const char *const la_edges[2] = { "Rising edge", "Falling edge" };
+
+static void la_options(void)
+{
+	static char rate[16], trig[8], size[8];
+	struct menu_item *it;
+
+	pick_reset();
+	it = pick_add("Sample rate");
+	rate[0] = 0;
+	hz(rate, la_rates[LA.rate_i]);
+	cat(it->value, rate);
+	it = pick_add("Trigger");
+	trig[0] = 0;
+	if (LA.trig < 0)
+		cat(trig, "none");
+	else
+		utoa(cat(trig, "IO"), (unsigned)LA.trig, 1);
+	cat(it->value, trig);
+	it = pick_add("Edge");
+	cat(it->value, LA.falling ? "falling" : "rising");
+	it = pick_add("Samples");
+	size[0] = 0;
+	cat(utoa(size, (unsigned)la_sizes[LA.size_i] / 1024, 1), "k");
+	cat(it->value, size);
+	pick_open(A_LA_SET, "LOGIC ANALYZER", "Capture", -1);
+	P.filterable = 0;
+}
+
+static void la_choices(int which)
+{
+	static char names[N_RATES > 9 ? N_RATES : 9][16];
+
+	pick_reset();
+	switch (which) {
+	case 0:
+		for (int i = 0; i < N_RATES; i++) {
+			names[i][0] = 0;
+			hz(names[i], la_rates[i]);
+			pick_add(names[i]);
+		}
+		pick_open(A_LA_RATE, "LOGIC ANALYZER", "Sample rate", LA.rate_i);
+		break;
+	case 1:
+		pick_add("None");
+		for (int i = 0; i < BP_PINS && i < 8; i++) {
+			names[i][0] = 0;
+			utoa(cat(names[i], "IO"), (unsigned)i, 1);
+			pick_add(names[i]);
+		}
+		pick_open(A_LA_TRIG, "LOGIC ANALYZER", "Trigger", LA.trig + 1);
+		break;
+	case 2:
+		pick_add(la_edges[0]);
+		pick_add(la_edges[1]);
+		pick_open(A_LA_EDGE, "LOGIC ANALYZER", "Edge", LA.falling);
+		break;
+	default:
+		for (int i = 0; i < 3; i++) {
+			names[i][0] = 0;
+			cat(utoa(names[i], (unsigned)la_sizes[i] / 1024, 1), "k samples");
+			pick_add(names[i]);
+		}
+		pick_open(A_LA_SIZE, "LOGIC ANALYZER", "Samples", LA.size_i);
+		break;
+	}
+	P.filterable = 0;
+	P.count[0] = 0;
+}
+
 /* Enter in a pick list. */
 static void pick_done(struct input *in, enum screen *sc)
 {
 	char v[8];
+	int i = pick_item();
+	struct wnet *w;
 
 	if (P.act == A_OPENWITH || P.act == A_FILEOPS) {
 		br_pick_done(in, sc);
 		return;
 	}
 	*sc = SC_LIST;
-	if (P.act == A_LTYPE) {
-		B.led_type = P.focus;
+	if (i < 0)
+		return;
+	switch (P.act) {
+	case A_TZ:
+		tz_set(i - 1);		/* 0 is Automatic */
+		break;
+	case A_LORA_PRESET:
+		lora_change(A_LORA_PRESET, i);
+		break;
+	case A_NETOPS:
+		if (!(w = net_find(net_ssid)))
+			break;
+		if (!strcmp(P.it[i].label, "Connect"))
+			wifi_connect((int)(w - N.nets), 0);
+		else
+			wifi_forget((int)(w - N.nets));
+		break;
+	case A_LA_SET:
+		la_choices(i);
+		*sc = SC_PICK;
+		break;
+	case A_LA_RATE:
+		LA.rate_i = i;
+		*sc = SC_LA;
+		break;
+	case A_LA_TRIG:
+		LA.trig = i - 1;
+		*sc = SC_LA;
+		break;
+	case A_LA_EDGE:
+		LA.falling = i;
+		*sc = SC_LA;
+		break;
+	case A_LA_SIZE:
+		LA.size_i = i;
+		*sc = SC_LA;
+		break;
+	case A_LTYPE:
+		B.led_type = i;
 		bp_leds(0);
-	} else if (P.focus == CUSTOM) {
-		hexn(v, B.led_custom, 6);
-		input_start(in, A_LCOLOR, 0, "LEDS", "Colour as RRGGBB (hex)", v, 0);
-		in->fresh = 1;
-		*sc = SC_INPUT;
-	} else {
-		B.led_color = P.focus;
-		bp_leds(0);
+		break;
+	default:		/* A_LCOLOR */
+		if (i == CUSTOM) {
+			hexn(v, B.led_custom, 6);
+			input_start(in, A_LCOLOR, 0, "LEDS", "Colour as RRGGBB (hex)", v, 0);
+			in->fresh = 1;
+			*sc = SC_INPUT;
+		} else {
+			B.led_color = i;
+			bp_leds(0);
+		}
+		break;
 	}
 }
 
@@ -6108,18 +7274,92 @@ static void input_key(struct input *in, int key)
 
 	in->err = 0;
 	if (in->fresh && key != KEY_BACKSPACE && key_char(key, shift_down)) {
-		in->len = 0;
+		in->len = in->cur = 0;
 		in->buf[0] = 0;
 	}
 	in->fresh = 0;
 	if (key == KEY_BACKSPACE) {
-		if (in->len)
-			in->buf[--in->len] = 0;
+		if (in->cur) {
+			memmove(in->buf + in->cur - 1, in->buf + in->cur, (size_t)(in->len - in->cur + 1));
+			in->cur--;
+			in->len--;
+		}
+	} else if (key == KEY_LEFT || key == KEY_RIGHT) {	/* the cursor (6.6) */
+		in->cur += key == KEY_LEFT ? (in->cur > 0 ? -1 : 0) : (in->cur < in->len ? 1 : 0);
 	} else if (key == KEY_TAB) {
 		in->show = !in->show;
 	} else if ((ch = key_char(key, shift_down)) && in->len < (int)sizeof(in->buf) - 1) {
-		in->buf[in->len++] = ch;
-		in->buf[in->len] = 0;
+		memmove(in->buf + in->cur + 1, in->buf + in->cur, (size_t)(in->len - in->cur + 1));
+		in->buf[in->cur++] = ch;
+		in->len++;
+	}
+}
+
+/* A screen of the Bus Pirate's (not its lists). */
+static int bp_screen(enum screen sc)
+{
+	return HAS_BP && (sc == SC_BP || sc == SC_LA || sc == SC_PINS || sc == SC_BPINFO);
+}
+
+/* What a pop-up (help, a pick list) is drawn over: the screen it came from. */
+static enum screen help_back = SC_LIST, pick_back = SC_LIST, log_back = SC_LIST;
+
+static enum screen under(enum screen sc)
+{
+	return sc == SC_HELP ? help_back : sc == SC_PICK ? pick_back : sc;
+}
+
+/* Draw screen sc (a pop-up's own part is drawn by the caller). */
+static void draw_sc(enum screen sc, const struct list *l, int lfocus, const struct input *in,
+		    int hfocus, int pfocus, int cfocus, int bfocus)
+{
+	switch (sc) {
+	case SC_HOME:
+		draw_home(hfocus);
+		break;
+	case SC_POWER:
+		draw_power(hfocus, pfocus);
+		break;
+	case SC_LIST:
+	case SC_HELP:
+	case SC_PICK:
+		draw_list(l, lfocus);
+		break;
+	case SC_INPUT:
+		draw_list(l, lfocus);
+		draw_input(in);
+		break;
+	case SC_CONFIRM:
+		draw_list(l, lfocus);
+		draw_delete_confirm(cfocus);
+		break;
+	case SC_FORMAT:
+		draw_list(l, lfocus);
+		draw_format_confirm(cfocus);
+		break;
+	case SC_LORA:
+		draw_list(l, lfocus);
+		draw_lora_confirm(cfocus);
+		break;
+	case SC_LOG:
+		draw_log();
+		break;
+	case SC_BP:
+		if (HAS_BP)
+			draw_bp(bfocus);
+		break;
+	case SC_LA:
+		if (HAS_BP)
+			draw_la();
+		break;
+	case SC_PINS:
+		if (HAS_BP)
+			draw_pins();
+		break;
+	case SC_BPINFO:
+		if (HAS_BP)
+			draw_bpinfo();
+		break;
 	}
 }
 
@@ -6135,9 +7375,9 @@ int main(int argc, char **argv)
 
 	static struct list l;	/* 96 rows: too big for our 16 KB stack */
 	struct input in;
-	char choice_ssid[64] = "";
-	int hfocus = 0, pfocus = 0, cfocus = 0, choice_current = 0, bfocus = 0, open_after = -1;
+	int hfocus = 0, pfocus = 0, cfocus = 0, bfocus = 0, open_after = -1;
 	long measured = 0;
+	const char *checked_dev = 0;	/* --disk-checked: the disk that was checked */
 
 	session = !APP_MODE && argc > 1 && !strcmp(argv[1], "--session");
 	/* init starts us with HOME=/; apps (APP_CONFIG, the store) want root's */
@@ -6151,6 +7391,8 @@ int main(int argc, char **argv)
 		const char *how = argc > 3 ? argv[3] : "";
 
 		apps_read();
+		if (strrchr(argv[2], '/'))	/* its log: the circle key */
+			strncpy(last_app, strrchr(argv[2], '/') + 1, sizeof(last_app) - 1);
 		for (int i = 0; i < n_apps; i++) {
 			if (strcmp(A[i].dir, argv[2] + 6))
 				continue;
@@ -6195,18 +7437,48 @@ int main(int argc, char **argv)
 			br_say("The app was stopped: out of memory", "", 1);
 		else if (!strcmp(how, "--app-error"))
 			br_say("The app stopped with an error: see its log in /tmp", "", 1);
+	} else if (argc > 4 && !strncmp(argv[2], "--disk-checked=", 15)) {
+		/* back from a check (disk_check): its disk's screen, after setup() */
+		checked_dev = argv[3];
+		PUSH(L_SETTINGS);
+		PUSH(L_SET_STORAGE);
+		PUSH(L_DISKS);
+		PUSH(L_DISK);
+		sc = SC_LIST;
 	} else if (argc > 2 && strcmp(argv[2], "--home")) {
 		PUSH(L_GAMES);
 		sc = SC_LIST;
 	}
 	if (app_notice[0])
 		apps_notice = games_notice = tools_notice = app_notice;
+	{			/* Files' settings (the cloud key in Files) */
+		struct setting *v;
+
+		settings_load(&SET);
+		v = settings_find(&SET, "files.hidden");
+		BR.hidden = v && !strcmp(v->value, "on");
+	}
 	if (setup() < 0) {
 		/* In a session, never leave the panel without a shell:
 		 * a respawn loop is fork churn, the kernel's wedge trigger. */
 		if (session)
 			execv(panel_getty[0], panel_getty);
 		return 1;
+	}
+	if (checked_dev) {
+		int i, rc = atoi(argv[2] + 15);
+
+		disks_read();
+		strncpy(disk_sel, checked_dev, sizeof(disk_sel) - 1);
+		if ((i = fs_find(checked_dev)) >= 0) {
+			const struct diskinfo *dk = fs_disk(&D.fs[i]);
+
+			strncpy(disk_title, dk ? dk->label : "Disk", sizeof(disk_title) - 1);
+			if (!strcmp(argv[4], "1") && fs_mount(&D.fs[i]) == 0 && dk && !dk->usb)
+				store_maintain();
+			disks_read();
+		}
+		disk_check_result(rc);
 	}
 	if (APP_MODE) {		/* the Bus Pirate app: straight to its screens */
 		depth = 0;
@@ -6249,8 +7521,7 @@ int main(int argc, char **argv)
 			;
 		sys_read();
 		/* The Bus Pirate's connection lives as long as its screens. */
-		if (HAS_BP && (sc == SC_BP || sc == SC_LA || sc == SC_PINS || sc == SC_BPINFO ||
-			       (depth && bp_list(LID)))) {
+		if (HAS_BP && (bp_screen(under(sc)) || (depth && bp_list(LID)))) {
 			if (bp_fd >= 0 && !B.present)
 				bp_lost();
 			if (bp_gone) {
@@ -6258,7 +7529,7 @@ int main(int argc, char **argv)
 				apps_notice = B.notice;
 				depth = 1;		/* Apps */
 				sc = SC_LIST;
-			} else if ((sc == SC_PINS || (depth && LID == L_BP_PSU)) &&
+			} else if ((under(sc) == SC_PINS || (depth && LID == L_BP_PSU)) &&
 				   now_ms() - measured >= 900) {
 				bp_measure();
 				measured = now_ms();
@@ -6267,59 +7538,26 @@ int main(int argc, char **argv)
 		} else if (HAS_BP && bp_fd >= 0) {
 			bp_close();
 		}
-		if (sc != SC_HOME && sc != SC_POWER) {
+		/* the LoRa screen was left: the radio takes its new settings */
+		if (lora_dirty && !(under(sc) != SC_HOME && under(sc) != SC_POWER && depth && LID == L_LORA))
+			lora_apply();
+		if (under(sc) != SC_HOME && under(sc) != SC_POWER && depth) {
 			build(&l, LID);
 			if (LID == L_BROWSE)
 				LFOCUS = BR.focus_row;	/* Files keeps its own (BR.sel) */
 			else if (LFOCUS < 0 || LFOCUS >= l.n || !focusable(&l.rows[LFOCUS]))
 				LFOCUS = first_focus(&l);
 		}
-		switch (sc) {
-		case SC_HOME:
-			draw_home(hfocus);
-			break;
-		case SC_POWER:
-			draw_power(hfocus, pfocus);
-			break;
-		case SC_LIST:
-			draw_list(&l, LFOCUS);
-			break;
-		case SC_CHOICE:
-			draw_list(&l, LFOCUS);
-			draw_choice(choice_ssid, choice_current, cfocus);
-			break;
-		case SC_INPUT:
-			draw_list(&l, LFOCUS);
-			draw_input(&in);
-			break;
-		case SC_CONFIRM:
-			draw_list(&l, LFOCUS);
-			draw_delete_confirm(cfocus);
-			break;
-		case SC_FORMAT:
-			draw_list(&l, LFOCUS);
-			draw_format_confirm(cfocus);
-			break;
-		case SC_BP:
-			if (HAS_BP)
-				draw_bp(bfocus);
-			break;
-		case SC_LA:
-			if (HAS_BP)
-				draw_la();
-			break;
-		case SC_PINS:
-			if (HAS_BP)
-				draw_pins();
-			break;
-		case SC_BPINFO:
-			if (HAS_BP)
-				draw_bpinfo();
-			break;
-		case SC_PICK:
-			draw_list(&l, LFOCUS);
+		draw_sc(under(sc), &l, depth ? LFOCUS : -1, &in, hfocus, pfocus, cfocus, bfocus);
+		if (sc == SC_HELP) {
+			if (bp_screen(help_back))
+				help_bp(help_back);
+			else if (help_back == SC_LOG)
+				help_log();
+			else
+				help_list(&l, depth ? LFOCUS : -1);
+		} else if (sc == SC_PICK) {
 			draw_pick();
-			break;
 		}
 		blit();
 
@@ -6327,12 +7565,15 @@ int main(int argc, char **argv)
 		 * only needs the clock. */
 		now = time(0);
 		timeout = (int)(60 - now % 60) * 1000;
+		if (timeout > 5000)
+			timeout = 5000;	/* the status bar's Wi-Fi follows within seconds */
 		if (sc == SC_LIST && (LID == L_NET_WIFI || LID == L_NET_USB || LID == L_SETTINGS ||
-				      LID == L_DISKS || LID == L_DISK))
+				      LID == L_SET_CONN || LID == L_SET_STORAGE || LID == L_DISKS || LID == L_DISK ||
+				      (LID == L_BROWSE && br_drives())))
 			timeout = 1500;	/* and disks come and go */
 		if (sc == SC_PINS || (sc == SC_LIST && LID == L_BP_PSU))
 			timeout = 1000;
-		want_repeat = sc == SC_INPUT;
+		want_repeat = sc == SC_INPUT || (sc == SC_PICK && P.filterable);
 		key = wait_key(timeout);
 		if (key < 0) {
 			say("home: keypad gone\n");
@@ -6357,7 +7598,60 @@ int main(int argc, char **argv)
 			continue;
 		}
 
-		if (sc == SC_HOME) {
+		/*
+		 * The right three symbol keys do the same on every screen but the
+		 * home screen and pop-ups (6.6): circle the log, cloud the
+		 * settings, diamond this screen's help.
+		 */
+		if ((sc == SC_LIST || sc == SC_LOG || bp_screen(sc)) &&
+		    (key == KEY_SYM_LOG || key == KEY_SYM_SETTINGS || key == KEY_SYM_HELP)) {
+			int bp = HAS_BP && (bp_screen(sc) || (sc == SC_LIST && depth && bp_list(LID)));
+
+			if (key == KEY_SYM_HELP) {
+				help_back = sc;
+				sc = SC_HELP;
+			} else if (APP_MODE && !bp && key != KEY_SYM_HELP) {
+				/* the Bus Pirate app with none connected: its own,
+				 * empty screens, not the menu's */
+				log_open(0, "BUS PIRATE", key == KEY_SYM_LOG ? "Console" : "Pins");
+				log_none = "No Bus Pirate on the bottom port.";
+				log_back = SC_LIST;
+				sc = SC_LOG;
+			} else if (key == KEY_SYM_LOG && bp) {
+				bp_console();		/* the Bus Pirate's log is its console */
+				sc = SC_HOME;		/* the logo key's place */
+				depth = 0;
+			} else if (key == KEY_SYM_LOG && sc != SC_LOG) {
+				log_for(depth ? LID : L_SETTINGS);
+				log_back = sc;
+				sc = SC_LOG;
+			} else if (key == KEY_SYM_SETTINGS && bp) {
+				sc = SC_PINS;
+				measured = 0;
+			} else if (key == KEY_SYM_SETTINGS && sc == SC_LIST && LID == L_BROWSE) {
+				if (depth < 6) {
+					BR.notice[0] = 0;
+					PUSH(L_FILES_SET);
+				}
+			} else if (key == KEY_SYM_SETTINGS && !(sc == SC_LIST && LID == L_FILES_SET)) {
+				depth = 0;		/* the menu's settings are Settings */
+				PUSH(L_SETTINGS);
+				sc = SC_LIST;
+			}
+			continue;
+		}
+
+		if (sc == SC_HELP) {
+			if (key == KEY_ESC || key == KEY_SYM_HELP)
+				sc = help_back;
+		} else if (sc == SC_LOG) {
+			if (key == KEY_ESC)
+				sc = log_back;
+			else if (key == KEY_UP && log_top > 0)
+				log_top--;
+			else if (key == KEY_DOWN && log_top + LOG_ROWS < log_n)
+				log_top++;
+		} else if (sc == SC_HOME) {
 			int open_tile = tiles_key(key, &hfocus);
 
 			if (key == KEY_ESC && !session) {
@@ -6384,12 +7678,20 @@ int main(int argc, char **argv)
 				break;
 			}
 		} else if (HAS_BP && sc == SC_BP) {
-			if (key == KEY_ESC || key == KEY_BACKSPACE) {
+			int open_tile = -1;
+
+			if (key == KEY_ESC) {
 				bp_close();
 				sc = APP_MODE ? SC_HOME : SC_LIST;	/* Apps */
 				continue;
 			}
-			switch (tiles_key(key, &bfocus)) {
+			if (key == KEY_SYM_MAIN)
+				open_tile = bfocus = 0;
+			else if (key == KEY_SYM_SECOND)
+				open_tile = bfocus = 1;
+			else if (key < KEY_F1 || key > KEY_F6)
+				open_tile = tiles_key(key, &bfocus);
+			switch (open_tile) {
 			case 0:
 			case 2:
 				if (depth < 6) {
@@ -6416,21 +7718,17 @@ int main(int argc, char **argv)
 		} else if (HAS_BP && sc == SC_LA) {
 			int span = la_span();
 
-			if (key == KEY_ESC || key == KEY_BACKSPACE)
+			if (key == KEY_ESC)
 				sc = SC_BP;
-			else if (key == KEY_F1)
+			else if (key == KEY_SYM_MAIN)
 				la_capture();
-			else if (key == KEY_F1 + 1)
-				LA.rate_i = (LA.rate_i + 1) % N_RATES;
-			else if (key == KEY_F1 + 2)
-				LA.trig = LA.trig == BP_PINS - 1 ? -1 : LA.trig + 1;
-			else if (key == KEY_F1 + 3)
-				LA.falling = !LA.falling;
-			else if (key == KEY_F1 + 4)
-				LA.size_i = (LA.size_i + 1) % 3;
-			else if (key == KEY_F6)
+			else if (key == KEY_SYM_SECOND)
 				la_save();
-			else if (key == KEY_LEFT || key == KEY_RIGHT)
+			else if (key == KEY_SYM_MENU) {
+				la_options();
+				pick_back = SC_LA;
+				sc = SC_PICK;
+			} else if (key == KEY_LEFT || key == KEY_RIGHT)
 				LA.pos += (key == KEY_LEFT ? -span : span) / 4;
 			else if (key == KEY_UP && LA.zoom > -3)
 				LA.zoom--, LA.pos += span / 4;		/* about the middle */
@@ -6442,90 +7740,133 @@ int main(int argc, char **argv)
 			if (LA.pos < 0)
 				LA.pos = 0;
 		} else if (HAS_BP && sc == SC_PINS) {
-			if (key == KEY_ESC || key == KEY_BACKSPACE)
+			if (key == KEY_ESC)
 				sc = SC_BP;
-			else if (key == KEY_F1)
+			else if (key == KEY_SYM_MAIN)
 				bp_psu(!B.psu);
-			else if (key == KEY_F1 + 4)
+			else if (key == KEY_SYM_SECOND)
 				bp_pullups(!B.pullups);
 			measured = 0;
 		} else if (sc == SC_PICK) {
-			if (key == KEY_UP || key == KEY_DOWN)
-				P.focus = (P.focus + (key == KEY_UP ? P.n - 1 : 1)) % P.n;
-			else if (key == KEY_ESC || key == KEY_BACKSPACE)
+			char ch;
+
+			if (key == KEY_UP || key == KEY_DOWN) {
+				if (P.shown)
+					P.focus = (P.focus + (key == KEY_UP ? P.shown - 1 : 1)) % P.shown;
+			} else if (key == KEY_ESC) {
+				sc = pick_back;
+			} else if (key == KEY_ENTER) {
+				enum screen back = pick_back;
+
 				sc = SC_LIST;
-			else if (key == KEY_ENTER) {
 				pick_done(&in, &sc);
+				if (sc == SC_LIST && back != SC_LIST)
+					sc = back;	/* the logic analyzer */
+				if (sc == SC_PICK)
+					pick_back = back;
 				cfocus = 0;	/* Files: delete? starts on Cancel */
+			} else if (P.filterable && key == KEY_BACKSPACE) {
+				if (P.filter[0]) {
+					P.filter[strlen(P.filter) - 1] = 0;
+					pick_filter();
+				}
+			} else if (P.filterable && (ch = key_char(key, shift_down)) &&
+				   strlen(P.filter) < sizeof(P.filter) - 1) {
+				size_t n = strlen(P.filter);
+
+				P.filter[n] = ch;
+				P.filter[n + 1] = 0;
+				pick_filter();
 			}
 		} else if (HAS_BP && sc == SC_BPINFO) {
-			if (key == KEY_ESC || key == KEY_BACKSPACE)
+			if (key == KEY_ESC)
 				sc = SC_BP;
 		} else if (sc == SC_POWER) {
 			if (key == KEY_UP || key == KEY_DOWN)
 				pfocus ^= 1;
-			else if (key == KEY_ESC || key == KEY_BACKSPACE)
+			else if (key == KEY_ESC)
 				sc = SC_HOME;
 			else if (key == KEY_ENTER)
 				power(pfocus == 0);
-		} else if (sc == SC_CHOICE) {
-			int n = 2 - choice_current;
-			struct wnet *w = net_find(choice_ssid);
-
-			if (key == KEY_UP || key == KEY_DOWN)
-				cfocus = (cfocus + 1) % n;
-			else if (key == KEY_ESC || key == KEY_BACKSPACE)
-				sc = SC_LIST;
-			else if (key == KEY_ENTER) {
-				sc = SC_LIST;
-				if (w && cfocus + choice_current == 0)
-					wifi_connect((int)(w - N.nets), 0);
-				else if (w)
-					wifi_forget((int)(w - N.nets));
-			}
 		} else if (sc == SC_CONFIRM) {
 			if (key == KEY_UP || key == KEY_DOWN)
 				cfocus ^= 1;
-			else if (key == KEY_ESC || key == KEY_BACKSPACE)
+			else if (key == KEY_ESC)
 				sc = SC_LIST;
 			else if (key == KEY_ENTER) {
 				sc = SC_LIST;
 				if (cfocus == 1)
 					br_delete();
 			}
-		} else if (sc == SC_LIST && depth && LID == L_BROWSE) {
+		} else if (sc == SC_LIST && depth && LID == L_BROWSE && br_drives()) {
 			if (key == KEY_UP || key == KEY_DOWN) {
-				BR.sel += key == KEY_UP ? -1 : 1;
-				if (BR.sel < 0)
-					BR.sel = 0;
-				if (BR.sel >= BR.n)
-					BR.sel = BR.n - 1;
+				int f = move_focus(&l, LFOCUS, key == KEY_UP ? -1 : 1);
+
+				if (f >= 0 && l.rows[f].kind == R_DRIVE)
+					BR.drive = l.rows[f].idx;
 				BR.notice[0] = 0;
-			} else if (key == KEY_LEFT || key == KEY_RIGHT) {	/* a page */
-				BR.sel += key == KEY_LEFT ? -8 : 8;
+			} else if (key == KEY_ENTER && LFOCUS >= 0 && l.rows[LFOCUS].kind == R_DRIVE) {
+				struct fsinfo *f = &D.fs[l.rows[LFOCUS].idx];
+
+				/* not mounted: mount it, then open it (6.10) */
+				BR.notice[0] = 0;
+				if (!f->mnt[0]) {
+					const struct diskinfo *dk = fs_disk(f);
+
+					if (fs_mount(f) == 0 && dk && !dk->usb)
+						store_maintain();
+					disks_read();
+				}
+				if (f->mnt[0])
+					br_go(f->mnt, 0);
+				else
+					br_say(D.notice[0] ? D.notice : "Could not mount it", "", 1);
+			} else if (key == KEY_SYM_MAIN) {
+				br_go("/", 0);
+			} else if (key == KEY_SYM_SECOND) {
+				br_go("/root", 0);
+			} else if (key == KEY_ESC) {
+				BR.notice[0] = 0;
+				if (--depth == 0)
+					sc = SC_HOME;
+			}
+		} else if (sc == SC_LIST && depth && LID == L_BROWSE) {
+			if (key == KEY_UP || key == KEY_DOWN || key == KEY_LEFT || key == KEY_RIGHT) {
+				/* the arrows across: a page */
+				BR.sel += key == KEY_UP ? -1 : key == KEY_DOWN ? 1 : key == KEY_LEFT ? -7 : 7;
 				BR.sel = BR.sel < 0 ? 0 : BR.sel >= BR.n ? BR.n - 1 : BR.sel;
+				BR.notice[0] = 0;
 			} else if (key == KEY_ENTER) {
 				br_open(&in, &sc);
-			} else if (key == KEY_F1) {
+				pick_back = SC_LIST;
+			} else if (key == KEY_SYM_MENU) {
 				br_options(&sc);
-			} else if (key == KEY_F1 + 1) {		/* triangle: the SD card */
-				BR.notice[0] = 0;
-				if (br_mount_at("/mnt/sd"))
-					br_go("/mnt/sd", 0);
-				else
-					br_say("No SD card mounted (Settings > Disks)", "", 1);
-			} else if (key == KEY_F1 + 2) {		/* cross: the top */
+				pick_back = SC_LIST;
+			} else if (key == KEY_SYM_MAIN) {
 				BR.notice[0] = 0;
 				br_go("/", 0);
-			} else if (key == KEY_ESC || key == KEY_BACKSPACE) {
+			} else if (key == KEY_SYM_SECOND) {
 				BR.notice[0] = 0;
-				if (!br_up() && --depth == 0)
-					sc = SC_HOME;
+				br_go("/root", 0);
+			} else if (key == KEY_ESC) {
+				BR.notice[0] = 0;
+				br_up();
+			}
+		} else if (sc == SC_LORA) {
+			if (key == KEY_UP || key == KEY_DOWN)
+				cfocus ^= 1;
+			else if (key == KEY_ESC)
+				sc = SC_LIST;
+			else if (key == KEY_ENTER) {
+				sc = SC_LIST;
+				if (cfocus == 1)
+					lora_set(1);
+				build(&l, LID);
 			}
 		} else if (sc == SC_FORMAT) {
 			if (key == KEY_UP || key == KEY_DOWN)
 				cfocus ^= 1;
-			else if (key == KEY_ESC || key == KEY_BACKSPACE)
+			else if (key == KEY_ESC)
 				sc = SC_LIST;
 			else if (key == KEY_ENTER) {
 				sc = SC_LIST;
@@ -6541,10 +7882,10 @@ int main(int argc, char **argv)
 			} else {
 				input_key(&in, key);
 			}
-		} else {
+		} else if (sc == SC_LIST && depth) {
 			struct row *r = LFOCUS >= 0 ? &l.rows[LFOCUS] : 0;
 
-			if (key == KEY_ESC || key == KEY_BACKSPACE) {
+			if (key == KEY_ESC) {
 				int was_bp = bp_list(LID);
 
 				if (--depth == 0)
@@ -6553,30 +7894,35 @@ int main(int argc, char **argv)
 					sc = SC_BP;
 			} else if (key == KEY_UP || key == KEY_DOWN) {
 				LFOCUS = move_focus(&l, LFOCUS, key == KEY_UP ? -1 : 1);
-			} else if (l.keyed && key >= KEY_F1 && key <= KEY_F6) {
-				for (int i = 0; i < l.n; i++)
-					if (l.rows[i].key == key - KEY_F1 + 1) {
-						LFOCUS = i;
-						if (HAS_BP && !bp_popup(l.rows[i].act, &in, &sc))
-							bp_row(l.rows[i].act, 0);
-						measured = now_ms();
-						break;
-					}
-			} else if (r && bp_list(LID) &&
-				   (key == KEY_ENTER || key == KEY_LEFT || key == KEY_RIGHT)) {
-				if (key == KEY_ENTER && (r->kind == R_SLIDER || r->kind == R_CHOICE))
+			} else if ((key == KEY_LEFT || key == KEY_RIGHT) && !(r && r->kind == R_SLIDER)) {
+				/* 6.6: sideways is a page in a list, never a value */
+				for (int i = 0; i < 5; i++)
+					LFOCUS = move_focus(&l, LFOCUS, key == KEY_LEFT ? -1 : 1);
+			} else if (key == KEY_SYM_MENU) {
+				if (r && r->kind == R_NETWORK) {
+					net_options(&N.nets[r->idx]);
+					pick_back = SC_LIST;
+					sc = SC_PICK;
+				}
+			} else if (key == KEY_SYM_MAIN && HAS_BP && LID == L_BP_PSU) {
+				bp_psu(!B.psu);
+				measured = now_ms();
+			} else if (r && bp_list(LID) && (key == KEY_ENTER || key == KEY_LEFT || key == KEY_RIGHT)) {
+				if (key == KEY_ENTER && r->kind == R_SLIDER)
 					continue;	/* the arrows change these */
-				if (key == KEY_ENTER ? bp_popup(r->act, &in, &sc) : r->kind == R_ACTION)
-					continue;	/* pop-ups open with Enter only */
+				if (key == KEY_ENTER && bp_popup(r->act, &in, &sc)) {
+					pick_back = SC_LIST;
+					continue;
+				}
 				bp_row(r->act, key == KEY_LEFT ? -1 : 1);
 				measured = now_ms();
-			} else if (r && (key == KEY_ENTER || key == KEY_LEFT || key == KEY_RIGHT)) {
-				int dir = key == KEY_LEFT ? -1 : 1, kind, i;
+			} else if (r && key == KEY_ENTER) {
+				int kind, i;
 				struct wnet *w;
 
 				switch (r->act) {
 				case A_BP:
-					if (!HAS_BP || key != KEY_ENTER)
+					if (!HAS_BP)
 						break;
 					apps_notice = 0;
 					if (bp_open() == 0) {
@@ -6588,7 +7934,7 @@ int main(int argc, char **argv)
 					break;
 				case A_STORE:
 				case A_MYAPPS:
-					if (key != KEY_ENTER || (i = store_app()) < 0)
+					if ((i = store_app()) < 0)
 						break;
 					app_notice[0] = 0;
 					run_back = 0;
@@ -6597,7 +7943,7 @@ int main(int argc, char **argv)
 					run_extra = 0;
 					break;
 				case A_APP:
-					if (key != KEY_ENTER || r->idx >= n_apps)
+					if (r->idx >= n_apps)
 						break;
 					app_notice[0] = 0;
 					run_back = 0;
@@ -6612,7 +7958,7 @@ int main(int argc, char **argv)
 				case A_FILE: {
 					static char file[sizeof(A[0].files) + 50];
 
-					if (key != KEY_ENTER || F.app < 0 || r->idx >= F.n)
+					if (F.app < 0 || r->idx >= F.n)
 						break;
 					run_back = 0;
 					file[0] = 0;
@@ -6623,17 +7969,42 @@ int main(int argc, char **argv)
 				case A_BLE:
 					ble_toggle();
 					break;
+				case A_SUB:
+					if (depth < 6)
+						PUSH((enum list_id)r->idx);
+					break;
+				case A_LORA_PRESET:
+					pick_preset();
+					pick_back = SC_LIST;
+					sc = SC_PICK;
+					break;
+				case A_TZ:
+					pick_tz();
+					pick_back = SC_LIST;
+					sc = SC_PICK;
+					break;
+				case A_LORA:
+					if (lora_wanted()) {
+						lora_set(0);
+					} else {
+						cfocus = 0;	/* Cancel */
+						sc = SC_LORA;
+					}
+					break;
 				case A_KBD:
 					kbd_toggle();
 					break;
-				case A_BRIGHT:
-					if (key != KEY_ENTER)
-						brightness_step(dir);
+				case A_HIDDEN:
+					BR.hidden = !BR.hidden;
+					settings_load(&SET);
+					if (!settings_set(&SET, "files.hidden", BR.hidden ? "on" : "off"))
+						settings_save(&SET);
+					BR.stale = 1;
 					break;
 				case A_USB:
 				case A_NET_WIFI:
 				case A_NET_USB:
-					if (key != KEY_ENTER || depth == 6)
+					if (depth == 6)
 						break;
 					PUSH(r->act == A_USB ? L_USB :
 					     r->act == A_NET_WIFI ? L_NET_WIFI : L_NET_USB);
@@ -6644,7 +8015,7 @@ int main(int argc, char **argv)
 					}
 					break;
 				case A_IP:
-					if (key == KEY_ENTER && depth < 6)
+					if (depth < 6)
 						PUSH(LID == L_NET_WIFI ? L_IP_WIFI : L_IP_USB);
 					break;
 				case A_WIFI_ON:
@@ -6656,21 +8027,17 @@ int main(int argc, char **argv)
 					conf_save(kind);
 					break;
 				case A_SCAN:
-					if (key == KEY_ENTER) {
-						N.notice[0] = 0;
-						wifi_scan();
-						scanning_until = time(0) + 5;
-					}
+					N.notice[0] = 0;
+					wifi_scan();
+					scanning_until = time(0) + 5;
 					break;
 				case A_NETWORK:
-					if (key != KEY_ENTER)
-						break;
+					/* Enter connects; Forget is under the square key */
 					w = &N.nets[r->idx];
-					if (w->saved_id >= 0) {
-						strncpy(choice_ssid, w->ssid, sizeof(choice_ssid) - 1);
-						choice_current = w->current;
-						cfocus = 0;
-						sc = SC_CHOICE;
+					if (w->current) {
+						break;
+					} else if (w->saved_id >= 0) {
+						wifi_connect(r->idx, 0);
 					} else if (!w->supported) {
 						notice(w->ssid, ": enterprise or WPA3-only, not supported", 1);
 					} else if (w->secured) {
@@ -6685,13 +8052,13 @@ int main(int argc, char **argv)
 					}
 					break;
 				case A_DISKS:
-					if (key == KEY_ENTER && depth < 6) {
+					if (depth < 6) {
 						D.notice[0] = 0;
 						PUSH(L_DISKS);
 					}
 					break;
 				case A_DISK:
-					if (key == KEY_ENTER && depth < 6) {
+					if (depth < 6) {
 						struct fsinfo *f = &D.fs[r->idx];
 						const struct diskinfo *dk = fs_disk(f);
 
@@ -6708,17 +8075,15 @@ int main(int argc, char **argv)
 						disk_mount_toggle(&D.fs[i]);
 					break;
 				case A_FSCK:
-					if (key == KEY_ENTER && (i = fs_find(disk_sel)) >= 0)
+					if ((i = fs_find(disk_sel)) >= 0)
 						disk_check(&D.fs[i]);
 					break;
 				case A_FORMAT:
-					if (key == KEY_ENTER) {
-						cfocus = 0;	/* Cancel */
-						sc = SC_FORMAT;
-					}
+					cfocus = 0;	/* Cancel */
+					sc = SC_FORMAT;
 					break;
 				case A_SETTING:
-					if (key != KEY_ENTER || r->idx < 0 || r->idx >= SET.n)
+					if (r->idx < 0 || r->idx >= SET.n)
 						break;
 					input_start(&in, A_SETTING, r->idx, "SETTINGS", SET.s[r->idx].label,
 						    SET.s[r->idx].value, 0);
@@ -6727,8 +8092,6 @@ int main(int argc, char **argv)
 				case A_ADDR:
 				case A_GW:
 				case A_DNS:
-					if (key != KEY_ENTER)
-						break;
 					kind = LID == L_IP_WIFI ? NK_WIFI : NK_USB;
 					input_start(&in, r->act, kind, kind == NK_WIFI ? "WI-FI" : "WIRED (USB)",
 						    r->label,
@@ -6739,6 +8102,13 @@ int main(int argc, char **argv)
 				default:
 					break;
 				}
+			} else if (r && r->kind == R_SLIDER && (key == KEY_LEFT || key == KEY_RIGHT)) {
+				int dir = key == KEY_LEFT ? -1 : 1;
+
+				if (r->act == A_BRIGHT)
+					brightness_step(dir);
+				else if (r->act == A_LORA_POWER)
+					lora_change(A_LORA_POWER, dir);
 			}
 		}
 	}

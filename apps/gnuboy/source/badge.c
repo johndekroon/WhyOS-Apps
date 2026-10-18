@@ -13,7 +13,9 @@
  *
  * Keys: evdev events from the keypad, as gnuboy key codes; what they do is
  * bound in badge.rc. The keypad is not grabbed: the menu's runner
- * (apprun) reads it too, for the logo key.
+ * (apprun) reads it too, for the logo key. Esc pauses and the diamond key
+ * shows the keys (sdapps/pause, Docs/06-design-system.md 6.9): neither reaches
+ * gnuboy.
  */
 #include <fcntl.h>
 #include <poll.h>
@@ -28,6 +30,7 @@
 #include "input.h"
 #include "rc.h"
 #include "sys.h"
+#include "pause.h"
 
 struct fb fb;
 
@@ -185,6 +188,58 @@ struct kev {				/* 32-bit kernel input_event */
 	int value;
 };
 
+/*
+ * Esc: the pause screen; the diamond key: the key overview. The game
+ * stands still meanwhile (we do not return to its loop). Keys held when it
+ * opened are let go, or the game would see them held on.
+ */
+static void pause_game(int help)
+{
+	static const int held[] = { K_UP, K_DOWN, K_LEFT, K_RIGHT, K_F3, K_F4, 'x', 'z',
+				    K_ENTER, K_SPACE, K_BS };
+	static const struct pause_key keys[] = {
+		{ "\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "The D-pad" },
+		{ "#4", "A (X does too)" },
+		{ "#3", "B (Z does too)" },
+		{ "Enter", "Start" },
+		{ "Space", "Select (Backspace does too)" },
+		{ "#1", "Save the game's state" },
+		{ "#2", "Load the saved state" },
+		{ "#6", "These keys" },
+		{ "Esc", "Pause: resume, save, load, quit" },
+		{ "Logo", "Back to the menu" },
+	};
+	static const char *const items[] = { "Resume", "Save state", "Load state", "Keys", "Quit" };
+	struct pause_screen s = {
+		.fbfd = fbfd, .evfd = evfd, .line = line, .game = band, .game_lines = 144 * scale,
+		.band_off = band_off, .app = "GAME BOY", .name = "Game Boy",
+		.about = "The game is paused. On the badge its buttons are these keys.",
+		.keys = keys, .n_keys = sizeof(keys) / sizeof(keys[0]),
+		.items = items, .n_items = 5, .keys_item = 3,
+	};
+	char save[] = "savestate", load[] = "loadstate", quit[] = "quit";	/* rc_command edits */
+	int flags = fcntl(evfd, F_GETFL);
+
+	for (unsigned i = 0; i < sizeof(held) / sizeof(held[0]); i++) {
+		event_t ev = { .type = EV_RELEASE, .code = held[i] };
+
+		ev_postevent(&ev);
+	}
+	fcntl(evfd, F_SETFL, flags & ~O_NONBLOCK);
+	switch (badge_pause(&s, help)) {
+	case 1:
+		rc_command(save);
+		break;
+	case 2:
+		rc_command(load);
+		break;
+	case 4:
+		rc_command(quit);
+		break;
+	}
+	fcntl(evfd, F_SETFL, flags);
+}
+
 void ev_poll(int wait)
 {
 	struct pollfd p = { .fd = evfd, .events = POLLIN };
@@ -197,6 +252,10 @@ void ev_poll(int wait)
 	while (read(evfd, &e, sizeof(e)) == (int)sizeof(e)) {
 		event_t ev = { 0 };
 
+		if (e.type == 1 && e.value == 1 && (e.code == 1 || e.code == 64)) {
+			pause_game(e.code == 64);	/* Esc, diamond */
+			continue;
+		}
 		if (e.type != 1 || e.value == 2 || !(ev.code = keycode(e.code)))
 			continue;
 		ev.type = e.value ? EV_PRESS : EV_RELEASE;

@@ -14,6 +14,8 @@
  *   triangle/cross (F2/F3)   page up / page down
  *   square/diamond (F1/F6)   back / forward (NetSurf's Ctrl+Left/Right)
  *   cloud (F5)    click into the address bar
+ *   Esc           the pause screen: Resume, Keys, Quit (sdapps/pause; a
+ *                 full-screen app, Docs/06-design-system.md 6.9)
  * Everything else is passed on as keys. The keypad is not grabbed: the
  * menu's runner (apprun) reads it too, for the logo key.
  */
@@ -34,6 +36,7 @@
 #include "surface.h"
 #include "plot.h"
 #include "cursor.h"
+#include "pause.h"
 
 #define KEY_FN		0x1d0
 
@@ -113,12 +116,53 @@ static int keycode(int c)
 	return 0;
 }
 
+/* Esc: the pause screen over the page; Quit asks NetSurf to end. */
+static void pause_browser(nsfb_t *nsfb)
+{
+	static const struct pause_key keys[] = {
+		{ "\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "Move the pointer (faster when held)" },
+		{ "#4", "Click; hold and move to drag" },
+		{ "Fn", "+ arrows: the arrow keys (caret, scrolling)" },
+		{ "#2", "Page up" },
+		{ "#3", "Page down" },
+		{ "#1", "Back" },
+		{ "#6", "Forward" },
+		{ "#5", "Type an address" },
+		{ "Esc", "Pause: resume, keys, quit" },
+		{ "Logo", "Back to the menu" },
+	};
+	static const char *const items[] = { "Resume", "Keys", "Quit" };
+	struct pause_screen s = {
+		.fbfd = fbfd, .evfd = evfd, .line = (unsigned)(long)nsfb->surface_priv,
+		.game = (const unsigned short *)nsfb->ptr, .game_lines = nsfb->height, .band_off = 0,
+		.app = "NETSURF", .name = "NetSurf",
+		.about = "The keypad brings its own pointer: the arrows move it, the circle clicks.",
+		.keys = keys, .n_keys = sizeof(keys) / sizeof(keys[0]),
+		.items = items, .n_items = 3, .keys_item = 1,
+	};
+	int flags = fcntl(evfd, F_GETFL);
+
+	if ((long)nsfb->surface_priv != nsfb->linelen)
+		s.game = 0;	/* a panel with other lines: just black under it */
+	fcntl(evfd, F_SETFL, flags & ~O_NONBLOCK);
+	if (badge_pause(&s, 0) == 2) {
+		push(NSFB_EVENT_CONTROL, 0);
+		queue[(qhead + qlen - 1) % 8].value.controlcode = NSFB_CONTROL_QUIT;
+	}
+	fcntl(evfd, F_SETFL, flags);
+}
+
 static void translate(nsfb_t *nsfb, const struct kev *e)
 {
 	int down = e->value != 0, code = e->code;
 
 	if (e->type != 1)
 		return;
+	if (code == 1) {		/* Esc */
+		if (e->value == 1)
+			pause_browser(nsfb);
+		return;
+	}
 	if (code == KEY_FN) {
 		fn = down;
 		return;

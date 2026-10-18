@@ -3,7 +3,7 @@
 Together with the downloads below, this directory is the complete
 corresponding source of the `netsurf` package (docs/package.md §2.10). The
 files here are the badge-specific ones, copied from why2025-linux
-`sdapps/` at commit `2be6d7c`; the toolchain and the build script are in
+`sdapps/` at commit `be892b8`; the toolchain and the build script are in
 [toolchain/](../../../toolchain/README.md).
 
 | Upstream | URL | SHA-256 or commit |
@@ -21,4 +21,8 @@ Build: put these files in `sdapps/netsurf/` next to `toolchain/sdapps-build.sh`
 and run `sdapps-build.sh netsurf` (toolchain/README.md).
 
 The sha256 of netsurf-all is the tarball that was used; the build
-script does not check it yet. `start` is in the app's `overlay/`.
+script does not check it yet. `start` is in the app's `overlay/`. `pause.c` and `pause.h` (why2025-linux
+`sdapps/pause/`) draw the pause screen that Esc opens, with the menu's
+`wbdraw.h`, `home_assets.h` and `home-assets/wb_tokens.h` (why2025-linux
+`patches/buildroot/overlay-src/`); put `pause.*` in `sdapps/pause/` and the
+others in `patches/buildroot/overlay-src/`.

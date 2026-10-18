@@ -67,6 +67,19 @@
  "upstream_version": "git c367bb4",
  "versions": [
   {
+   "build": 2,
+   "changelog": "Esc opens a pause screen: resume, save or load the state, the keys, quit. ◆ shows the keys.",
+   "package": {
+    "installed_size": 415246,
+    "sha256": "b09b9381691fab1acbf13f1cb1cf0d251f70b1b0e4be8d30a166bc4bf2a1ce70",
+    "size": 202352,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/gnuboy-1.1.0.wpk"
+   },
+   "published": "2026-10-18T18:26:02Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/gnuboy-1.1.0-source.tar.gz",
+   "version": "1.1.0"
+  },
+  {
    "build": 1,
    "changelog": "First store release.",
    "package": {

@@ -226,6 +226,19 @@
  "upstream_version": "3.11",
  "versions": [
   {
+   "build": 2,
+   "changelog": "Esc opens a pause screen: resume, the keys, quit. ◆ shows the keys.",
+   "package": {
+    "installed_size": 3497307,
+    "sha256": "d9e2eb8da5d27cc143e4d9f602fe03c9d4a34ba937c96640e3e5af009d2268be",
+    "size": 1688054,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/netsurf-1.1.0.wpk"
+   },
+   "published": "2026-10-18T18:26:04Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/netsurf-1.1.0-source.tar.gz",
+   "version": "1.1.0"
+  },
+  {
    "build": 1,
    "changelog": "First store release. Cookies and history move to the app's settings folder.",
    "package": {

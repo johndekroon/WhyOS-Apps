@@ -66,6 +66,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 2,
+   "changelog": "New key layout after the badge design: ▲ power supply, ✕ logic analyzer, ● console, ♣ pins, ■ menus, ◆ help on every screen.",
+   "package": {
+    "installed_size": 530679,
+    "sha256": "f8688e9c16d6b0f5687d2cc416d3f45e338a10ae8d2ff25153bb1cc02c30b2d6",
+    "size": 235823,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/buspirate-1.1.0.wpk"
+   },
+   "published": "2026-10-18T18:26:01Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/buspirate-1.1.0-source.tar.gz",
+   "version": "1.1.0"
+  },
+  {
    "build": 1,
    "changelog": "First store release; it was part of the start menu before.",
    "package": {

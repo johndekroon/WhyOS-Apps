@@ -61,7 +61,29 @@ def main():
     if lines[0] != "closed":
         bad += 1
         print("FAIL: Esc on an empty line does not close")
-    print("%d of %d failed" % (bad, len(CASES) + 1))
+    # the symbol keys (Docs/06-design-system.md 6.6): circle the log, cloud
+    # the settings, diamond the help; Esc goes back one layer, never closes
+    # from there
+    keys = [
+        ("\\4", "screen log", "unit deg"),
+        ("\\4\\e", "screen calc", "unit deg"),
+        ("\\5\\n\\d\\n", "screen settings", "unit rad"),
+        ("\\5\\n\\d\\e", "screen settings", "unit deg"),
+        ("\\5\\n\\d\\n\\e", "screen calc", "unit rad"),
+        ("12\\6", "screen calc help", "unit deg"),
+        ("12\\6\\e", "screen calc", "unit deg"),
+        ("\\6\\6\\1\\2\\3", "screen calc", "unit deg"),
+    ]
+    for k, screen, unit in keys:
+        _, _, lines = run(exe, k)
+        if lines[:2] != [screen, unit]:
+            bad += 1
+            print("FAIL %r: want %r, %r; got %r" % (k, screen, unit, lines[:2]))
+    _, _, lines = run(exe, "12\\6\\e")
+    if "line 12" not in lines:
+        bad += 1
+        print("FAIL: closing the help cleared the line")
+    print("%d of %d failed" % (bad, len(CASES) + 2 + len(keys)))
     sys.exit(1 if bad else 0)
 
 

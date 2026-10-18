@@ -15,7 +15,10 @@
  * read row by row; those are decoded whole, up to IL_MAX.
  *
  * Keys: Left/Right the previous/next picture, Enter zoom 2x (then the
- * arrows move it), Esc/Backspace close; the logo key is apprun's.
+ * arrows move it), Esc closes; the logo key is apprun's. The symbol keys
+ * as the design has them (Docs/06-design-system.md 6.6): the diamond the
+ * help, the circle and cloud the log and settings, which a viewer does not
+ * have (a screen that says so); the left three do nothing.
  * Drawn as the menu (wbdraw.h): status bar with the name, hint bar.
  *
  * Built with -DIMGVIEW_HOST it decodes FILE into OUT.ppm on the host
@@ -54,7 +57,6 @@
 #define MAX_PICS	512
 
 #define KEY_ESC		1
-#define KEY_BACKSPACE	14
 #define KEY_ENTER	28
 #define KEY_UP		103
 #define KEY_LEFT	105
@@ -485,6 +487,24 @@ static void path_of(int i, char *out, size_t n)
 
 static uint16_t band[W * 40];
 
+enum { SC_VIEW, SC_LOG, SC_SETTINGS };
+static int sc, help;
+
+static void draw_help(void)
+{
+	static const struct help_key keys[] = {
+		{ "\xe2\x86\x90\xe2\x86\x92", "Previous or next picture in the folder" },
+		{ "Enter", "Zoom in 2x, or fit the screen again" },
+		{ "\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "Zoomed in: move the picture" },
+		{ "Esc", "Close" },
+		{ "#6", "This help" },
+		{ "Logo", "Back to the menu" },
+	};
+
+	help_popup("Picture viewer", "The pictures in this folder, JPEG and PNG, fitted to the screen.",
+		   keys, sizeof(keys) / sizeof(keys[0]));
+}
+
 static void draw_band(int y0, int y1)
 {
 	static const struct hint hints[] = {
@@ -498,6 +518,13 @@ static void draw_band(int y0, int y1)
 	char right[64], name[96];
 	int ox, oy;
 
+	if (sc != SC_VIEW) {
+		empty_screen("PICTURE VIEWER", sc == SC_LOG ? "Log" : "Settings",
+			     sc == SC_LOG ? "No log yet." : "This app has no settings.");
+		if (help)
+			draw_help();
+		return;
+	}
 	fill(0, y0, W, y1 - y0, WB_COLOR_VOID);
 	/* the picture */
 	if (P.px) {
@@ -526,6 +553,8 @@ static void draw_band(int y0, int y1)
 	text(&f_mono14, W - WB_CHROME_PAD - text_w(&f_mono14, right, 0),
 	     text_top(&f_mono14, WB_STATUS_BAR_H / 2), right, WB_COLOR_TEXT_MID, 0);
 	hint_bar(P.zoom ? zoomed : hints, 3);
+	if (help)
+		draw_help();
 }
 
 #ifdef IMGVIEW_HOST
@@ -634,7 +663,29 @@ int main(int argc, char **argv)
 			break;
 		if (e.type != 1 || e.value == 0)
 			continue;
-		if (e.code == KEY_ESC || e.code == KEY_BACKSPACE)
+		if (help) {		/* only an explanation: Esc or the diamond closes it */
+			if (e.code == KEY_ESC || e.code == KEY_SYM_HELP) {
+				help = 0;
+				redraw();
+			}
+			continue;
+		}
+		if (e.code == KEY_SYM_HELP || e.code == KEY_SYM_LOG || e.code == KEY_SYM_SETTINGS) {
+			if (e.code == KEY_SYM_HELP)
+				help = 1;
+			else
+				sc = e.code == KEY_SYM_LOG ? SC_LOG : SC_SETTINGS;
+			redraw();
+			continue;
+		}
+		if (sc != SC_VIEW) {	/* the log or settings screen: Esc back */
+			if (e.code == KEY_ESC) {
+				sc = SC_VIEW;
+				redraw();
+			}
+			continue;
+		}
+		if (e.code == KEY_ESC)
 			break;
 		if (e.code == KEY_ENTER) {
 			P.zoom = !P.zoom;

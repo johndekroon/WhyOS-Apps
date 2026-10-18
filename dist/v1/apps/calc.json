@@ -67,6 +67,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 2,
+   "changelog": "Esc clears, and closes when there is nothing to clear. ◆ help, ♣ settings (the angle unit as a pop-up).",
+   "package": {
+    "installed_size": 399059,
+    "sha256": "0af1b0d3765f8196255544bf4450f34a34bbabfdaeaf1c4c078450c7bd131bc3",
+    "size": 179678,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.1.0.wpk"
+   },
+   "published": "2026-10-18T18:26:02Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/calc-1.1.0-source.tar.gz",
+   "version": "1.1.0"
+  },
+  {
    "build": 1,
    "changelog": "First release.",
    "package": {

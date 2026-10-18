@@ -4,8 +4,8 @@
 format = 1
 id = "netsurf"
 name = "NetSurf"
-version = "1.0.0"
-build = 1
+version = "1.1.0"
+build = 2
 summary = "Graphical web browser with HTTPS, without JavaScript"
 description = """
 A web browser with its own layout engine: HTML, CSS, PNG, JPEG and GIF,
@@ -25,7 +25,7 @@ license_file = "netsurf.txt"
 homepage = "https://www.netsurf-browser.org"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/netsurf/source"
 upstream_version = "3.11"
-changelog = "First store release. Cookies and history move to the app's settings folder."
+changelog = "Esc opens a pause screen: resume, the keys, quit. ◆ shows the keys."
 
 type = "app"
 category = "internet"

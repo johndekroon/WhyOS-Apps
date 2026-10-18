@@ -94,6 +94,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 2,
+   "changelog": "Backspace no longer closes the viewer; ◆ shows the keys.",
+   "package": {
+    "installed_size": 522481,
+    "sha256": "1a90d1eb3bcc1d360014ec6f75cc87fde35c364710cf5ec87dbb0c02c483f6ad",
+    "size": 266576,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/imgview-1.1.0.wpk"
+   },
+   "published": "2026-10-18T18:26:03Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/imgview-1.1.0-source.tar.gz",
+   "version": "1.1.0"
+  },
+  {
    "build": 1,
    "changelog": "First store release.",
    "package": {
