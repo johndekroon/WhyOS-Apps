@@ -74,7 +74,7 @@ the UI.
 Controlled with the keypad only, like the menu: arrows, Enter, Esc, the
 symbol keys, typing for search. English UI text. The keys follow the
 WhyBadge design (its Docs/06-design-system.md 6.6-6.8; in the source
-since 2026-10-18, not yet in a released store): Enter does the row's
+since store 0.2.5, 2026-10-18): Enter does the row's
 own thing (a switch flips; the arrows never change one), Esc goes back
 one screen and closes the store from the first one (in Search it first
 clears what was typed), Backspace only erases text. ■ opens a
