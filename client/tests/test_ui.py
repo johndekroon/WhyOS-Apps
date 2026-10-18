@@ -75,7 +75,8 @@ def test_browse_search_install_open(env):
     ui(env, ["shot discover",
              "down", "enter", "shot type",            # Browse > Apps
              "enter", "shot category",                # Utilities
-             "f1", "shot category-sorted",
+             "f1", "shot category-sort-menu",          # the square key: a menu
+             "down", "enter", "shot category-sorted",
              "esc", "esc",
              "up", "enter", "type hel", "shot search",
              "down", "enter", "shot app",             # Hello's page
@@ -114,6 +115,20 @@ def test_settings_and_licences(env):
        ["shot app-low", "up", "up", "enter", "shot licences", "enter", "shot licence", "esc", "esc",
         "down", "enter", "shot versions"])
     assert os.path.exists(os.path.join(env.home, ".whyos", "store", "keep-packages"))
+
+
+def test_symbol_keys(env):
+    """The design's keys (Docs/06-design-system.md 6.6): the diamond a help
+    pop-up, the circle the log, the cloud the settings; Esc in Search
+    clears the typed text before going back."""
+    with open(os.path.join(env.tmpdir, "app-store.log"), "w") as f:
+        f.write("store: hello from the log\n")
+    shots = ui(env, ["f6", "shot help", "f6",
+                     "f4", "shot log", "esc",
+                     "f5", "shot settings-key", "f6", "shot settings-help", "esc", "esc",
+                     "up", "enter", "type hel", "esc", "shot search-cleared", "esc",
+                     "shot discover-again", "esc"])
+    assert len(shots) == 6
 
 
 def test_no_network(env):

@@ -4,7 +4,7 @@
  * (why2025-linux overlay-src: wbdraw.h, home_assets.h, the WhyBadge design).
  *
  *   Discover    updates, featured, recently updated, the types
- *   Apps/Games  categories with counts, then their apps (#1: sort)
+ *   Apps/Games  categories with counts, then their apps (#1: a menu to sort)
  *   Search      typing filters the cached index, offline
  *   App page    icon, facts, state and actions, then description,
  *               screenshots, commands, requirements, licences, versions
@@ -21,6 +21,13 @@
  *
  * "Open" writes the app's id to /tmp/store-open (P.tmp) and ends: the menu, back
  * from apprun, starts it (why2025-linux home.c).
+ *
+ * Keys as the WhyBadge design has them (Docs/06-design-system.md 6.6-6.8):
+ * Enter does the row's thing, Esc one layer back (in Search it first
+ * clears what was typed), Backspace only erases text; the square key is
+ * a pop-up menu where a screen has one (a category: sort), the circle the
+ * store's log (apprun's /tmp/app-store.log), the cloud its settings, the
+ * diamond a help pop-up with this screen's keys.
  *
  * Built only for the badge (build.sh: -DSTORE_UI and the menu's drawing
  * code) and, with -DSTORE_UI_HOST, as a host program that takes its keys
@@ -310,7 +317,9 @@ static struct {			/* the app on the app page */
 } AP;
 
 /* the overlays: a question, a download, a line while something runs */
-enum ov { OV_NONE, OV_ASK, OV_PROGRESS, OV_BUSY, OV_INPUT };
+enum ov { OV_NONE, OV_ASK, OV_PROGRESS, OV_BUSY, OV_INPUT,
+	  OV_HELP,		/* the diamond key */
+	  OV_MENU };		/* the square key: a category's sort */
 static struct {
 	enum ov kind;
 	char eyebrow[32], title[96], body[200];
@@ -605,42 +614,93 @@ static void draw_search_head(int y)
 	fill(tx + 2, y + 16, 2, 24, WB_COLOR_CYAN);
 }
 
+/*
+ * The hint bar (6.8): only what differs per screen. Enter with its word,
+ * the square key where the screen has a menu, Esc on the right; no Up and
+ * Down, and no circle, cloud or diamond (the help lists those).
+ */
 static void hints(void)
 {
-	static const struct hint nav[] = {
-		{ UP_S, "select", 0 }, { "Enter", "open", 0 }, { "Esc", "back", 1 },
-	};
+	static const struct hint nav[] = { { "Enter", "open", 0 }, { "Esc", "back", 1 } };
 	static const struct hint nav_sort[] = {
-		{ UP_S, "select", 0 }, { "Enter", "open", 0 }, { "#1", "sort", 0 }, { "Esc", "back", 1 },
+		{ "Enter", "open", 0 }, { "#1", "sort", 0 }, { "Esc", "back", 1 },
 	};
-	static const struct hint adj[] = {
-		{ UP_S, "select", 0 }, { "Enter", "change", 0 }, { "Esc", "back", 1 },
-	};
-	static const struct hint search[] = {
-		{ UP_S, "select", 0 }, { "Enter", "open", 0 }, { "Esc", "back", 1 },
-	};
-	static const struct hint discover[] = {
-		{ UP_S, "select", 0 }, { "Enter", "open", 0 }, { "Esc", "close", 1 },
-	};
-	static const struct hint back[] = { { UP_S, "scroll", 0 }, { "Esc", "back", 1 } };
-	static const struct hint shots[] = { { LR_S, "next", 0 }, { "Esc", "back", 1 } };
+	static const struct hint adj[] = { { "Enter", "change", 0 }, { "Esc", "back", 1 } };
+	static const struct hint search_clear[] = { { "Enter", "open", 0 }, { "Esc", "clear", 1 } };
+	static const struct hint discover[] = { { "Enter", "open", 0 }, { "Esc", "close", 1 } };
+	static const struct hint back[] = { { "Esc", "back", 1 } };
+	static const struct hint shots[] = { { LR_S, "previous / next", 0 }, { "Esc", "back", 1 } };
 	const struct frame *f = TOP;
 	const struct row *r = f->focus >= 0 && f->focus < L.n ? &L.rows[f->focus] : 0;
 
 	if (f->v == V_TEXT)
-		hint_bar(back, 2);
+		hint_bar(back, 1);
 	else if (f->v == V_SHOTS)
 		hint_bar(shots, 2);
-	else if (f->v == V_SEARCH)
-		hint_bar(search, 3);
-	else if (f->v == V_DISCOVER && depth == 1)
-		hint_bar(discover, 3);
+	else if (f->v == V_SEARCH && query[0])
+		hint_bar(search_clear, 2);
+	else if (depth == 1)
+		hint_bar(discover, 2);
 	else if (f->v == V_CAT)
-		hint_bar(nav_sort, 4);
+		hint_bar(nav_sort, 3);
 	else if (r && r->kind == R_TOGGLE)
-		hint_bar(adj, 3);
+		hint_bar(adj, 2);
 	else
-		hint_bar(nav, 3);
+		hint_bar(nav, 2);
+}
+
+/* The diamond key's pop-up: what the screen is for and its keys. */
+static void draw_help(void)
+{
+	static const struct help_key k_list[] = {
+		{ "Enter", "Open the row, or do what it says" },
+		{ "Esc", "Back one screen; on the first, close the store" },
+		{ "#4", "The store's log" }, { "#5", "Settings: sources, cache, storage" },
+		{ "#6", "This help" }, { "Logo", "Back to the menu" },
+	};
+	static const struct help_key k_cat[] = {
+		{ "Enter", "Open the app's page" }, { "#1", "Sort: by name or recently updated" },
+		{ "Esc", "Back" }, { "#4", "The store's log" }, { "#5", "Settings" },
+		{ "#6", "This help" }, { "Logo", "Back to the menu" },
+	};
+	static const struct help_key k_search[] = {
+		{ "Enter", "Open the app's page" }, { "Backspace", "Erase what was typed" },
+		{ "Esc", "Clear what was typed; then back" }, { "#4", "The store's log" },
+		{ "#5", "Settings" }, { "#6", "This help" }, { "Logo", "Back to the menu" },
+	};
+	static const struct help_key k_text[] = {
+		{ UP_S, "Scroll" }, { "Esc", "Back" }, { "#4", "The store's log" }, { "#5", "Settings" },
+		{ "#6", "This help" }, { "Logo", "Back to the menu" },
+	};
+	static const struct help_key k_shots[] = {
+		{ LR_S, "Previous or next screenshot" }, { "Esc", "Back" }, { "#4", "The store's log" },
+		{ "#5", "Settings" }, { "#6", "This help" }, { "Logo", "Back to the menu" },
+	};
+	const struct frame *f = TOP;
+	const char *title = f->v == V_TEXT ? text_title : f->v == V_SHOTS ? "Screenshots" :
+			    L.title[0] ? L.title : "App store";
+	const char *about =
+		f->v == V_DISCOVER ? "Apps and games for the badge, installed on the SD card: updates, "
+				     "what is new, and every type." :
+		f->v == V_CAT ? "The apps in this category." :
+		f->v == V_SEARCH ? "Type a name, a tag or a command: the list filters as you type, "
+				   "offline." :
+		f->v == V_APP ? "An app: install, open, update or remove it, and what it needs." :
+		f->v == V_MYAPPS ? "The apps you installed: updates first." :
+		f->v == V_SETTINGS || f->v == V_SOURCE || f->v == V_STORAGE ? "Where the store gets its "
+				     "apps, and the room they take." :
+		f->v == V_TEXT && !strcmp(f->arg, "log") ? "What the store printed while it ran." : 0;
+
+	if (f->v == V_CAT)
+		help_popup(title, about, k_cat, ARRAY_N(k_cat));
+	else if (f->v == V_SEARCH)
+		help_popup(title, about, k_search, ARRAY_N(k_search));
+	else if (f->v == V_TEXT)
+		help_popup(title, about, k_text, ARRAY_N(k_text));
+	else if (f->v == V_SHOTS)
+		help_popup(title, about, k_shots, ARRAY_N(k_shots));
+	else
+		help_popup(title, about, k_list, ARRAY_N(k_list));
 }
 
 static void draw_list(void)
@@ -851,6 +911,17 @@ static void draw_overlay(void)
 		hint_bar(input_h, 2);
 		break;
 	}
+	case OV_HELP:
+		draw_help();
+		break;
+	case OV_MENU: {
+		static const struct hint menu_h[] = { { "Enter", "choose", 0 }, { "Esc", "cancel", 1 } };
+		struct menu_item it[2] = { { .label = "By name" }, { .label = "Recently updated first" } };
+
+		menu_popup("SORT", L.title[0] ? L.title : "Apps", 0, it, 0, 2, O.focus, TOP->sort, 0, 0,
+			   menu_h, 2);
+		break;
+	}
 	default:
 		break;
 	}
@@ -1009,7 +1080,8 @@ static int next_key(int wait_ms)
 		static const struct { const char *n; int c; } k[] = {
 			{ "up", KEY_UP }, { "down", KEY_DOWN }, { "left", KEY_LEFT }, { "right", KEY_RIGHT },
 			{ "enter", KEY_ENTER }, { "esc", KEY_ESC }, { "bs", KEY_BACKSPACE },
-			{ "f1", KEY_F1 }, { "f2", KEY_F2 }, { "tab", KEY_TAB },
+			{ "f1", KEY_F1 }, { "f2", KEY_F2 }, { "f3", KEY_SYM_SECOND }, { "f4", KEY_SYM_LOG },
+			{ "f5", KEY_SYM_SETTINGS }, { "f6", KEY_SYM_HELP }, { "tab", KEY_TAB },
 		};
 
 		line[strcspn(line, "\n")] = 0;
@@ -1986,7 +2058,7 @@ static void rebuild(void)
 	case V_STORAGE: build_storage(); break;
 	case V_LICENSES: build_licenses(); break;
 	case V_VERSIONS: build_versions(); break;
-	case V_TEXT: case V_SHOTS: L.eyebrow = AP.eyebrow; return;
+	case V_TEXT: case V_SHOTS: L.eyebrow = !strcmp(f->arg, "log") ? "APP STORE" : AP.eyebrow; return;
 	}
 	f->focus = keep;
 	if (f->focus >= L.n || f->focus < 0 || !focusable(&L.rows[f->focus])) {
@@ -2381,10 +2453,74 @@ static void activate(struct row *r)
 	}
 }
 
+/* The circle key: the store's log, as apprun keeps it (its end). */
+static void log_open(void)
+{
+	char path[256];
+	int fd, n = 0;
+	off_t size;
+
+	snprintf(text_title, sizeof(text_title), "Log");
+	snprintf(path, sizeof(path), "%s/app-store.log", P.tmp);
+	fd = open(path, O_RDONLY | O_CLOEXEC);
+	if (fd >= 0) {
+		size = lseek(fd, 0, SEEK_END);
+		if (size > (off_t)sizeof(textbuf) - 1)
+			lseek(fd, size - (off_t)sizeof(textbuf) + 1, SEEK_SET);
+		else
+			lseek(fd, 0, SEEK_SET);
+		n = (int)read(fd, textbuf, sizeof(textbuf) - 1);
+		close(fd);
+	}
+	textbuf[n > 0 ? n : 0] = 0;
+	if (n <= 0)
+		snprintf(textbuf, sizeof(textbuf), "No log yet.");
+	push(V_TEXT, "log", 0);
+	TOP->scroll = n_tl > text_rows() ? n_tl - text_rows() : 0;	/* the newest */
+}
+
+/* An overlay that waits for its own keys: help, or the sort menu. */
+static void overlay_keys(enum ov kind)
+{
+	O.kind = kind;
+	O.focus = kind == OV_MENU ? TOP->sort : 0;
+	for (;;) {
+		int k;
+
+		present();
+		k = next_key(60000);
+		if (k < 0 || k == KEY_ESC || (kind == OV_HELP && k == KEY_SYM_HELP))
+			break;
+		if (kind == OV_MENU && (k == KEY_UP || k == KEY_DOWN)) {
+			O.focus = !O.focus;
+		} else if (kind == OV_MENU && k == KEY_ENTER) {
+			TOP->sort = O.focus;
+			rebuild();
+			break;
+		}
+	}
+	O.kind = OV_NONE;
+}
+
 static void key(int k)
 {
 	struct frame *f = TOP;
 
+	/* the right three symbol keys, the same on every screen */
+	if (k == KEY_SYM_HELP) {
+		overlay_keys(OV_HELP);
+		return;
+	}
+	if (k == KEY_SYM_LOG) {
+		if (!(f->v == V_TEXT && !strcmp(f->arg, "log")))
+			log_open();
+		return;
+	}
+	if (k == KEY_SYM_SETTINGS) {
+		if (f->v != V_SETTINGS)
+			push(V_SETTINGS, 0, 0);
+		return;
+	}
 	if (f->v == V_TEXT) {
 		if (k == KEY_DOWN && f->scroll + text_rows() < n_tl)
 			f->scroll++;
@@ -2416,21 +2552,24 @@ static void key(int k)
 		return;
 	}
 	if (k == KEY_ESC) {
-		if (depth == 1)
+		if (f->v == V_SEARCH && query[0]) {	/* typed text first (6.7) */
+			query[0] = 0;
+			f->focus = -1;
+			rebuild();
+		} else if (depth == 1) {
 			depth = 0;	/* close the store */
-		else
+		} else {
 			pop();
+		}
 		return;
 	}
-	if (k == KEY_ENTER || ((k == KEY_LEFT || k == KEY_RIGHT) && f->focus >= 0 &&
-			       L.rows[f->focus].kind == R_TOGGLE)) {
+	if (k == KEY_ENTER) {	/* a toggle too: the arrows never change one */
 		if (f->focus >= 0)
 			activate(&L.rows[f->focus]);
 		return;
 	}
 	if (f->v == V_CAT && k == KEY_F1) {
-		f->sort = !f->sort;
-		rebuild();
+		overlay_keys(OV_MENU);
 		return;
 	}
 	if (f->v == V_SEARCH) {
