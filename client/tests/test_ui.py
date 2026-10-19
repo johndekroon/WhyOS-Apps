@@ -97,8 +97,7 @@ def test_open_asks_the_menu(env):
 
 def test_files_only_app_has_no_open(env):
     """An app with CATEGORY="none" (menu = "none": Picture viewer) starts by
-    opening a file; its page says so instead of offering Open, which would
-    start it without one."""
+    opening a file; its page has no Open, which would start it without one."""
     env.store("install", "tiny")
     conf = os.path.join(env.flash, "tiny", "app.conf")     # tiny installs to flash
     with open(conf) as f:

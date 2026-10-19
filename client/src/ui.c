@@ -1796,12 +1796,11 @@ static const char *jstr(int obj, const char *key, char *out, size_t n)
 	return out;
 }
 
-/* "Open", or for an app that only opens files (Picture viewer) where it starts */
+/* "Open", except for an app that only opens files (Picture viewer): started
+ * without one it quits at once */
 static struct row *add_open(void)
 {
-	if (AP.files_only)
-		return add(R_INFO, "Opened from Files", &r_info, A_NONE);
-	return add(R_ACTION, "Open", &r_store, A_OPEN);
+	return AP.files_only ? 0 : add(R_ACTION, "Open", &r_store, A_OPEN);
 }
 
 static void build_app(void)
@@ -1834,8 +1833,8 @@ static void build_app(void)
 		if (a && a->terminal && !(AP.have_j && json_get(&AP.j, 0, "launch") >= 0)) {
 			r = add(R_INFO, "Run it from a terminal", &r_ip, A_NONE);
 		} else {
-			r = add_open();
-			snprintf(r->value, sizeof(r->value), "%s", AP.r.version);
+			if ((r = add_open()))
+				snprintf(r->value, sizeof(r->value), "%s", AP.r.version);
 		}
 		add(R_ACTION, "Remove", &r_trash, A_REMOVE);
 		break;
