@@ -110,6 +110,10 @@ As built (2026-10-12, `client/src/ui.c`):
 - "Open" writes the app's id to `/tmp/store-open` and ends; the menu,
   back from apprun, starts the app, or shows its files first when it has
   `FILES` (why2025-linux `home.c`).
+- An app whose `app.conf` has `CATEGORY="none"` (`menu = "none"`, e.g.
+  the Picture viewer) only starts by opening a file: its page shows
+  "Opened from Files" instead of "Open" (since 2026-10-19, not yet in a
+  released store). Open started it without a file, and it quit at once.
 - Settings has no refresh interval: the index is refreshed when older
   than an hour (`INDEX_MAX_AGE`), and with "Refresh now". A mirror is a
   new address for an existing source (`$HOME/.whyos/store/sources.d/<id>.conf`).

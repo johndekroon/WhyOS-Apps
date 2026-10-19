@@ -95,6 +95,22 @@ def test_open_asks_the_menu(env):
         assert f.read() == "tiny"
 
 
+def test_files_only_app_has_no_open(env):
+    """An app with CATEGORY="none" (menu = "none": Picture viewer) starts by
+    opening a file; its page says so instead of offering Open, which would
+    start it without one."""
+    env.store("install", "tiny")
+    conf = os.path.join(env.flash, "tiny", "app.conf")     # tiny installs to flash
+    with open(conf) as f:
+        lines = [l for l in f if not l.startswith("CATEGORY=")]
+    with open(conf, "w") as f:
+        f.writelines(lines + ['CATEGORY="none"\n'])
+    # Enter on the first row that takes it: Open before, now Remove's question
+    ui(env, ["enter", "type tiny", "down", "enter", "shot files-only", "enter", "esc", "esc", "esc", "esc"])
+    assert not os.path.exists(os.path.join(env.tmpdir, "store-open"))
+    assert os.path.isfile(env.reg("tiny"))
+
+
 def test_my_apps_update_and_remove(env):
     env.store("install", "hello")
     tc.write_app(env.repo, "hello", tc.HELLO.format(version="1.1.0", build=2), tc.hello_files("1.1.0"))

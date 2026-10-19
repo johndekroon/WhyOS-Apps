@@ -314,6 +314,7 @@ static struct {			/* the app on the app page */
 	char name[64], author[96], meta[96], summary[200], eyebrow[64];
 	const struct wb_icon *ic;
 	int terminal;
+	int files_only;		/* CATEGORY="none": started by opening a file */
 } AP;
 
 /* the overlays: a question, a download, a line while something runs */
@@ -1495,29 +1496,36 @@ static void build_search(void)
 	}
 }
 
-/* app.conf's NAME of an app the store did not install */
-static void conf_name(const char *id, char *out, size_t n)
+/* A key from an installed app's app.conf; out keeps @def when it is not there */
+static void conf_value(const char *id, const char *key, const char *def, char *out, size_t n)
 {
 	char dir[256], p[512], *data;
+	size_t kl = strlen(key);
 
-	snprintf(out, n, "%s", id);
+	snprintf(out, n, "%s", def);
 	for (int loc = 0; loc < 2; loc++) {
 		if (!loc && !P.sd_present)
 			continue;
 		app_dir(dir, sizeof(dir), id, loc ? "flash" : "sd");
 		if (!read_file(path_join(p, sizeof(p), dir, "app.conf"), &data, 0, 8192)) {
-			char *l = strstr(data, "NAME=");
-
-			if (l && (l == data || l[-1] == '\n')) {
-				l += 5;
-				if (*l == '"')
-					l++;
-				snprintf(out, n, "%.*s", (int)strcspn(l, "\"\n"), l);
-			}
+			for (char *l = data; l && *l; l = strchr(l, '\n') ? strchr(l, '\n') + 1 : 0)
+				if (!strncmp(l, key, kl) && l[kl] == '=') {
+					l += kl + 1;
+					if (*l == '"')
+						l++;
+					snprintf(out, n, "%.*s", (int)strcspn(l, "\"\n"), l);
+					break;
+				}
 			free(data);
 			return;
 		}
 	}
+}
+
+/* app.conf's NAME of an app the store did not install */
+static void conf_name(const char *id, char *out, size_t n)
+{
+	conf_value(id, "NAME", id, out, n);
 }
 
 static void build_myapps(void)
@@ -1754,6 +1762,12 @@ static void app_page_load(const char *id)
 		snprintf(AP.meta, sizeof(AP.meta), "%s", AP.r.version);
 	}
 	AP.ic = app_icon(AP.a);
+	if (AP.st != ST_ELSEWHERE && AP.st != ST_MISSING) {
+		char c[16];
+
+		conf_value(id, "CATEGORY", "", c, sizeof(c));
+		AP.files_only = !strcmp(c, "none");
+	}
 	for (int i = 0; AP.name[i] && i < (int)sizeof(AP.eyebrow) - 1; i++)
 		AP.eyebrow[i] = (char)(AP.name[i] >= 'a' && AP.name[i] <= 'z' ? AP.name[i] - 32 : AP.name[i]);
 	if (AP.a && !AP.a->withdrawn) {
@@ -1780,6 +1794,14 @@ static const char *jstr(int obj, const char *key, char *out, size_t n)
 	if (!AP.have_j || json_str(&AP.j, json_path(&AP.j, obj, key), out, n))
 		out[0] = 0;
 	return out;
+}
+
+/* "Open", or for an app that only opens files (Picture viewer) where it starts */
+static struct row *add_open(void)
+{
+	if (AP.files_only)
+		return add(R_INFO, "Opened from Files", &r_info, A_NONE);
+	return add(R_ACTION, "Open", &r_store, A_OPEN);
 }
 
 static void build_app(void)
@@ -1812,7 +1834,7 @@ static void build_app(void)
 		if (a && a->terminal && !(AP.have_j && json_get(&AP.j, 0, "launch") >= 0)) {
 			r = add(R_INFO, "Run it from a terminal", &r_ip, A_NONE);
 		} else {
-			r = add(R_ACTION, "Open", &r_store, A_OPEN);
+			r = add_open();
 			snprintf(r->value, sizeof(r->value), "%s", AP.r.version);
 		}
 		add(R_ACTION, "Remove", &r_trash, A_REMOVE);
@@ -1833,7 +1855,7 @@ static void build_app(void)
 	case ST_LEGACY:
 		r = add(R_INFO, "Installed by hand", &r_check, A_NONE);
 		snprintf(r->value, sizeof(r->value), "%s", a ? "Not updated by the store" : "Not from the store");
-		add(R_ACTION, "Open", &r_store, A_OPEN);
+		add_open();
 		if (a) {
 			r = add(R_ACTION, "Replace with the store version", &r_refresh, A_REPLACE);
 			snprintf(r->value, sizeof(r->value), "Gets updates");
@@ -1844,7 +1866,7 @@ static void build_app(void)
 		r = add(R_INFO, "Withdrawn from the store", &r_info, A_NONE);
 		snprintf(r->value, sizeof(r->value), "%s", S_(a ? a->withdrawn : 0));
 		r->value_c = WB_COLOR_WARN;
-		add(R_ACTION, "Open", &r_store, A_OPEN);
+		add_open();
 		add(R_ACTION, "Remove", &r_trash, A_REMOVE);
 		break;
 	}
