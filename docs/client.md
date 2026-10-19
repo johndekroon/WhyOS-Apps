@@ -112,7 +112,8 @@ As built (2026-10-12, `client/src/ui.c`):
   `FILES` (why2025-linux `home.c`).
 - An app whose `app.conf` has `CATEGORY="none"` (`menu = "none"`, e.g.
   the Picture viewer) only starts by opening a file: its page has no
-  "Open" (since 2026-10-19, not yet in a released store). Open started it without a file, and it quit at once.
+  "Open" (since store 0.2.6, 2026-10-19). Open started it without a
+  file, and it quit at once.
 - Settings has no refresh interval: the index is refreshed when older
   than an hour (`INDEX_MAX_AGE`), and with "Refresh now". A mirror is a
   new address for an existing source (`$HOME/.whyos/store/sources.d/<id>.conf`).

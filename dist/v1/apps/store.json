@@ -91,6 +91,19 @@
  "type": "system",
  "versions": [
   {
+   "build": 7,
+   "changelog": "No Open for apps that only open files: the Picture viewer opens from Files.",
+   "package": {
+    "installed_size": 997940,
+    "sha256": "4b7403d8801c30a7d4987b00929234aa54f716ebc5680350071c081c0a429f8c",
+    "size": 519204,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.6.wpk"
+   },
+   "published": "2026-10-19T09:43:33Z",
+   "source_archive": null,
+   "version": "0.2.6"
+  },
+  {
    "build": 6,
    "changelog": "The symbol keys after the badge design: ■ in a category opens a sort pop-up, ● the store's log, ♣ settings, ◆ help. Esc first clears a search.",
    "package": {
