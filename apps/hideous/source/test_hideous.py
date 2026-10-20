@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Snippets on the host: editing, storage and the keyboard reports
-(snippets.c, SN_HOST).
+"""HIDeous on the host: editing, storage and the keyboard reports
+(hideous.c, SN_HOST).
 
-    python3 sdapps/snippets/test_snippets.py [screenshots dir]
+    python3 sdapps/hideous/test_hideous.py [screenshots dir]
 """
 import os
 import subprocess
@@ -106,9 +106,9 @@ def main():
     shots = sys.argv[1] if len(sys.argv) > 1 else ""
     if shots:
         os.makedirs(shots, exist_ok=True)
-    exe = os.path.join(tempfile.mkdtemp(), "snippets-host")
+    exe = os.path.join(tempfile.mkdtemp(), "hideous-host")
     subprocess.run(["cc", "-O1", "-Wall", "-Wextra", "-Werror", "-DSN_HOST", "-I" + O, "-o", exe,
-                    os.path.join(HERE, "snippets.c")], check=True)
+                    os.path.join(HERE, "hideous.c")], check=True)
 
     # adding: the triangle, a name, Tab, a text with a new line and a tab
     a = App(exe, shots)

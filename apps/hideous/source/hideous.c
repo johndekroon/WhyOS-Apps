@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 /*
- * snippets — texts kept on the badge that it types on a computer, as a USB
- * keyboard on the bottom port (J8; docs/USB.md, "Device mode"), and the
- * badge as that computer's mouse. Drawn like
- * the menu (wbdraw.h and the design's fonts), as an app from the store
+ * hideous (HIDeous) — texts kept on the badge ("snippets") that it types
+ * on a computer, as a USB keyboard on the bottom port (J8; docs/USB.md,
+ * "Device mode"), and the badge as that computer's mouse. Drawn like the
+ * menu (wbdraw.h and the design's fonts), as an app from the store
  * (sdapps/README.md).
  *
  * A list of snippets, each a name and a text of up to TEXT_MAX bytes (new
@@ -45,7 +45,7 @@
  * The panel is drawn one band of BAND_H rows at a time, as calc does.
  * Built with -DSN_HOST, it takes keys from its first argument, writes the
  * screen as PPM to its second and the keyboard reports as hex lines to
- * $SN_HID: the host test (snippets/test_snippets.py).
+ * $SN_HID: the host test (hideous/test_hideous.py).
  *
  * FLAT/NOMMU constraints (overlay-src/Makefile): no stdio.
  */
@@ -292,7 +292,7 @@ static void paths(void)
 		strcpy(dir, d);
 	} else {
 		strncpy(dir, home && *home && strlen(home) < 120 ? home : "/root", sizeof(dir) - 40);
-		cat(dir, "/.whyos/config/snippets");
+		cat(dir, "/.whyos/config/hideous");
 	}
 	mkdirs(dir);
 	cat(cat(data_path, dir), "/snippets.txt");
@@ -398,7 +398,7 @@ static void load(void)
 static int save(void)
 {
 	static const char head[] =
-		"# Snippets for the badge to type: name<TAB>text per line;\n"
+		"# Snippets for HIDeous to type: name<TAB>text per line;\n"
 		"# \\n a new line, \\t a tab, \\\\ a backslash.\n";
 	char *o = filebuf;
 
@@ -714,7 +714,7 @@ static void draw_list(void)
 	int ys[SN_MAX + 1], hs[SN_MAX + 1], top = list_top(), scroll, cut, y = 0;
 	char buf[128];
 
-	header("APPS", "Snippets");
+	header("APPS", "HIDeous");
 	computer_chip();
 	if (C.notice[0])
 		text(&f_ui18, X0, BODY_Y + 8, wb_fit(&f_ui18, C.notice, XW, buf, sizeof(buf)),
@@ -964,7 +964,7 @@ static void draw_edit(void)
 {
 	static const struct hint hints[] = { { "Enter", "save", 0 }, { "Esc", "cancel", 1 } };
 
-	header("SNIPPETS", C.edit < 0 ? "New snippet" : "Edit snippet");
+	header("HIDEOUS", C.edit < 0 ? "New snippet" : "Edit snippet");
 	text(&f_mono13, X0, NAME_LY, "NAME", WB_COLOR_TEXT_LOW, 21);
 	text(&f_mono13, X0, TEXT_LY, "TEXT", WB_COLOR_TEXT_LOW, 21);
 	draw_name();
@@ -991,7 +991,7 @@ static void draw_mouse(void)
 	int y = list_top(), kw = 0, n = sizeof(legend) / sizeof(legend[0]), ph = 24 + n * 40 + 8;
 	char buf[128], t[96];
 
-	header("SNIPPETS", "Mouse");
+	header("HIDEOUS", "Mouse");
 	computer_chip();
 	if (C.notice[0])
 		text(&f_ui18, X0, BODY_Y + 8, wb_fit(&f_ui18, C.notice, XW, buf, sizeof(buf)),
@@ -1040,11 +1040,11 @@ static void draw_log(void)
 	char buf[128];
 
 	if (!C.n_log) {
-		empty_screen("SNIPPETS", "Log", "No log yet. What is typed shows here until the app closes.");
+		empty_screen("HIDEOUS", "Log", "No log yet. What is typed shows here until the app closes.");
 		status_bar();
 		return;
 	}
-	header("SNIPPETS", "Log");
+	header("HIDEOUS", "Log");
 	for (int i = C.n_log - 1; i >= 0 && y + 30 < BOTTOM; i--, y += 30)
 		text(&f_mono14, X0, y, wb_fit(&f_mono14, C.log[i], XW, buf, sizeof(buf)),
 		     i == C.n_log - 1 ? WB_COLOR_TEXT_HI : WB_COLOR_TEXT_MID, 0);
@@ -1062,7 +1062,7 @@ static void draw_settings(void)
 	};
 	int y = BODY_Y + 24;
 
-	header("SNIPPETS", "Settings");
+	header("HIDEOUS", "Settings");
 	for (int i = 0; i < 3; i++, y += 68 + 12 + 24 + 20) {
 		const char *v = i == 2 ? mspeed_names[C.mspeed] : i ? speed_names[C.slow] : lay_names[C.layout];
 		int cy = y + 34, rx = X0 + XW - 20 - 20;
@@ -1131,7 +1131,7 @@ static void draw_help(void)
 		help_popup("Edit snippet", "The name is only for the list. The text is what the badge "
 			   "types, new lines and tabs included.", edit_keys, 8);
 	else if (C.sc == SC_LIST)
-		help_popup("Snippets", "Connect a computer to the bottom USB-C port (J8), click where "
+		help_popup("HIDeous", "Connect a computer to the bottom USB-C port (J8), click where "
 			   "the text should go, and press Enter on a snippet.", list_keys, 9);
 	else
 		help_popup(C.sc == SC_LOG ? "Log" : "Settings",
@@ -2015,7 +2015,7 @@ static void save_ppm(const char *path)
 }
 
 /*
- * snippets-host KEYS [OUT.ppm], with APP_CONFIG, SN_COMPUTER=1 (a computer
+ * hideous-host KEYS [OUT.ppm], with APP_CONFIG, SN_COMPUTER=1 (a computer
  * on J8) and SN_HID (where the reports go, as hex). KEYS is typed; \n
  * Enter, \N Shift+Enter, \e Esc, \t Tab, \b Backspace, \u \d \l \r the
  * arrows, \f Fn held for the next key, \H the next key held for a second,

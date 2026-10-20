@@ -1,7 +1,7 @@
-# Snippets (why2025-linux sdapps/snippets), written for the badge.
+# HIDeous (why2025-linux sdapps/hideous), written for the badge.
 format = 1
-id = "snippets"
-name = "Snippets"
+id = "hideous"
+name = "HIDeous"
 version = "1.0.0"
 build = 1
 summary = "Saved texts the badge types on a computer, and the badge as its mouse"
@@ -11,7 +11,7 @@ let the badge type them for you. Connect a computer to the bottom USB-C
 port, click where the text should go, and press Enter on a snippet: the
 badge types it as a USB keyboard, new lines and tabs included.
 
-Each snippet has a name for the list and up to 1000 bytes of text. The
+Each text (a snippet) has a name for the list and up to 1000 bytes of text. The
 triangle key adds one, the cross edits it, the square has the options
 (type, edit, move, delete). Esc stops a text being typed.
 
@@ -33,9 +33,9 @@ unplugged. The texts are stored as plain text on the badge: keep
 passwords out of it."""
 author = "WhyOS-Apps contributors"
 license = "MIT AND OFL-1.1 AND LGPL-2.1-or-later"
-license_file = "snippets.txt"
+license_file = "hideous.txt"
 homepage = "https://github.com/johndekroon/WhyOS-Apps"
-source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/snippets/source"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/hideous/source"
 changelog = "First version."
 
 type = "app"
@@ -44,7 +44,7 @@ tags = ["keyboard", "mouse", "usb", "text", "typing"]
 install_location = "sd"
 
 [launch]
-exec = "snippets"
+exec = "hideous"
 info = "type saved texts, move the mouse"
 icon = "keyboard"
 
