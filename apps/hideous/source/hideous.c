@@ -21,8 +21,10 @@
  * skipped, and the notice says how many were.
  *
  * Kept in APP_CONFIG (flash: it survives a new card), as snippets.txt: one
- * line per snippet, "name<TAB>text", with \n, \t, \e and \\ for a new line,
- * a tab, the Esc key and a backslash. Lines starting with # are comments.
+ * line per snippet, "name<TAB>text", with \n, \t and \\ for a new line, a
+ * tab and a backslash, and \[Ctrl+C] for a key (key_parse; \e and \b were
+ * Esc and Backspace before, and still are). Lines starting with # are
+ * comments.
  * The file may be edited elsewhere (over SSH); accented letters only come
  * in that way, as the badge's keyboard has none, and the fonts draw them
  * as "?".
@@ -40,9 +42,10 @@
  * Keys (Docs/06-design-system.md 6.6): Enter types, the square opens the
  * snippet's options, the triangle adds one, the cross edits it; the
  * circle shows what was typed this session, the cloud the settings, the
- * diamond the help. Esc closes, or goes back one layer; in the editor
- * Shift+Esc puts an Esc in the text. The mouse screen reads presses and
- * releases (mouse_key), the rest only presses (key).
+ * diamond the help. Esc closes, or goes back one layer. In the editor's
+ * text the square inserts a key or shortcut (Insert key), and Shift, Ctrl
+ * or Alt with a key puts that key in (key_token). The mouse screen reads
+ * presses and releases (mouse_key), the rest only presses (key).
  *
  * The panel is drawn one band of BAND_H rows at a time, as calc does.
  * Built with -DSN_HOST, it takes keys from its first argument, writes the
@@ -87,6 +90,9 @@
 #define KEY_LEFT	105
 #define KEY_RIGHT	106
 #define KEY_DOWN	108
+#define KEY_LEFTCTRL	29
+#define KEY_LEFTALT	56
+#define KEY_RIGHTALT	100
 #define KEY_FN		0x1d0
 
 /* ---- the snippets ------------------------------------------------------- */
@@ -103,7 +109,8 @@ static struct snip S[SN_MAX];
 static int n_snip;
 
 enum { SC_LIST, SC_EDIT, SC_LOG, SC_SETTINGS, SC_MOUSE };
-enum { POP_NONE, POP_HELP, POP_MENU, POP_DELETE, POP_LAYOUT, POP_SPEED, POP_TYPING, POP_MSPEED, POP_MOUSE };
+enum { POP_NONE, POP_HELP, POP_MENU, POP_DELETE, POP_LAYOUT, POP_SPEED, POP_TYPING, POP_MSPEED, POP_MOUSE,
+       POP_KEY };
 enum { LAY_US, LAY_INTL, LAY_MAC, N_LAY };
 enum { NOTE_OK, NOTE_WARN, NOTE_BAD };
 enum { M_TYPE, M_EDIT, M_UP, M_DOWN, M_DELETE, M_MIDDLE, M_DOUBLE, M_AWAKE };
@@ -117,6 +124,7 @@ static struct {
 	int sc, back;			/* the screen; where the log and settings go back to */
 	int focus;			/* the list's row: 0 the mouse, then snippet focus - 1 */
 	int pop, pf;			/* the pop-up on top, and its focus */
+	int kmods;			/* Insert key: the modifiers chosen */
 	int menu[6], n_menu;		/* the square key's items (M_...) */
 	int set_focus;			/* the settings' row */
 	int layout, slow, mspeed;
@@ -136,7 +144,7 @@ static struct {
 	int n_log;
 } C;
 
-static struct { int shift, fn; } K;
+static struct { int shift, fn, ctrl, alt, altgr; } K;
 
 #define SEL		(C.focus - 1)	/* the snippet the list's focus is on */
 #define TICK_MS		16		/* a held arrow moves the pointer this often */
@@ -238,24 +246,237 @@ static void utf8_cut(char *s, int max)
 	}
 }
 
-/* The text on one line: new lines as " ↓ ", tabs as " → ", Esc as " Esc ". */
+/*
+ * A key in a text: one press of a key with its modifiers, for what has no
+ * character (Esc, F5, Home) or is a shortcut (Ctrl+C, Win+R). Kept as one
+ * code point of plane 15's private use area, KEYS_BASE + mods << 8 +
+ * usage (a keyboard-page HID usage); usage 0 is the modifiers alone.
+ * Modifiers WAIT are no key but a pause of usage tenths of a second, for
+ * a window a shortcut opens. Shown grey as "Ctrl+C", kept in snippets.txt
+ * as \[Ctrl+C].
+ */
+#define KEYS_BASE	0xf0000u
+#define WAIT		0xff
+
+#define MOD_CTRL	0x01
+#define MOD_SHIFT	0x02
+#define MOD_ALT		0x04		/* left Alt: Option on a Mac */
+#define MOD_GUI		0x08		/* Windows, Cmd on a Mac */
+#define MOD_ALTGR	0x40		/* right Alt: AltGr on US International */
+
+static char key_char(int code, int shift);
+
+static int is_key(unsigned cp)
+{
+	return cp >= KEYS_BASE && cp < KEYS_BASE + 0x10000;
+}
+
+static unsigned cp_at(const char *s, int i)
+{
+	const char *p = s + i;
+
+	return next_cp(&p);
+}
+
+/* the modifiers in the order labels have them */
+static const struct { int bit; const char *pc, *mac; } mod_names[] = {
+	{ MOD_CTRL, "Ctrl", "Ctrl" }, { MOD_SHIFT, "Shift", "Shift" }, { MOD_ALT, "Alt", "Option" },
+	{ MOD_GUI, "Win", "Cmd" }, { MOD_ALTGR, "AltGr", "AltGr" },
+};
+#define N_MODS		5
+
+/* names of the usages from Enter (0x28) to Menu (0x65); 0: a character's */
+static const char *const usage_names[] = {
+	"Enter", "Esc", "Backspace", "Tab", "Space", 0, 0, 0, 0, 0, "Non-US #", 0, 0, 0, 0, 0, 0,
+	"Caps Lock", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
+	"Print Screen", "Scroll Lock", "Pause", "Insert", "Home", "Page Up", "Delete", "End",
+	"Page Down", "Right", "Left", "Down", "Up", "Num Lock", "Num /", "Num *", "Num -", "Num +",
+	"Num Enter", "Num 1", "Num 2", "Num 3", "Num 4", "Num 5", "Num 6", "Num 7", "Num 8",
+	"Num 9", "Num 0", "Num .", "Non-US \\", "Menu",
+};
+#define USAGE_MAX	0x65		/* what usbd's keyboard descriptor allows */
+
+/* Insert key's rows: the modifiers, the keys, the modifiers alone, a pause */
+static const unsigned char pick_keys[] = {
+	0x29, 0x2b, 0x28, 0x2a, 0x4c, 0x49, 0x4a, 0x4d, 0x4b, 0x4e, 0x52, 0x51, 0x50, 0x4f, 0x2c,
+	0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f, 0x40, 0x41, 0x42, 0x43, 0x44, 0x45,
+	0x46, 0x48, 0x39, 0x53, 0x47, 0x65,
+};
+#define N_PICK		(int)sizeof(pick_keys)
+#define PICK_ALONE	(N_MODS + N_PICK)
+#define PICK_WAIT	(PICK_ALONE + 1)
+
+/* The usage's name: a key's, or its character on a US keyboard ("C"). */
+static void usage_name(int u, char *out)
+{
+	out[0] = 0;
+	if (u >= 0x28 && u <= USAGE_MAX && usage_names[u - 0x28]) {
+		strcpy(out, usage_names[u - 0x28]);
+		return;
+	}
+	for (int code = 1; code < 64; code++)
+		if (kb_usage(code, 0) == u && key_char(code, 0)) {
+			char c = key_char(code, 0);
+
+			out[0] = c >= 'a' && c <= 'z' ? (char)(c - 32) : c;
+			out[1] = 0;
+			return;
+		}
+}
+
+/* "Ctrl+Alt+Delete", "Win", "Wait 0.5s"; Option and Cmd with the Mac's layout */
+static char *key_label(unsigned cp, char *out)
+{
+	int mods = (int)(cp >> 8) & 0xff, u = (int)cp & 0xff;
+
+	out[0] = 0;
+	if (mods == WAIT) {
+		char *e = cat_int(cat(out, "Wait "), u / 10);
+
+		e[0] = '.';
+		e[1] = (char)('0' + u % 10);
+		e[2] = 's';
+		e[3] = 0;
+		return e + 3;
+	}
+	for (int i = 0; i < N_MODS; i++)
+		if (mods & mod_names[i].bit) {
+			if (out[0])
+				cat(out, "+");
+			cat(out, C.layout == LAY_MAC ? mod_names[i].mac : mod_names[i].pc);
+		}
+	if (u) {
+		if (out[0])
+			cat(out, "+");
+		usage_name(u, out + strlen(out));
+	}
+	return out + strlen(out);
+}
+
+static int name_is(const char *s, int n, const char *name)
+{
+	if ((int)strlen(name) != n)
+		return 0;
+	for (int i = 0; i < n; i++) {
+		char a = s[i] >= 'A' && s[i] <= 'Z' ? (char)(s[i] + 32) : s[i];
+		char b = name[i] >= 'A' && name[i] <= 'Z' ? (char)(name[i] + 32) : name[i];
+
+		if (a != b)
+			return 0;
+	}
+	return 1;
+}
+
+/*
+ * A key's name in snippets.txt, after "\[": "Ctrl+C]", "Page Up]",
+ * "Wait 2s]". The code point, and how many bytes the name and its "]"
+ * take; 0 when it is none (the text stays as it is).
+ */
+static int key_parse(const char *s, unsigned *cp)
+{
+	int mods = 0, i = 0;
+
+	if (name_is(s, 5, "wait ")) {
+		int t = 0, frac = 0;
+
+		for (i = 5; s[i] >= '0' && s[i] <= '9' && t < 1000; i++)
+			t = t * 10 + s[i] - '0';
+		t *= 10;
+		if (s[i] == '.' && s[i + 1] >= '0' && s[i + 1] <= '9')
+			frac = s[i + 1] - '0', i += 2;
+		t += frac;
+		i += s[i] == 's';
+		if (s[i] != ']' || t < 1 || t > 254)
+			return 0;
+		*cp = KEYS_BASE + (WAIT << 8) + (unsigned)t;
+		return i + 1;
+	}
+	for (;;) {
+		int n = 1, u = 0, m = 0;	/* a name has a character at least: "Ctrl++]" */
+
+		while (s[i + n] && s[i + n] != '+' && s[i + n] != ']' && n < 16)
+			n++;
+		if (s[i + n] != '+' && s[i + n] != ']')
+			return 0;
+		for (int k = 0; k < N_MODS; k++)
+			if (name_is(s + i, n, mod_names[k].pc) || name_is(s + i, n, mod_names[k].mac))
+				m = mod_names[k].bit;
+		if (name_is(s + i, n, "Opt") || name_is(s + i, n, "Control"))
+			m = name_is(s + i, n, "Opt") ? MOD_ALT : MOD_CTRL;
+		if (s[i + n] == '+' && m) {
+			mods |= m;
+			i += n + 1;
+			continue;
+		}
+		if (m && s[i + n] == ']') {		/* "Win]": the modifier alone */
+			mods |= m;
+		} else {
+			for (int v = 0x28; v <= USAGE_MAX && !u; v++)
+				if (usage_names[v - 0x28] && name_is(s + i, n, usage_names[v - 0x28]))
+					u = v;
+			if (!u && n == 1) {	/* a character: its key, Shift for "+" */
+				char c = s[i] >= 'A' && s[i] <= 'Z' ? (char)(s[i] + 32) : s[i];
+
+				for (int code = 1; code < 64 && !u; code++)
+					for (int sh = 0; sh < 2 && !u; sh++)
+						if (key_char(code, sh) == c) {
+							u = kb_usage(code, 0);
+							mods |= sh ? MOD_SHIFT : 0;
+						}
+			}
+			if (!u || s[i + n] != ']')
+				return 0;
+		}
+		*cp = KEYS_BASE + ((unsigned)mods << 8) + (unsigned)u;
+		return i + n + 1;
+	}
+}
+
+/* cp as UTF-8 (at most 4 bytes); the end */
+static char *put_cp(char *o, unsigned cp)
+{
+	if (cp < 0x80) {
+		*o++ = (char)cp;
+	} else if (cp < 0x800) {
+		*o++ = (char)(0xc0 | cp >> 6);
+		*o++ = (char)(0x80 | (cp & 0x3f));
+	} else if (cp < 0x10000) {
+		*o++ = (char)(0xe0 | cp >> 12);
+		*o++ = (char)(0x80 | (cp >> 6 & 0x3f));
+		*o++ = (char)(0x80 | (cp & 0x3f));
+	} else {
+		*o++ = (char)(0xf0 | cp >> 18);
+		*o++ = (char)(0x80 | (cp >> 12 & 0x3f));
+		*o++ = (char)(0x80 | (cp >> 6 & 0x3f));
+		*o++ = (char)(0x80 | (cp & 0x3f));
+	}
+	return o;
+}
+
+/* The text on one line: new lines as " ↓ ", tabs as " → ", keys as " Esc ". */
 static void one_line(char *out, int size, const char *s)
 {
 	int n = 0;
 
-	for (; *s && n < size - 6; s++) {
-		const char *r = *s == '\n' ? " \xe2\x86\x93 " : *s == '\t' ? " \xe2\x86\x92 " :
-				*s == '\x1b' ? " Esc " : 0;
+	while (*s) {
+		const char *p = s;
+		unsigned cp = next_cp(&s);
+		char lab[48];
+		const char *r = cp == '\n' ? " \xe2\x86\x93 " : cp == '\t' ? " \xe2\x86\x92 " : 0;
+		int len;
 
-		if (r) {
-			memcpy(out + n, r, 5);
-			n += 5;
-		} else {
-			out[n++] = *s;
+		if (is_key(cp)) {
+			lab[0] = ' ';
+			cat(key_label(cp, lab + 1), " ");
+			r = lab;
 		}
+		len = r ? (int)strlen(r) : (int)(s - p);
+		if (n + len > size - 1)
+			break;
+		memcpy(out + n, r ? r : p, (size_t)len);
+		n += len;
 	}
 	out[n] = 0;
-	utf8_cut(out, n);
 }
 
 /* What the list and the pop-ups call snippet i: its name, or its text. */
@@ -341,9 +562,20 @@ static void unescape(char *out, const char *s, int max)
 	int n = 0;
 
 	for (; *s && n < max; s++) {
-		if (*s == '\\' && (s[1] == 'n' || s[1] == 't' || s[1] == 'e' || s[1] == '\\')) {
+		static const char alias[] = "ebLRUD";	/* \e and the others of 2026-10-20 */
+		static const unsigned char alias_u[] = { 0x29, 0x2a, 0x50, 0x4f, 0x52, 0x51 };
+		const char *a = *s == '\\' && s[1] ? strchr(alias, s[1]) : 0;
+		unsigned cp = 0;
+		int k = *s == '\\' && s[1] == '[' ? key_parse(s + 2, &cp) : 0;
+
+		if (a || k) {
+			if (n + 4 > max)
+				break;
+			n = (int)(put_cp(out + n, a ? KEYS_BASE + alias_u[a - alias] : cp) - out);
+			s += a ? 1 : 1 + k;
+		} else if (*s == '\\' && (s[1] == 'n' || s[1] == 't' || s[1] == '\\')) {
 			s++;
-			out[n++] = *s == 'n' ? '\n' : *s == 't' ? '\t' : *s == 'e' ? '\x1b' : '\\';
+			out[n++] = *s == 'n' ? '\n' : *s == 't' ? '\t' : '\\';
 		} else {
 			out[n++] = *s;
 		}
@@ -352,15 +584,26 @@ static void unescape(char *out, const char *s, int max)
 	utf8_cut(out, max);
 }
 
-static char *escape(char *o, const char *s)
+/* s as snippets.txt has it, up to end: the end of what was written, end
+ * itself when it did not all fit (a key's name is up to 42 bytes). */
+static char *escape(char *o, const char *s, char *end)
 {
-	for (; *s; s++) {
-		if (*s == '\n' || *s == '\t' || *s == '\x1b' || *s == '\\') {
-			*o++ = '\\';
-			*o++ = *s == '\n' ? 'n' : *s == '\t' ? 't' : *s == '\x1b' ? 'e' : '\\';
-		} else {
-			*o++ = *s;
-		}
+	while (*s) {
+		const char *p = s;
+		unsigned cp = next_cp(&s);
+		char t[48];
+		int n;
+
+		t[0] = 0;
+		if (is_key(cp))
+			cat(key_label(cp, cat(t, "\\[")), "]");
+		else if (cp == '\n' || cp == '\t' || cp == '\\')
+			strcpy(t, cp == '\n' ? "\\n" : cp == '\t' ? "\\t" : "\\\\");
+		n = t[0] ? (int)strlen(t) : (int)(s - p);
+		if (o + n >= end)
+			return end;
+		memcpy(o, t[0] ? t : p, (size_t)n);
+		o += n;
 	}
 	return o;
 }
@@ -402,16 +645,25 @@ static int save(void)
 {
 	static const char head[] =
 		"# Snippets for HIDeous to type: name<TAB>text per line;\n"
-		"# \\n a new line, \\t a tab, \\e the Esc key, \\\\ a backslash.\n";
-	char *o = filebuf;
+		"# \\n a new line, \\t a tab, \\\\ a backslash, \\[Ctrl+C] a key (\\[Esc], \\[F5],\n"
+		"# \\[Win+R], \\[Wait 0.5s]).\n";
+	char *o = filebuf, *end = filebuf + sizeof(filebuf) - 1;
 
 	memcpy(o, head, sizeof(head) - 1);
 	o += sizeof(head) - 1;
-	for (int i = 0; i < n_snip; i++) {
-		o = escape(o, S[i].name);
-		*o++ = '\t';
-		o = escape(o, S[i].text);
-		*o++ = '\n';
+	for (int i = 0; i < n_snip && o < end; i++) {
+		o = escape(o, S[i].name, end);
+		if (o < end)
+			*o++ = '\t';
+		if (o < end)
+			o = escape(o, S[i].text, end);
+		if (o < end)
+			*o++ = '\n';
+	}
+	if (o >= end) {		/* only with hundreds of keys in a text */
+		strcpy(C.notice, "Too much to save: fewer keys in the texts");
+		C.note = NOTE_BAD;
+		return -1;
 	}
 	if (write_file(data_path, filebuf, (int)(o - filebuf)) < 0) {
 		strcpy(C.notice, "Could not save the snippets");
@@ -490,18 +742,17 @@ static char key_char(int code, int shift)
 	return shift ? hi[code] : lo[code];
 }
 
-#define MOD_SHIFT	0x02
-#define MOD_ALT		0x04		/* left Alt: Option on a Mac */
-#define MOD_ALTGR	0x40		/* right Alt: AltGr on US International */
+struct tap {
+	unsigned char mods, key;
+	unsigned char apart;	/* a shortcut: its modifiers down first, also Fast */
+};
 
-struct tap { unsigned char mods, key; };
-
-/* An ASCII character (or new line, tab, Esc) on a US keyboard; 0 if none. */
+/* An ASCII character (or new line, tab) on a US keyboard; 0 if none. */
 static int ascii_tap(int c, struct tap *t)
 {
-	t->mods = 0;
-	if (c == '\n' || c == '\t' || c == '\x1b' || c == ' ') {
-		t->key = c == '\n' ? 0x28 : c == '\t' ? 0x2b : c == '\x1b' ? 0x29 : 0x2c;
+	t->mods = t->apart = 0;
+	if (c == '\n' || c == '\t' || c == ' ') {
+		t->key = c == '\n' ? 0x28 : c == '\t' ? 0x2b : 0x2c;
 		return 1;
 	}
 	for (int code = 1; code < 64; code++)
@@ -540,6 +791,12 @@ static int char_taps(unsigned cp, struct tap *t)
 {
 	int lay = C.layout;
 
+	if (is_key(cp)) {
+		t->mods = (unsigned char)(cp >> 8);
+		t->key = (unsigned char)cp;
+		t->apart = t->mods != 0;
+		return 1;
+	}
 	if (cp < 0x80) {
 		if (!ascii_tap((int)cp, &t[0]))
 			return 0;
@@ -774,12 +1031,14 @@ static int lay_start[TEXT_MAX + 2], lay_n;
 
 static int cp_w(const char *s, int a, int b)
 {
-	char t[8];
+	char t[8], t48[48];
 
 	if (s[a] == '\t')
 		return text_w(TF, "\xe2\x86\x92", 0);
-	if (s[a] == '\x1b')
-		return text_w(TF, "Esc", 0);
+	if (is_key(cp_at(s, a))) {
+		key_label(cp_at(s, a), t48);
+		return text_w(TF, t48, 0) + 8;
+	}
 	if (s[a] == '\n')
 		return 0;
 	memcpy(t, s + a, (size_t)(b - a));
@@ -943,8 +1202,12 @@ static void draw_text_field(void)
 				text(TF, x, ty, "\xe2\x86\x92", WB_COLOR_TEXT_LOW, 0);
 			else if (C.text[i] == '\n')
 				text(TF, x + 2, ty, "\xe2\x86\x93", WB_COLOR_TEXT_LOW, 0);
-			else if (C.text[i] == '\x1b')
-				text(TF, x, ty, "Esc", WB_COLOR_TEXT_LOW, 0);
+			else if (is_key(cp_at(C.text, i))) {
+				key_label(cp_at(C.text, i), t);
+				box(x + 1, y + 6, cp_w(C.text, i, j) - 2, LINE_H - 12, 4, 0, 0,
+				    WB_COLOR_LINE, 1, 0);
+				text(TF, x + 4, ty, t, WB_COLOR_TEXT_MID, 0);
+			}
 			else {
 				memcpy(t, C.text + i, (size_t)(j - i));
 				t[j - i] = 0;
@@ -969,14 +1232,14 @@ static void draw_text_field(void)
 
 static void draw_edit(void)
 {
-	static const struct hint hints[] = { { "Enter", "save", 0 }, { "Esc", "cancel", 1 } };
+	static const struct hint hints[] = { { "Enter", "save", 0 }, { "#1", "key", 0 }, { "Esc", "cancel", 1 } };
 
 	header("HIDEOUS", C.edit < 0 ? "New snippet" : "Edit snippet");
 	text(&f_mono13, X0, NAME_LY, "NAME", WB_COLOR_TEXT_LOW, 21);
 	text(&f_mono13, X0, TEXT_LY, "TEXT", WB_COLOR_TEXT_LOW, 21);
 	draw_name();
 	draw_text_field();
-	hint_bar(hints, 2);
+	hint_bar(hints, 3);
 }
 
 /* ---- the mouse screen --------------------------------------------------- */
@@ -1104,7 +1367,8 @@ static void draw_help(void)
 		{ "Enter", "Save" },
 		{ "Shift+Enter", "A new line in the text" },
 		{ "Tab", "In the text: a tab; in the name: to the text" },
-		{ "Shift+Esc", "In the text: the Esc key, typed as Esc" },
+		{ "#1", "In the text: a key or shortcut (F5, Win+R)" },
+		{ "Shift+key", "That key in the text (Esc, F1); Ctrl+C too" },
 		{ "\xe2\x86\x91\xe2\x86\x93", "A line up or down; between name and text" },
 		{ "\xe2\x86\x90\xe2\x86\x92", "Move the cursor (with Fn: to the line's end)" },
 		{ "Backspace", "Erase before the cursor (Fn: after it)" },
@@ -1137,7 +1401,7 @@ static void draw_help(void)
 			   "pointer every 30 s, as long as the app is open.", mouse_keys, 10);
 	else if (C.sc == SC_EDIT)
 		help_popup("Edit snippet", "The name is only for the list. The text is what the badge "
-			   "types, new lines and tabs included.", edit_keys, 9);
+			   "types, new lines and tabs included.", edit_keys, 10);
 	else if (C.sc == SC_LIST)
 		help_popup("HIDeous", "Connect a computer to the bottom USB-C port (J8), click where "
 			   "the text should go, and press Enter on a snippet.", list_keys, 9);
@@ -1145,6 +1409,32 @@ static void draw_help(void)
 		help_popup(C.sc == SC_LOG ? "Log" : "Settings",
 			   C.sc == SC_LOG ? "What was typed since the app started." :
 			   "Kept on the badge, in flash.", other_keys, 6);
+}
+
+static void draw_keypop(void)
+{
+	static const struct hint hs[] = { { "Enter", "choose", 0 }, { "Esc", "cancel", 1 } };
+	static struct menu_item it[PICK_WAIT + 1];
+	char title[64];
+
+	memset(it, 0, sizeof(it));
+	for (int i = 0; i < N_MODS; i++) {
+		it[i].label = C.layout == LAY_MAC ? mod_names[i].mac : mod_names[i].pc;
+		memcpy(it[i].value, C.kmods & mod_names[i].bit ? "On" : "Off", 4);
+	}
+	for (int i = 0; i < N_PICK; i++)
+		it[N_MODS + i].label = usage_names[pick_keys[i] - 0x28];
+	it[N_MODS].sep = 1;
+	it[PICK_ALONE].label = "The modifiers alone";
+	it[PICK_ALONE].sep = 1;
+	it[PICK_WAIT].label = "Wait 0.5 s";
+	it[PICK_WAIT].sub = "for a window to open";
+	title[0] = 0;
+	if (C.kmods)
+		cat(key_label(KEYS_BASE + ((unsigned)C.kmods << 8), title), "+\xe2\x80\xa6");
+	else
+		cat(title, "Choose, or press a key");
+	menu_popup("INSERT KEY", title, 0, it, 0, PICK_WAIT + 1, C.pf, -1, 0, 0, hs, 2);
 }
 
 static void draw_pop(void)
@@ -1161,6 +1451,9 @@ static void draw_pop(void)
 	switch (C.pop) {
 	case POP_HELP:
 		draw_help();
+		break;
+	case POP_KEY:
+		draw_keypop();
 		break;
 	case POP_MENU:
 	case POP_MOUSE:
@@ -1339,7 +1632,7 @@ static unsigned char held_key;	/* what the last report holds down (Fast) */
  */
 static int tap(const struct tap *t)
 {
-	if (!C.slow) {
+	if (!C.slow && !t->apart) {
 		if (held_key == t->key && hid_rep(0, 0))
 			return -1;
 		held_key = t->key;
@@ -1349,6 +1642,7 @@ static int tap(const struct tap *t)
 		return -1;
 	if (hid_rep(t->mods, t->key) || hid_rep(t->mods, 0))
 		return -1;
+	held_key = 0;
 	return t->mods ? hid_rep(0, 0) : 0;
 }
 
@@ -1616,8 +1910,30 @@ static void type_snip(int i)
 	flush_rows(WB_STATUS_BAR_H, H);
 	while (*s) {
 		struct tap tp[2];
-		int n = char_taps(next_cp(&s), tp);
+		unsigned cp = next_cp(&s);
+		int n = is_key(cp) && (cp >> 8 & 0xff) == WAIT ? -1 : char_taps(cp, tp);
 
+		if (n < 0) {		/* a pause: nothing held, Esc still stops it */
+			if (hid_rep(0, 0) < 0) {
+				failed = 1;
+				break;
+			}
+			held_key = 0;
+#ifdef SN_HOST
+			if (hid_fd >= 0)
+				write(hid_fd, "wait\n", 5);
+#endif
+			for (int w = 0; w < (int)(cp & 0xff) * 2 && !stopped; w++) {
+#ifndef SN_HOST
+				usleep(50000);
+#endif
+				stopped = typing_check();
+			}
+			if (stopped)
+				break;
+			C.typed++;
+			continue;
+		}
 		if (!n)
 			skipped++;
 		for (int k = 0; k < n && !failed; k++)
@@ -1741,6 +2057,34 @@ static void insert_text(const char *ins)
 	C.err = 0;
 }
 
+static void insert_key(int mods, int usage)
+{
+	char t[5];
+
+	*put_cp(t, KEYS_BASE + ((unsigned)mods << 8) + (unsigned)usage) = 0;
+	insert_text(t);
+}
+
+/*
+ * A key for the computer straight from the badge's keys, into the text:
+ * Shift with a key that has no character (Esc, Backspace, the arrows, the
+ * symbol keys as F1-F6; with Fn keyboard mode's layer: Delete, Home, End,
+ * Page Up and Down, F7-F12), or Ctrl, Alt or AltGr with any key (Shift
+ * then counts too). 1 when it took the key.
+ */
+static int key_token(int code)
+{
+	int mods = (K.ctrl ? MOD_CTRL : 0) | (K.alt ? MOD_ALT : 0) | (K.altgr ? MOD_ALTGR : 0);
+	int u = kb_usage(code, K.fn);
+
+	if (!C.field || !u)
+		return 0;
+	if (!mods && (!K.shift || key_char(code, 0) || code == KEY_ENTER || code == KEY_TAB))
+		return 0;
+	insert_key(mods | (mods && K.shift ? MOD_SHIFT : 0), u);
+	return 1;
+}
+
 static void erase(int fwd)
 {
 	char *buf = C.field ? C.text : C.name;
@@ -1762,14 +2106,17 @@ static int edit_key(int code)
 	char ch, s[2] = "";
 
 	switch (code) {
+	case KEY_SYM_MENU:		/* Insert key, in the text */
+		if (!C.field)
+			return 0;
+		C.pop = POP_KEY;
+		C.pf = C.kmods = 0;
+		return 3;
 	case KEY_ESC:
-		if (!K.shift) {
-			C.sc = SC_LIST;
-			return 3;
-		}
-		if (C.field)	/* Shift+Esc: Esc cancels, and Fn+Esc is the screen off */
-			insert_text("\x1b");
-		break;
+		if (K.shift)		/* in the name: nothing */
+			break;
+		C.sc = SC_LIST;
+		return 3;
 	case KEY_ENTER:
 		if (K.shift && C.field)
 			insert_text("\n");
@@ -1845,12 +2192,59 @@ static void open_menu(void)
 	C.pf = 0;
 }
 
+/*
+ * Insert key: Enter turns a modifier on or off, or puts the focused key
+ * with them in the text; a key pressed on the badge goes in with them
+ * too (Ctrl on, then c: Ctrl+C), with Fn its keyboard-mode layer.
+ */
+static int keypop_key(int code)
+{
+	int u = 0, mods = C.kmods;
+
+	switch (code) {
+	case KEY_ESC:
+		C.pop = POP_NONE;
+		return 3;
+	case KEY_UP:
+		C.pf -= C.pf > 0;
+		return 3;
+	case KEY_DOWN:
+		C.pf += C.pf < PICK_WAIT;
+		return 3;
+	case KEY_ENTER:
+		if (C.pf < N_MODS) {
+			C.kmods ^= mod_names[C.pf].bit;
+			return 3;
+		}
+		if (C.pf == PICK_ALONE && !mods)
+			return 0;
+		if (C.pf == PICK_WAIT) {
+			mods = WAIT;
+			u = 5;
+		} else if (C.pf < PICK_ALONE) {
+			u = pick_keys[C.pf - N_MODS];
+		}
+		break;
+	default:
+		if (!(u = kb_usage(code, K.fn)))
+			return 0;
+		mods |= (K.shift ? MOD_SHIFT : 0) | (K.ctrl ? MOD_CTRL : 0) | (K.alt ? MOD_ALT : 0) |
+			(K.altgr ? MOD_ALTGR : 0);
+	}
+	insert_key(mods, u);
+	C.pop = POP_NONE;
+	text_scroll();
+	return 3;
+}
+
 /* The pop-ups' keys. */
 static int pop_key(int code)
 {
 	int n = C.pop == POP_MENU || C.pop == POP_MOUSE ? C.n_menu :
 		C.pop == POP_LAYOUT ? N_LAY : C.pop == POP_MSPEED ? 3 : 2, pick = C.pf;
 
+	if (C.pop == POP_KEY)
+		return keypop_key(code);
 	if (C.pop == POP_HELP) {	/* only an explanation: Esc or the diamond closes it */
 		if (code == KEY_ESC || code == KEY_SYM_HELP)
 			C.pop = POP_NONE;
@@ -1926,6 +2320,10 @@ static int key(int code)
 {
 	if (C.pop)
 		return pop_key(code);
+	if (C.sc == SC_EDIT && key_token(code)) {
+		text_scroll();
+		return 2;
+	}
 	switch (code) {
 	case KEY_SYM_HELP:
 		C.pop = POP_HELP;
@@ -2045,8 +2443,9 @@ static void save_ppm(const char *path)
 /*
  * hideous-host KEYS [OUT.ppm], with APP_CONFIG, SN_COMPUTER=1 (a computer
  * on J8) and SN_HID (where the reports go, as hex). KEYS is typed; \n
- * Enter, \N Shift+Enter, \e Esc, \E Shift+Esc, \t Tab, \b Backspace, \u \d \l \r the
- * arrows, \f Fn held for the next key, \H the next key held for a second,
+ * Enter, \N Shift+Enter, \e Esc, \E Shift+Esc, \t Tab, \b Backspace,
+ * \u \d \l \r the arrows, \f Fn, \s Shift, \c Ctrl and \a Alt held for
+ * the next key, \H the next key held for a second,
  * \w 30 s of waiting, \1..\6 the symbol keys. On the mouse screen a key is
  * pressed, held a tick (or the second) and let go. Prints the screen, the
  * notice, the editor's fields, the mouse's state and the snippets. The
@@ -2067,7 +2466,7 @@ int main(int argc, char **argv)
 	memcpy(U.hhmm, "12:34", 6);
 	U.clock_ok = 1;
 	for (; *k; k++) {
-		int code = -1, fn = 0, hold = TICK_MS;
+		int code = -1, fn = 0, shift = 0, hold = TICK_MS;
 
 		if (*k == '\\' && k[1] == 'w') {
 			k++;
@@ -2079,9 +2478,11 @@ int main(int argc, char **argv)
 			hold = 1000;
 			k += 2;
 		}
-		if (*k == '\\' && k[1] == 'f') {
-			fn = 1;
-			k += 2;
+		for (; *k == '\\' && k[1] && strchr("fsca", k[1]); k += 2) {
+			fn |= k[1] == 'f';
+			shift |= k[1] == 's';
+			K.ctrl |= k[1] == 'c';
+			K.alt |= k[1] == 'a';
 		}
 		if (*k == '\\' && k[1] && k[1] != '\\') {	/* \\ is a backslash */
 			k++;
@@ -2103,6 +2504,7 @@ int main(int argc, char **argv)
 				code = 57, K.shift = 0;
 		}
 		K.fn = fn;
+		K.shift |= shift;
 		if (code >= 0 && C.sc == SC_MOUSE && !C.pop && mouse_key(code, 1) >= 0) {
 			for (long end = host_now + hold; host_now < end; host_now += TICK_MS)
 				mouse_tick();
@@ -2111,7 +2513,7 @@ int main(int argc, char **argv)
 			write(1, "closed\n", 7);
 			break;
 		}
-		K.shift = K.fn = 0;
+		K.shift = K.fn = K.ctrl = K.alt = 0;
 	}
 	flush_rows(0, H);
 	if (argc > 2 && argv[2][0])
@@ -2122,21 +2524,21 @@ int main(int argc, char **argv)
 	    C.sc == SC_MOUSE ? "mouse" : "list");
 	cat(out, C.pop == POP_HELP ? " help" : C.pop == POP_MENU ? " menu" : C.pop == POP_DELETE ? " delete" :
 	    C.pop == POP_LAYOUT ? " layout" : C.pop == POP_SPEED ? " speed" : C.pop == POP_MSPEED ? " mspeed" :
-	    C.pop == POP_MOUSE ? " mousemenu" : "");
+	    C.pop == POP_MOUSE ? " mousemenu" : C.pop == POP_KEY ? " keys" : "");
 	cat(cat(out, "\nnotice "), C.notice);
 	cat(cat(out, "\nerror "), C.err ? C.err : "");
 	cat(cat_int(cat(out, "\nfocus "), C.focus), "\nname ");
-	escape(out + strlen(out), C.name)[0] = 0;
+	escape(out + strlen(out), C.name, out + sizeof(out) - 64)[0] = 0;
 	cat(out, "\ntext ");
-	escape(out + strlen(out), C.text)[0] = 0;
+	escape(out + strlen(out), C.text, out + sizeof(out) - 64)[0] = 0;
 	cat(cat_int(cat(out, "\ncursor "), C.text_cur), "\n");
 	cat(cat_int(cat(cat_int(cat(out, "awake "), M.awake), "\nnudges "), M.nudges), "\n");
 	for (int i = 0; i < n_snip; i++) {
 		char *o = cat(out, "snip ");
 
-		o = escape(o, S[i].name);
+		o = escape(o, S[i].name, out + sizeof(out) - 64);
 		*o++ = '|';
-		o = escape(o, S[i].text);
+		o = escape(o, S[i].text, out + sizeof(out) - 64);
 		*o++ = '\n';
 		*o = 0;
 	}
@@ -2238,6 +2640,12 @@ int main(void)
 				K.shift = down;
 			else if (e.code == KEY_FN)
 				K.fn = down;
+			else if (e.code == KEY_LEFTCTRL)
+				K.ctrl = down;
+			else if (e.code == KEY_LEFTALT)
+				K.alt = down;
+			else if (e.code == KEY_RIGHTALT)
+				K.altgr = down;
 			else if (C.sc == SC_MOUSE && !C.pop && (r = mouse_key(e.code, e.value)) >= 0)
 				draw = r > draw ? r : draw;
 			else if (e.value == 1 || (e.value == 2 && C.sc == SC_EDIT && !C.pop)) {

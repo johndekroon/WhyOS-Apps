@@ -119,7 +119,7 @@ def main():
     check("saved notice", s["notice"], "Saved")
     s = a.run("\\2Login\\tuser\\tpass\\\\word\\N\\n")
     check("tab, backslash, new line", s["snips"][1], "Login|user\\tpass\\\\word\\n")
-    check("file", a.file("snippets.txt").splitlines()[2:],
+    check("file", [l for l in a.file("snippets.txt").splitlines() if not l.startswith("#")],
           ["Mail\tjohn@example.org", "Login\tuser\\tpass\\\\word\\n"])
 
     # typing: Enter on the focused one (the first row is the mouse), reports read back as US text
@@ -193,14 +193,47 @@ def main():
     b.file("snippets.txt", "n\tabé\n")
     s = b.run("\\d\\3\\b\\n")
     check("Backspace takes a whole character", s["snips"], ["n|ab"])
-    # Esc in a text: Shift+Esc in the editor, \e in the file, the Esc key on the computer
+    # keys in a text: Shift+Esc in the editor, \[Esc] in the file, the Esc key on the computer
     s = b.run("\\2Vim\\t\\E:wq\\N\\n", shot="esc")
-    check("Shift+Esc in the text", s["snips"][1], "Vim|\\e:wq\\n")
-    check("Esc in the file", b.file("snippets.txt").splitlines()[3], "Vim\t\\e:wq\\n")
+    check("Shift+Esc in the text", s["snips"][1], "Vim|\\[Esc]:wq\\n")
+    check("Esc in the file", b.file("snippets.txt").splitlines()[-1], "Vim\t\\[Esc]:wq\\n")
     s = b.run("\\d\\d\\n")
     check("Esc typed", (s["notice"], us_text(b.presses())), ("Typed 5 characters", "\x1b:wq\n"))
     s = b.run("\\2a\\Eb\\tc\\n")
     check("Shift+Esc in the name: nothing", s["snips"][2], "ab|c")
+    # Shift: Backspace, the arrows, the symbol keys as F1-F6; with Fn keyboard mode's layer
+    s = b.run("\\2Keys\\tx\\s\\b\\s\\l\\s\\r\\s\\u\\s\\d\\s\\1\\f\\s\\6\\f\\s\\b\\f\\s\\uy\\n", shot="keys")
+    check("Shift+keys in the text", s["snips"][3],
+          "Keys|x\\[Backspace]\\[Left]\\[Right]\\[Up]\\[Down]\\[F1]\\[F12]\\[Delete]\\[Page Up]y")
+    s = b.run("\\d\\d\\d\\d\\n")
+    check("keys typed", (s["notice"], b.presses()),
+          ("Typed 11 characters", [(0, 0x1b), (0, 0x2a), (0, 0x50), (0, 0x4f), (0, 0x52), (0, 0x51),
+                                   (0, 0x3a), (0, 0x45), (0, 0x4c), (0, 0x4b), (0, 0x1c)]))
+    # Ctrl and Alt on the badge: the shortcut, its modifiers down first even when Fast
+    s = b.run("\\2Copy\\t\\cc\\s\\ct\\a\\t\\n")
+    check("Ctrl+C, Ctrl+Shift+T, Alt+Tab", s["snips"][4], "Copy|\\[Ctrl+C]\\[Ctrl+Shift+T]\\[Alt+Tab]")
+    b.run("\\d\\d\\d\\d\\d\\n")
+    check("shortcut reports", [l[:2] + l[4:6] for l in open(b.hid).read().split() if len(l) == 16][:4],
+          ["0100", "0106", "0100", "0000"])
+    check("shortcuts typed", b.presses(), [(0x01, 0x06), (0x03, 0x17), (0x04, 0x2b)])
+    # the square: Insert key, Win on, then r; a pause; Enter from the list
+    s = b.run("\\d\\d\\d\\d\\d\\d\\2Run\\t\\1", shot="keypop")
+    check("Insert key opens", s["screen"], "edit keys")
+    s = b.run("\\2Run\\t\\1\\d\\d\\d\\nr\\1" + "\\d" * 39 + "\\ncmd\\1" + "\\d" * 7 + "\\n\\1\\e\\n")
+    check("Win+R, wait, Enter", s["snips"][5], "Run|\\[Win+R]\\[Wait 0.5s]cmd\\[Enter]")
+    s = b.run("\\d" * 6 + "\\n")
+    check("typed with the pause", (s["notice"], b.presses()[:2], "wait" in open(b.hid).read()),
+          ("Typed 6 characters", [(0x08, 0x15), (0, 0x06)], True))
+    s = b.run("\\2Win\\t\\1\\d\\d\\d\\n" + "\\d" * 35 + "\\n\\n")
+    check("the modifiers alone", s["snips"][6], "Win|\\[Win]")
+    # the file: names in any case, aliases of 2026-10-20, unknown names stay text
+    b.file("snippets.txt", "f\t\\[ctrl+alt+delete]\\[Wait 2s]\\[Cmd+Space]\\[Ctrl++]\\[Foo]\\e\\b\n")
+    s = b.run("")
+    check("names in the file", s["snips"],
+          ["f|\\[Ctrl+Alt+Delete]\\[Wait 2.0s]\\[Win+Space]\\[Ctrl+Shift+=]\\\\[Foo]\\[Esc]\\[Backspace]"])
+    s = b.run("\\5\\n\\d\\d\\n\\e\\d\\3\\n")
+    check("Mac names", b.file("snippets.txt").splitlines()[-1],
+          "f\t\\[Ctrl+Option+Delete]\\[Wait 2.0s]\\[Cmd+Space]\\[Ctrl+Shift+=]\\\\[Foo]\\[Esc]\\[Backspace]")
     b.file("snippets.txt", "n\tab\n")
     s = b.run("\\2" + "x" * 45 + "\\t" + "y" * 1010 + "\\n", shot="full")
     check("limits", s["snips"][1], "x" * 40 + "|" + "y" * 1000)

@@ -2,7 +2,7 @@
 
 HIDeous is our own program, written for the badge. The files are copied
 from why2025-linux `sdapps/hideous/` and `patches/buildroot/overlay-src/`
-at commit `a683127`:
+at commit `e030994`:
 
 | File | What |
 |---|---|
