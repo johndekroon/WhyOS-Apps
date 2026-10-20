@@ -160,18 +160,18 @@
    "author": "WhyOS-Apps contributors",
    "category": "tools",
    "commands": [],
-   "details_sha256": "dedb1e86a8e81e270196ab388c316064fa1e70d9a30ea5bb35e80711f767adaa",
+   "details_sha256": "92217ea01edfd04c05e0e0a7c0532fbd7046d564a2d41a2ccc582a9ec9b32283",
    "id": "hideous",
    "install_location": "sd",
    "latest": {
-    "build": 1,
+    "build": 2,
     "package": {
-     "installed_size": 362499,
-     "sha256": "554fa10092bd4ccd9310c3c6e4ee749e14e99bcbea09bbe07a387324ac28eba9",
-     "size": 156856,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/hideous-1.0.0.wpk"
+     "installed_size": 362635,
+     "sha256": "a4fe92620305566406a8030ea4a6a6c42742a3fad9e1a75e62ff280994826c35",
+     "size": 156978,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/hideous-1.0.1.wpk"
     },
-    "version": "1.0.0"
+    "version": "1.0.1"
    },
    "menu_icon": "keyboard",
    "name": "HIDeous",
@@ -183,7 +183,7 @@
     "memory_kb": 700,
     "os_api": 1
    },
-   "summary": "Saved texts the badge types on a computer, and the badge as its mouse",
+   "summary": "HIDeous lets you control your computer using pre-recorded input from your badge.",
    "tags": [
     "keyboard",
     "mouse",
@@ -558,7 +558,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-10-20T19:43:38Z",
- "serial": 15,
+ "generated": "2026-10-20T20:10:11Z",
+ "serial": 16,
  "source": "whyos"
 }

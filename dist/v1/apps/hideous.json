@@ -27,7 +27,7 @@
   }
  ],
  "category": "tools",
- "description": "Keep texts you type often (an address, a long command, a greeting) and\nlet the badge type them for you. Connect a computer to the bottom USB-C\nport, click where the text should go, and press Enter on a snippet: the\nbadge types it as a USB keyboard, new lines and tabs included.\n\nA text can hold keys and shortcuts too: Esc, F5, Ctrl+C, Alt+Tab,\nWin+R, and a pause for a window to open. In the editor, Shift with a\nkey such as Esc or an arrow, or Ctrl or Alt with any key, puts it in;\nthe square opens Insert key, to choose modifiers and a key.\n\nEach text (a snippet) has a name for the list and up to 1000 bytes of text. The\ntriangle key adds one, the cross edits it, the square has the options\n(type, edit, move, delete). Esc stops a text being typed.\n\nA USB keyboard sends keys, not characters, so tell the app the\ncomputer's keyboard layout (cloud key): US, US International or US on a\nMac. With the last two, accented letters and the euro sign are typed\ntoo; they can only be put in a snippet by editing its file\n(snippets.txt in the app's settings folder) over SSH.\n\nThe first row, Mouse, makes the badge the computer's mouse: the arrows\nmove the pointer (a tap is one pixel, holding goes faster), Enter is\nthe left button (hold it to drag), the cross a right click, Fn+Up/Down\nscrolls. Keep awake (the triangle) moves the pointer a pixel and back\nevery 30 seconds while the app is open, so the computer does not go to\nsleep or show you away. The mouse needs WhyOS from 2026-10-20 or later.\n\nThe badge only shows up as a keyboard or mouse with the side port (J1)\nunplugged. The texts are stored as plain text on the badge: keep\npasswords out of it.",
+ "description": "The badge as a USB keyboard and mouse for a computer. Save texts you\ntype often, such as an address, a long command or a login sequence,\nand let the badge type them.\n\nTyping a text:\n- Connect the computer to the badge's bottom USB-C port, and unplug the\n  side port: while it is connected, the computer does not see the badge.\n- Click where the text should go, choose the text in the list and press\n  Enter. Esc stops the typing.\n\nMaking a text: the triangle adds one, the cross edits it, and the\nsquare has the other options (type, edit, move, delete). A text has a\nname for the list and up to 1000 bytes. In the editor:\n- Shift+Enter starts a new line, Tab types a tab.\n- Shift with Esc, Backspace or an arrow puts in that key.\n- Ctrl or Alt with a key puts in that shortcut, such as Ctrl+C.\n- The square puts in any other key or shortcut, such as F5, Win+R or\n  Ctrl+Alt+Delete.\n- The triangle puts in a pause of half a second, for example to let a\n  window open after Win+R. Press it again for a longer pause.\n\nKeyboard layout: the badge sends keys, not letters, so set the\ncomputer's layout in the settings (cloud key): US, US International or\nUS on a Mac. With other layouts, such as German or French, some\ncharacters come out wrong. Accented letters and the euro sign work with\nthe last two, but you can only add them by editing snippets.txt over\nSSH.\n\nMouse: open the first row of the list. The arrows move the pointer\n(tap for one pixel, hold to go faster), Enter is the left button (hold\nit to drag), the cross is a right click and Fn+Up/Down scrolls. Keep\nawake (the triangle) nudges the pointer every 30 seconds while the app\nis open, so the computer does not lock or show you as away. The mouse\nneeds WhyOS from 2026-10-20 or later.\n\nThe texts are stored as plain text on the badge, so do not save\npasswords in them.",
  "format": 1,
  "homepage": "https://github.com/johndekroon/WhyOS-Apps",
  "icon": null,
@@ -58,7 +58,7 @@
   "screens/hideous-3.qoi"
  ],
  "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/hideous/source",
- "summary": "Saved texts the badge types on a computer, and the badge as its mouse",
+ "summary": "HIDeous lets you control your computer using pre-recorded input from your badge.",
  "tags": [
   "keyboard",
   "mouse",
@@ -68,6 +68,19 @@
  ],
  "type": "app",
  "versions": [
+  {
+   "build": 2,
+   "changelog": "In the editor, the triangle now puts in a pause. The square's list of keys no longer has one. Clearer description.",
+   "package": {
+    "installed_size": 362635,
+    "sha256": "a4fe92620305566406a8030ea4a6a6c42742a3fad9e1a75e62ff280994826c35",
+    "size": 156978,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/hideous-1.0.1.wpk"
+   },
+   "published": "2026-10-20T20:10:09Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/hideous-1.0.1-source.tar.gz",
+   "version": "1.0.1"
+  },
   {
    "build": 1,
    "changelog": "First version.",

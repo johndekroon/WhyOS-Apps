@@ -219,13 +219,17 @@ def main():
     # the square: Insert key, Win on, then r; a pause; Enter from the list
     s = b.run("\\d\\d\\d\\d\\d\\d\\2Run\\t\\1", shot="keypop")
     check("Insert key opens", s["screen"], "edit keys")
-    s = b.run("\\2Run\\t\\1\\d\\d\\d\\nr\\1" + "\\d" * 39 + "\\ncmd\\1" + "\\d" * 7 + "\\n\\1\\e\\n")
+    s = b.run("\\2Run\\t\\1\\d\\d\\d\\nr\\2cmd\\1" + "\\d" * 7 + "\\n\\1\\e\\n")
     check("Win+R, wait, Enter", s["snips"][5], "Run|\\[Win+R]\\[Wait 0.5s]cmd\\[Enter]")
+    s = b.run("\\2Long\\t\\2\\2\\2x\\2\\n")
+    check("the triangle again: longer", s["snips"][6], "Long|\\[Wait 1.5s]x\\[Wait 0.5s]")
+    s = b.run("\\d" * 7 + "\\n")
+    check("two pauses typed", open(b.hid).read().count("wait"), 2)
     s = b.run("\\d" * 6 + "\\n")
     check("typed with the pause", (s["notice"], b.presses()[:2], "wait" in open(b.hid).read()),
           ("Typed 6 characters", [(0x08, 0x15), (0, 0x06)], True))
     s = b.run("\\2Win\\t\\1\\d\\d\\d\\n" + "\\d" * 35 + "\\n\\n")
-    check("the modifiers alone", s["snips"][6], "Win|\\[Win]")
+    check("the modifiers alone", s["snips"][7], "Win|\\[Win]")
     # the file: names in any case, aliases of 2026-10-20, unknown names stay text
     b.file("snippets.txt", "f\t\\[ctrl+alt+delete]\\[Wait 2s]\\[Cmd+Space]\\[Ctrl++]\\[Foo]\\e\\b\n")
     s = b.run("")

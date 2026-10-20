@@ -43,8 +43,8 @@
  * snippet's options, the triangle adds one, the cross edits it; the
  * circle shows what was typed this session, the cloud the settings, the
  * diamond the help. Esc closes, or goes back one layer. In the editor's
- * text the square inserts a key or shortcut (Insert key), and Shift, Ctrl
- * or Alt with a key puts that key in (key_token). The mouse screen reads
+ * text the square inserts a key or shortcut (Insert key), the triangle a
+ * pause, and Shift, Ctrl or Alt with a key puts that key in (key_token). The mouse screen reads
  * presses and releases (mouse_key), the rest only presses (key).
  *
  * The panel is drawn one band of BAND_H rows at a time, as calc does.
@@ -296,7 +296,7 @@ static const char *const usage_names[] = {
 };
 #define USAGE_MAX	0x65		/* what usbd's keyboard descriptor allows */
 
-/* Insert key's rows: the modifiers, the keys, the modifiers alone, a pause */
+/* Insert key's rows: the modifiers, the keys, the modifiers alone */
 static const unsigned char pick_keys[] = {
 	0x29, 0x2b, 0x28, 0x2a, 0x4c, 0x49, 0x4a, 0x4d, 0x4b, 0x4e, 0x52, 0x51, 0x50, 0x4f, 0x2c,
 	0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f, 0x40, 0x41, 0x42, 0x43, 0x44, 0x45,
@@ -304,7 +304,6 @@ static const unsigned char pick_keys[] = {
 };
 #define N_PICK		(int)sizeof(pick_keys)
 #define PICK_ALONE	(N_MODS + N_PICK)
-#define PICK_WAIT	(PICK_ALONE + 1)
 
 /* The usage's name: a key's, or its character on a US keyboard ("C"). */
 static void usage_name(int u, char *out)
@@ -1232,14 +1231,15 @@ static void draw_text_field(void)
 
 static void draw_edit(void)
 {
-	static const struct hint hints[] = { { "Enter", "save", 0 }, { "#1", "key", 0 }, { "Esc", "cancel", 1 } };
+	static const struct hint hints[] = { { "Enter", "save", 0 }, { "#1", "key", 0 }, { "#2", "wait", 0 },
+					     { "Esc", "cancel", 1 } };
 
 	header("HIDEOUS", C.edit < 0 ? "New snippet" : "Edit snippet");
 	text(&f_mono13, X0, NAME_LY, "NAME", WB_COLOR_TEXT_LOW, 21);
 	text(&f_mono13, X0, TEXT_LY, "TEXT", WB_COLOR_TEXT_LOW, 21);
 	draw_name();
 	draw_text_field();
-	hint_bar(hints, 3);
+	hint_bar(hints, 4);
 }
 
 /* ---- the mouse screen --------------------------------------------------- */
@@ -1364,10 +1364,10 @@ static void draw_help(void)
 		{ "Logo", "Back to the menu" },
 	};
 	static const struct help_key edit_keys[] = {
-		{ "Enter", "Save" },
-		{ "Shift+Enter", "A new line in the text" },
+		{ "Enter", "Save; with Shift: a new line in the text" },
 		{ "Tab", "In the text: a tab; in the name: to the text" },
 		{ "#1", "In the text: a key or shortcut (F5, Win+R)" },
+		{ "#2", "In the text: wait 0.5 s; again for longer" },
 		{ "Shift+key", "That key in the text (Esc, F1); Ctrl+C too" },
 		{ "\xe2\x86\x91\xe2\x86\x93", "A line up or down; between name and text" },
 		{ "\xe2\x86\x90\xe2\x86\x92", "Move the cursor (with Fn: to the line's end)" },
@@ -1414,7 +1414,7 @@ static void draw_help(void)
 static void draw_keypop(void)
 {
 	static const struct hint hs[] = { { "Enter", "choose", 0 }, { "Esc", "cancel", 1 } };
-	static struct menu_item it[PICK_WAIT + 1];
+	static struct menu_item it[PICK_ALONE + 1];
 	char title[64];
 
 	memset(it, 0, sizeof(it));
@@ -1427,14 +1427,12 @@ static void draw_keypop(void)
 	it[N_MODS].sep = 1;
 	it[PICK_ALONE].label = "The modifiers alone";
 	it[PICK_ALONE].sep = 1;
-	it[PICK_WAIT].label = "Wait 0.5 s";
-	it[PICK_WAIT].sub = "for a window to open";
 	title[0] = 0;
 	if (C.kmods)
 		cat(key_label(KEYS_BASE + ((unsigned)C.kmods << 8), title), "+\xe2\x80\xa6");
 	else
 		cat(title, "Choose, or press a key");
-	menu_popup("INSERT KEY", title, 0, it, 0, PICK_WAIT + 1, C.pf, -1, 0, 0, hs, 2);
+	menu_popup("INSERT KEY", title, 0, it, 0, PICK_ALONE + 1, C.pf, -1, 0, 0, hs, 2);
 }
 
 static void draw_pop(void)
@@ -2065,6 +2063,21 @@ static void insert_key(int mods, int usage)
 	insert_text(t);
 }
 
+/* The triangle: a pause of 0.5 s, or 0.5 s more on the one just before the
+ * cursor (up to 25 s); not a key, so not in Insert key. */
+static void insert_wait(void)
+{
+	int a = cp_prev(C.text, C.text_cur);
+	unsigned cp = a < C.text_cur ? cp_at(C.text, a) : 0;
+
+	if (is_key(cp) && (cp >> 8 & 0xff) == WAIT && (cp & 0xff) <= 245) {
+		put_cp(C.text + a, cp + 5);	/* the same 4 bytes */
+		C.err = 0;
+		return;
+	}
+	insert_key(WAIT, 5);
+}
+
 /*
  * A key for the computer straight from the badge's keys, into the text:
  * Shift with a key that has no character (Esc, Backspace, the arrows, the
@@ -2112,6 +2125,11 @@ static int edit_key(int code)
 		C.pop = POP_KEY;
 		C.pf = C.kmods = 0;
 		return 3;
+	case KEY_SYM_MAIN:		/* a pause, in the text */
+		if (!C.field)
+			return 0;
+		insert_wait();
+		break;
 	case KEY_ESC:
 		if (K.shift)		/* in the name: nothing */
 			break;
@@ -2209,7 +2227,7 @@ static int keypop_key(int code)
 		C.pf -= C.pf > 0;
 		return 3;
 	case KEY_DOWN:
-		C.pf += C.pf < PICK_WAIT;
+		C.pf += C.pf < PICK_ALONE;
 		return 3;
 	case KEY_ENTER:
 		if (C.pf < N_MODS) {
@@ -2218,12 +2236,8 @@ static int keypop_key(int code)
 		}
 		if (C.pf == PICK_ALONE && !mods)
 			return 0;
-		if (C.pf == PICK_WAIT) {
-			mods = WAIT;
-			u = 5;
-		} else if (C.pf < PICK_ALONE) {
+		if (C.pf < PICK_ALONE)
 			u = pick_keys[C.pf - N_MODS];
-		}
 		break;
 	default:
 		if (!(u = kb_usage(code, K.fn)))
