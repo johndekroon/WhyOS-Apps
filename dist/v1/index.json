@@ -157,6 +157,45 @@
    "updated": "2026-10-18"
   },
   {
+   "author": "WhyOS-Apps contributors",
+   "category": "tools",
+   "commands": [],
+   "details_sha256": "dedb1e86a8e81e270196ab388c316064fa1e70d9a30ea5bb35e80711f767adaa",
+   "id": "hideous",
+   "install_location": "sd",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 362499,
+     "sha256": "554fa10092bd4ccd9310c3c6e4ee749e14e99bcbea09bbe07a387324ac28eba9",
+     "size": 156856,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/hideous-1.0.0.wpk"
+    },
+    "version": "1.0.0"
+   },
+   "menu_icon": "keyboard",
+   "name": "HIDeous",
+   "requires": {
+    "features": [
+     "display",
+     "keyboard"
+    ],
+    "memory_kb": 700,
+    "os_api": 1
+   },
+   "summary": "Saved texts the badge types on a computer, and the badge as its mouse",
+   "tags": [
+    "keyboard",
+    "mouse",
+    "usb",
+    "text",
+    "typing"
+   ],
+   "terminal": false,
+   "type": "app",
+   "updated": "2026-10-20"
+  },
+  {
    "author": "badge port",
    "category": "other",
    "commands": [],
@@ -519,7 +558,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-10-19T09:43:33Z",
- "serial": 14,
+ "generated": "2026-10-20T19:43:38Z",
+ "serial": 15,
  "source": "whyos"
 }

@@ -1,0 +1,85 @@
+{
+ "author": "WhyOS-Apps contributors",
+ "bundled": [
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/hideous/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "jetbrains-mono.txt",
+   "license_url": "licenses/hideous/jetbrains-mono.txt",
+   "name": "JetBrains Mono (font)",
+   "source": "https://github.com/JetBrains/JetBrainsMono",
+   "version": "2.211"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "space-grotesk.txt",
+   "license_url": "licenses/hideous/space-grotesk.txt",
+   "name": "Space Grotesk (font)",
+   "source": "https://github.com/floriankarsten/space-grotesk",
+   "version": "2.000"
+  }
+ ],
+ "category": "tools",
+ "description": "Keep texts you type often (an address, a long command, a greeting) and\nlet the badge type them for you. Connect a computer to the bottom USB-C\nport, click where the text should go, and press Enter on a snippet: the\nbadge types it as a USB keyboard, new lines and tabs included.\n\nA text can hold keys and shortcuts too: Esc, F5, Ctrl+C, Alt+Tab,\nWin+R, and a pause for a window to open. In the editor, Shift with a\nkey such as Esc or an arrow, or Ctrl or Alt with any key, puts it in;\nthe square opens Insert key, to choose modifiers and a key.\n\nEach text (a snippet) has a name for the list and up to 1000 bytes of text. The\ntriangle key adds one, the cross edits it, the square has the options\n(type, edit, move, delete). Esc stops a text being typed.\n\nA USB keyboard sends keys, not characters, so tell the app the\ncomputer's keyboard layout (cloud key): US, US International or US on a\nMac. With the last two, accented letters and the euro sign are typed\ntoo; they can only be put in a snippet by editing its file\n(snippets.txt in the app's settings folder) over SSH.\n\nThe first row, Mouse, makes the badge the computer's mouse: the arrows\nmove the pointer (a tap is one pixel, holding goes faster), Enter is\nthe left button (hold it to drag), the cross a right click, Fn+Up/Down\nscrolls. Keep awake (the triangle) moves the pointer a pixel and back\nevery 30 seconds while the app is open, so the computer does not go to\nsleep or show you away. The mouse needs WhyOS from 2026-10-20 or later.\n\nThe badge only shows up as a keyboard or mouse with the side port (J1)\nunplugged. The texts are stored as plain text on the badge: keep\npasswords out of it.",
+ "format": 1,
+ "homepage": "https://github.com/johndekroon/WhyOS-Apps",
+ "icon": null,
+ "id": "hideous",
+ "install_location": "sd",
+ "launch": {
+  "exec": "hideous",
+  "icon": "keyboard",
+  "info": "type saved texts, move the mouse",
+  "menu": "apps",
+  "rotation": "auto",
+  "terminal": false
+ },
+ "license": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
+ "license_url": "licenses/hideous/hideous.txt",
+ "name": "HIDeous",
+ "requires": {
+  "features": [
+   "display",
+   "keyboard"
+  ],
+  "memory_kb": 700,
+  "os_api": 1
+ },
+ "screenshots": [
+  "screens/hideous-1.qoi",
+  "screens/hideous-2.qoi",
+  "screens/hideous-3.qoi"
+ ],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/hideous/source",
+ "summary": "Saved texts the badge types on a computer, and the badge as its mouse",
+ "tags": [
+  "keyboard",
+  "mouse",
+  "usb",
+  "text",
+  "typing"
+ ],
+ "type": "app",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "First version.",
+   "package": {
+    "installed_size": 362499,
+    "sha256": "554fa10092bd4ccd9310c3c6e4ee749e14e99bcbea09bbe07a387324ac28eba9",
+    "size": 156856,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/hideous-1.0.0.wpk"
+   },
+   "published": "2026-10-20T19:43:36Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/hideous-1.0.0-source.tar.gz",
+   "version": "1.0.0"
+  }
+ ]
+}
