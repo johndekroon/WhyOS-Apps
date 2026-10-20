@@ -28,10 +28,23 @@ def presses(hid):
     """The reports as (modifiers, key) for each key that went down."""
     out, prev = [], 0
     for line in open(hid).read().split():
+        if len(line) != 16:
+            continue
         mods, key = int(line[0:2], 16), int(line[4:6], 16)
         if key and key != prev:
             out.append((mods, key))
         prev = key
+    return out
+
+
+def mouse(hid):
+    """The mouse's reports as (buttons, x, y, wheel), signed."""
+    sx = lambda b: b - 256 if b > 127 else b  # noqa: E731
+    out = []
+    for line in open(hid).read().split():
+        if len(line) == 8:
+            b = bytes.fromhex(line)
+            out.append((b[0], sx(b[1]), sx(b[2]), sx(b[3])))
     return out
 
 
@@ -45,8 +58,11 @@ class App:
         self.dir = tempfile.mkdtemp()
         self.hid = os.path.join(self.dir, "hid")
 
-    def run(self, keys, computer=True, shot=None):
+    def run(self, keys, computer=True, shot=None, nomouse=False):
         env = dict(os.environ, APP_CONFIG=self.dir, SN_HID=self.hid, SN_COMPUTER="1" if computer else "0")
+        env.pop("SN_NOMOUSE", None)
+        if nomouse:
+            env["SN_NOMOUSE"] = "1"
         if os.path.exists(self.hid):
             os.unlink(self.hid)
         ppm = os.path.join(self.shots, shot + ".ppm") if shot and self.shots else ""
@@ -63,6 +79,9 @@ class App:
 
     def presses(self):
         return presses(self.hid) if os.path.exists(self.hid) else []
+
+    def mouse(self):
+        return mouse(self.hid) if os.path.exists(self.hid) else []
 
     def file(self, name, text=None):
         p = os.path.join(self.dir, name)
@@ -103,29 +122,29 @@ def main():
     check("file", a.file("snippets.txt").splitlines()[2:],
           ["Mail\tjohn@example.org", "Login\tuser\\tpass\\\\word\\n"])
 
-    # typing: Enter on the focused one, reports read back as US text
-    s = a.run("\\d\\n")
+    # typing: Enter on the focused one (the first row is the mouse), reports read back as US text
+    s = a.run("\\d\\d\\n")
     check("typed notice", s["notice"], "Typed 15 characters")
     check("typed text", us_text(a.presses()), "user\tpass\\word\n")
-    s = a.run("\\n")
+    s = a.run("\\d\\n")
     check("typed first", us_text(a.presses()), "john@example.org")
     every = "".join(chr(c) for c in range(32, 127))
     a.file("snippets.txt", "#c\r\n\t" + every.replace("\\", "\\\\") + "\r\n")
-    s = a.run("\\n")
+    s = a.run("\\d\\n")
     check("loaded with CRLF", len(s["snips"]), 1)
     check("all of ASCII", us_text(a.presses()), every)
-    s = a.run("\\n", computer=False, shot="nocomputer")
+    s = a.run("\\d\\n", computer=False, shot="nocomputer")
     check("no computer", s["notice"], "No computer: connect one to the bottom USB-C port (J8)")
     check("no computer, no keys", a.presses(), [])
 
     # layouts: accents through the file; settings via the cloud key
     a.file("snippets.txt", "x\téëç€'a\n")
-    s = a.run("\\n")
+    s = a.run("\\d\\n")
     check("US skips", s["notice"], "Typed 2 characters; skipped 4 the layout cannot type")
     check("US keys", us_text(a.presses()), "'a")
     s = a.run("\\5\\n\\d\\n\\e", shot="settings")
-    check("layout saved", a.file("settings"), "layout=1\nslow=0\n")
-    s = a.run("\\n")
+    check("layout saved", a.file("settings"), "layout=1\nslow=0\nmouse=1\n")
+    s = a.run("\\d\\n")
     check("intl notice", s["notice"], "Typed 6 characters")
     check("intl keys", a.presses(), [
         (0, 0x34), (0, 0x08),			# ' e
@@ -135,8 +154,8 @@ def main():
         (0, 0x34), (0, 0x2c), (0, 0x04),	# ' space a
     ])
     s = a.run("\\5\\n\\d\\d\\n\\e")
-    check("mac saved", a.file("settings"), "layout=2\nslow=0\n")
-    a.run("\\n")
+    check("mac saved", a.file("settings"), "layout=2\nslow=0\nmouse=1\n")
+    a.run("\\d\\n")
     check("mac keys", a.presses(), [
         (0x04, 0x08), (0, 0x08),		# Option-e e
         (0x04, 0x18), (0, 0x08),		# Option-u e
@@ -145,7 +164,7 @@ def main():
         (0, 0x34), (0, 0x04),			# ' a
     ])
     s = a.run("\\5\\d\\n\\d\\n\\e")
-    check("slow saved", a.file("settings"), "layout=2\nslow=1\n")
+    check("slow saved", a.file("settings"), "layout=2\nslow=1\nmouse=1\n")
 
     # the editor
     b = App(exe, shots)
@@ -153,14 +172,14 @@ def main():
     check("empty text refused", (s["screen"], s["error"]), ("edit", "Type a text first"))
     s = b.run("\\2ab\\tline1\\Nline2\\u\\f\\lX\\n")
     check("up, Fn+left", s["snips"], ["ab|Xline1\\nline2"])
-    s = b.run("\\3\\b\\b\\e")
+    s = b.run("\\d\\3\\b\\b\\e")
     check("Esc cancels", s["snips"], ["ab|Xline1\\nline2"])
-    s = b.run("\\3\\u\\u\\b\\n")
+    s = b.run("\\d\\3\\u\\u\\b\\n")
     check("up into the name", s["snips"], ["a|Xline1\\nline2"])
-    s = b.run("\\3\\f\\l\\f\\b\\n")
+    s = b.run("\\d\\3\\f\\l\\f\\b\\n")
     check("Fn+Left, Fn+Backspace", s["snips"], ["a|Xline1\\nine2"])
     b.file("snippets.txt", "n\tabé\n")
-    s = b.run("\\3\\b\\n")
+    s = b.run("\\d\\3\\b\\n")
     check("Backspace takes a whole character", s["snips"], ["n|ab"])
     s = b.run("\\2" + "x" * 45 + "\\t" + "y" * 1010 + "\\n", shot="full")
     check("limits", s["snips"][1], "x" * 40 + "|" + "y" * 1000)
@@ -170,17 +189,17 @@ def main():
     # the square: move, delete (with Keep first)
     c = App(exe, shots)
     c.run("\\2one\\t1\\n\\2two\\t2\\n\\2three\\t3\\n")
-    s = c.run("\\1", shot="menu")
+    s = c.run("\\d\\1", shot="menu")
     check("menu", s["screen"], "list menu")
-    s = c.run("\\d\\d\\1\\d\\d\\n")	# on three: Type, Edit, Move up
+    s = c.run("\\d\\d\\d\\1\\d\\d\\n")	# on three: Type, Edit, Move up
     check("move up", s["snips"], ["one|1", "three|3", "two|2"])
-    s = c.run("\\1\\d\\d\\d\\n", shot="delete")	# Type, Edit, Move down, Delete
+    s = c.run("\\d\\1\\d\\d\\d\\n", shot="delete")	# Type, Edit, Move down, Delete
     check("delete asks", s["screen"], "list delete")
-    s = c.run("\\1\\d\\d\\d\\n\\n")
+    s = c.run("\\d\\1\\d\\d\\d\\n\\n")
     check("keep", len(s["snips"]), 3)
-    s = c.run("\\1\\d\\d\\d\\n\\d\\n")
+    s = c.run("\\d\\1\\d\\d\\d\\n\\d\\n")
     check("deleted", s["snips"], ["three|3", "two|2"])
-    s = c.run("\\d\\1\\n")
+    s = c.run("\\d\\d\\1\\n")
     check("type from the menu", us_text(c.presses()), "2")
 
     # the right symbol keys: log, settings, help; Esc goes back one layer
@@ -191,8 +210,50 @@ def main():
         check("keys %r" % keys, s["screen"], screen)
     s = c.run("abc\\e")
     check("Esc on the list closes", s.get("closed"), "")
-    s = c.run("\\n\\4", shot="log")
+    s = c.run("\\d\\n\\4", shot="log")
     check("log", (s["screen"], s["notice"]), ("log", "Typed 1 character"))
+
+    # the mouse: the list's first row
+    d = App(exe, shots)
+    s = d.run("\\n", shot="mouse")
+    check("mouse screen", (s["screen"], s["notice"]), ("mouse", ""))
+    d.run("\\n\\r")
+    check("a tap is one pixel", d.mouse(), [(0, 1, 0, 0)])
+    d.run("\\n\\H\\l")
+    m = d.mouse()
+    check("held: left only", {r[0] for r in m} | {r[2] for r in m}, {0})
+    check("held: speeds up", (m[0][1], min(r[1] for r in m)), (-1, -12))
+    check("held: a second's distance", sum(r[1] for r in m) < -250, True)
+    d.run("\\n\\n")
+    check("Enter: left button", d.mouse(), [(1, 0, 0, 0), (0, 0, 0, 0)])
+    d.run("\\n\\3")
+    check("cross: right click", d.mouse(), [(2, 0, 0, 0), (0, 0, 0, 0)])
+    d.run("\\n\\f\\u\\f\\d")
+    check("Fn+Up/Down: the wheel", d.mouse(), [(0, 0, 0, 1), (0, 0, 0, -1)])
+    d.run("\\n\\1\\n")
+    check("middle click", d.mouse(), [(4, 0, 0, 0), (0, 0, 0, 0)])
+    d.run("\\n\\1\\d\\n")
+    check("double click", d.mouse(), [(1, 0, 0, 0), (0, 0, 0, 0)] * 2)
+    s = d.run("\\n\\2")
+    check("keep awake: a nudge at once", (s["awake"], s["nudges"], d.mouse()),
+          ("1", "1", [(0, 1, 0, 0), (0, -1, 0, 0)]))
+    s = d.run("\\n\\2\\e\\w\\w", shot="awake")
+    check("keep awake goes on in the list", (s["screen"], s["nudges"]), ("list", "3"))
+    s = d.run("\\n\\2\\2\\w")
+    check("keep awake off", (s["awake"], s["nudges"]), ("0", "1"))
+    s = d.run("\\n\\r", computer=False)
+    check("no computer", (s["notice"], d.mouse()),
+          ("No computer: connect one to the bottom USB-C port (J8)", []))
+    s = d.run("\\n\\r", nomouse=True)
+    check("no mouse in the image", (s["notice"], d.mouse()),
+          ("This WhyOS has no USB mouse yet: update the badge", []))
+    s = d.run("\\n\\e")
+    check("Esc back to the list", s["screen"], "list")
+    s = d.run("\\n\\5\\d\\d\\n\\d\\n\\e\\H\\r")
+    check("mouse speed Fast", (d.file("settings")[-8:], s["screen"], max(r[1] for r in d.mouse())),
+          ("mouse=2\n", "mouse", 24))
+    s = d.run("\\n\\6")
+    check("mouse help", s["screen"], "mouse help")
 
     print("%d of %d failed" % (bad, checks))
     sys.exit(1 if bad else 0)

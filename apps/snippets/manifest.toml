@@ -4,7 +4,7 @@ id = "snippets"
 name = "Snippets"
 version = "1.0.0"
 build = 1
-summary = "Saved texts the badge types on a computer, as a USB keyboard"
+summary = "Saved texts the badge types on a computer, and the badge as its mouse"
 description = """
 Keep texts you type often (an address, a long command, a greeting) and
 let the badge type them for you. Connect a computer to the bottom USB-C
@@ -21,7 +21,14 @@ Mac. With the last two, accented letters and the euro sign are typed
 too; they can only be put in a snippet by editing its file
 (snippets.txt in the app's settings folder) over SSH.
 
-The badge only shows up as a keyboard with the side port (J1)
+The first row, Mouse, makes the badge the computer's mouse: the arrows
+move the pointer (a tap is one pixel, holding goes faster), Enter is
+the left button (hold it to drag), the cross a right click, Fn+Up/Down
+scrolls. Keep awake (the triangle) moves the pointer a pixel and back
+every 30 seconds while the app is open, so the computer does not go to
+sleep or show you away. The mouse needs WhyOS from 2026-10-20 or later.
+
+The badge only shows up as a keyboard or mouse with the side port (J1)
 unplugged. The texts are stored as plain text on the badge: keep
 passwords out of it."""
 author = "WhyOS-Apps contributors"
@@ -33,12 +40,12 @@ changelog = "First version."
 
 type = "app"
 category = "utilities"
-tags = ["keyboard", "usb", "text", "typing"]
+tags = ["keyboard", "mouse", "usb", "text", "typing"]
 install_location = "sd"
 
 [launch]
 exec = "snippets"
-info = "type saved texts on a computer"
+info = "type saved texts, move the mouse"
 icon = "keyboard"
 
 [requires]

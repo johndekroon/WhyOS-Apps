@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 /*
  * snippets — texts kept on the badge that it types on a computer, as a USB
- * keyboard on the bottom port (J8; docs/USB.md, "Device mode"). Drawn like
+ * keyboard on the bottom port (J8; docs/USB.md, "Device mode"), and the
+ * badge as that computer's mouse. Drawn like
  * the menu (wbdraw.h and the design's fonts), as an app from the store
  * (sdapps/README.md).
  *
@@ -26,10 +27,20 @@
  * the badge's keyboard has none, and the fonts draw them as "?".
  * The settings are in APP_CONFIG/settings.
  *
+ * The mouse (the list's first row, always there) is usbd's boot mouse,
+ * /dev/hidg1: held arrows move the pointer, slowly at first (a tap is one
+ * pixel) and faster the longer they are held; Enter is the left button,
+ * held for dragging; the cross a right click; Fn+Up/Down the wheel.
+ * Keep awake (the triangle) moves the pointer a pixel and back every
+ * AWAKE_MS while the app runs, on any screen, so the computer does not go
+ * to sleep or show its user away. An image without the mouse has no
+ * hidg1: the screen says so.
+ *
  * Keys (Docs/06-design-system.md 6.6): Enter types, the square opens the
  * snippet's options, the triangle adds one, the cross edits it; the
  * circle shows what was typed this session, the cloud the settings, the
- * diamond the help. Esc closes, or goes back one layer.
+ * diamond the help. Esc closes, or goes back one layer. The mouse screen
+ * reads presses and releases (mouse_key), the rest only presses (key).
  *
  * The panel is drawn one band of BAND_H rows at a time, as calc does.
  * Built with -DSN_HOST, it takes keys from its first argument, writes the
@@ -89,23 +100,24 @@ struct snip { char name[NM_MAX + 1], text[TEXT_MAX + 1]; };
 static struct snip S[SN_MAX];
 static int n_snip;
 
-enum { SC_LIST, SC_EDIT, SC_LOG, SC_SETTINGS };
-enum { POP_NONE, POP_HELP, POP_MENU, POP_DELETE, POP_LAYOUT, POP_SPEED, POP_TYPING };
+enum { SC_LIST, SC_EDIT, SC_LOG, SC_SETTINGS, SC_MOUSE };
+enum { POP_NONE, POP_HELP, POP_MENU, POP_DELETE, POP_LAYOUT, POP_SPEED, POP_TYPING, POP_MSPEED, POP_MOUSE };
 enum { LAY_US, LAY_INTL, LAY_MAC, N_LAY };
 enum { NOTE_OK, NOTE_WARN, NOTE_BAD };
-enum { M_TYPE, M_EDIT, M_UP, M_DOWN, M_DELETE };
+enum { M_TYPE, M_EDIT, M_UP, M_DOWN, M_DELETE, M_MIDDLE, M_DOUBLE, M_AWAKE };
 
 static const char *const lay_names[N_LAY] = { "US", "US International", "US on a Mac" };
 static const char *const lay_subs[N_LAY] = { "no accents", "dead keys", "Option for accents" };
 static const char *const speed_names[2] = { "Fast", "Slow" };
+static const char *const mspeed_names[3] = { "Slow", "Normal", "Fast" };
 
 static struct {
 	int sc, back;			/* the screen; where the log and settings go back to */
-	int focus;			/* the list's row */
+	int focus;			/* the list's row: 0 the mouse, then snippet focus - 1 */
 	int pop, pf;			/* the pop-up on top, and its focus */
 	int menu[6], n_menu;		/* the square key's items (M_...) */
 	int set_focus;			/* the settings' row */
-	int layout, slow;
+	int layout, slow, mspeed;
 	int computer;			/* usbd: a computer has configured the keyboard */
 	char notice[120];
 	int note;			/* NOTE_... */
@@ -123,6 +135,24 @@ static struct {
 } C;
 
 static struct { int shift, fn; } K;
+
+#define SEL		(C.focus - 1)	/* the snippet the list's focus is on */
+#define TICK_MS		16		/* a held arrow moves the pointer this often */
+#define WHEEL_MS	100		/* and Fn+Up/Down turns the wheel this often */
+#define AWAKE_MS	30000		/* keep awake: a nudge this often */
+
+enum { H_UP = 1, H_DOWN = 2, H_LEFT = 4, H_RIGHT = 8, H_WUP = 16, H_WDOWN = 32 };
+#define H_MOVE		(H_UP | H_DOWN | H_LEFT | H_RIGHT)
+
+static struct {
+	int fd;				/* /dev/hidg1, -1 until first used */
+	int missing;			/* this image has no mouse */
+	int held;			/* H_...: what is held down */
+	int buttons;			/* MS_... */
+	long since, next;		/* when the arrows went down; the next move */
+	int awake, nudges, dirty;	/* keep awake; dirty: a nudge to show */
+	long next_nudge;
+} M = { .fd = -1 };
 
 /* ---- small text helpers ------------------------------------------------- */
 
@@ -392,20 +422,25 @@ static void load_settings(void)
 {
 	char b[128], *p;
 
+	C.mspeed = 1;		/* Normal */
 	if (read_file(set_path, b, sizeof(b)) < 0)
 		return;
 	if ((p = strstr(b, "layout=")) && p[7] >= '0' && p[7] < '0' + N_LAY)
 		C.layout = p[7] - '0';
 	if ((p = strstr(b, "slow=")))
 		C.slow = p[5] == '1';
+	if ((p = strstr(b, "mouse=")) && p[6] >= '0' && p[6] <= '2')
+		C.mspeed = p[6] - '0';
 }
 
 static void save_settings(void)
 {
-	char b[32] = "layout=";
+	char b[48] = "layout=";
 
 	cat_int(b, C.layout);
 	cat(cat(b, "\nslow="), C.slow ? "1\n" : "0\n");
+	cat_int(cat(b, "mouse="), C.mspeed);
+	cat(b, "\n");
 	write_file(set_path, b, (int)strlen(b));
 }
 
@@ -637,17 +672,37 @@ static void draw_row(int i, int y, int on)
 	     WB_COLOR_TEXT_LOW, 0);
 }
 
+/* The list's first row: the mouse screen. */
+static void draw_mouse_row(int y, int on)
+{
+	int x = X0, lx = x + 20 + 26 + 16;
+
+	if (on)
+		box_focus(x, y, XW, ROW_H, WB_RADIUS_MD, &GLOW_ROW);
+	else
+		box_plain(x, y, XW, ROW_H, WB_RADIUS_MD, WB_COLOR_SURFACE1);
+	icon(&r_usb, x + 20, y + ROW_H / 2 - 13, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 255);
+	icon(&r_chevron, x + XW - 20 - 20, y + ROW_H / 2 - 10, WB_COLOR_TEXT_LOW, 255);
+	text(&f_ui22, lx, y + 12, "Mouse", WB_COLOR_TEXT_HI, 0);
+	if (M.awake)
+		text(&f_mono14, lx, y + 46, "Keep awake is on", WB_COLOR_OK, 0);
+	else
+		text(&f_mono14, lx, y + 46, "Move the pointer with the arrows", WB_COLOR_TEXT_LOW, 0);
+}
+
 static void list_hints(void)
 {
 	struct hint h[5];
 	int n = 0;
 
-	if (n_snip) {
+	if (C.focus == 0) {
+		h[n++] = (struct hint){ "Enter", "open", 0 };
+	} else {
 		h[n++] = (struct hint){ "Enter", "type", 0 };
 		h[n++] = (struct hint){ "#1", "options", 0 };
 	}
 	h[n++] = (struct hint){ "#2", "new", 0 };
-	if (n_snip)
+	if (C.focus > 0)
 		h[n++] = (struct hint){ "#3", "edit", 0 };
 	h[n++] = (struct hint){ "Esc", "close", 1 };
 	hint_bar(h, n);
@@ -656,7 +711,7 @@ static void list_hints(void)
 static void draw_list(void)
 {
 	static const uint32_t note_c[3] = { WB_COLOR_OK, WB_COLOR_WARN, WB_COLOR_ERROR };
-	int ys[SN_MAX], hs[SN_MAX], top = list_top(), scroll, cut, y = 0;
+	int ys[SN_MAX + 1], hs[SN_MAX + 1], top = list_top(), scroll, cut, y = 0;
 	char buf[128];
 
 	header("APPS", "Snippets");
@@ -665,8 +720,9 @@ static void draw_list(void)
 		text(&f_ui18, X0, BODY_Y + 8, wb_fit(&f_ui18, C.notice, XW, buf, sizeof(buf)),
 		     note_c[C.note], 0);
 	if (!n_snip) {
-		int ty = top + 8;
+		int ty = top + ROW_H + 32;
 
+		draw_mouse_row(top, C.focus == 0);
 		text(&f_ui22, X0, ty, "No snippets yet.", WB_COLOR_TEXT_HI, 0);
 		ty += 44;
 		ty += 28 * text_wrap(&f_ui20, X0, ty, XW, 28,
@@ -684,21 +740,24 @@ static void draw_list(void)
 		list_hints();
 		return;
 	}
-	for (int i = 0; i < n_snip; i++) {
+	for (int i = 0; i <= n_snip; i++) {
 		ys[i] = y;
 		hs[i] = ROW_H;
 		y += ROW_H + ROW_GAP;
 	}
-	scroll = list_scroll(ys, hs, n_snip, C.focus, C.focus, BOTTOM - top, &cut);
+	scroll = list_scroll(ys, hs, n_snip + 1, C.focus, C.focus, BOTTOM - top, &cut);
 	clip_rows(scroll ? top : 0, y - ROW_GAP - scroll > BOTTOM - top ? top + cut : H);
-	for (int i = 0; i < n_snip; i++) {
+	for (int i = 0; i <= n_snip; i++) {
 		int ry = top + ys[i] - scroll;
 
 		if (ry + ROW_H <= top && scroll)
 			continue;
 		if (ry >= top + cut)
 			break;
-		draw_row(i, ry, i == C.focus);
+		if (i)
+			draw_row(i - 1, ry, i == C.focus);
+		else
+			draw_mouse_row(ry, C.focus == 0);
 	}
 	clip_end();
 	scrollbar(W - X0 + 18, top, BOTTOM - top, y - ROW_GAP, BOTTOM - top, scroll);
@@ -913,6 +972,65 @@ static void draw_edit(void)
 	hint_bar(hints, 2);
 }
 
+/* ---- the mouse screen --------------------------------------------------- */
+
+static void draw_mouse(void)
+{
+	static const uint32_t note_c[3] = { WB_COLOR_OK, WB_COLOR_WARN, WB_COLOR_ERROR };
+	static const struct help_key legend[] = {
+		{ "\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "Move: a tap is one pixel, hold for faster" },
+		{ "Enter", "Left button: hold it to drag" },
+		{ "#3", "Right click" },
+		{ "Fn \xe2\x86\x91\xe2\x86\x93", "Scroll" },
+		{ "#1", "Middle click, double click" },
+		{ "#2", "Keep awake on or off" },
+	};
+	static const struct hint hints[] = {
+		{ "Enter", "click", 0 }, { "#3", "right", 0 }, { "#2", "awake", 0 }, { "Esc", "back", 1 },
+	};
+	int y = list_top(), kw = 0, n = sizeof(legend) / sizeof(legend[0]), ph = 24 + n * 40 + 8;
+	char buf[128], t[96];
+
+	header("SNIPPETS", "Mouse");
+	computer_chip();
+	if (C.notice[0])
+		text(&f_ui18, X0, BODY_Y + 8, wb_fit(&f_ui18, C.notice, XW, buf, sizeof(buf)),
+		     note_c[C.note], 0);
+	box_plain(X0, y, XW, ph, WB_RADIUS_MD, WB_COLOR_SURFACE1);
+	for (int i = 0; i < n; i++)
+		if (keycap_w(legend[i].keys) + 18 > kw)
+			kw = keycap_w(legend[i].keys) + 18;
+	for (int i = 0; i < n; i++) {
+		int cy = y + 16 + i * 40 + 20;
+
+		keycap(X0 + 20, cy, legend[i].keys);
+		text(&f_ui18, X0 + 20 + kw + 16, text_top(&f_ui18, cy), legend[i].what, WB_COLOR_TEXT_HI, 0);
+	}
+	if (M.buttons & MS_LEFT) {
+		const char *s = "LEFT BUTTON DOWN";
+		int w = text_w(&f_mono14, s, 0) + 24, x = X0 + XW - 20 - w;
+
+		box(x, y + 16, w, 28, 14, WB_COLOR_PINK, 36, WB_COLOR_PINK, 1, 0);
+		text(&f_mono14, x + 12, text_top(&f_mono14, y + 30), s, WB_COLOR_PINK, 0);
+	}
+	y += ph + 16;
+	box_plain(X0, y, XW, 68, WB_RADIUS_MD, WB_COLOR_SURFACE1);
+	text(&f_ui22, X0 + 20, text_top(&f_ui22, y + 34), "Keep awake", WB_COLOR_TEXT_HI, 0);
+	{
+		const char *v = M.awake ? "On" : "Off";
+
+		text(&f_ui18, X0 + XW - 20 - text_w(&f_ui18, v, 0), text_top(&f_ui18, y + 34), v,
+		     M.awake ? WB_COLOR_OK : WB_COLOR_TEXT_MID, 0);
+	}
+	t[0] = 0;
+	if (M.awake)
+		cat(cat_count(cat(t, "A pixel and back every 30 s while the app is open: "), M.nudges, "time"), " so far.");
+	else
+		cat(t, "So the computer does not sleep or show you away.");
+	text(&f_ui18, X0, y + 68 + 12, wb_fit(&f_ui18, t, XW, buf, sizeof(buf)), WB_COLOR_TEXT_LOW, 0);
+	hint_bar(hints, 4);
+}
+
 /* ---- log, settings, help, pop-ups --------------------------------------- */
 
 static void draw_log(void)
@@ -936,16 +1054,17 @@ static void draw_log(void)
 static void draw_settings(void)
 {
 	static const struct hint hints[] = { { "Enter", "change", 0 }, { "Esc", "back", 1 } };
-	static const char *const labels[2] = { "Computer's layout", "Typing speed" };
-	static const char *const notes[2] = {
+	static const char *const labels[3] = { "Computer's layout", "Typing speed", "Mouse speed" };
+	static const char *const notes[3] = {
 		"The keyboard layout the computer uses: otherwise symbols come out wrong.",
 		"Slow is for remote desktops and virtual machines that drop keys.",
+		"How fast the pointer goes when an arrow is held down.",
 	};
 	int y = BODY_Y + 24;
 
 	header("SNIPPETS", "Settings");
-	for (int i = 0; i < 2; i++, y += 68 + 12 + 24 + 20) {
-		const char *v = i ? speed_names[C.slow] : lay_names[C.layout];
+	for (int i = 0; i < 3; i++, y += 68 + 12 + 24 + 20) {
+		const char *v = i == 2 ? mspeed_names[C.mspeed] : i ? speed_names[C.slow] : lay_names[C.layout];
 		int cy = y + 34, rx = X0 + XW - 20 - 20;
 
 		if (C.set_focus == i)
@@ -964,13 +1083,13 @@ static void draw_settings(void)
 static void draw_help(void)
 {
 	static const struct help_key list_keys[] = {
-		{ "Enter", "Type the snippet on the computer" },
+		{ "Enter", "Type the snippet; on Mouse: open it" },
 		{ "#1", "Options: type, edit, move, delete" },
 		{ "#2", "A new snippet" },
 		{ "#3", "Edit this snippet" },
 		{ "Esc", "Close (also while typing: stop)" },
 		{ "#4", "Log: what was typed" },
-		{ "#5", "Settings: the computer's layout, speed" },
+		{ "#5", "Settings: layout, typing and mouse speed" },
 		{ "#6", "This help" },
 		{ "Logo", "Back to the menu" },
 	};
@@ -984,6 +1103,18 @@ static void draw_help(void)
 		{ "Esc", "Cancel: the snippet stays as it was" },
 		{ "#6", "This help" },
 	};
+	static const struct help_key mouse_keys[] = {
+		{ "\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "Move the pointer (hold for faster)" },
+		{ "Enter", "Left button (hold to drag)" },
+		{ "#3", "Right click" },
+		{ "Fn \xe2\x86\x91\xe2\x86\x93", "Scroll" },
+		{ "#1", "Middle click, double click, keep awake" },
+		{ "#2", "Keep awake on or off" },
+		{ "Esc", "Back to the list (keep awake goes on)" },
+		{ "#5", "Settings: the mouse speed" },
+		{ "#6", "This help" },
+		{ "Logo", "Back to the menu" },
+	};
 	static const struct help_key other_keys[] = {
 		{ "Enter", "Change the setting" },
 		{ "Esc", "Back" },
@@ -993,7 +1124,10 @@ static void draw_help(void)
 		{ "Logo", "Back to the menu" },
 	};
 
-	if (C.sc == SC_EDIT)
+	if (C.sc == SC_MOUSE)
+		help_popup("Mouse", "The badge is the computer's mouse too. Keep awake nudges the "
+			   "pointer every 30 s, as long as the app is open.", mouse_keys, 10);
+	else if (C.sc == SC_EDIT)
 		help_popup("Edit snippet", "The name is only for the list. The text is what the badge "
 			   "types, new lines and tabs included.", edit_keys, 8);
 	else if (C.sc == SC_LIST)
@@ -1010,7 +1144,8 @@ static void draw_pop(void)
 	static const struct hint pick[] = { { "Enter", "choose", 0 }, { "Esc", "cancel", 1 } };
 	static const struct hint menu_h[] = { { "Enter", "do", 0 }, { "Esc", "cancel", 1 } };
 	static const struct hint stop[] = { { "Esc", "stop", 1 } };
-	static const char *const mlabel[] = { "Type on the computer", "Edit", "Move up", "Move down", "Delete" };
+	static const char *const mlabel[] = { "Type on the computer", "Edit", "Move up", "Move down", "Delete",
+					      "Middle click", "Double click", "Keep awake" };
 	struct menu_item it[6];
 	char name[128];
 
@@ -1020,16 +1155,21 @@ static void draw_pop(void)
 		draw_help();
 		break;
 	case POP_MENU:
-		label_of(C.focus, name, sizeof(name));
+	case POP_MOUSE:
+		if (C.pop == POP_MENU)
+			label_of(SEL, name, sizeof(name));
 		for (int i = 0; i < C.n_menu; i++) {
 			it[i].label = mlabel[C.menu[i]];
 			it[i].danger = C.menu[i] == M_DELETE;
-			it[i].sep = C.menu[i] == M_DELETE;
+			it[i].sep = C.menu[i] == M_DELETE || C.menu[i] == M_AWAKE;
+			if (C.menu[i] == M_AWAKE)
+				memcpy(it[i].value, M.awake ? "On" : "Off", 4);
 		}
-		menu_popup("SNIPPET", name, 0, it, 0, C.n_menu, C.pf, -1, 0, 0, menu_h, 2);
+		menu_popup(C.pop == POP_MENU ? "SNIPPET" : "MOUSE", C.pop == POP_MENU ? name : "Mouse", 0, it,
+			   0, C.n_menu, C.pf, -1, 0, 0, menu_h, 2);
 		break;
 	case POP_DELETE:
-		label_of(C.focus, name, sizeof(name));
+		label_of(SEL, name, sizeof(name));
 		it[0].label = "Keep it";
 		it[1].label = "Delete";
 		it[1].danger = it[1].sep = 1;
@@ -1048,6 +1188,11 @@ static void draw_pop(void)
 		it[1].label = speed_names[1];
 		it[1].sub = "for remote desktops";
 		menu_popup("SETTINGS", "Typing speed", "2 options", it, 0, 2, C.pf, C.slow, 0, 0, pick, 2);
+		break;
+	case POP_MSPEED:
+		for (int i = 0; i < 3; i++)
+			it[i].label = mspeed_names[i];
+		menu_popup("SETTINGS", "Mouse speed", "3 options", it, 0, 3, C.pf, C.mspeed, 0, 0, pick, 2);
 		break;
 	case POP_TYPING: {
 		int h = 32 + 18 + 6 + 36 + 24 + 12 + 20 + 26 + 32, y = WB_STATUS_BAR_H +
@@ -1088,6 +1233,9 @@ static void draw_band(int y0, int y1)
 		break;
 	case SC_SETTINGS:
 		draw_settings();
+		break;
+	case SC_MOUSE:
+		draw_mouse();
 		break;
 	}
 	draw_pop();
@@ -1180,6 +1328,217 @@ static int tap(const struct tap *t)
 	if (hid_rep(t->mods, t->key) || hid_rep(t->mods, 0))
 		return -1;
 	return t->mods ? hid_rep(0, 0) : 0;
+}
+
+/* ---- the mouse on the computer ------------------------------------------ */
+
+#ifdef SN_HOST
+static long host_now;
+#endif
+
+static long now_ms(void)
+{
+#ifdef SN_HOST
+	return host_now;
+#else
+	struct timespec t;
+
+	clock_gettime(CLOCK_MONOTONIC, &t);
+	return (long)t.tv_sec * 1000 + t.tv_nsec / 1000000;
+#endif
+}
+
+/* /dev/hidg1, usbd's mouse; -1 when this image has none */
+static int ms_open(void)
+{
+#ifdef SN_HOST
+	M.missing = getenv("SN_NOMOUSE") != 0;
+#else
+	if (M.fd < 0)
+		M.fd = open("/dev/hidg1", O_WRONLY | O_NONBLOCK | O_CLOEXEC);
+	M.missing = M.fd < 0;
+#endif
+	return M.missing ? -1 : 0;
+}
+
+static int clamp127(int v)
+{
+	return v < -127 ? -127 : v > 127 ? 127 : v;
+}
+
+/* One report: the buttons held and a move; -1 when it did not go out. */
+static int ms_rep(int dx, int dy, int wheel)
+{
+	unsigned char rep[4] = { (unsigned char)M.buttons, (unsigned char)clamp127(dx),
+				 (unsigned char)clamp127(dy), (unsigned char)clamp127(wheel) };
+
+	if (!C.computer || ms_open())
+		return -1;
+#ifdef SN_HOST
+	{
+		static const char hx[] = "0123456789abcdef";
+		char line[9];
+
+		for (int i = 0; i < 4; i++) {
+			line[2 * i] = hx[rep[i] >> 4];
+			line[2 * i + 1] = hx[rep[i] & 15];
+		}
+		line[8] = '\n';
+		if (hid_fd >= 0)
+			write(hid_fd, line, 9);
+		return 0;
+	}
+#else
+	{
+		struct pollfd w = { .fd = M.fd, .events = POLLOUT };
+
+		if (poll(&w, 1, 50) <= 0 || write(M.fd, rep, 4) != 4)
+			return -1;
+		return 0;
+	}
+#endif
+}
+
+static void click(int button, int times)
+{
+	for (int i = 0; i < times; i++) {
+		M.buttons |= button;
+		ms_rep(0, 0, 0);
+		M.buttons &= ~button;
+		ms_rep(0, 0, 0);
+	}
+}
+
+/* Pixels per tick after ms of holding: 1 for a fifth of a second (a tap
+ * is one pixel), then up to the speed's top in another 0.8 s. */
+static int mouse_step(long ms)
+{
+	static const int top[3] = { 6, 12, 24 };
+	int t = top[C.mspeed], v;
+
+	if (ms < 200)
+		return 1;
+	v = 1 + (int)((ms - 200) * t / 800);
+	return v > t ? t : v;
+}
+
+/*
+ * The moves of held arrows, the wheel of Fn+Up/Down and keep awake's
+ * nudges that are due. Returns the ms until it is due again, -1 never.
+ */
+static int mouse_tick(void)
+{
+	long now = now_ms(), wait = -1;
+
+	if (M.held && now >= M.next) {
+		if (M.held & H_MOVE) {
+			int v = mouse_step(now - M.since);
+			int dx = !!(M.held & H_RIGHT) - !!(M.held & H_LEFT);
+			int dy = !!(M.held & H_DOWN) - !!(M.held & H_UP);
+
+			ms_rep(dx * v, dy * v, 0);
+			M.next = now + TICK_MS;
+		} else {
+			ms_rep(0, 0, M.held & H_WUP ? 1 : -1);
+			M.next = now + (M.next ? WHEEL_MS : 3 * WHEEL_MS);
+		}
+	}
+	if (M.held)
+		wait = M.next > now ? M.next - now : 0;
+	if (M.awake) {
+		if (now >= M.next_nudge) {
+			if (ms_rep(1, 0, 0) == 0 && ms_rep(-1, 0, 0) == 0) {
+				M.nudges++;
+				M.dirty = 1;
+			}
+			M.next_nudge = now + AWAKE_MS;
+		}
+		if (wait < 0 || M.next_nudge - now < wait)
+			wait = M.next_nudge - now;
+	}
+	return (int)wait;
+}
+
+static void awake_toggle(void)
+{
+	M.awake = !M.awake;
+	M.next_nudge = now_ms();	/* the first nudge at once: it shows it works */
+	mouse_tick();
+	log_add(M.awake ? "Keep awake on" : "Keep awake off");
+	if (M.awake && !C.computer) {
+		strcpy(C.notice, "Keep awake is on; it starts when a computer is connected");
+		C.note = NOTE_WARN;
+	}
+}
+
+/* Let go of everything (leaving the screen, closing). */
+static void mouse_release(void)
+{
+	M.held = 0;
+	if (M.buttons) {
+		M.buttons = 0;
+		ms_rep(0, 0, 0);
+	}
+}
+
+/*
+ * A key on the mouse screen, pressed (1) or let go (0): -1 when it is not
+ * one of the mouse's own (key() takes those), else what to draw (key()).
+ */
+static int mouse_key(int code, int value)
+{
+	int bit = 0;
+
+	switch (code) {
+	case KEY_UP:
+		bit = K.fn ? H_WUP : H_UP;
+		break;
+	case KEY_DOWN:
+		bit = K.fn ? H_WDOWN : H_DOWN;
+		break;
+	case KEY_LEFT:
+		bit = H_LEFT;
+		break;
+	case KEY_RIGHT:
+		bit = H_RIGHT;
+		break;
+	case KEY_ENTER:
+		if (value == 2)
+			return 0;
+		if (value)
+			M.buttons |= MS_LEFT;
+		else
+			M.buttons &= ~MS_LEFT;
+		ms_rep(0, 0, 0);
+		return 3;
+	default:
+		return -1;
+	}
+	if (value == 2)
+		return 0;
+	if (value) {
+		if (!(M.held & H_MOVE) && (bit & H_MOVE))
+			M.since = now_ms();
+		M.held |= bit;
+		M.next = 0;		/* a step at once: a tap moves one pixel */
+	} else {	/* whether Fn is still down or not */
+		M.held &= ~(code == KEY_UP ? H_UP | H_WUP : code == KEY_DOWN ? H_DOWN | H_WDOWN : bit);
+	}
+	mouse_tick();
+	return 0;
+}
+
+static void open_mouse(void)
+{
+	C.sc = SC_MOUSE;
+	C.notice[0] = 0;
+	if (ms_open()) {
+		strcpy(C.notice, "This WhyOS has no USB mouse yet: update the badge");
+		C.note = NOTE_BAD;
+	} else if (!C.computer) {
+		strcpy(C.notice, "No computer: connect one to the bottom USB-C port (J8)");
+		C.note = NOTE_BAD;
+	}
 }
 
 /* While typing: Esc stops it, and the progress shows. 1 to stop. */
@@ -1308,7 +1667,7 @@ static void save_edit(void)
 	s = &S[C.edit];
 	strcpy(s->name, C.name);
 	strcpy(s->text, C.text);
-	C.focus = C.edit;
+	C.focus = C.edit + 1;
 	C.notice[0] = 0;
 	C.sc = SC_LIST;
 	if (!save()) {
@@ -1321,10 +1680,8 @@ static void delete_snip(int i)
 {
 	memmove(S + i, S + i + 1, sizeof(S[0]) * (size_t)(n_snip - i - 1));
 	n_snip--;
-	if (C.focus >= n_snip)
-		C.focus = n_snip - 1;
-	if (C.focus < 0)
-		C.focus = 0;
+	if (C.focus > n_snip)
+		C.focus = n_snip;
 	if (!save()) {
 		strcpy(C.notice, "Deleted");
 		C.note = NOTE_OK;
@@ -1341,7 +1698,7 @@ static void move_snip(int i, int dir)
 	t = S[i];
 	S[i] = S[j];
 	S[j] = t;
-	C.focus = j;
+	C.focus = j + 1;
 	save();
 }
 
@@ -1451,9 +1808,9 @@ static void open_menu(void)
 	C.n_menu = 0;
 	C.menu[C.n_menu++] = M_TYPE;
 	C.menu[C.n_menu++] = M_EDIT;
-	if (C.focus > 0)
+	if (SEL > 0)
 		C.menu[C.n_menu++] = M_UP;
-	if (C.focus < n_snip - 1)
+	if (SEL < n_snip - 1)
 		C.menu[C.n_menu++] = M_DOWN;
 	C.menu[C.n_menu++] = M_DELETE;
 	C.pop = POP_MENU;
@@ -1463,7 +1820,8 @@ static void open_menu(void)
 /* The pop-ups' keys. */
 static int pop_key(int code)
 {
-	int n = C.pop == POP_MENU ? C.n_menu : C.pop == POP_LAYOUT ? N_LAY : 2, pick = C.pf;
+	int n = C.pop == POP_MENU || C.pop == POP_MOUSE ? C.n_menu :
+		C.pop == POP_LAYOUT ? N_LAY : C.pop == POP_MSPEED ? 3 : 2, pick = C.pf;
 
 	if (C.pop == POP_HELP) {	/* only an explanation: Esc or the diamond closes it */
 		if (code == KEY_ESC || code == KEY_SYM_HELP)
@@ -1480,20 +1838,30 @@ static int pop_key(int code)
 		return 3;
 	switch (C.pop) {
 	case POP_MENU:
+	case POP_MOUSE:
 		C.pop = POP_NONE;
 		switch (C.menu[pick]) {
 		case M_TYPE:
 			C.notice[0] = 0;
-			type_snip(C.focus);
+			type_snip(SEL);
 			break;
 		case M_EDIT:
-			open_edit(C.focus);
+			open_edit(SEL);
 			break;
 		case M_UP:
-			move_snip(C.focus, -1);
+			move_snip(SEL, -1);
 			break;
 		case M_DOWN:
-			move_snip(C.focus, 1);
+			move_snip(SEL, 1);
+			break;
+		case M_MIDDLE:
+			click(MS_MIDDLE, 1);
+			break;
+		case M_DOUBLE:
+			click(MS_LEFT, 2);
+			break;
+		case M_AWAKE:
+			awake_toggle();
 			break;
 		case M_DELETE:
 			C.pop = POP_DELETE;
@@ -1504,7 +1872,7 @@ static int pop_key(int code)
 	case POP_DELETE:
 		C.pop = POP_NONE;
 		if (pick == 1)
-			delete_snip(C.focus);
+			delete_snip(SEL);
 		break;
 	case POP_LAYOUT:
 		C.layout = pick;
@@ -1513,6 +1881,11 @@ static int pop_key(int code)
 		break;
 	case POP_SPEED:
 		C.slow = pick;
+		C.pop = POP_NONE;
+		save_settings();
+		break;
+	case POP_MSPEED:
+		C.mspeed = pick;
 		C.pop = POP_NONE;
 		save_settings();
 		break;
@@ -1531,8 +1904,10 @@ static int key(int code)
 		return 3;
 	case KEY_SYM_LOG:
 	case KEY_SYM_SETTINGS:
-		if (C.sc == SC_LIST || C.sc == SC_EDIT)
+		if (C.sc == SC_LIST || C.sc == SC_EDIT || C.sc == SC_MOUSE)
 			C.back = C.sc;
+		if (C.sc == SC_MOUSE)
+			mouse_release();
 		C.sc = code == KEY_SYM_LOG ? SC_LOG : SC_SETTINGS;
 		return 3;
 	}
@@ -1546,11 +1921,38 @@ static int key(int code)
 	case SC_SETTINGS:
 		if (code == KEY_ESC)
 			C.sc = C.back;
-		else if (code == KEY_UP || code == KEY_DOWN)
-			C.set_focus = code == KEY_DOWN;
+		else if (code == KEY_UP && C.set_focus > 0)
+			C.set_focus--;
+		else if (code == KEY_DOWN && C.set_focus < 2)
+			C.set_focus++;
 		else if (code == KEY_ENTER) {
-			C.pop = C.set_focus ? POP_SPEED : POP_LAYOUT;
-			C.pf = C.set_focus ? C.slow : C.layout;
+			C.pop = C.set_focus == 2 ? POP_MSPEED : C.set_focus ? POP_SPEED : POP_LAYOUT;
+			C.pf = C.set_focus == 2 ? C.mspeed : C.set_focus ? C.slow : C.layout;
+		}
+		return 3;
+	case SC_MOUSE:
+		switch (code) {
+		case KEY_ESC:
+			mouse_release();
+			C.sc = SC_LIST;
+			C.notice[0] = 0;
+			break;
+		case KEY_SYM_SECOND:
+			click(MS_RIGHT, 1);
+			return 0;
+		case KEY_SYM_MAIN:
+			awake_toggle();
+			break;
+		case KEY_SYM_MENU:
+			C.n_menu = 0;
+			C.menu[C.n_menu++] = M_MIDDLE;
+			C.menu[C.n_menu++] = M_DOUBLE;
+			C.menu[C.n_menu++] = M_AWAKE;
+			C.pop = POP_MOUSE;
+			C.pf = 0;
+			break;
+		default:
+			return 0;
 		}
 		return 3;
 	}
@@ -1563,25 +1965,26 @@ static int key(int code)
 			C.focus--;
 		break;
 	case KEY_DOWN:
-		if (C.focus < n_snip - 1)
+		if (C.focus < n_snip)
 			C.focus++;
 		break;
 	case KEY_ENTER:
-		if (n_snip) {
-			C.notice[0] = 0;
-			type_snip(C.focus);
-		}
+		C.notice[0] = 0;
+		if (C.focus)
+			type_snip(SEL);
+		else
+			open_mouse();
 		return 3;
 	case KEY_SYM_MENU:
-		if (n_snip)
+		if (C.focus)
 			open_menu();
 		return 3;
 	case KEY_SYM_MAIN:
 		open_edit(-1);
 		return 3;
 	case KEY_SYM_SECOND:
-		if (n_snip)
-			open_edit(C.focus);
+		if (C.focus)
+			open_edit(SEL);
 		return 3;
 	default:
 		return 0;
@@ -1615,8 +2018,12 @@ static void save_ppm(const char *path)
  * snippets-host KEYS [OUT.ppm], with APP_CONFIG, SN_COMPUTER=1 (a computer
  * on J8) and SN_HID (where the reports go, as hex). KEYS is typed; \n
  * Enter, \N Shift+Enter, \e Esc, \t Tab, \b Backspace, \u \d \l \r the
- * arrows, \f Fn held for the next key, \1..\6 the symbol keys. Prints the
- * screen, the notice, the editor's fields and the snippets.
+ * arrows, \f Fn held for the next key, \H the next key held for a second,
+ * \w 30 s of waiting, \1..\6 the symbol keys. On the mouse screen a key is
+ * pressed, held a tick (or the second) and let go. Prints the screen, the
+ * notice, the editor's fields, the mouse's state and the snippets. The
+ * mouse's reports go to $SN_HID too, as 8 hex digits a line; without a
+ * mouse in the image: SN_NOMOUSE.
  */
 int main(int argc, char **argv)
 {
@@ -1632,8 +2039,18 @@ int main(int argc, char **argv)
 	memcpy(U.hhmm, "12:34", 6);
 	U.clock_ok = 1;
 	for (; *k; k++) {
-		int code = -1, fn = 0;
+		int code = -1, fn = 0, hold = TICK_MS;
 
+		if (*k == '\\' && k[1] == 'w') {
+			k++;
+			host_now += AWAKE_MS;
+			mouse_tick();
+			continue;
+		}
+		if (*k == '\\' && k[1] == 'H') {
+			hold = 1000;
+			k += 2;
+		}
 		if (*k == '\\' && k[1] == 'f') {
 			fn = 1;
 			k += 2;
@@ -1657,7 +2074,11 @@ int main(int argc, char **argv)
 				code = 57, K.shift = 0;
 		}
 		K.fn = fn;
-		if (code >= 0 && key(code) == 1) {
+		if (code >= 0 && C.sc == SC_MOUSE && !C.pop && mouse_key(code, 1) >= 0) {
+			for (long end = host_now + hold; host_now < end; host_now += TICK_MS)
+				mouse_tick();
+			mouse_key(code, 0);
+		} else if (code >= 0 && key(code) == 1) {
 			write(1, "closed\n", 7);
 			break;
 		}
@@ -1668,9 +2089,11 @@ int main(int argc, char **argv)
 		save_ppm(argv[2]);
 	out[0] = 0;
 	cat(out, "screen ");
-	cat(out, C.sc == SC_EDIT ? "edit" : C.sc == SC_LOG ? "log" : C.sc == SC_SETTINGS ? "settings" : "list");
+	cat(out, C.sc == SC_EDIT ? "edit" : C.sc == SC_LOG ? "log" : C.sc == SC_SETTINGS ? "settings" :
+	    C.sc == SC_MOUSE ? "mouse" : "list");
 	cat(out, C.pop == POP_HELP ? " help" : C.pop == POP_MENU ? " menu" : C.pop == POP_DELETE ? " delete" :
-	    C.pop == POP_LAYOUT ? " layout" : C.pop == POP_SPEED ? " speed" : "");
+	    C.pop == POP_LAYOUT ? " layout" : C.pop == POP_SPEED ? " speed" : C.pop == POP_MSPEED ? " mspeed" :
+	    C.pop == POP_MOUSE ? " mousemenu" : "");
 	cat(cat(out, "\nnotice "), C.notice);
 	cat(cat(out, "\nerror "), C.err ? C.err : "");
 	cat(cat_int(cat(out, "\nfocus "), C.focus), "\nname ");
@@ -1678,6 +2101,7 @@ int main(int argc, char **argv)
 	cat(out, "\ntext ");
 	escape(out + strlen(out), C.text)[0] = 0;
 	cat(cat_int(cat(out, "\ncursor "), C.text_cur), "\n");
+	cat(cat_int(cat(cat_int(cat(out, "awake "), M.awake), "\nnudges "), M.nudges), "\n");
 	for (int i = 0; i < n_snip; i++) {
 		char *o = cat(out, "snip ");
 
@@ -1733,6 +2157,7 @@ int main(void)
 	struct sigaction sa;
 	struct pollfd p;
 	int ticks = 0;
+	long checked = 0;
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = on_signal;
@@ -1753,18 +2178,26 @@ int main(void)
 	p.events = POLLIN;
 	while (!stop_sig) {
 		struct ev evs[16];
-		int k = poll(&p, 1, 1000), got, draw = 0, quit = 0;
+		int wait = mouse_tick(), k, got, draw = 0, quit = 0;
 
-		if (k <= 0) {
+		k = poll(&p, 1, wait < 0 || wait > 1000 ? 1000 : wait);
+		mouse_tick();
+		if (M.dirty && (C.sc == SC_MOUSE || C.sc == SC_LIST) && !C.pop) {
+			M.dirty = 0;
+			flush_rows(WB_STATUS_BAR_H, H);
+		}
+		if (now_ms() - checked >= 1000) {
 			int pc = C.computer;
 
+			checked = now_ms();
 			C.computer = computer_read();
-			if (pc != C.computer && C.sc == SC_LIST && !C.pop)
+			if (pc != C.computer && (C.sc == SC_LIST || C.sc == SC_MOUSE) && !C.pop)
 				flush_rows(TITLE_Y, TITLE_Y + 44);
 			if (++ticks % 5 == 0 && status_read())
 				flush_rows(0, WB_STATUS_BAR_H);
-			continue;
 		}
+		if (k <= 0)
+			continue;
 		got = (int)read(ev_fd, evs, sizeof(evs)) / (int)sizeof(evs[0]);
 		for (int q = 0; q < got && !quit; q++) {
 			const struct ev e = evs[q];
@@ -1776,6 +2209,8 @@ int main(void)
 				K.shift = down;
 			else if (e.code == KEY_FN)
 				K.fn = down;
+			else if (C.sc == SC_MOUSE && !C.pop && (r = mouse_key(e.code, e.value)) >= 0)
+				draw = r > draw ? r : draw;
 			else if (e.value == 1 || (e.value == 2 && C.sc == SC_EDIT && !C.pop)) {
 				r = key(e.code);
 				if (r == 1)
@@ -1794,6 +2229,7 @@ int main(void)
 		else if (draw == 2)
 			flush_rows(NAME_Y - 20, NAME_Y + NAME_H + 20);
 	}
+	mouse_release();
 	return 0;
 }
 #endif
