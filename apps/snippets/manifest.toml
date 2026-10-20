@@ -1,0 +1,68 @@
+# Snippets (why2025-linux sdapps/snippets), written for the badge.
+format = 1
+id = "snippets"
+name = "Snippets"
+version = "1.0.0"
+build = 1
+summary = "Saved texts the badge types on a computer, as a USB keyboard"
+description = """
+Keep texts you type often (an address, a long command, a greeting) and
+let the badge type them for you. Connect a computer to the bottom USB-C
+port, click where the text should go, and press Enter on a snippet: the
+badge types it as a USB keyboard, new lines and tabs included.
+
+Each snippet has a name for the list and up to 1000 bytes of text. The
+triangle key adds one, the cross edits it, the square has the options
+(type, edit, move, delete). Esc stops a text being typed.
+
+A USB keyboard sends keys, not characters, so tell the app the
+computer's keyboard layout (cloud key): US, US International or US on a
+Mac. With the last two, accented letters and the euro sign are typed
+too; they can only be put in a snippet by editing its file
+(snippets.txt in the app's settings folder) over SSH.
+
+The badge only shows up as a keyboard with the side port (J1)
+unplugged. The texts are stored as plain text on the badge: keep
+passwords out of it."""
+author = "WhyOS-Apps contributors"
+license = "MIT AND OFL-1.1 AND LGPL-2.1-or-later"
+license_file = "snippets.txt"
+homepage = "https://github.com/johndekroon/WhyOS-Apps"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/snippets/source"
+changelog = "First version."
+
+type = "app"
+category = "utilities"
+tags = ["keyboard", "usb", "text", "typing"]
+install_location = "sd"
+
+[launch]
+exec = "snippets"
+info = "type saved texts on a computer"
+icon = "keyboard"
+
+[requires]
+os_api = 1
+memory_kb = 700           # estimate: the 0.3 MB program and its ~200 KB of snippet buffers; it draws in bands
+features = ["display", "keyboard"]
+
+[[bundled]]
+name = "uClibc-ng"
+version = "1.0.57"
+license = "LGPL-2.1-or-later"
+source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
+license_file = "uClibc-ng.txt"
+
+[[bundled]]
+name = "JetBrains Mono (font)"
+version = "2.211"
+license = "OFL-1.1"
+source = "https://github.com/JetBrains/JetBrainsMono"
+license_file = "jetbrains-mono.txt"
+
+[[bundled]]
+name = "Space Grotesk (font)"
+version = "2.000"
+license = "OFL-1.1"
+source = "https://github.com/floriankarsten/space-grotesk"
+license_file = "space-grotesk.txt"
