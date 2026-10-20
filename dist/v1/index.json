@@ -119,6 +119,45 @@
    "updated": "2026-10-12"
   },
   {
+   "author": "WhyOS-Apps contributors",
+   "category": "action",
+   "commands": [],
+   "details_sha256": "ca55278ef29c264712250360dc1ca50495f0bde9e556f6a0515f90ef535e2187",
+   "id": "flappy",
+   "install_location": "sd",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 299187,
+     "sha256": "2de7aadb9a34a1557e112ceedd8245a4f25ff51540288f3403b0c00db839d3e5",
+     "size": 123207,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flappy-1.0.0.wpk"
+    },
+    "version": "1.0.0"
+   },
+   "menu_icon": "games",
+   "name": "Flappy",
+   "requires": {
+    "features": [
+     "display",
+     "keyboard",
+     "accelerometer"
+    ],
+    "memory_kb": 600,
+    "os_api": 1
+   },
+   "summary": "Fly a bird through the gaps between the pipes",
+   "tags": [
+    "flappy",
+    "arcade",
+    "bird",
+    "casual"
+   ],
+   "terminal": false,
+   "type": "game",
+   "updated": "2026-10-20"
+  },
+  {
    "author": "gnuboy authors (rofl0r/gnuboy), badge port",
    "category": "emulators",
    "commands": [],
@@ -558,7 +597,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-10-20T20:10:11Z",
- "serial": 16,
+ "generated": "2026-10-20T21:34:47Z",
+ "serial": 17,
  "source": "whyos"
 }

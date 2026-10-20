@@ -1,0 +1,86 @@
+{
+ "author": "WhyOS-Apps contributors",
+ "bundled": [
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/flappy/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "jetbrains-mono.txt",
+   "license_url": "licenses/flappy/jetbrains-mono.txt",
+   "name": "JetBrains Mono (font)",
+   "source": "https://github.com/JetBrains/JetBrainsMono",
+   "version": "2.211"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "space-grotesk.txt",
+   "license_url": "licenses/flappy/space-grotesk.txt",
+   "name": "Space Grotesk (font)",
+   "source": "https://github.com/floriankarsten/space-grotesk",
+   "version": "2.000"
+  }
+ ],
+ "category": "action",
+ "description": "A bird falls; you make it flap. Fly through the gaps between the pipes:\nevery pipe you pass is a point. Touching a pipe or the ground ends the\ngame. It starts slowly and gets harder with every point, up to 30: faster,\nwith narrower gaps that lie further apart.\n\nFlap with Space, Enter, Up or any symbol key except the diamond. Esc\npauses (resume, restart or quit), the diamond shows the keys, and the\nlogo key goes back to the menu. Your best score is kept on the badge, so\nit survives a new card. The screen stays upright while you play.",
+ "format": 1,
+ "homepage": "https://github.com/johndekroon/WhyOS-Apps",
+ "icon": null,
+ "id": "flappy",
+ "install_location": "sd",
+ "launch": {
+  "exec": "flappy",
+  "icon": "games",
+  "info": "fly between the pipes",
+  "menu": "games",
+  "rotation": "locked",
+  "stack_kb": 16,
+  "terminal": false
+ },
+ "license": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
+ "license_url": "licenses/flappy/flappy.txt",
+ "name": "Flappy",
+ "requires": {
+  "features": [
+   "display",
+   "keyboard",
+   "accelerometer"
+  ],
+  "memory_kb": 600,
+  "os_api": 1
+ },
+ "screenshots": [
+  "screens/flappy-1.qoi",
+  "screens/flappy-2.qoi",
+  "screens/flappy-3.qoi"
+ ],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/flappy/source",
+ "summary": "Fly a bird through the gaps between the pipes",
+ "tags": [
+  "flappy",
+  "arcade",
+  "bird",
+  "casual"
+ ],
+ "type": "game",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "First version.",
+   "package": {
+    "installed_size": 299187,
+    "sha256": "2de7aadb9a34a1557e112ceedd8245a4f25ff51540288f3403b0c00db839d3e5",
+    "size": 123207,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flappy-1.0.0.wpk"
+   },
+   "published": "2026-10-20T21:34:45Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/flappy-1.0.0-source.tar.gz",
+   "version": "1.0.0"
+  }
+ ]
+}

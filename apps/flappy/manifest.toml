@@ -1,0 +1,61 @@
+# Flappy, written for the badge; its source is in source/.
+format = 1
+id = "flappy"
+name = "Flappy"
+version = "1.0.0"
+build = 1
+summary = "Fly a bird through the gaps between the pipes"
+description = """
+A bird falls; you make it flap. Fly through the gaps between the pipes:
+every pipe you pass is a point. Touching a pipe or the ground ends the
+game. It starts slowly and gets harder with every point, up to 30: faster,
+with narrower gaps that lie further apart.
+
+Flap with Space, Enter, Up or any symbol key except the diamond. Esc
+pauses (resume, restart or quit), the diamond shows the keys, and the
+logo key goes back to the menu. Your best score is kept on the badge, so
+it survives a new card. The screen stays upright while you play."""
+author = "WhyOS-Apps contributors"
+license = "MIT AND OFL-1.1 AND LGPL-2.1-or-later"
+license_file = "flappy.txt"
+homepage = "https://github.com/johndekroon/WhyOS-Apps"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/flappy/source"
+changelog = "First version."
+
+type = "game"
+category = "action"
+tags = ["flappy", "arcade", "bird", "casual"]
+install_location = "sd"
+
+[launch]
+exec = "flappy"
+info = "fly between the pipes"
+icon = "games"
+rotation = "locked"
+stack_kb = 16
+
+[requires]
+os_api = 1
+memory_kb = 600           # the 0.26 MB program and ~0.2 MB of sprites and its drawing band (measured pool use not yet)
+features = ["display", "keyboard", "accelerometer"]
+
+[[bundled]]
+name = "uClibc-ng"
+version = "1.0.57"
+license = "LGPL-2.1-or-later"
+source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
+license_file = "uClibc-ng.txt"
+
+[[bundled]]
+name = "JetBrains Mono (font)"
+version = "2.211"
+license = "OFL-1.1"
+source = "https://github.com/JetBrains/JetBrainsMono"
+license_file = "jetbrains-mono.txt"
+
+[[bundled]]
+name = "Space Grotesk (font)"
+version = "2.000"
+license = "OFL-1.1"
+source = "https://github.com/floriankarsten/space-grotesk"
+license_file = "space-grotesk.txt"
