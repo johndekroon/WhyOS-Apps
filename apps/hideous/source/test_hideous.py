@@ -13,7 +13,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 O = os.path.join(HERE, "..", "..", "patches", "buildroot", "overlay-src")
 
 # HID usage -> (character, shifted character) on a US keyboard
-US = {0x28: ("\n", "\n"), 0x2b: ("\t", "\t"), 0x2c: (" ", " ")}
+US = {0x28: ("\n", "\n"), 0x2b: ("\t", "\t"), 0x2c: (" ", " "), 0x29: ("\x1b", "\x1b")}
 for i, (lo, hi) in enumerate(zip("abcdefghijklmnopqrstuvwxyz", "ABCDEFGHIJKLMNOPQRSTUVWXYZ")):
     US[0x04 + i] = (lo, hi)
 for i, (lo, hi) in enumerate(zip("1234567890", "!@#$%^&*()")):
@@ -133,6 +133,14 @@ def main():
     s = a.run("\\d\\n")
     check("loaded with CRLF", len(s["snips"]), 1)
     check("all of ASCII", us_text(a.presses()), every)
+    # Fast: one report per key, a release only between the same key twice
+    a.file("snippets.txt", "x\tHello\n")
+    a.run("\\d\\n")
+    reports = [l for l in open(a.hid).read().split() if len(l) == 16]
+    check("fast reports", [l[:2] + l[4:6] for l in reports],
+          ["020b", "0008", "000f", "0000", "000f", "0012", "0000"])
+    check("fast text", us_text(a.presses()), "Hello")
+    a.file("snippets.txt", "#c\r\n\t" + every.replace("\\", "\\\\") + "\r\n")
     s = a.run("\\d\\n", computer=False, shot="nocomputer")
     check("no computer", s["notice"], "No computer: connect one to the bottom USB-C port (J8)")
     check("no computer, no keys", a.presses(), [])
@@ -165,6 +173,10 @@ def main():
     ])
     s = a.run("\\5\\d\\n\\d\\n\\e")
     check("slow saved", a.file("settings"), "layout=2\nslow=1\nmouse=1\n")
+    a.file("snippets.txt", "x\tHi\n")
+    a.run("\\d\\n")
+    check("slow reports", [l[:2] + l[4:6] for l in open(a.hid).read().split() if len(l) == 16],
+          ["0200", "020b", "0200", "0000", "000c", "0000", "0000"])
 
     # the editor
     b = App(exe, shots)
@@ -181,6 +193,15 @@ def main():
     b.file("snippets.txt", "n\tabé\n")
     s = b.run("\\d\\3\\b\\n")
     check("Backspace takes a whole character", s["snips"], ["n|ab"])
+    # Esc in a text: Shift+Esc in the editor, \e in the file, the Esc key on the computer
+    s = b.run("\\2Vim\\t\\E:wq\\N\\n", shot="esc")
+    check("Shift+Esc in the text", s["snips"][1], "Vim|\\e:wq\\n")
+    check("Esc in the file", b.file("snippets.txt").splitlines()[3], "Vim\t\\e:wq\\n")
+    s = b.run("\\d\\d\\n")
+    check("Esc typed", (s["notice"], us_text(b.presses())), ("Typed 5 characters", "\x1b:wq\n"))
+    s = b.run("\\2a\\Eb\\tc\\n")
+    check("Shift+Esc in the name: nothing", s["snips"][2], "ab|c")
+    b.file("snippets.txt", "n\tab\n")
     s = b.run("\\2" + "x" * 45 + "\\t" + "y" * 1010 + "\\n", shot="full")
     check("limits", s["snips"][1], "x" * 40 + "|" + "y" * 1000)
     s = b.run("\\2\\tlong " + "word " * 60, shot="edit")

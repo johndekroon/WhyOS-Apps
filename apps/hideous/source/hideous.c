@@ -21,10 +21,11 @@
  * skipped, and the notice says how many were.
  *
  * Kept in APP_CONFIG (flash: it survives a new card), as snippets.txt: one
- * line per snippet, "name<TAB>text", with \n, \t and \\ for a new line, a
- * tab and a backslash. Lines starting with # are comments. The file may be
- * edited elsewhere (over SSH); accented letters only come in that way, as
- * the badge's keyboard has none, and the fonts draw them as "?".
+ * line per snippet, "name<TAB>text", with \n, \t, \e and \\ for a new line,
+ * a tab, the Esc key and a backslash. Lines starting with # are comments.
+ * The file may be edited elsewhere (over SSH); accented letters only come
+ * in that way, as the badge's keyboard has none, and the fonts draw them
+ * as "?".
  * The settings are in APP_CONFIG/settings.
  *
  * The mouse (the list's first row, always there) is usbd's boot mouse,
@@ -39,8 +40,9 @@
  * Keys (Docs/06-design-system.md 6.6): Enter types, the square opens the
  * snippet's options, the triangle adds one, the cross edits it; the
  * circle shows what was typed this session, the cloud the settings, the
- * diamond the help. Esc closes, or goes back one layer. The mouse screen
- * reads presses and releases (mouse_key), the rest only presses (key).
+ * diamond the help. Esc closes, or goes back one layer; in the editor
+ * Shift+Esc puts an Esc in the text. The mouse screen reads presses and
+ * releases (mouse_key), the rest only presses (key).
  *
  * The panel is drawn one band of BAND_H rows at a time, as calc does.
  * Built with -DSN_HOST, it takes keys from its first argument, writes the
@@ -236,13 +238,14 @@ static void utf8_cut(char *s, int max)
 	}
 }
 
-/* The text on one line: new lines as " ↓ ", tabs as " → ". */
+/* The text on one line: new lines as " ↓ ", tabs as " → ", Esc as " Esc ". */
 static void one_line(char *out, int size, const char *s)
 {
 	int n = 0;
 
 	for (; *s && n < size - 6; s++) {
-		const char *r = *s == '\n' ? " \xe2\x86\x93 " : *s == '\t' ? " \xe2\x86\x92 " : 0;
+		const char *r = *s == '\n' ? " \xe2\x86\x93 " : *s == '\t' ? " \xe2\x86\x92 " :
+				*s == '\x1b' ? " Esc " : 0;
 
 		if (r) {
 			memcpy(out + n, r, 5);
@@ -338,9 +341,9 @@ static void unescape(char *out, const char *s, int max)
 	int n = 0;
 
 	for (; *s && n < max; s++) {
-		if (*s == '\\' && (s[1] == 'n' || s[1] == 't' || s[1] == '\\')) {
+		if (*s == '\\' && (s[1] == 'n' || s[1] == 't' || s[1] == 'e' || s[1] == '\\')) {
 			s++;
-			out[n++] = *s == 'n' ? '\n' : *s == 't' ? '\t' : '\\';
+			out[n++] = *s == 'n' ? '\n' : *s == 't' ? '\t' : *s == 'e' ? '\x1b' : '\\';
 		} else {
 			out[n++] = *s;
 		}
@@ -352,9 +355,9 @@ static void unescape(char *out, const char *s, int max)
 static char *escape(char *o, const char *s)
 {
 	for (; *s; s++) {
-		if (*s == '\n' || *s == '\t' || *s == '\\') {
+		if (*s == '\n' || *s == '\t' || *s == '\x1b' || *s == '\\') {
 			*o++ = '\\';
-			*o++ = *s == '\n' ? 'n' : *s == '\t' ? 't' : '\\';
+			*o++ = *s == '\n' ? 'n' : *s == '\t' ? 't' : *s == '\x1b' ? 'e' : '\\';
 		} else {
 			*o++ = *s;
 		}
@@ -399,7 +402,7 @@ static int save(void)
 {
 	static const char head[] =
 		"# Snippets for HIDeous to type: name<TAB>text per line;\n"
-		"# \\n a new line, \\t a tab, \\\\ a backslash.\n";
+		"# \\n a new line, \\t a tab, \\e the Esc key, \\\\ a backslash.\n";
 	char *o = filebuf;
 
 	memcpy(o, head, sizeof(head) - 1);
@@ -493,12 +496,12 @@ static char key_char(int code, int shift)
 
 struct tap { unsigned char mods, key; };
 
-/* An ASCII character (or new line, tab) on a US keyboard; 0 if none. */
+/* An ASCII character (or new line, tab, Esc) on a US keyboard; 0 if none. */
 static int ascii_tap(int c, struct tap *t)
 {
 	t->mods = 0;
-	if (c == '\n' || c == '\t' || c == ' ') {
-		t->key = c == '\n' ? 0x28 : c == '\t' ? 0x2b : 0x2c;
+	if (c == '\n' || c == '\t' || c == '\x1b' || c == ' ') {
+		t->key = c == '\n' ? 0x28 : c == '\t' ? 0x2b : c == '\x1b' ? 0x29 : 0x2c;
 		return 1;
 	}
 	for (int code = 1; code < 64; code++)
@@ -775,6 +778,8 @@ static int cp_w(const char *s, int a, int b)
 
 	if (s[a] == '\t')
 		return text_w(TF, "\xe2\x86\x92", 0);
+	if (s[a] == '\x1b')
+		return text_w(TF, "Esc", 0);
 	if (s[a] == '\n')
 		return 0;
 	memcpy(t, s + a, (size_t)(b - a));
@@ -938,6 +943,8 @@ static void draw_text_field(void)
 				text(TF, x, ty, "\xe2\x86\x92", WB_COLOR_TEXT_LOW, 0);
 			else if (C.text[i] == '\n')
 				text(TF, x + 2, ty, "\xe2\x86\x93", WB_COLOR_TEXT_LOW, 0);
+			else if (C.text[i] == '\x1b')
+				text(TF, x, ty, "Esc", WB_COLOR_TEXT_LOW, 0);
 			else {
 				memcpy(t, C.text + i, (size_t)(j - i));
 				t[j - i] = 0;
@@ -1097,6 +1104,7 @@ static void draw_help(void)
 		{ "Enter", "Save" },
 		{ "Shift+Enter", "A new line in the text" },
 		{ "Tab", "In the text: a tab; in the name: to the text" },
+		{ "Shift+Esc", "In the text: the Esc key, typed as Esc" },
 		{ "\xe2\x86\x91\xe2\x86\x93", "A line up or down; between name and text" },
 		{ "\xe2\x86\x90\xe2\x86\x92", "Move the cursor (with Fn: to the line's end)" },
 		{ "Backspace", "Erase before the cursor (Fn: after it)" },
@@ -1129,7 +1137,7 @@ static void draw_help(void)
 			   "pointer every 30 s, as long as the app is open.", mouse_keys, 10);
 	else if (C.sc == SC_EDIT)
 		help_popup("Edit snippet", "The name is only for the list. The text is what the badge "
-			   "types, new lines and tabs included.", edit_keys, 8);
+			   "types, new lines and tabs included.", edit_keys, 9);
 	else if (C.sc == SC_LIST)
 		help_popup("HIDeous", "Connect a computer to the bottom USB-C port (J8), click where "
 			   "the text should go, and press Enter on a snippet.", list_keys, 9);
@@ -1320,9 +1328,23 @@ static int hid_rep(unsigned char mods, unsigned char key)
 #endif
 }
 
-/* A key pressed and let go; a modifier goes down first, on its own. */
+static unsigned char held_key;	/* what the last report holds down (Fast) */
+
+/*
+ * One key. Fast: one report, the key (with its modifiers) taking the place
+ * of the last one; a computer reads that as the last key let go and this
+ * one pressed, modifiers first. Only the same key twice ("ll", Option+e
+ * then e) needs a report with nothing held between. Slow: pressed and let
+ * go, a modifier going down first, on its own.
+ */
 static int tap(const struct tap *t)
 {
+	if (!C.slow) {
+		if (held_key == t->key && hid_rep(0, 0))
+			return -1;
+		held_key = t->key;
+		return hid_rep(t->mods, t->key);
+	}
 	if (t->mods && hid_rep(t->mods, 0))
 		return -1;
 	if (hid_rep(t->mods, t->key) || hid_rep(t->mods, 0))
@@ -1589,6 +1611,7 @@ static void type_snip(int i)
 	label_of(i, C.typing, sizeof(C.typing));
 	C.total = cp_count(s);
 	C.typed = 0;
+	held_key = 0;
 	C.pop = POP_TYPING;
 	flush_rows(WB_STATUS_BAR_H, H);
 	while (*s) {
@@ -1740,8 +1763,13 @@ static int edit_key(int code)
 
 	switch (code) {
 	case KEY_ESC:
-		C.sc = SC_LIST;
-		return 3;
+		if (!K.shift) {
+			C.sc = SC_LIST;
+			return 3;
+		}
+		if (C.field)	/* Shift+Esc: Esc cancels, and Fn+Esc is the screen off */
+			insert_text("\x1b");
+		break;
 	case KEY_ENTER:
 		if (K.shift && C.field)
 			insert_text("\n");
@@ -2017,7 +2045,7 @@ static void save_ppm(const char *path)
 /*
  * hideous-host KEYS [OUT.ppm], with APP_CONFIG, SN_COMPUTER=1 (a computer
  * on J8) and SN_HID (where the reports go, as hex). KEYS is typed; \n
- * Enter, \N Shift+Enter, \e Esc, \t Tab, \b Backspace, \u \d \l \r the
+ * Enter, \N Shift+Enter, \e Esc, \E Shift+Esc, \t Tab, \b Backspace, \u \d \l \r the
  * arrows, \f Fn held for the next key, \H the next key held for a second,
  * \w 30 s of waiting, \1..\6 the symbol keys. On the mouse screen a key is
  * pressed, held a tick (or the second) and let go. Prints the screen, the
@@ -2057,8 +2085,9 @@ int main(int argc, char **argv)
 		}
 		if (*k == '\\' && k[1] && k[1] != '\\') {	/* \\ is a backslash */
 			k++;
-			K.shift = *k == 'N';
-			code = *k == 'n' || *k == 'N' ? KEY_ENTER : *k == 'e' ? KEY_ESC : *k == 't' ? KEY_TAB :
+			K.shift = *k == 'N' || *k == 'E';
+			code = *k == 'n' || *k == 'N' ? KEY_ENTER : *k == 'e' || *k == 'E' ? KEY_ESC :
+			       *k == 't' ? KEY_TAB :
 			       *k == 'b' ? KEY_BACKSPACE : *k == 'u' ? KEY_UP : *k == 'd' ? KEY_DOWN :
 			       *k == 'l' ? KEY_LEFT : *k == 'r' ? KEY_RIGHT :
 			       *k >= '1' && *k <= '6' ? KEY_SYM_MENU + (*k - '1') : -1;

@@ -9,7 +9,8 @@ description = """
 Keep texts you type often (an address, a long command, a greeting) and
 let the badge type them for you. Connect a computer to the bottom USB-C
 port, click where the text should go, and press Enter on a snippet: the
-badge types it as a USB keyboard, new lines and tabs included.
+badge types it as a USB keyboard, new lines and tabs included. Shift+Esc
+in the editor adds the Esc key (for vi's ":wq", say).
 
 Each text (a snippet) has a name for the list and up to 1000 bytes of text. The
 triangle key adds one, the cross edits it, the square has the options
