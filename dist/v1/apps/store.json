@@ -92,6 +92,19 @@
  "type": "system",
  "versions": [
   {
+   "build": 9,
+   "changelog": "App pages open faster with a small cover picture; Apps and Games start with All.",
+   "package": {
+    "installed_size": 998484,
+    "sha256": "78c4c70f7045cfa6e99851cdb5c3882fe2330c46b4d4ee6847d4c09ff63e3a78",
+    "size": 519619,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.8.wpk"
+   },
+   "published": "2026-10-21T08:38:20Z",
+   "source_archive": null,
+   "version": "0.2.8"
+  },
+  {
    "build": 8,
    "changelog": "An app page shows its first screenshot, larger, instead of the icon.",
    "package": {

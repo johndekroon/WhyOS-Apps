@@ -4,8 +4,8 @@
 format = 1
 id = "store"
 name = "App store"
-version = "0.2.7"
-build = 8
+version = "0.2.8"
+build = 9
 summary = "Find, install and update apps and games"
 description = """
 The WhyOS app store: browse and search the apps and games, install them on
@@ -20,7 +20,7 @@ license = "MIT AND (Apache-2.0 OR GPL-2.0-or-later) AND Zlib AND LGPL-2.1-or-lat
 license_file = "store.txt"
 homepage = "https://github.com/johndekroon/WhyOS-Apps"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/client"
-changelog = "An app page shows its first screenshot, larger, instead of the icon."
+changelog = "App pages open faster with a small cover picture; Apps and Games start with All."
 
 type = "system"
 category = "store"
