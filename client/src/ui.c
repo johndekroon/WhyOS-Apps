@@ -6,7 +6,7 @@
  *   Discover    updates, featured, recently updated, the types
  *   Apps/Games  categories with counts, then their apps (#1: a menu to sort)
  *   Search      typing filters the cached index, offline
- *   App page    icon, facts, state and actions, then description,
+ *   App page    first screenshot (or icon), facts, state and actions, then description,
  *               screenshots, commands, requirements, licences, versions
  *   My apps     the sections of client.md §4 (`store --my-apps` opens it)
  *   Settings    sources (on/off, a mirror), refresh, keep packages,
@@ -309,6 +309,7 @@ static struct {			/* the app on the app page */
 	int have_j;
 	struct picture icon;
 	struct picture pic;	/* the screenshot shown */
+	struct picture thumb;	/* the first screenshot, small, in the header */
 	int n_shots, shot;
 	/* the header, copied: installing reloads the index under AP.a */
 	char name[64], author[96], meta[96], summary[200], eyebrow[64];
@@ -578,25 +579,41 @@ static void picture_draw(const struct picture *p, int x0, int y0, uint32_t bg)
 	(void)bg;
 }
 
-/* the app page's header: icon, name, author, facts, summary */
+/*
+ * The app page's header: the first screenshot (THUMB px) with name, author,
+ * facts and summary beside it; without screenshots the icon (96 px), with
+ * the summary below.
+ */
+#define THUMB		180
+
 static void draw_app_head(int y)
 {
 	char buf[160];
-	int tx = WB_CONTENT_PAD + 96 + 24, tw = W - WB_CONTENT_PAD - tx;
+	int side = AP.thumb.rgb ? THUMB : 96;
+	int tx = WB_CONTENT_PAD + side + 24, tw = W - WB_CONTENT_PAD - tx;
 	struct textpos tp = { &f_ui18, WB_CONTENT_PAD, y + 96 + 20, 26, 0, 2, WB_COLOR_TEXT_MID };
 
-	box_plain(WB_CONTENT_PAD, y, 96, 96, WB_RADIUS_LG, WB_COLOR_SURFACE1);
-	if (AP.icon.rgb)
-		picture_draw(&AP.icon, WB_CONTENT_PAD + (96 - AP.icon.w) / 2, y + (96 - AP.icon.h) / 2,
-			     WB_COLOR_SURFACE1);
-	else
-		icon(AP.ic, WB_CONTENT_PAD + 35, y + 35, WB_COLOR_CYAN, 255);
+	if (AP.thumb.rgb) {
+		box(WB_CONTENT_PAD - 2, y - 2, AP.thumb.w + 4, AP.thumb.h + 4, 4, WB_COLOR_VOID, 0,
+		    WB_COLOR_LINE, 1, 0);
+		picture_draw(&AP.thumb, WB_CONTENT_PAD, y, WB_COLOR_VOID);
+		tp.x = tx;
+		tp.y = y + 108;
+		tp.max = 3;
+	} else {
+		box_plain(WB_CONTENT_PAD, y, 96, 96, WB_RADIUS_LG, WB_COLOR_SURFACE1);
+		if (AP.icon.rgb)
+			picture_draw(&AP.icon, WB_CONTENT_PAD + (96 - AP.icon.w) / 2, y + (96 - AP.icon.h) / 2,
+				     WB_COLOR_SURFACE1);
+		else
+			icon(AP.ic, WB_CONTENT_PAD + 35, y + 35, WB_COLOR_CYAN, 255);
+	}
 	text(&f_ui28b, tx, y + 4, fit(&f_ui28b, AP.name, tw, buf, sizeof(buf)), WB_COLOR_TEXT_HI, -8);
 	text(&f_ui18, tx, y + 44, fit(&f_ui18, AP.author, tw, buf, sizeof(buf)), WB_COLOR_TEXT_MID, 0);
 	text(&f_mono14, tx, y + 74, fit(&f_mono14, AP.meta, tw, buf, sizeof(buf)),
 	     AP.terminal ? WB_COLOR_YELLOW : WB_COLOR_TEXT_LOW, 0);
 	if (AP.summary[0])
-		wrap(&f_ui18, AP.summary, W - 2 * WB_CONTENT_PAD, text_line, &tp);
+		wrap(&f_ui18, AP.summary, AP.thumb.rgb ? tw : W - 2 * WB_CONTENT_PAD, text_line, &tp);
 }
 
 static void draw_search_head(int y)
@@ -1735,7 +1752,37 @@ static void app_page_free(void)
 	free(AP.data);
 	picture_free(&AP.icon);
 	picture_free(&AP.pic);
+	picture_free(&AP.thumb);
 	memset(&AP, 0, sizeof(AP));
+}
+
+/* p shrunk by a whole factor to fit THUMB x THUMB, each pixel the average of its block */
+static void thumb_of(const struct picture *p, struct picture *t)
+{
+	int f = (p->w > p->h ? p->w : p->h) / THUMB;
+
+	if (f * THUMB < (p->w > p->h ? p->w : p->h))
+		f++;
+	if (f < 1)
+		f = 1;
+	t->w = p->w / f;
+	t->h = p->h / f;
+	t->alpha = 0;
+	t->rgb = xmalloc((size_t)t->w * t->h * 2);
+	for (int y = 0; y < t->h; y++)
+		for (int x = 0; x < t->w; x++) {
+			unsigned r = 0, g = 0, b = 0, n = (unsigned)(f * f);
+
+			for (int dy = 0; dy < f; dy++)
+				for (int dx = 0; dx < f; dx++) {
+					unsigned v = p->rgb[(y * f + dy) * p->w + x * f + dx];
+
+					r += v >> 11;
+					g += (v >> 5) & 63;
+					b += v & 31;
+				}
+			t->rgb[y * t->w + x] = (uint16_t)((r / n) << 11 | (g / n) << 5 | b / n);
+		}
 }
 
 static void app_page_load(const char *id)
@@ -1780,6 +1827,16 @@ static void app_page_load(const char *id)
 	}
 	if (AP.have_j)
 		AP.n_shots = json_len(&AP.j, json_get(&AP.j, 0, "screenshots"));
+	if (AP.n_shots > 0) {
+		char rel[256], path[512];
+		struct picture full = { 0 };
+
+		if (!json_str(&AP.j, json_item(&AP.j, json_get(&AP.j, 0, "screenshots"), 0), rel, sizeof(rel)) &&
+		    !asset_get(AP.a->src, rel, path, sizeof(path), err, sizeof(err)) &&
+		    !qoi_decode(path, &full) && full.w <= 480 && full.h <= 480)
+			thumb_of(&full, &AP.thumb);
+		picture_free(&full);
+	}
 	if (AP.a && AP.a->icon) {
 		char path[512];
 
@@ -1813,7 +1870,7 @@ static void build_app(void)
 
 	L.eyebrow = a ? (a->type && !strcmp(a->type, "game") ? "GAMES" : "APPS") : "MY APPS";
 	snprintf(L.title, sizeof(L.title), "%s", a ? a->name : AP.name);
-	L.head_h = 96 + 20 + (AP.summary[0] ? 2 * 26 : 0);
+	L.head_h = AP.thumb.rgb ? THUMB + 24 : 96 + 20 + (AP.summary[0] ? 2 * 26 : 0);
 	if (a)
 		human(sz, sizeof(sz), a->size);
 	switch (AP.st) {

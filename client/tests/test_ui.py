@@ -86,6 +86,10 @@ def test_browse_search_install_open(env):
              "esc", "esc", "esc"])
     assert os.path.isfile(env.reg("hello"))
     assert os.path.isdir(env.app("hello"))
+    # the page's header shows the first screenshot (pink), 180 px, not the icon
+    sh = os.path.join(env.tmp, "shots")
+    r, g, b = pixel(os.path.join(sh, "app.ppm"), 48 + 170, 100 + 170)
+    assert r > 200 and g < 120 and b > 120, (r, g, b)
 
 
 def test_open_asks_the_menu(env):
