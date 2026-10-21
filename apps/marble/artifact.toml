@@ -1,0 +1,4 @@
+# The prebuilt files/ archive (docs/repository.md §1.1), written by tools/import-sdapp.py
+path = "files.tar.gz"
+sha256 = "7f4f2874094c8f90b220c0f014d39bacb3b1ad13af4c75316310371f3b38d1fe"
+built_from = "why2025-linux sdapps/marble at 1507831 (same code as source/, comments aside), 2026-10-20"

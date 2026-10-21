@@ -1,0 +1,89 @@
+{
+ "author": "WhyOS-Apps contributors",
+ "bundled": [
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/marble/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "jetbrains-mono.txt",
+   "license_url": "licenses/marble/jetbrains-mono.txt",
+   "name": "JetBrains Mono (font)",
+   "source": "https://github.com/JetBrains/JetBrainsMono",
+   "version": "2.211"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "space-grotesk.txt",
+   "license_url": "licenses/marble/space-grotesk.txt",
+   "name": "Space Grotesk (font)",
+   "source": "https://github.com/floriankarsten/space-grotesk",
+   "version": "2.000"
+  }
+ ],
+ "category": "puzzle",
+ "description": "Tilt the badge to roll a marble through a level and into the glowing ring.\nThere are 18 levels in six worlds: a wooden workshop, a desert, ice, a\ntemple, a factory and outer space. Each world adds something new: sand\nthat slows you down, ramps to jump gaps, ice and ice that cracks behind\nyou, currents, buttons that open gates, conveyor belts, bumpers, magnets,\nlasers, low gravity, teleporters and a black hole.\n\nYou have three lives per level; falling into a hole costs one. Collect\nthe stars and finish quickly for a higher score. Levels unlock one by one,\nand your best score per level is kept on the badge.\n\nEsc pauses, the diamond shows the keys, the circle shows your results\nand the cloud opens the settings: tilt or arrow keys, sensitivity, and\nwhether the badge counts as level when held as you start or when lying\nflat. The screen stays upright while you play.",
+ "format": 1,
+ "homepage": "https://github.com/johndekroon/WhyOS-Apps",
+ "icon": null,
+ "id": "marble",
+ "install_location": "sd",
+ "launch": {
+  "exec": "marble",
+  "icon": "games",
+  "info": "tilt to roll into the ring",
+  "menu": "games",
+  "rotation": "locked",
+  "stack_kb": 16,
+  "terminal": false
+ },
+ "license": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
+ "license_url": "licenses/marble/marble.txt",
+ "name": "Marble Orbit",
+ "requires": {
+  "features": [
+   "display",
+   "keyboard",
+   "accelerometer"
+  ],
+  "memory_kb": 600,
+  "os_api": 1
+ },
+ "screenshots": [
+  "screens/marble-1.qoi",
+  "screens/marble-2.qoi",
+  "screens/marble-3.qoi",
+  "screens/marble-4.qoi",
+  "screens/marble-5.qoi",
+  "screens/marble-6.qoi"
+ ],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/marble/source",
+ "summary": "Tilt the badge to roll a marble into the ring",
+ "tags": [
+  "marble",
+  "tilt",
+  "maze",
+  "accelerometer"
+ ],
+ "type": "game",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "First version.",
+   "package": {
+    "installed_size": 326199,
+    "sha256": "8044bc63befc6cd49de1ce996c8bc4036d75b1c8bc4c5850e9577d0c5d5e1074",
+    "size": 138812,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/marble-1.0.0.wpk"
+   },
+   "published": "2026-10-21T06:19:20Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/marble-1.0.0-source.tar.gz",
+   "version": "1.0.0"
+  }
+ ]
+}

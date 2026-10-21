@@ -314,6 +314,45 @@
    "updated": "2026-10-12"
   },
   {
+   "author": "WhyOS-Apps contributors",
+   "category": "puzzle",
+   "commands": [],
+   "details_sha256": "9d0ac5450052fe2c5bbb493962486b93b11f7b1b5f0d8bc6a2f5ff178c2bc055",
+   "id": "marble",
+   "install_location": "sd",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 326199,
+     "sha256": "8044bc63befc6cd49de1ce996c8bc4036d75b1c8bc4c5850e9577d0c5d5e1074",
+     "size": 138812,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/marble-1.0.0.wpk"
+    },
+    "version": "1.0.0"
+   },
+   "menu_icon": "games",
+   "name": "Marble Orbit",
+   "requires": {
+    "features": [
+     "display",
+     "keyboard",
+     "accelerometer"
+    ],
+    "memory_kb": 600,
+    "os_api": 1
+   },
+   "summary": "Tilt the badge to roll a marble into the ring",
+   "tags": [
+    "marble",
+    "tilt",
+    "maze",
+    "accelerometer"
+   ],
+   "terminal": false,
+   "type": "game",
+   "updated": "2026-10-21"
+  },
+  {
    "author": "Damien P. George and the MicroPython contributors, badge port",
    "category": "tools",
    "commands": [
@@ -597,7 +636,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-10-20T21:34:47Z",
- "serial": 17,
+ "generated": "2026-10-21T06:19:21Z",
+ "serial": 18,
  "source": "whyos"
 }
