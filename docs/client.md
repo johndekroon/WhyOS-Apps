@@ -66,7 +66,7 @@ Memory budget: at most 1.5 MB of the user pool while the store runs
 stream to the card; nothing larger than a buffer is held in memory. The
 index table for 1000 apps is about 200 KB (strings interned, no
 descriptions). Screenshots load one at a time; an app page keeps its
-first one at half size (180 x 180 px, 65 KB) for its header. Measured on the badge
+cover (180 x 180 px, 65 KB; repository.md §5.3) for its header. Measured on the badge
 (2026-10-12): 920 KB at the peak of an install from the CLI, 1.3 MB for
 the UI.
 
@@ -88,9 +88,9 @@ clear).
 | Screen | Contents |
 |---|---|
 | **Discover** | Updates waiting (if any), recently updated, featured (a list in the index, chosen by maintainers), and the types as tiles |
-| **Apps / Games** | Subcategories of the type as a list with counts; a subcategory opens its apps sorted by name or recently updated |
+| **Apps / Games** | "All" (every app of the type in one list), then the subcategories as a list with counts; each opens its apps sorted by name or recently updated |
 | **Search** | Typing filters live over name, summary, tags, author and command names of the cached index, offline; results grouped by type |
-| **App page** | The first screenshot at 180 x 180 px (the icon when there is none), name, author, version, size; a "Command-line" label and the commands it adds, for command-line apps; summary and description; screenshots (left/right); requirements and permissions; licence, with a "Licences" view listing the bundled components and their texts ("not open source" marked); storage it uses; changelog and older versions; state and buttons: Install / Open / Update / Remove / Reinstall |
+| **App page** | The cover at 180 x 180 px (a crop or the first screenshot; the icon when there is none), name, author, version, size; a "Command-line" label and the commands it adds, for command-line apps; summary and description; screenshots (left/right); requirements and permissions; licence, with a "Licences" view listing the bundled components and their texts ("not open source" marked); storage it uses; changelog and older versions; state and buttons: Install / Open / Update / Remove / Reinstall |
 | **My apps** | Sections in this order, each only when not empty: Updates (with "Update all"), Not on this card (with "Reinstall all"), Needs repair, Found on this card, Installed, Other apps (legacy), Pending cleanups |
 | **Settings** | Sources (add a mirror, enable, disable), refresh interval, keep downloaded packages, clear cache, storage overview per app |
 

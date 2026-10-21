@@ -4,9 +4,9 @@
  * (why2025-linux overlay-src: wbdraw.h, home_assets.h, the WhyBadge design).
  *
  *   Discover    updates, featured, recently updated, the types
- *   Apps/Games  categories with counts, then their apps (#1: a menu to sort)
+ *   Apps/Games  All, then categories with counts, then their apps (#1: a menu to sort)
  *   Search      typing filters the cached index, offline
- *   App page    first screenshot (or icon), facts, state and actions, then description,
+ *   App page    cover (or icon), facts, state and actions, then description,
  *               screenshots, commands, requirements, licences, versions
  *   My apps     the sections of client.md §4 (`store --my-apps` opens it)
  *   Settings    sources (on/off, a mirror), refresh, keep packages,
@@ -309,7 +309,7 @@ static struct {			/* the app on the app page */
 	int have_j;
 	struct picture icon;
 	struct picture pic;	/* the screenshot shown */
-	struct picture thumb;	/* the first screenshot, small, in the header */
+	struct picture thumb;	/* its cover (180 px, repository.md §5.3), in the header */
 	int n_shots, shot;
 	/* the header, copied: installing reloads the index under AP.a */
 	char name[64], author[96], meta[96], summary[200], eyebrow[64];
@@ -580,9 +580,9 @@ static void picture_draw(const struct picture *p, int x0, int y0, uint32_t bg)
 }
 
 /*
- * The app page's header: the first screenshot (THUMB px) with name, author,
- * facts and summary beside it; without screenshots the icon (96 px), with
- * the summary below.
+ * The app page's header: the cover (THUMB px, a screenshot or a crop of
+ * one) with name, author, facts and summary beside it; without one the
+ * icon (96 px), with the summary below.
  */
 #define THUMB		180
 
@@ -1423,6 +1423,18 @@ static void build_type(const char *type)
 
 	L.eyebrow = "APP STORE";
 	snprintf(L.title, sizeof(L.title), "%s", t ? t->name : type);
+	{			/* first, every app of the type in one list ("*") */
+		int c = 0;
+		struct row *r;
+
+		for (int i = 0; i < n; i++)
+			c += v[i]->type && !strcmp(v[i]->type, type);
+		if (t && c) {
+			r = add(R_ACTION, "All", &r_folder, A_CAT);
+			snprintf(r->arg, sizeof(r->arg), "*");
+			snprintf(r->value, sizeof(r->value), "%d", c);
+		}
+	}
 	for (int k = 0; t && k <= t->n; k++) {
 		/* categories.json's order; apps in a category it does not name go last */
 		int c = 0;
@@ -1455,7 +1467,13 @@ static void build_cat(const char *type, const char *catid, int sort)
 	struct app **v = visible_apps(&n), *sel[512];
 
 	L.eyebrow = t ? t->name : "APP STORE";
-	snprintf(L.title, sizeof(L.title), "%s", catid[0] ? cat_name(type, catid) : "Other");
+	if (!strcmp(catid, "*")) {		/* "All apps", "All games" */
+		snprintf(L.title, sizeof(L.title), "All %s", t ? t->name : type);
+		for (char *p = L.title + 4; *p; p++)
+			*p = (char)(*p >= 'A' && *p <= 'Z' ? *p + 32 : *p);
+	} else {
+		snprintf(L.title, sizeof(L.title), "%s", catid[0] ? cat_name(type, catid) : "Other");
+	}
 	for (int i = 0; i < n; i++) {
 		int known = 0;
 
@@ -1463,7 +1481,7 @@ static void build_cat(const char *type, const char *catid, int sort)
 			continue;
 		for (int q = 0; t && q < t->n; q++)
 			known |= v[i]->category && !strcmp(v[i]->category, t->c[q].id);
-		if (catid[0] ? v[i]->category && !strcmp(v[i]->category, catid) : !known)
+		if (!strcmp(catid, "*") || (catid[0] ? v[i]->category && !strcmp(v[i]->category, catid) : !known))
 			sel[m++] = v[i];
 	}
 	qsort(sel, (size_t)m, sizeof(sel[0]), sort ? by_updated : by_name);
@@ -1756,35 +1774,6 @@ static void app_page_free(void)
 	memset(&AP, 0, sizeof(AP));
 }
 
-/* p shrunk by a whole factor to fit THUMB x THUMB, each pixel the average of its block */
-static void thumb_of(const struct picture *p, struct picture *t)
-{
-	int f = (p->w > p->h ? p->w : p->h) / THUMB;
-
-	if (f * THUMB < (p->w > p->h ? p->w : p->h))
-		f++;
-	if (f < 1)
-		f = 1;
-	t->w = p->w / f;
-	t->h = p->h / f;
-	t->alpha = 0;
-	t->rgb = xmalloc((size_t)t->w * t->h * 2);
-	for (int y = 0; y < t->h; y++)
-		for (int x = 0; x < t->w; x++) {
-			unsigned r = 0, g = 0, b = 0, n = (unsigned)(f * f);
-
-			for (int dy = 0; dy < f; dy++)
-				for (int dx = 0; dx < f; dx++) {
-					unsigned v = p->rgb[(y * f + dy) * p->w + x * f + dx];
-
-					r += v >> 11;
-					g += (v >> 5) & 63;
-					b += v & 31;
-				}
-			t->rgb[y * t->w + x] = (uint16_t)((r / n) << 11 | (g / n) << 5 | b / n);
-		}
-}
-
 static void app_page_load(const char *id)
 {
 	char err[300];
@@ -1827,15 +1816,13 @@ static void app_page_load(const char *id)
 	}
 	if (AP.have_j)
 		AP.n_shots = json_len(&AP.j, json_get(&AP.j, 0, "screenshots"));
-	if (AP.n_shots > 0) {
+	if (AP.have_j) {
 		char rel[256], path[512];
-		struct picture full = { 0 };
 
-		if (!json_str(&AP.j, json_item(&AP.j, json_get(&AP.j, 0, "screenshots"), 0), rel, sizeof(rel)) &&
+		if (!json_str(&AP.j, json_get(&AP.j, 0, "cover"), rel, sizeof(rel)) &&
 		    !asset_get(AP.a->src, rel, path, sizeof(path), err, sizeof(err)) &&
-		    !qoi_decode(path, &full) && full.w <= 480 && full.h <= 480)
-			thumb_of(&full, &AP.thumb);
-		picture_free(&full);
+		    qoi_decode(path, &AP.thumb) == 0 && (AP.thumb.w > THUMB || AP.thumb.h > THUMB))
+			picture_free(&AP.thumb);
 	}
 	if (AP.a && AP.a->icon) {
 		char path[512];

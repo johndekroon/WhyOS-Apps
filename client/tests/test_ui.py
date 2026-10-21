@@ -74,7 +74,8 @@ def pixel(path, x, y):
 def test_browse_search_install_open(env):
     ui(env, ["shot discover",
              "down", "enter", "shot type",            # Browse > Apps
-             "enter", "shot category",                # Utilities
+             "enter", "shot all", "esc",              # All: every app
+             "down", "enter", "shot category",        # Utilities
              "f1", "shot category-sort-menu",          # the square key: a menu
              "down", "enter", "shot category-sorted",
              "esc", "esc",
