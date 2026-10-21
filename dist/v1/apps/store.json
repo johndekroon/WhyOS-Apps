@@ -91,6 +91,19 @@
  "type": "system",
  "versions": [
   {
+   "build": 8,
+   "changelog": "An app page shows its first screenshot, larger, instead of the icon.",
+   "package": {
+    "installed_size": 998532,
+    "sha256": "1c762ea119d4867424dd4ac7e8b4caf70b032058eea57d42901795bd5d15a066",
+    "size": 519776,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.7.wpk"
+   },
+   "published": "2026-10-21T08:25:12Z",
+   "source_archive": null,
+   "version": "0.2.7"
+  },
+  {
    "build": 7,
    "changelog": "No Open for apps that only open files: the Picture viewer opens from Files.",
    "package": {
