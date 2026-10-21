@@ -51,6 +51,7 @@
   }
  ],
  "category": "store",
+ "cover": null,
  "description": "The WhyOS app store: browse and search the apps and games, install them on\nthe SD card, update them, and see what is on your badge. It opens from\nApps > App store and Settings > My apps; \"store\" in a shell does the same\nfrom the command line (store --help).\n\nIt fetches the store's index over HTTPS and checks every package against\nit before anything is installed.",
  "format": 1,
  "homepage": "https://github.com/johndekroon/WhyOS-Apps",

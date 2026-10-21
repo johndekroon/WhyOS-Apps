@@ -53,6 +53,7 @@
    "name": "python"
   }
  ],
+ "cover": "screens/micropython-cover.qoi",
  "description": "MicroPython is a lean implementation of Python 3. From the menu it opens\nthe interactive prompt (the REPL): type Python and see the result at\nonce, with history (arrow keys), Tab completion and automatic\nindentation. Ctrl+D closes it, Ctrl+E pastes a block of code. In a shell\n(serial console or SSH) \"micropython\" or \"python\" starts the prompt in\nyour own terminal, and \"python script.py\" runs a script.\n\nPut your scripts in badge/appdata/micropython on the SD card: the prompt\nstarts there, so \"import myscript\" runs myscript.py. Files also runs a\n.py file under Open with, and leaves the prompt open afterwards. Modules\nin the lib folder there can be imported from anywhere, and\n\"python -m mip install <package>\" installs packages from micropython-lib\ninto it (Wi-Fi needed).\n\nIncluded: json, re, socket and ssl (HTTPS), asyncio, hashlib, time,\nos, math, struct, binascii, deflate, select and more, and the\n@micropython.native and viper decorators for fast code. Not included:\nthreads, ffi, and CPython's larger standard library. The heap is 2 MB;\nMICROPY_HEAP=4M before the command gives a script more.",
  "format": 1,
  "homepage": "https://micropython.org",

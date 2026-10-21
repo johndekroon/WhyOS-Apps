@@ -4,7 +4,7 @@
    "author": "why2025-linux contributors",
    "category": "hardware",
    "commands": [],
-   "details_sha256": "7e2ea5273ace3461f9ec3ee47a27f5ba2a233c53e7f6a61bd9ea3edf36f5f9d9",
+   "details_sha256": "82bb5a49cada5daf32287de77f0670d0971e0a9c8dc9d883869acd9ded3931c9",
    "id": "buspirate",
    "install_location": "sd",
    "latest": {
@@ -44,7 +44,7 @@
    "author": "WhyOS-Apps contributors",
    "category": "tools",
    "commands": [],
-   "details_sha256": "ad07a34c718583738e7baf05209537c6168f6080f4f48454962bf1f6107e646f",
+   "details_sha256": "c025dad277b1060891b22390ee8cecc6e4d3e112d3dc5b171d9d906a88e3114f",
    "id": "calc",
    "install_location": "sd",
    "latest": {
@@ -82,7 +82,7 @@
    "author": "id Software (DOOM), maximevince (fbDOOM), badge port",
    "category": "action",
    "commands": [],
-   "details_sha256": "5d0cf3e94c31719cab274161c02105c9e321a44fea01252d36530ba074ec802c",
+   "details_sha256": "bc4ebdc595fafebd7b114e99050bcad1a5077aeafd3c15fe7c8b13e2606a23b5",
    "id": "doom",
    "install_location": "sd",
    "latest": {
@@ -122,7 +122,7 @@
    "author": "WhyOS-Apps contributors",
    "category": "action",
    "commands": [],
-   "details_sha256": "ca55278ef29c264712250360dc1ca50495f0bde9e556f6a0515f90ef535e2187",
+   "details_sha256": "206a8dde7e86acf5aa986559592da2444df5a995714256424674d7f2661eb5f1",
    "id": "flappy",
    "install_location": "sd",
    "latest": {
@@ -161,7 +161,7 @@
    "author": "gnuboy authors (rofl0r/gnuboy), badge port",
    "category": "emulators",
    "commands": [],
-   "details_sha256": "cedd223c9b58e3d63320c8d3642649c199f2b30f3d203662483be8df1aea0c07",
+   "details_sha256": "9bfb4900871d0462124fbab5a090624750bb2d49097dff21a84523532e36d41f",
    "id": "gnuboy",
    "install_location": "sd",
    "latest": {
@@ -199,7 +199,7 @@
    "author": "WhyOS-Apps contributors",
    "category": "tools",
    "commands": [],
-   "details_sha256": "92217ea01edfd04c05e0e0a7c0532fbd7046d564a2d41a2ccc582a9ec9b32283",
+   "details_sha256": "146189b0567970b85db214eed4d989f5191af719cc810b3ad0b1e614bf133af1",
    "id": "hideous",
    "install_location": "sd",
    "latest": {
@@ -238,7 +238,7 @@
    "author": "badge port",
    "category": "other",
    "commands": [],
-   "details_sha256": "fdc83c6ad5373dad679e3d1bc6b96fb4f2c97757bb974c79334e028adf783b24",
+   "details_sha256": "507625b7ccd5ed8dc3ae7a401058545ba3fd72c59d6798d0d21d6780f7c8732b",
    "id": "imgview",
    "install_location": "sd",
    "latest": {
@@ -278,7 +278,7 @@
    "commands": [
     "links"
    ],
-   "details_sha256": "09ea4447c1e1b590123663119fbc714f9f27364cddaa208b73a3ee8ea16537e9",
+   "details_sha256": "b278dd06e015a614f1fa2cd86428a99e7715ab814f1f26e1892012a6a2f2cda2",
    "id": "links",
    "install_location": "sd",
    "latest": {
@@ -317,7 +317,7 @@
    "author": "WhyOS-Apps contributors",
    "category": "puzzle",
    "commands": [],
-   "details_sha256": "9d0ac5450052fe2c5bbb493962486b93b11f7b1b5f0d8bc6a2f5ff178c2bc055",
+   "details_sha256": "7391a9dfd5d47507cf6d8608960cb98c3a89f3759ce40b41d179be753f78a182",
    "id": "marble",
    "install_location": "sd",
    "latest": {
@@ -359,7 +359,7 @@
     "micropython",
     "python"
    ],
-   "details_sha256": "559ce284b45050ae2dcf57351433cafb01e00548ef4916b8a2771839738b536e",
+   "details_sha256": "e259c5de9221104f5401e138c0762170eab177cf8a19b476b0afb4417b085e4b",
    "id": "micropython",
    "install_location": "sd",
    "latest": {
@@ -401,7 +401,7 @@
    "commands": [
     "nano"
    ],
-   "details_sha256": "993ef812116338c0b05e768ba211986e934e4c59a97581a7e429ce4b9a89c40e",
+   "details_sha256": "691be1675fbb386ef545fabc43ab1cd7b242433fe87cc5f22103e827ac8b97d6",
    "id": "nano",
    "install_location": "sd",
    "latest": {
@@ -441,7 +441,7 @@
    "commands": [
     "nethack"
    ],
-   "details_sha256": "4547b59e6b4b1e6771beac1d1042e306df46daeb2b2ae521777f893e4141e21b",
+   "details_sha256": "42ffe3893f7a61f3873626e107f0cbf6f5385f89e836adcacad625dcf5824c06",
    "id": "nethack",
    "install_location": "sd",
    "latest": {
@@ -480,7 +480,7 @@
    "author": "NetSurf developers, badge port",
    "category": "internet",
    "commands": [],
-   "details_sha256": "be12d11f44e2b568d4e798b3bc480e4fafc7730a628284e72853f66f3f550605",
+   "details_sha256": "33547db6c40e96c6799333886d04daf76ea2b15064952f7f86ecaf6112ff8aab",
    "id": "netsurf",
    "install_location": "sd",
    "latest": {
@@ -521,7 +521,7 @@
    "commands": [
     "nmap"
    ],
-   "details_sha256": "55e97d03120b91cf04ce199fae09c5411b4ea769e9291f3399d7a899a69e2391",
+   "details_sha256": "64c653a2dba6c42eee19b1e996875c1355f7a3d8fb7abdc03dfe26f46a0d667f",
    "id": "nmap",
    "install_location": "sd",
    "latest": {
@@ -559,7 +559,7 @@
    "author": "why2025-linux contributors",
    "category": "hardware",
    "commands": [],
-   "details_sha256": "b18ed09cd3e3ae87b9a28ba6c82c84136a72a41e65011e454b34eb55d32fb343",
+   "details_sha256": "e5fc2dfa7c477106553e522e326fefda619ca79d2a8fdbe49368ba267e8332ec",
    "id": "sensorpanel",
    "install_location": "sd",
    "latest": {
@@ -598,7 +598,7 @@
    "author": "WhyOS-Apps",
    "category": "store",
    "commands": [],
-   "details_sha256": "bfb7a3cb964a9141147120c342a229979ddd2001a95b7a7870737fda243f0dd1",
+   "details_sha256": "d39552e61e550adf06f16967ca399d2e74abb19f4150ea32a6dfaee0eec40ecb",
    "id": "store",
    "install_location": "flash",
    "latest": {
@@ -636,7 +636,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-10-21T08:25:12Z",
- "serial": 19,
+ "generated": "2026-10-21T08:36:01Z",
+ "serial": 20,
  "source": "whyos"
 }

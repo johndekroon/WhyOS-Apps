@@ -33,6 +33,7 @@
    "name": "nethack"
   }
  ],
+ "cover": "screens/nethack-cover.qoi",
  "description": "Explore the Dungeons of Doom, fight monsters, find treasure and retrieve\nthe Amulet of Yendor. NetHack 3.6.7, with its classic text display and\ncolour, plays in a terminal window from the menu; in a shell (serial\nconsole or SSH) \"nethack\" plays it in your own terminal, at full width.\n\nThe map is 80 columns and the window 73: it scrolls along with your\nhero. Move with the arrow keys or hjkl (yubn diagonally); \"?\" lists the\ncommands, \"S\" saves and quits. The logo key saves the game too, and the\nnext start continues it. Your options are in nethackrc in the app's\nconfig folder (OPTIONS=name:yourname sets your name).\n\nSaves and the high scores are in badge/appdata/nethack on the SD card.",
  "format": 1,
  "homepage": "https://www.nethack.org",

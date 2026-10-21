@@ -6,6 +6,7 @@
 apps/<id>/manifest.toml        the manifest (package.md §2)
 apps/<id>/icon.png             optional: 256×256 PNG with transparency (without it: the menu icon of launch.icon)
 apps/<id>/screenshots/<n>.png  optional: up to 6, 720×720 PNG (the panel), named 1.png, 2.png, ...
+apps/<id>/cover.png            optional: square PNG for the app page's header, e.g. a crop of the game in play (without it: screenshot 1)
 apps/<id>/build.sh             EITHER: builds the package's files/ from pinned sources
 apps/<id>/artifact.toml        OR: a prebuilt files/ archive: path in this repository or URL, + SHA-256
 apps/<id>/files.tar.gz         the prebuilt files/ archive, when artifact.toml points to it
@@ -165,6 +166,7 @@ v1/licenses/<id>/<file>            licence texts of the latest version
 v1/icons/<id>.qoi                  icon, 96×96, for lists and the info page
 v1/icons/<id>@2.qoi                icon, 192×192, for a featured banner
 v1/screens/<id>-<n>.qoi            screenshot, 360×360 (half size, fits the info page)
+v1/screens/<id>-cover.qoi          cover, 180×180, the info page's header (from cover.png or screenshot 1)
 v1/categories.json                 copy of the category tree
 ```
 
@@ -236,7 +238,7 @@ it stays small (aim: under 1 KB per app).
 `apps/<id>.json` holds what only the info page needs: `description`,
 `homepage`, `source`, `license`, `bundled` (with links to the licence
 texts, published next to the details), `permissions`, `storage`, `screenshots`
-(list of paths), and `versions`: every published version with `version`,
+(list of paths), `cover` (a path, or null without images), and `versions`: every published version with `version`,
 `build`, `published`, `changelog` and its package (URL, SHA-256, size).
 The client checks it against `details_sha256` in the index entry.
 Bundled components carry `license_url` (a path under `licenses/`). Older versions stay downloadable, so a user can roll back by hand
@@ -248,7 +250,9 @@ The badge has 32 MB of PSRAM and a 720×720 RGB565 panel; decoding PNG
 there means zlib plus filters for every image. CI therefore converts the
 PNGs from the repository to **QOI** (a simple lossless format, a decoder
 is about 100 lines of C) at the sizes the UI uses. The PNGs remain the
-source; when the UI changes size, CI regenerates.
+source; when the UI changes size, CI regenerates. The cover is a separate
+180×180 file (about a quarter of a screenshot) so the info page can show
+it without fetching and shrinking a screenshot.
 
 ## 6. Integrity
 

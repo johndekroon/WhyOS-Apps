@@ -27,6 +27,7 @@
   }
  ],
  "category": "action",
+ "cover": null,
  "description": "The first episode of DOOM, from id Software's shareware release 1.9, on\nfbDOOM, a port of the DOOM source code to the Linux framebuffer.\n\nKeys: arrows move and turn, Ctrl fires, Space opens doors, Enter selects\nin the menus, Esc opens the menu, Backspace or Quit Game ends it, and\nthe logo key goes back to the start menu. Saved games go to the app's\nfolder on the SD card. There is no sound.\n\nDOOM needs a free block of at least 2 MB of memory for its zone: close\nother apps first if it does not start.",
  "format": 1,
  "homepage": "https://github.com/maximevince/fbDOOM",

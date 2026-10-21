@@ -49,6 +49,7 @@
    "name": "links"
   }
  ],
+ "cover": null,
  "description": "A fast text-mode web browser. From the menu it opens in a terminal window\non its start page, and Files opens web pages with it. In a shell (serial\nconsole or SSH), \"links <address>\" runs it in your own terminal.\n\nHTTPS goes through OpenSSL with Mozilla's list of certificate\nauthorities. Links keeps small caches so it fits in the badge's memory\nnext to other programs.",
  "format": 1,
  "homepage": "http://links.twibright.com",

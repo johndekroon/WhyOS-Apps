@@ -33,6 +33,7 @@
    "name": "nano"
   }
  ],
+ "cover": "screens/nano-cover.qoi",
  "description": "Edit text files on the badge: notes, configuration files, scripts. GNU\nnano shows its main short-cuts at the bottom of the screen: Ctrl+S\nsaves, Ctrl+X closes, Ctrl+W searches, Ctrl+K cuts a line and Ctrl+U\npastes it, Ctrl+G shows the help.\n\nFrom the menu it starts on a new file on the SD card; Files opens text\nfiles with it (.txt, .md, .conf, .sh, .py, .json and more). In a shell\n(serial console or SSH) \"nano file\" edits in your own terminal, at full\nwidth, with syntax colours for many languages.\n\nThe logo key closes it; unsaved text is then kept in a file with\n\".save\" added to its name. Your own settings go in nanorc in the app's\nconfig folder. Running a command from nano (Ctrl+T) is not possible on\nthe badge, and the spell checker is left out. Plain ASCII and Latin-1\nonly: no UTF-8.",
  "format": 1,
  "homepage": "https://www.nano-editor.org",

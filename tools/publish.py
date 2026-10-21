@@ -36,6 +36,7 @@ DEFAULT_BASE = "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/di
 SOURCE_ID = "whyos"
 ICON_SIZES = ((96, ""), (192, "@2"))
 SCREEN_SIZE = 360
+COVER_SIZE = 180      # the app page's header (docs/repository.md §5.3)
 
 # fields of the manifest that only the app page needs (repository.md §5.2)
 DETAIL_FIELDS = ("name", "summary", "description", "author", "maintainer", "homepage", "source",
@@ -186,6 +187,14 @@ def publish_app(app_id, out, base, categories, schema):
         rel = "screens/%s-%d.qoi" % (app_id, n)
         write_if_changed(os.path.join(out, rel), qoi_of(png, SCREEN_SIZE))
         screens.append(rel)
+    # the cover: cover.png, else the first screenshot, small, so the page loads fast
+    cover = None
+    png = os.path.join(d, "cover.png")
+    if not os.path.isfile(png):
+        png = os.path.join(sdir, "1.png")
+    if os.path.isfile(png):
+        cover = "screens/%s-cover.qoi" % app_id
+        write_if_changed(os.path.join(out, cover), qoi_of(png, COVER_SIZE))
 
     versions.append({"version": m["version"], "build": m["build"], "published": published,
                      "changelog": m.get("changelog", ""), "package": package,
@@ -197,7 +206,7 @@ def publish_app(app_id, out, base, categories, schema):
     details["category"] = category
     details.update(format=1, id=app_id, launch=manifest["launch"], bundled=bundled,
                    license_url=lic.get(m.get("license_file", app_id + ".txt")),
-                   screenshots=screens, icon=icon, versions=versions)
+                   screenshots=screens, cover=cover, icon=icon, versions=versions)
     data = dump(details)
     write_if_changed(details_path, data)
 

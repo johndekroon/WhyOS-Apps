@@ -58,6 +58,7 @@
    "name": "nmap"
   }
  ],
+ "cover": null,
  "description": "Scans hosts and ports on the network the badge is connected to.\n\nOnly TCP connect scans work (--unprivileged is always added): raw packets\nneed a memory-mapped packet ring, which the badge's kernel cannot give.\nNo scripts (NSE). From the menu, nmap shows its help and leaves a shell\nin which \"nmap <target>\" scans; in a shell over SSH or the serial\nconsole the nmap command works the same way.",
  "format": 1,
  "homepage": "https://nmap.org",

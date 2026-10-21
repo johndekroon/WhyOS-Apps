@@ -11,6 +11,7 @@
   }
  ],
  "category": "emulators",
+ "cover": null,
  "description": "Plays Game Boy and Game Boy Color games, scaled 4x to 640x576 in the\nmiddle of the panel. The emulation runs at full speed and the screen is\ndrawn at 30 frames a second. There is no sound.\n\nPut your .gb and .gbc files in the roms folder of this app: on the SD card\nin badge/appdata/gnuboy/roms. Battery saves go to roms/saves.\n\nKeys: arrows are the D-pad, circle or X is A, cross or Z is B, Enter is\nStart, Space or Backspace is Select. Square saves a state, triangle loads\nit, Esc quits.",
  "format": 1,
  "homepage": "https://github.com/rofl0r/gnuboy",

@@ -27,6 +27,7 @@
   }
  ],
  "category": "hardware",
+ "cover": null,
  "description": "Control a Bus Pirate 6 on the badge's bottom USB port from the keypad,\nwith tiles like the home screen:\n\n- Power supply: on and off, 0.8 to 5.0 V, a current limit, pull-ups; the\n  voltage and current it measures, every second.\n- Logic analyzer: 8 channels at 10 kHz to 50 MHz, a trigger on one pin,\n  saved to /root/capture.bin; scroll and zoom with the arrows.\n- LEDs: WS2812 or APA102 strips or the Bus Pirate's own LEDs, colour,\n  brightness and count.\n- Console: the Bus Pirate's own terminal, in colour, for everything else.\n- Pins and Info: the voltage on every pin, and the output of \"i\".\n\nEsc on the tiles or the logo key closes it.",
  "format": 1,
  "homepage": "https://buspirate.com",

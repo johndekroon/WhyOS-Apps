@@ -171,6 +171,7 @@
   }
  ],
  "category": "internet",
+ "cover": null,
  "description": "A web browser with its own layout engine: HTML, CSS, PNG, JPEG and GIF,\nHTTPS through Mbed TLS. No JavaScript, WebP, SVG or video, to save memory.\n\nThe badge has no mouse, so the browser brings a pointer: the arrows move\nit (faster while held), circle clicks or drags, triangle and cross scroll\na page up and down, square and diamond go back and forward, and the cloud\nkey opens the address bar. Fn with the arrows sends the arrow keys\nthemselves.\n\nLarge pages such as Wikipedia do not fit in the badge's memory; NetSurf\nthen stops with an error instead of hanging.",
  "format": 1,
  "homepage": "https://www.netsurf-browser.org",
