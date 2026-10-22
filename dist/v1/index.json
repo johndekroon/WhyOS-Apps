@@ -597,19 +597,21 @@
   {
    "author": "WhyOS-Apps",
    "category": "store",
-   "commands": [],
-   "details_sha256": "3cac39d4053b86d9409c09f53caf23b52d055fe8b0cbaa33d770b6255018e769",
+   "commands": [
+    "store"
+   ],
+   "details_sha256": "a0a4c92c3180f1398104ae1a28ef9b872714401b65385d902b659f37ce7a1f7f",
    "id": "store",
    "install_location": "flash",
    "latest": {
-    "build": 9,
+    "build": 10,
     "package": {
      "installed_size": 998484,
-     "sha256": "78c4c70f7045cfa6e99851cdb5c3882fe2330c46b4d4ee6847d4c09ff63e3a78",
-     "size": 519619,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.8.wpk"
+     "sha256": "058f02a0e6eecf23212d9e9dcb541251dac70aa2081dd6c2e9670ab26986c503",
+     "size": 519624,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.9.wpk"
     },
-    "version": "0.2.8"
+    "version": "0.2.9"
    },
    "menu_icon": "store",
    "name": "App store",
@@ -628,15 +630,15 @@
     "apps",
     "packages"
    ],
-   "terminal": false,
+   "terminal": true,
    "type": "system",
-   "updated": "2026-10-21"
+   "updated": "2026-10-22"
   }
  ],
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-10-21T08:38:20Z",
- "serial": 21,
+ "generated": "2026-10-22T07:48:37Z",
+ "serial": 22,
  "source": "whyos"
 }
