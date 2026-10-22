@@ -34,8 +34,14 @@ rotation lock.
 
 ## Open questions
 
-- **Flash budget for settings.** `/data` has about 1 MB free with the
-  store in it, and holds `/etc`, `/root` and the store itself. Is a cap per
+- **`store` in a shell.** The store's manifest has no `[[commands]]`, so
+  no `~/.whyos/bin/store` wrapper is written and a shell does not find
+  `store` (seen 2026-10-22; the HIL tests fall back to
+  `/data/apps/store/store`). Add `[[commands]] name = "store"` and
+  release.
+
+- **Flash budget for settings.** `/data` had 3 MB free on 2026-10-22 with
+  the store in it, and holds `/etc`, `/root` and the store itself. Is a cap per
   app (default 16 KB, maximum 256 KB) enough, or does the store also need a
   total cap and a warning?
 - **Store binary size and speed.** The store is 905 KB in flash (mbedTLS,
