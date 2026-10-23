@@ -724,7 +724,7 @@ static void draw_help(void)
 static void draw_list(void)
 {
 	struct frame *f = TOP;
-	int ys[LIST_MAX], hs[LIST_MAX], y = 0, top, bottom = H - WB_HINT_BAR_H - 8, scroll, cut, keep;
+	int ys[LIST_MAX], hs[LIST_MAX], y = 0, top, bottom = H - WB_HINT_BAR_H - 8, scroll, cut, keep, show;
 
 	top = WB_STATUS_BAR_H + 20;
 	eyebrow(WB_CONTENT_PAD, top, L.eyebrow);
@@ -759,7 +759,12 @@ static void draw_list(void)
 	}
 	/* a group label stays with the row under it */
 	keep = f->focus > 0 && f->focus < L.n && L.rows[f->focus - 1].kind == R_GROUP ? f->focus - 1 : f->focus;
-	scroll = list_scroll(ys, hs, L.n, f->focus < L.n ? f->focus : -1, keep, bottom - top, &cut);
+	/* on the last row that takes the focus, the rows under it show too */
+	show = f->focus < 0 || f->focus >= L.n ? -1 : L.n - 1;
+	for (int i = f->focus + 1; show >= 0 && i < L.n; i++)
+		if (focusable(&L.rows[i]))
+			show = f->focus;
+	scroll = list_scroll(ys, hs, L.n, show, keep, bottom - top, &cut);
 	/* cards cut off at either end show only their part inside the list */
 	clip_rows(scroll ? top : 0, L.n && y - 10 - scroll > bottom - top ? top + cut : H);
 	for (int i = 0; i < L.n; i++) {
