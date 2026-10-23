@@ -4,8 +4,8 @@
 format = 1
 id = "store"
 name = "App store"
-version = "0.2.9"
-build = 10
+version = "0.2.10"
+build = 11
 summary = "Find, install and update apps and games"
 description = """
 The WhyOS app store: browse and search the apps and games, install them on
@@ -20,7 +20,7 @@ license = "MIT AND (Apache-2.0 OR GPL-2.0-or-later) AND Zlib AND LGPL-2.1-or-lat
 license_file = "store.txt"
 homepage = "https://github.com/johndekroon/WhyOS-Apps"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/client"
-changelog = "The store command now works in any shell, on the panel and over SSH."
+changelog = "Lists scroll to their end, so the rows under the last one you can select show too."
 
 type = "system"
 category = "store"

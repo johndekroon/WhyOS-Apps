@@ -98,6 +98,19 @@
  "type": "system",
  "versions": [
   {
+   "build": 11,
+   "changelog": "Lists scroll to their end, so the rows under the last one you can select show too.",
+   "package": {
+    "installed_size": 998516,
+    "sha256": "7eca148c54bc25d1b9ff5f8699186b336431a05a0635012eac38e021f87d05c7",
+    "size": 519641,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.10.wpk"
+   },
+   "published": "2026-10-23T11:31:15Z",
+   "source_archive": null,
+   "version": "0.2.10"
+  },
+  {
    "build": 10,
    "changelog": "The store command now works in any shell, on the panel and over SSH.",
    "package": {
