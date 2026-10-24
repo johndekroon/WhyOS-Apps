@@ -27,6 +27,7 @@ struct tline {
 	int len, cap;
 	int h;			/* the layout's height of this line, -1: unknown */
 	int words;		/* its words in the rich view, -1: unknown */
+	int st_in, st_out;	/* the layout's state before and after it (code blocks, comments) */
 };
 
 enum group { G_OTHER, G_TYPE, G_SPACE, G_DELETE };

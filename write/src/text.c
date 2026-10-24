@@ -48,6 +48,7 @@ static int line_set(struct tline *l, const char *s, int n)
 	l->len = n;
 	l->h = -1;
 	l->words = -1;
+	l->st_in = l->st_out = -1;
 	return 0;
 }
 
@@ -88,6 +89,7 @@ static int lines_open(struct text *t, int i, int k)
 		memset(&t->l[j], 0, sizeof(t->l[j]));
 		t->l[j].h = -1;
 		t->l[j].words = -1;
+		t->l[j].st_in = t->l[j].st_out = -1;
 	}
 	t->n += k;
 	return 0;
