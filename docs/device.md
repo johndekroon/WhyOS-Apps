@@ -252,7 +252,10 @@ by the client at start and by the system after the card is mounted
 - deletes `.<id>.new/` directories, puts back an `.<id>.old/` whose
   `<id>` is gone and deletes the others, and `download/` parts older than
   7 days;
-- runs pending cleanups for this card (§5.4).
+- runs pending cleanups for this card (§5.4);
+- makes the programs in installed apps runnable (package.md §1.2): store
+  0.2.10 and older left programs that the manifest does not name `0644`,
+  which do not run from an f2fs card.
 
 ### 5.8 Legacy apps
 

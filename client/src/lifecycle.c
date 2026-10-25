@@ -520,12 +520,48 @@ static void make_storage(const char *id, const struct json *m)
 		mkdir_p(config_dir(d, sizeof(d), id));
 }
 
+/* Packages carry no modes (package.md §1.2). A program the manifest does
+ * not name, as the one a start script runs, is known by how it starts: a
+ * script, a WhyOS binary (bFLT) or an ELF file. */
+static void mark_programs(const char *dir)
+{
+	DIR *d = opendir(dir);
+	struct dirent *e;
+
+	while (d && (e = readdir(d))) {
+		char p[512], head[4];
+		struct stat st;
+		FILE *f;
+		size_t n;
+
+		if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..") || !strcmp(e->d_name, ".package"))
+			continue;
+		path_join(p, sizeof(p), dir, e->d_name);
+		if (lstat(p, &st))
+			continue;
+		if (S_ISDIR(st.st_mode)) {
+			mark_programs(p);
+			continue;
+		}
+		if (!S_ISREG(st.st_mode) || (st.st_mode & 0111) == 0111 || !(f = fopen(p, "rb")))
+			continue;
+		n = fread(head, 1, sizeof(head), f);
+		fclose(f);
+		if ((n >= 2 && !memcmp(head, "#!", 2)) || (n == 4 && !memcmp(head, "bFLT", 4)) ||
+		    (n == 4 && !memcmp(head, "\177ELF", 4)))
+			chmod(p, 0755);
+	}
+	if (d)
+		closedir(d);
+}
+
 static void fix_modes(const char *dir, const struct json *m)
 {
 	const char *keys[] = { "launch.exec", "hooks.post_install", "hooks.migrate", "hooks.pre_remove" };
 	int cmds = json_get(m, 0, "commands");
 	char f[128], p[512];
 
+	mark_programs(dir);
 	for (size_t i = 0; i < sizeof(keys) / sizeof(keys[0]); i++)
 		if (!json_str(m, json_path(m, 0, keys[i]), f, sizeof(f)))
 			chmod(path_join(p, sizeof(p), dir, f), 0755);
@@ -1112,6 +1148,26 @@ int store_maintain(void)
 	if (P.sd_present)
 		tidy_dir(P.sd_apps);
 	tidy_dir(P.flash_apps);
+	/* store 0.2.10 and older made only the files the manifest names
+	 * runnable: programs that a start script runs did not run from an
+	 * f2fs card */
+	for (int loc = 0; loc < 2; loc++) {
+		const char *apps = loc ? P.flash_apps : P.sd_apps;
+		DIR *d = !loc && !P.sd_present ? NULL : opendir(apps);
+		struct dirent *e;
+
+		while (d && (e = readdir(d))) {
+			char a[512], pkg[512];
+
+			if (e->d_name[0] == '.')
+				continue;
+			path_join(a, sizeof(a), apps, e->d_name);
+			if (is_dir(path_join(pkg, sizeof(pkg), a, ".package")))
+				mark_programs(a);
+		}
+		if (d)
+			closedir(d);
+	}
 	if (P.sd_present) {
 		DIR *d = opendir(P.dl_dir);
 		struct dirent *e;

@@ -48,9 +48,11 @@ MUST refuse, a package with:
 - a file whose size or SHA-256 differs from `files.sha256` in the
   manifest (see 2.9).
 
-Unix permissions in the archive are ignored: on FAT every file is
-executable, and on `/data` the client sets `0755` on `launch.exec` and
-`0644` on the rest.
+Unix permissions in the archive are ignored. On FAT every file is
+executable; elsewhere (`/data`, a card's f2fs partition) the client sets
+`0755` on `launch.exec`, the hooks, the commands' `exec`, and on every
+file that starts like a program (`#!`, a bFLT binary, an ELF file), such
+as the program a start script runs, and `0644` on the rest.
 
 ## 2. Manifest
 

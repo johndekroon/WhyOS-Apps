@@ -564,3 +564,61 @@ def test_maintain_adopts_the_store_an_image_brought(env):
     assert "registered itself" in r.stdout
     assert os.path.isfile(env.reg("store"))
     assert "installed" in env.store("list").stdout
+
+
+WRAPPED = '''format = 1
+id = "wrapped"
+name = "Wrapped"
+version = "1.0.0"
+build = 1
+summary = "A start script that runs the real program"
+description = "Test."
+author = "tests"
+license = "MIT"
+source = "https://example.org/wrapped"
+type = "app"
+category = "utilities"
+
+[launch]
+exec = "start"
+
+[requires]
+os_api = 1
+memory_kb = 1
+'''
+
+
+def wrapped(env):
+    """An app as micropython, nano and links are: launch.exec is a script
+    that runs other programs of the app, which the manifest does not name."""
+    write_app(env.repo, "wrapped", WRAPPED, {
+        "start": '#!/bin/sh\nexec "${0%/*}/prog" "$@"\n',
+        "prog": "bFLT" + "\x00\x00\x00\x04" + "x" * 60,
+        "lib/elf": "\x7fELF" + "y" * 60,
+        "lib/helper": "#!/bin/sh\necho helper\n",
+        "data.txt": "text that mentions bFLT\n",
+        "LICENSES/wrapped.txt": "MIT\n"})
+    env.publish()
+    env.store("install", "wrapped")
+    return env.app("wrapped")
+
+
+def test_programs_the_manifest_does_not_name_run(env):
+    # packages carry no modes (pkglib); on a card that is not FAT (f2fs)
+    # a program without x cannot run: the client finds them by their start
+    a = wrapped(env)
+    for rel in ("start", "prog", "lib/elf", "lib/helper"):
+        assert os.access(os.path.join(a, rel), os.X_OK), rel
+    for rel in ("data.txt", "app.conf", "LICENSES/wrapped.txt"):
+        assert not os.access(os.path.join(a, rel), os.X_OK), rel
+
+
+def test_maintain_makes_installed_programs_runnable(env):
+    # installs by store 0.2.10 and older on an f2fs card left them 0644
+    a = wrapped(env)
+    for rel in ("prog", "lib/helper"):
+        os.chmod(os.path.join(a, rel), 0o644)
+    env.store("maintain")
+    for rel in ("prog", "lib/helper"):
+        assert os.access(os.path.join(a, rel), os.X_OK), rel
+    assert not os.access(os.path.join(a, "data.txt"), os.X_OK)
