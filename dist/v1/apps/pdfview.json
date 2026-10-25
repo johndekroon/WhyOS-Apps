@@ -1,0 +1,135 @@
+{
+ "author": "badge port",
+ "bundled": [
+  {
+   "license": "AGPL-3.0-or-later",
+   "license_file": "mupdf.txt",
+   "license_url": "licenses/pdfview/mupdf.txt",
+   "name": "MuPDF",
+   "source": "https://mupdf.com/downloads/archive/mupdf-1.28.5-source.tar.gz",
+   "version": "1.28.5"
+  },
+  {
+   "license": "FTL",
+   "license_file": "freetype.txt",
+   "license_url": "licenses/pdfview/freetype.txt",
+   "name": "FreeType (in MuPDF's source)",
+   "source": "https://mupdf.com/downloads/archive/mupdf-1.28.5-source.tar.gz",
+   "version": "2.14.3"
+  },
+  {
+   "license": "AGPL-3.0-or-later",
+   "license_file": "jbig2dec.txt",
+   "license_url": "licenses/pdfview/jbig2dec.txt",
+   "name": "jbig2dec (in MuPDF's source)",
+   "source": "https://mupdf.com/downloads/archive/mupdf-1.28.5-source.tar.gz",
+   "version": "MuPDF 1.28.5's"
+  },
+  {
+   "license": "IJG",
+   "license_file": "libjpeg.txt",
+   "license_url": "licenses/pdfview/libjpeg.txt",
+   "name": "libjpeg (IJG, in MuPDF's source)",
+   "source": "https://mupdf.com/downloads/archive/mupdf-1.28.5-source.tar.gz",
+   "version": "10"
+  },
+  {
+   "license": "Zlib",
+   "license_file": "zlib.txt",
+   "license_url": "licenses/pdfview/zlib.txt",
+   "name": "zlib (in MuPDF's source)",
+   "source": "https://mupdf.com/downloads/archive/mupdf-1.28.5-source.tar.gz",
+   "version": "1.3.2"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "urw-fonts.txt",
+   "license_url": "licenses/pdfview/urw-fonts.txt",
+   "name": "URW base 14 fonts (in MuPDF's source)",
+   "source": "https://mupdf.com/downloads/archive/mupdf-1.28.5-source.tar.gz",
+   "version": "MuPDF 1.28.5's"
+  },
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/pdfview/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "jetbrains-mono.txt",
+   "license_url": "licenses/pdfview/jetbrains-mono.txt",
+   "name": "JetBrains Mono (font)",
+   "source": "https://github.com/JetBrains/JetBrainsMono",
+   "version": "variable"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "space-grotesk.txt",
+   "license_url": "licenses/pdfview/space-grotesk.txt",
+   "name": "Space Grotesk (font)",
+   "source": "https://github.com/floriankarsten/space-grotesk",
+   "version": "variable"
+  }
+ ],
+ "category": "other",
+ "cover": "screens/pdfview-cover.qoi",
+ "description": "Reads PDF documents on the badge: a page as wide as the screen, to\nscroll with the arrow keys, on into the next page. Left and Right turn\nthe pages, Space goes a screen down, Enter zooms in 2x. The square key\nhas Go to page and Whole page. It opens a file again on the page you\nleft it at.\n\nFiles opens PDF files with it; it has no entry in the menu's lists.\nRendering is done by MuPDF, cut down for the badge: documents in Chinese,\nJapanese or Korean, and PDFs with JPEG 2000 images, show those parts as\nboxes or blank. Locked PDFs (with a password) cannot be opened.\n\nIt needs about 6 MB of memory while it shows a page.",
+ "format": 1,
+ "icon": null,
+ "id": "pdfview",
+ "install_location": "sd",
+ "launch": {
+  "args": "%f",
+  "exec": "pdfview",
+  "info": "Shows PDF documents, opened…",
+  "menu": "none",
+  "opens": [
+   "pdf"
+  ],
+  "rotation": "auto",
+  "stack_kb": 256,
+  "terminal": false
+ },
+ "license": "AGPL-3.0-or-later AND FTL AND IJG AND Zlib AND OFL-1.1 AND LGPL-2.1-or-later",
+ "license_url": "licenses/pdfview/pdfview.txt",
+ "name": "PDF viewer",
+ "requires": {
+  "features": [
+   "display",
+   "keyboard"
+  ],
+  "memory_kb": 7000,
+  "os_api": 1
+ },
+ "screenshots": [
+  "screens/pdfview-1.qoi",
+  "screens/pdfview-2.qoi"
+ ],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/pdfview/source",
+ "summary": "Shows PDF documents, opened from Files",
+ "tags": [
+  "pdf",
+  "documents",
+  "viewer",
+  "reader"
+ ],
+ "type": "app",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "First version.",
+   "package": {
+    "installed_size": 3360706,
+    "sha256": "94a4b7174516cf5ea7e66f843e7e48a51020ed13b6e10af62dec168bd6bb2e26",
+    "size": 2192217,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/pdfview-1.0.0.wpk"
+   },
+   "published": "2026-10-25T23:13:39Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/pdfview-1.0.0-source.tar.gz",
+   "version": "1.0.0"
+  }
+ ]
+}

@@ -3,7 +3,7 @@
 # VM, with the toolchain of a badge build (Tools/usb/br.sh badge first).
 #
 #   sdapps/build.sh [gnuboy] [netsurf] [nmap] [imgview] [links] [nethack]
-#                   [doom] [sensorpanel] [buspirate] [nano] [calc] [hideous] [barbarious]
+#                   [doom] [sensorpanel] [buspirate] [nano] [calc] [hideous] [barbarious] [pdfview]
 #                   [micropython]
 #                                                                          default: all
 #
@@ -529,6 +529,34 @@ build_barbarious() {
 	ls -l "$d"
 }
 
+# The PDF viewer (pdfview/pdfview.c): MuPDF 1.28.5 renders, cut down to
+# PDF (no HTML, XPS, SVG, JavaScript, ICC profiles, JPEG 2000, CJK or Noto
+# fonts; the base 14 fonts stay), drawn as imgview is. MuPDF always
+# compiles two C++ stubs (OCR, barcodes): its C++ compiler is br-cxx's
+# (br.sh cxx), as nmap's. AGPL, as MuPDF.
+MUPDF_URL=https://mupdf.com/downloads/archive/mupdf-1.28.5-source.tar.gz
+MUPDF_SHA=98a5c10cda20c3992cdf76ff6b2a1149c32bd79cc796d3f703230b1185b7e934
+MUPDF_OPTS=(HAVE_X11=no HAVE_GLUT=no HAVE_CURL=no html=no xps=no svg=no extract=no mujs=no brotli=no
+	tofu=yes tofu_cjk=yes HAVE_OBJCOPY=no)	# no objcopy: the fonts as C arrays, not "ld -b binary" objects
+MUPDF_DEFS="-DFZ_ENABLE_ICC=0 -DFZ_ENABLE_JPX=0 -DFZ_ENABLE_CBZ=0 -DFZ_ENABLE_IMG=0 -DTOFU_SIL \
+	-DFZ_ENABLE_HYPHEN=0 -DFZ_PLOTTERS_CMYK=0 -DFZ_PLOTTERS_N=0 -DFZ_ENABLE_OCR_OUTPUT=0 -DFZ_ENABLE_ODT_OUTPUT=0"
+
+build_pdfview() {
+	local s d=$DEST/pdfview O=$HERE/../patches/buildroot/overlay-src X=$CXX_OUT/host/bin/riscv32-buildroot-linux-uclibc
+	[ -x "$X-g++" ] || { echo "no C++ toolchain: Tools/usb/br.sh cxx" >&2; exit 1; }
+	s=$SRC/$(get "$MUPDF_URL" "$MUPDF_SHA")
+	make -s -C "$s" -j"$(nproc)" libs build=release OS=Linux OUT=build/badge CC="$CC" CXX="$X-g++" \
+		AR="$T-ar" "${MUPDF_OPTS[@]}" XCFLAGS="$LIBCFLAGS $MUPDF_DEFS"
+	mkdir -p "$d"
+	flat 262144
+	"$CC" "${CFLAGS[@]}" -Wall -I"$O" -I"$s/include" "$HERE/pdfview/pdfview.c" \
+		"$s/build/badge/libmupdf.a" "$s/build/badge/libmupdf-third.a" -lm "${LDFLAT[@]}" -o "$d/pdfview"
+	zero_page "$d/pdfview.gdb"
+	rm -f "$d/pdfview.gdb"
+	cp "$HERE/pdfview/app.conf" "$d/"
+	ls -l "$d"
+}
+
 # DOOM: fbDOOM (no SDL, the framebuffer and the VT's keys) with our patch
 # (global-patches/fbdoom), the shareware WAD, and doom.c to start it. Was
 # a Buildroot package in the image (buildroot-tree/0002) until 2026-10-12.
@@ -598,7 +626,7 @@ build_micropython() {
 	ls -l "$d"
 }
 
-for app in "${@:-gnuboy netsurf nmap imgview links nethack doom sensorpanel buspirate nano calc hideous barbarious micropython}"; do
+for app in "${@:-gnuboy netsurf nmap imgview links nethack doom sensorpanel buspirate nano calc hideous barbarious pdfview micropython}"; do
 	for a in $app; do
 		case $a in
 		gnuboy) build_gnuboy ;;
@@ -615,6 +643,7 @@ for app in "${@:-gnuboy netsurf nmap imgview links nethack doom sensorpanel busp
 		calc) build_calc ;;
 		hideous) build_hideous ;;
 		barbarious) build_barbarious ;;
+		pdfview) build_pdfview ;;
 		micropython) build_micropython ;;
 		*) echo "unknown app $a" >&2; exit 2 ;;
 		esac

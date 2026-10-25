@@ -633,6 +633,43 @@
    "updated": "2026-10-12"
   },
   {
+   "author": "badge port",
+   "category": "other",
+   "commands": [],
+   "details_sha256": "b2dec313471060c59033f240547b98a98d324af3fc2617db4ed22fa3c65ee49c",
+   "id": "pdfview",
+   "install_location": "sd",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 3360706,
+     "sha256": "94a4b7174516cf5ea7e66f843e7e48a51020ed13b6e10af62dec168bd6bb2e26",
+     "size": 2192217,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/pdfview-1.0.0.wpk"
+    },
+    "version": "1.0.0"
+   },
+   "name": "PDF viewer",
+   "requires": {
+    "features": [
+     "display",
+     "keyboard"
+    ],
+    "memory_kb": 7000,
+    "os_api": 1
+   },
+   "summary": "Shows PDF documents, opened from Files",
+   "tags": [
+    "pdf",
+    "documents",
+    "viewer",
+    "reader"
+   ],
+   "terminal": false,
+   "type": "app",
+   "updated": "2026-10-25"
+  },
+  {
    "author": "why2025-linux contributors",
    "category": "hardware",
    "commands": [],
@@ -754,7 +791,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-10-25T21:46:49Z",
- "serial": 29,
+ "generated": "2026-10-25T23:14:06Z",
+ "serial": 31,
  "source": "whyos"
 }
