@@ -1076,6 +1076,25 @@ int store_maintain(void)
 	 * comes with .package/ but no registry entry: it takes itself in */
 	if (app_state("store", 0, 0) == ST_UNREGISTERED && !store_adopt("store"))
 		say("the store registered itself");
+	/* so do the other apps the image brings in flash (Write); apps on a
+	 * card from another badge stay the user's choice (device.md §5.6) */
+	{
+		DIR *d = opendir(P.flash_apps);
+		struct dirent *e;
+
+		while (d && (e = readdir(d))) {
+			char a[512], pkg[512];
+
+			if (e->d_name[0] == '.' || !strcmp(e->d_name, "store"))
+				continue;
+			path_join(a, sizeof(a), P.flash_apps, e->d_name);
+			if (is_dir(path_join(pkg, sizeof(pkg), a, ".package")) &&
+			    app_state(e->d_name, 0, 0) == ST_UNREGISTERED)
+				store_adopt(e->d_name);
+		}
+		if (d)
+			closedir(d);
+	}
 	if (!journal_read(op, id, &build)) {
 		struct opts o = { .yes = 1 };
 

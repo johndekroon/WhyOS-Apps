@@ -253,6 +253,9 @@ by the client at start and by the system after the card is mounted
   `<id>` is gone and deletes the others, and `download/` parts older than
   7 days;
 - runs pending cleanups for this card (§5.4);
+- registers the apps in flash that have `.package/` but no registry
+  entry, as an OS image brings them (§5.6; since store 0.2.12, before only
+  the store itself); apps on a card stay for "Adopt";
 - makes the programs in installed apps runnable (package.md §1.2): store
   0.2.10 and older left programs that the manifest does not name `0644`,
   which do not run from an f2fs card.

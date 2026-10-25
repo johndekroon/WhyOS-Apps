@@ -622,3 +622,17 @@ def test_maintain_makes_installed_programs_runnable(env):
     for rel in ("prog", "lib/helper"):
         assert os.access(os.path.join(a, rel), os.X_OK), rel
     assert not os.access(os.path.join(a, "data.txt"), os.X_OK)
+
+
+def test_maintain_adopts_every_app_an_image_put_in_flash(env):
+    # why2025-linux stage-apps.py brings the store and Write: files and
+    # .package/ in /data/apps, no registry entry
+    env.store("install", "tiny")
+    env.store("install", "hello")
+    os.unlink(env.reg("tiny"))
+    os.unlink(env.reg("hello"))
+    r = env.store("maintain")
+    assert "tiny 1.0.0 adopted" in r.stdout
+    assert json.load(open(env.reg("tiny")))["location"] == "flash"
+    # an app on a card from another badge stays the user's choice (device.md §5.6)
+    assert not os.path.exists(env.reg("hello"))

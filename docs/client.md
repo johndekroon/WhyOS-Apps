@@ -43,8 +43,9 @@ start. A copy of the first version comes with the OS image (in `/data`'s
 initial contents, why2025-linux `stage-apps.py`, pinned by commit and
 SHA-256; Write, the text editor, comes the same way) with its `.package/`
 but no registry entry; `store maintain` at the
-first boot registers it (adopt), so a fresh badge has a store without a
-computer.
+first boot registers them (adopt; every app in `/data/apps` with
+`.package/` and no entry, since 0.2.12; 0.2.11 and older took in only
+the store), so a fresh badge has a store without a computer.
 
 ## 3. Building blocks
 
