@@ -220,3 +220,18 @@ TEST(path_parts)
 	STREQ(path_ext("README"), "");
 	STREQ(path_ext(".bashrc"), "");
 }
+
+TEST(load_reads_files_that_say_they_are_empty)
+{
+	/* /proc says 0 bytes and has more: read to the end, not to the size */
+	char err[128];
+	char *data;
+	size_t len;
+
+	if (access("/proc/self/status", R_OK))
+		return;			/* not Linux */
+	EQ(file_load("/proc/self/status", &data, &len, err, sizeof(err)), 0);
+	OK(len > 20);
+	OK(strstr(data, "Name:") == data);
+	free(data);
+}

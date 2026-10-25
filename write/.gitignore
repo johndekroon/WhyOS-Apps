@@ -1,3 +1,4 @@
-tests/unit/bin/
+tests/unit/bin-*/
 write-ui-host
 *.dSYM/
+build/

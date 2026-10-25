@@ -53,22 +53,44 @@ int file_load(const char *path, char **data, size_t *len, char *err, int errn)
 		why(err, errn, errno);
 		return -1;
 	}
-	buf = malloc((size_t)st.st_size + 1);
-	if (!buf) {
-		close(fd);
-		why(err, errn, ENOMEM);
-		return -1;
-	}
-	while (got < (size_t)st.st_size) {
-		ssize_t r = read(fd, buf + got, (size_t)st.st_size - got);
+	/* to the end, not to st_size: /proc says 0 bytes and has more */
+	{
+		size_t cap = (size_t)st.st_size + 4096;
 
-		if (r < 0 && errno == EINTR)
-			continue;
-		if (r <= 0)
-			break;
-		got += (size_t)r;
+		buf = malloc(cap);
+		if (!buf) {
+			close(fd);
+			why(err, errn, ENOMEM);
+			return -1;
+		}
+		for (;;) {
+			ssize_t r;
+
+			if (got + 1 >= cap) {
+				char *nb;
+
+				if (cap > FILE_MAX + 1)
+					break;
+				nb = realloc(buf, cap * 2);
+				if (!nb)
+					break;
+				buf = nb;
+				cap *= 2;
+			}
+			r = read(fd, buf + got, cap - 1 - got);
+			if (r < 0 && errno == EINTR)
+				continue;
+			if (r <= 0)
+				break;
+			got += (size_t)r;
+		}
 	}
 	close(fd);
+	if (got > FILE_MAX) {
+		free(buf);
+		snprintf(err, (size_t)errn, "Too large for Write (over %d KB)", FILE_MAX / 1024);
+		return -1;
+	}
 	if (memchr(buf, 0, got)) {
 		free(buf);
 		snprintf(err, (size_t)errn, "Not a text file");

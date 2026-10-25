@@ -14,12 +14,14 @@ MENU    = $(WHY2025_LINUX)/patches/buildroot/overlay-src
 # the modules without the screens
 CORE    = $(filter-out src/ui.c src/main.c,$(wildcard src/*.c))
 HDRS    = $(wildcard src/*.h)
-UNITS   = $(patsubst tests/unit/%.c,tests/unit/bin/%,$(wildcard tests/unit/test_*.c))
+# one folder per system: this folder is shared with the build VM
+BIN     = tests/unit/bin-$(shell uname -s)
+UNITS   = $(patsubst tests/unit/%.c,$(BIN)/%,$(wildcard tests/unit/test_*.c))
 
 units: $(UNITS)
 
-tests/unit/bin/%: tests/unit/%.c tests/unit/t.h $(CORE) $(HDRS)
-	@mkdir -p tests/unit/bin
+$(BIN)/%: tests/unit/%.c tests/unit/t.h $(CORE) $(HDRS)
+	@mkdir -p $(BIN)
 	$(CC) $(CFLAGS) -DWRITE_HOST -Isrc -Itests/unit -o $@ $< $(CORE)
 
 ui-host: write-ui-host
@@ -37,6 +39,6 @@ test: unit-test $(UI_HOST)
 	$(if $(UI_HOST),python3 -m pytest -q tests)
 
 clean:
-	rm -rf tests/unit/bin write-ui-host write-ui-host.dSYM
+	rm -rf tests/unit/bin-* write-ui-host write-ui-host.dSYM
 
 .PHONY: units unit-test ui-host test clean

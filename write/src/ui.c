@@ -847,7 +847,7 @@ static void menu_rows_draw(struct app *a, int x, int y, int w)
 		}
 		row_box(x, y, w, 56, f);
 		cy = y + 28;
-		text(&f_ui20, x + 16, text_top(&f_ui20, cy), r->label, WB_COLOR_TEXT_HI, 0);
+		wtext(&wf_ui20, x + 16, wtop(&wf_ui20, cy), r->label, WB_COLOR_TEXT_HI, 0);
 		if (r->chev) {
 			wicon(&wi_chev, rx - 18, cy - 9, WB_COLOR_TEXT_MID);
 			rx -= 18 + 12;
@@ -987,7 +987,7 @@ static void ask_draw(struct app *a, const char *eb, uint32_t ebc, const char *ti
 			wicon(&wi_trash, tx, cy - 10, WB_COLOR_ERROR);
 			tx += 20 + 12;
 		}
-		text(&f_ui20, tx, text_top(&f_ui20, cy), buttons[i], i == danger ? WB_COLOR_ERROR : WB_COLOR_TEXT_HI, 0);
+		wtext(&wf_ui20, tx, wtop(&wf_ui20, cy), buttons[i], i == danger ? WB_COLOR_ERROR : WB_COLOR_TEXT_HI, 0);
 		y += 56 + 8;
 	}
 }
@@ -1032,7 +1032,7 @@ static void saveas_draw(struct app *a)
 	cy = y + 28;
 	row_box(x, y, w, 56, a->sa_focus == 1);
 	wicon(&wi_folder, x + 16, cy - 11, WB_COLOR_TEXT_MID);
-	text(&f_ui20, x + 16 + 22 + 14, text_top(&f_ui20, cy), "Folder", WB_COLOR_TEXT_HI, 0);
+	wtext(&wf_ui20, x + 16 + 22 + 14, wtop(&wf_ui20, cy), "Folder", WB_COLOR_TEXT_HI, 0);
 	wicon(&wi_chev, x + w - 16 - 18, cy - 9, WB_COLOR_TEXT_LOW);
 	{
 		char pb[96];
@@ -1066,7 +1066,7 @@ static void language_draw(struct app *a)
 		row_box(x, ry, w - 14, 46, f);
 		if (i == a->lang)
 			wicon(&wi_check, x + 16, cy - 10, WB_COLOR_CYAN);
-		text(&f_ui20, x + 16 + 20 + 14, text_top(&f_ui20, cy), lang_name((enum lang)i), WB_COLOR_TEXT_HI, 0);
+		wtext(&wf_ui20, x + 16 + 20 + 14, wtop(&wf_ui20, cy), lang_name((enum lang)i), WB_COLOR_TEXT_HI, 0);
 		text(&f_mono14, x + w - 14 - 16 - text_w(&f_mono14, lang_exts((enum lang)i), 0), text_top(&f_mono14, cy),
 		     lang_exts((enum lang)i), f ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 0);
 	}
@@ -1076,26 +1076,26 @@ static void language_draw(struct app *a)
 
 static void log_draw(struct app *a)
 {
+	static const struct hint esc[] = { { "Esc", "close", 1 } };
 	int y = WB_STATUS_BAR_H + 20;
+	char buf[140];
 
-	if (!a->n_log) {
-		empty_screen("WRITE", "Log", "No log yet.");
-		status_bar();
-		return;
-	}
+	/* as wbdraw's empty_screen, in Write's fonts */
 	fill(0, 0, W, H, WB_COLOR_VOID);
 	eyebrow(WB_CONTENT_PAD, y, "WRITE");
-	text(&f_ui36b, WB_CONTENT_PAD, y + 18 + 6, "Log", WB_COLOR_TEXT_HI, -11);
-	y += 18 + 6 + 44 + 20;
-	{
+	wtext(&wf_ui36b, WB_CONTENT_PAD, y + 18 + 6, "Log", WB_COLOR_TEXT_HI, 0);
+	y += 18 + 6 + 44 + 24;
+	if (!a->n_log) {
+		wtext(&wf_ui20, WB_CONTENT_PAD, y, "No log yet.", WB_COLOR_TEXT_LOW, 0);
+	} else {
 		int rows = (H - WB_HINT_BAR_H - 16 - y) / 26, first = a->n_log > rows ? a->n_log - rows : 0;
-		char buf[140];
 
 		for (int i = first; i < a->n_log; i++, y += 26)
 			text(&f_mono14, WB_CONTENT_PAD, y, wb_fit(&f_mono14, a->log[i], W - 2 * WB_CONTENT_PAD, buf, sizeof(buf)),
 			     strstr(a->log[i], "error") ? WB_COLOR_ERROR : WB_COLOR_TEXT_MID, 0);
 	}
 	status_bar();
+	hint_bar(esc, 1);
 }
 
 /* a key cap of the help: mono 13, a thicker bottom edge (design Help) */
@@ -1214,7 +1214,7 @@ static void open_draw(struct app *a)
 	ly = y + 18 + 4 + 44 + 4 + 20 + 20;
 	if (a->op_filter[0]) {
 		box(x, ly, w, 44, 10, WB_COLOR_SURFACE1, 255, WB_COLOR_LINE, 1, 0);
-		fill(text(&f_mono18, x + 16, text_top(&f_mono18, ly + 22), a->op_filter, WB_COLOR_TEXT_HI, 0) + 2, ly + 11,
+		fill(wtext(&wf_mono18, x + 16, wtop(&wf_mono18, ly + 22), a->op_filter, WB_COLOR_TEXT_HI, 0) + 2, ly + 11,
 		     2, 22, WB_COLOR_CYAN);
 		ly += 44 + 12;
 	}
@@ -1279,7 +1279,6 @@ static void draw(struct app *a)
 	}
 	if (a->ov == OV_LOG) {
 		log_draw(a);
-		hints(a);
 		return;
 	}
 	fill(0, fb_y0, W, fb_y1 - fb_y0, WB_COLOR_VOID);

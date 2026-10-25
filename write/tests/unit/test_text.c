@@ -283,3 +283,22 @@ TEST(size_counts_bytes_and_newlines)
 	set("ab\ncd");
 	EQ(text_size(&T), 5);
 }
+
+TEST(typing_after_a_save_is_a_change)
+{
+	/* found on the badge: "!" typed after Ctrl+S merged into the saved step */
+	struct pos c = P(0, 0), end;
+
+	set("");
+	text_begin(&T, G_TYPE, c);
+	text_insert(&T, c, "ok", 2, &end);
+	text_end(&T, end);
+	text_saved(&T);
+	EQ(text_dirty(&T), 0);
+	text_begin(&T, G_TYPE, end);
+	text_insert(&T, end, "!", 1, &end);
+	text_end(&T, end);
+	EQ(text_dirty(&T), 1);
+	text_undo(&T, &c);
+	EQ(text_dirty(&T), 0);		/* undo goes back to what was saved */
+}

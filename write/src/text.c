@@ -550,4 +550,5 @@ int text_dirty(const struct text *t)
 void text_saved(struct text *t)
 {
 	t->saved = t->cur;
+	t->group_kind = G_OTHER;	/* what is typed next is a change: a step of its own */
 }

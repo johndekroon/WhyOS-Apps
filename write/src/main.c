@@ -275,7 +275,7 @@ static void present(int force)
 	long t0 = now_ms();
 	int n = ui_present(&A, force, out_band);
 
-	if (timing) {
+	if (timing && n) {
 		char b[80];
 		int len = snprintf(b, sizeof(b), "write: %d bands, %ld ms\n", n, now_ms() - t0);
 
@@ -445,6 +445,12 @@ int main(int argc, char **argv)
 		int r = poll(p, fifo_fd >= 0 ? 2 : 1, 530);
 
 		if (term) {
+			/* keys typed before the logo key belong in the document */
+			if (ev_fd >= 0)
+				read_keys();
+			if (fifo_fd >= 0)
+				read_fifo();
+			fprintf(stderr, "write: the logo key: %s\n", text_dirty(&A.e.t) ? "saving first" : "nothing to save");
 			app_term(&A);
 			break;
 		}
