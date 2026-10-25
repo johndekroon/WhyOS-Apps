@@ -1168,9 +1168,9 @@ static int next_key(int wait_ms)
 				shift = e.value != 0;
 				continue;
 			}
-			/* a press; a repeat of a key that repeats, the newest
-			 * one when the screen fell behind */
-			if (key_acts(e.code, e.value) && !(e.value == 2 && key_waiting(ev_fd)))
+			/* a press; a repeat of a key that repeats, unless it
+			 * waited while the screen fell behind */
+			if (key_acts(e.code, e.value) && !(e.value == 2 && key_stale(e.sec, e.usec)))
 				return e.code;
 			continue;
 		}
