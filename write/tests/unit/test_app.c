@@ -134,7 +134,7 @@ static void ctrl_shift(char c)
 
 static int has_hint(const char *keys, const char *label)
 {
-	struct hint h[12];
+	struct hintk h[12];
 	int n = app_hints(&A, h, 12);
 
 	for (int i = 0; i < n; i++)
@@ -546,6 +546,8 @@ TEST(clipboard)
 	OK(has_hint("Esc", "cancel"));
 	ctrl('c');
 	STREQ(slurp(getenv("WRITE_CLIP")), "**fully charged**");
+	app_docbar(&A, &d);
+	STREQ(d.info, "Copied 2 words");	/* over "2 selected", until the selection changes */
 	press(K_ESC);			/* Esc ends the selection first */
 	EQ(A.e.sel, 0);
 	EQ(A.quit, 0);

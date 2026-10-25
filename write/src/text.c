@@ -141,6 +141,8 @@ int text_set(struct text *t, const char *data, size_t len)
 	text_init(&nt);
 	if (!nt.n)
 		return -1;
+	free(nt.l[0].s);	/* the empty line text_init made: the data's lines replace it */
+	memset(&nt.l[0], 0, sizeof(nt.l[0]));
 	nt.n = 0;
 	if (len && data[len - 1] == '\n') {
 		nt.final_nl = 1;

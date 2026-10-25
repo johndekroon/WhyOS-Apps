@@ -87,6 +87,7 @@ struct app {
 	int find_open, find_focus;	/* 0: Find, 1: Replace */
 	int replaced;		/* "Replaced N" after replace all */
 	char clip_label[48];	/* "Copied 2 words", while the clipboard has it */
+	int clip_fresh;		/* just copied: the label shows over "N selected" */
 	char notice[96];	/* a line in the document bar for a moment */
 
 	enum screen screen;
@@ -133,7 +134,7 @@ struct docbar {
 	char count[32];		/* "58 words", "14 lines" */
 };
 
-struct hint { const char *keys, *label; int right, pink; };
+struct hintk { const char *keys, *label; int right, pink; };
 
 void app_init(struct app *a, const char *path);
 void app_free(struct app *a);
@@ -144,7 +145,7 @@ void app_term(struct app *a);		/* SIGTERM (the logo key): save, then quit */
 
 /* for drawing */
 void app_docbar(struct app *a, struct docbar *d);
-int app_hints(const struct app *a, struct hint *h, int max);
+int app_hints(const struct app *a, struct hintk *h, int max);
 void app_geometry(const struct app *a, int *x, int *y, int *w, int *h);
 void app_follow(struct app *a);
 const char *app_para_name(enum blk kind);

@@ -132,7 +132,7 @@ static int number_indent(struct lay *L, const struct ed *e, int line, const stru
 	for (; *p >= '0' && *p <= '9'; p++)
 		w += L->adv16(L->ctx, FONT_MONO20, (unsigned char)*p);
 	w += L->adv16(L->ctx, FONT_MONO20, '.');
-	w = (w + 8) / 16 + 14;
+	w = (w + 8) / 16 + 8;
 	return w > s->indent ? w : s->indent;
 }
 

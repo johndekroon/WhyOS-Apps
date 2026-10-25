@@ -940,8 +940,10 @@ static void clip_put(struct app *a, char *s, size_t n, int words, const char *ve
 		return;
 	if (file_save(app_clip_path(), s, n, err, sizeof(err)))
 		app_log(a, "error: clipboard: %s", err);
-	else
+	else {
 		snprintf(a->clip_label, sizeof(a->clip_label), "%s %d word%s", verb, words, words == 1 ? "" : "s");
+		a->clip_fresh = 1;
+	}
 	free(s);
 }
 
@@ -1360,7 +1362,8 @@ static void overlay_key(struct app *a, const struct key *k)
 void app_key(struct app *a, const struct key *k)
 {
 	enum mode m = a->e.mode;
-	int full = a->full, find = a->find_open;
+	int full = a->full, find = a->find_open, sel = a->e.sel;
+	struct pos c = a->e.caret, an = a->e.anchor;
 
 	a->notice[0] = 0;
 	if (a->full && a->hint_until)
@@ -1373,6 +1376,8 @@ void app_key(struct app *a, const struct key *k)
 		edit_key(a, k);
 	if (a->e.mode != m || a->full != full || a->find_open != find)
 		a->redraw = 1;
+	if (a->clip_fresh && (sel != a->e.sel || pos_cmp(c, a->e.caret) || pos_cmp(an, a->e.anchor)))
+		a->clip_fresh = 0;	/* a new selection: "N selected" again */
 	app_follow(a);
 }
 
@@ -1511,7 +1516,7 @@ void app_docbar(struct app *a, struct docbar *d)
 	if (a->notice[0]) {
 		snprintf(d->info, sizeof(d->info), "%s", a->notice);
 		d->info_kind = 3;
-	} else if (a->e.sel) {
+	} else if (a->e.sel && !a->clip_fresh) {
 		snprintf(d->info, sizeof(d->info), "%d selected", ed_sel_words(&a->e));
 		d->info_kind = 1;
 	} else if (a->clip_label[0]) {
@@ -1542,14 +1547,14 @@ void app_docbar(struct app *a, struct docbar *d)
 	}
 }
 
-static int hint(struct hint *h, int n, int max, const char *keys, const char *label, int right, int pink)
+static int hint(struct hintk *h, int n, int max, const char *keys, const char *label, int right, int pink)
 {
 	if (n < max)
-		h[n] = (struct hint){ keys, label, right, pink };
+		h[n] = (struct hintk){ keys, label, right, pink };
 	return n + 1;
 }
 
-int app_hints(const struct app *a, struct hint *h, int max)
+int app_hints(const struct app *a, struct hintk *h, int max)
 {
 	int n = 0;
 
@@ -1616,7 +1621,6 @@ int app_hints(const struct app *a, struct hint *h, int max)
 	}
 	if (a->fn_held)
 		n = hint(h, n, max, "Fn", "", 1, 1);
-	n = hint(h, n, max, "Esc", a->e.sel || a->find_open ? (a->find_open && !a->e.sel ? "close" : "cancel") :
-		 a->full ? "leave" : "close", 1, 0);
+	n = hint(h, n, max, "Esc", a->find_open ? "close" : a->e.sel ? "cancel" : a->full ? "leave" : "close", 1, 0);
 	return n < max ? n : max;
 }
