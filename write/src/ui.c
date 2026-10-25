@@ -595,9 +595,9 @@ static void row_draw(struct app *a, const struct frow *fr)
 			fill((x16 + 8) / 16, ty + base->ascent + 4, (adv + 8) / 16, 2, c);
 		x16 += adv;
 	}
-	/* the caret: hidden under a pop-up, and while the find bar types */
+	/* the caret: hidden under a pop-up and while the find bar is open (design Find) */
 	if (caret_k >= 0 && ui_st.blink && a->ov == OV_NONE && a->screen == SC_EDIT &&
-	    caret_k >= fr->r.k0 && (caret_k < fr->r.k1 || fr->last) && !(a->find_open && !a->e.sel)) {
+	    caret_k >= fr->r.k0 && (caret_k < fr->r.k1 || fr->last) && !a->find_open) {
 		int cx = TX + lay_x(&a->lay, &a->e, fr->line, &fr->r, caret_k), ch = base->size + 4;
 
 		caret_draw(cx, fr->sy + (lh - ch) / 2, ch);

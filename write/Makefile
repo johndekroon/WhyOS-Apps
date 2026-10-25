@@ -2,7 +2,7 @@
 #   make -C write test        the modules' unit tests (tests/unit), then the
 #                             screens (tests/test_ui.py) where the menu's
 #                             drawing code is
-#   make -C write ui-host     write-ui-host: the screens, keys from a script,
+#   make -C write ui-host     write-ui-host-<system>: the screens, keys from a script,
 #                             screens as PPM
 # The badge build is build.sh. The screens draw with the menu's code from
 # why2025-linux (WHY2025_LINUX, default ../../why2025-linux).
@@ -24,13 +24,15 @@ $(BIN)/%: tests/unit/%.c tests/unit/t.h $(CORE) $(HDRS)
 	@mkdir -p $(BIN)
 	$(CC) $(CFLAGS) -DWRITE_HOST -Isrc -Itests/unit -o $@ $< $(CORE)
 
-ui-host: write-ui-host
+UI_BIN  = write-ui-host-$(shell uname -s)
 
-write-ui-host: $(wildcard src/*.c) $(HDRS) $(MENU)/wbdraw.h $(MENU)/home_assets.h
+ui-host: $(UI_BIN)
+
+$(UI_BIN): $(wildcard src/*.c) $(HDRS) $(MENU)/wbdraw.h $(MENU)/home_assets.h
 	$(CC) $(CFLAGS) -Wno-sign-compare -DWRITE_HOST -DWRITE_UI_HOST -Isrc -I$(MENU) \
 		-o $@ $(wildcard src/*.c)
 
-UI_HOST = $(if $(wildcard $(MENU)/wbdraw.h),write-ui-host)
+UI_HOST = $(if $(wildcard $(MENU)/wbdraw.h),$(UI_BIN))
 
 unit-test: units
 	@set -e; for t in $(UNITS); do $$t; done
@@ -39,6 +41,6 @@ test: unit-test $(UI_HOST)
 	$(if $(UI_HOST),python3 -m pytest -q tests)
 
 clean:
-	rm -rf tests/unit/bin-* write-ui-host write-ui-host.dSYM
+	rm -rf tests/unit/bin-* write-ui-host-* *.dSYM
 
 .PHONY: units unit-test ui-host test clean

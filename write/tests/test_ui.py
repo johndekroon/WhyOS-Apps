@@ -12,12 +12,13 @@ Colours are the design's (design/write/canvas, Neon Orbit tokens), read
 back from RGB565: a channel is within 8 of the token.
 """
 import os
+import platform
 import subprocess
 
 import pytest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-UI = os.path.join(HERE, "..", "write-ui-host")
+UI = os.path.join(HERE, "..", "write-ui-host-" + platform.system())
 
 VOID = (0x0A, 0x0A, 0x14)
 SURFACE1 = (0x13, 0x13, 0x1F)
@@ -62,7 +63,7 @@ def is_c(c, tol=24):
 @pytest.fixture
 def env(tmp_path):
     if not os.path.exists(UI):
-        pytest.skip("no write-ui-host: make -C write ui-host")
+        pytest.skip("no %s: make -C write ui-host" % os.path.basename(UI))
     home = tmp_path / "home"
     home.mkdir()
     (home / "camp-notes.md").write_text(NOTES)
