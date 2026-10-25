@@ -19,6 +19,7 @@ like the store, listed under Apps; why2025-linux puts it in the image.
 | `src/layout.c` | lines into rows: wrapping, heights (cached per line), caret x/y, up and down |
 | `src/app.c` | the app as a state machine: keys in; document, overlays, requests out |
 | `src/ui.c` | the screens, with the menu's drawing code from why2025-linux (`wbdraw.h`, `wbstatus.h`, `home_assets.h`) |
+| `src/repeat.c` | a key held down repeats (the keypad sends no repeats): which keys, when |
 | `src/main.c` | the badge program (keypad, panel, SIGTERM, running scripts) and the host program for the screen tests |
 | `src/write_fonts.h` | the document fonts and a few icons, from `assets/gen.py` (checked in) |
 | `tests/unit/` | the modules' tests (`t.h` is the harness) |
@@ -62,5 +63,9 @@ took to stderr (`/tmp/app-write.log`). The clipboard is
 - In HTML and PHP, `/` typed after `<` finishes the closing tag of the
   innermost open element; on a line with only blanks before it, the line
   takes the indent of the opening tag.
+- A held key repeats after 400 ms, every 50 ms: the arrows and Backspace
+  (also with Ctrl, Alt or Fn), Space and the keys that type, not Enter,
+  Tab, Esc or the symbol keys. Write's own timer, as the menu's: the
+  badge's keypad sends no repeats.
 - Help is drawn as the design's Help screen, not with wbdraw's
   `help_popup`: twelve keys do not fit in the shared pop-up.

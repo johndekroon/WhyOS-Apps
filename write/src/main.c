@@ -242,10 +242,16 @@ int main(int argc, char **argv)
 
 #else /* the badge */
 
+#include <linux/input.h>
+#include <sys/ioctl.h>
+
+#include "repeat.h"
+
 #define FIFO	"/tmp/write.keys"
 
 static volatile sig_atomic_t term;
 static struct { int shift, ctrl, alt, fn; } M;
+static struct rep held;		/* the key held down (repeat.h) */
 
 static long now_ms(void)
 {
@@ -300,6 +306,17 @@ static void status_read(void)
 	ui_st.clock_ok = tm.tm_year >= 125;
 }
 
+/* the keypad's state: a release the queue lost does not leave a key repeating */
+static int still_down(int code)
+{
+	unsigned char bits[KEY_MAX / 8 + 1];
+
+	memset(bits, 0, sizeof(bits));
+	if (ioctl(ev_fd, EVIOCGKEY(sizeof(bits)), bits) < 0)
+		return 1;
+	return (bits[code / 8] >> (code % 8)) & 1;
+}
+
 /* the keys in the evdev queue */
 static void read_keys(void)
 {
@@ -322,9 +339,12 @@ static void read_keys(void)
 			else if (e->code == K_FN) {
 				M.fn = down;
 				app_fn(&A, down);
-			} else if (down && e->code != 125) {	/* 125: the logo key is apprun's */
+			} else if (e->value == 1 && e->code != 125) {	/* 125: the logo key is apprun's */
 				A.now = now_ms();
+				rep_press(&held, e->code, M.ctrl, M.alt, A.now);
 				key_send(e->code, M.shift, M.ctrl, M.alt, M.fn);
+			} else if (!down) {
+				rep_release(&held, e->code);
 			}
 		}
 	}
@@ -411,6 +431,7 @@ static void run_program(void)
 			;
 	}
 	M.shift = M.ctrl = M.alt = M.fn = 0;
+	held.code = 0;
 	A.redraw = 1;
 }
 
@@ -441,8 +462,8 @@ int main(int argc, char **argv)
 	present(1);
 	while (!A.quit) {
 		struct pollfd p[2] = { { ev_fd, POLLIN, 0 }, { fifo_fd, POLLIN, 0 } };
-		long t;
-		int r = poll(p, fifo_fd >= 0 ? 2 : 1, 530);
+		long t, w = rep_wait(&held, now_ms());
+		int r = poll(p, fifo_fd >= 0 ? 2 : 1, w >= 0 && w < 530 ? (int)w : 530);
 
 		if (term) {
 			/* keys typed before the logo key belong in the document */
@@ -464,6 +485,18 @@ int main(int argc, char **argv)
 		if (r > 0 && fifo_fd >= 0 && (p[1].revents & POLLIN)) {
 			read_fifo();
 			last_key = t;
+		}
+		/* a held key repeats, after the frame of the last one */
+		if (rep_due(&held, t)) {
+			if (still_down(held.code) && rep_wants(held.code, M.ctrl, M.alt)) {
+				A.now = t;
+				key_send(held.code, M.shift, M.ctrl, M.alt, M.fn);
+				last_key = t;
+				ui_st.blink = 1;
+				last_blink = t;
+			} else {
+				held.code = 0;
+			}
 		}
 		if (A.run) {
 			run_program();
