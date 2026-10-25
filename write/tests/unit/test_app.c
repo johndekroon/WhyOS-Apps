@@ -513,11 +513,11 @@ TEST(styles_by_keys)
 	type("bold");
 	ctrl('b');
 	type(" plain");
-	STREQ(src(), "**bold** plain");
+	STREQ(src(), "**Bold** plain");
 	key(code_of('2'), 0, 1, 0, 0, 0);	/* Ctrl+2 */
-	STREQ(src(), "## **bold** plain");
+	STREQ(src(), "## **Bold** plain");
 	key(K_8, 1, 1, 0, 0, 0);	/* Ctrl+Shift+8 */
-	STREQ(src(), "- **bold** plain");
+	STREQ(src(), "- **Bold** plain");
 }
 
 TEST(styles_in_the_markdown_view)
@@ -622,7 +622,7 @@ TEST(settings)
 		char p[512];
 
 		snprintf(p, sizeof(p), "%s/settings", getenv("APP_CONFIG"));
-		STREQ(slurp(p), "small=1\nlineno=0\n");
+		STREQ(slurp(p), "small=1\nlineno=0\ncaps=1\n");
 	}
 	app_free(&A);
 	app_init(&A, 0);		/* read back at the next start */
@@ -649,11 +649,11 @@ TEST(the_logo_key_saves)
 	type("y");
 	app_term(&A);
 	EQ(A.quit, 1);
-	STREQ(slurp("n.md"), "yx\n");
+	STREQ(slurp("n.md"), "Yx\n");
 	start(0, 0);
 	type("lost?");
 	app_term(&A);
-	STREQ(slurp("untitled.md"), "lost?");
+	STREQ(slurp("untitled.md"), "Lost?");
 	start(0, 0);
 	app_term(&A);
 	EQ(access(strcat(strcpy(tmp, home), "/untitled.md"), F_OK), -1);	/* nothing typed: no file */
@@ -673,11 +673,11 @@ TEST(new_document)
 TEST(undo_redo_keys)
 {
 	start(0, 0);
-	type("one two");
+	type("one two");			/* a capital: a new sentence */
 	ctrl('z');
-	STREQ(src(), "one ");
+	STREQ(src(), "One ");
 	ctrl_shift('z');
-	STREQ(src(), "one two");
+	STREQ(src(), "One two");
 }
 
 TEST(moving_keys)
@@ -713,4 +713,55 @@ TEST(geometry)
 	EQ(x, 56);
 	EQ(y, 36);
 	EQ(w, 591);
+}
+
+TEST(capitals_setting)
+{
+	start(0, 0);
+	EQ(A.caps, 1);				/* on unless switched off */
+	type("hi. ok");
+	STREQ(src(), "Hi. Ok");
+	press(K_F5);
+	EQ(A.rows[2].act, A_CAPITALS);
+	EQ(A.rows[2].toggle, 1);
+	EQ(A.rows[2].on, 1);
+	A.focus = 2;
+	press(K_ENTER);
+	EQ(A.caps, 0);
+	EQ(A.rows[2].on, 0);
+	press(K_ESC);
+	type(" no");
+	STREQ(src(), "Hi. Ok no");
+	app_free(&A);
+	app_init(&A, 0);
+	EQ(A.caps, 0);
+	EQ(A.e.autocap, 0);
+}
+
+TEST(html_closes_the_open_element)
+{
+	start("p.html", "<p>a");
+	key(K_DOWN, 0, 0, 1, 0, 0);		/* the end of the document */
+	type("</");
+	STREQ(src(), "<p>a</p>");
+	start("p.php", "<p>a");
+	key(K_DOWN, 0, 0, 1, 0, 0);
+	type("</");
+	STREQ(src(), "<p>a</p>");
+	start("p.c", "<p>a");			/* other languages: as typed */
+	key(K_DOWN, 0, 0, 1, 0, 0);
+	type("</");
+	STREQ(src(), "<p>a</");
+	start("p.html", "<p>a");		/* a new language from Options */
+	A.lang = L_PLAIN;
+	for (int i = 0; i < 2; i++) {
+		press(K_F1);
+		for (int r = 0; r < A.n_rows; r++)
+			if (A.rows[r].act == A_LANGUAGE)
+				A.focus = r;
+		press(K_ENTER);
+		A.focus = i ? L_HTML : L_C;
+		press(K_ENTER);
+		EQ(A.e.autoclose, i);
+	}
 }

@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "edit.h"
+#include "tags.h"
 
 static int is_space(char c)
 {
@@ -536,9 +537,87 @@ out:
 int ed_delete_sel(struct ed *e);
 static int delete_sel(struct ed *e);
 
+/* M_RICH: whether the caret starts a sentence, as a phone sees it: the
+ * start of the paragraph, or after ". ", "! " or "? " (with a closing
+ * quote or bracket after the stop). Opening quotes and brackets, and style
+ * markers not yet closed ("**"), just before the caret do not count. */
+static int sentence_start(struct ed *e)
+{
+	struct mdline *m = ed_parse(e, e->caret.line);
+	int k, sp = 0;
+
+	if (!m)
+		return 0;
+	k = md_vis(m, e->caret.col);
+	while (k > 0 && strchr("\"'([*_", m->vis[k - 1]))
+		k--;
+	while (k > 0 && is_space(m->vis[k - 1])) {
+		k--;
+		sp++;
+	}
+	if (!k)
+		return 1;
+	while (k > 0 && strchr("\"')]*_", m->vis[k - 1]))
+		k--;
+	return sp && k > 0 && strchr(".!?", m->vis[k - 1]);
+}
+
+/* M_CODE, a "/" typed after "<": the name of the open element and ">"
+ * after it; when only blanks are before the "</", the line takes the
+ * indent of the opening tag's line */
+static int close_tag(struct ed *e)
+{
+	struct pos c = e->caret;
+	const struct tline *l = &e->t.l[c.line];
+	char name[40];
+	char *buf;
+	size_t n = 0, bol;
+	int open, ws = 0, lead = 0, nl;
+
+	if (c.col < 2 || l->s[c.col - 2] != '<')
+		return 0;
+	for (int i = 0; i < c.line; i++)
+		n += (size_t)e->t.l[i].len + 1;
+	buf = malloc(n + (size_t)c.col);
+	if (!buf)
+		return -1;
+	n = 0;
+	for (int i = 0; i < c.line; i++) {
+		memcpy(buf + n, e->t.l[i].s, (size_t)e->t.l[i].len);
+		n += (size_t)e->t.l[i].len;
+		buf[n++] = '\n';
+	}
+	memcpy(buf + n, l->s, (size_t)c.col - 2);
+	n += (size_t)c.col - 2;
+	open = tags_open(buf, n, name, sizeof(name));
+	if (open < 0) {
+		free(buf);
+		return 0;
+	}
+	for (bol = (size_t)open; bol > 0 && buf[bol - 1] != '\n'; bol--)
+		;
+	while (bol + (size_t)ws < (size_t)open && is_space(buf[bol + ws]))
+		ws++;
+	nl = (int)strlen(name);
+	name[nl++] = '>';
+	while (lead < c.col - 2 && is_space(l->s[lead]))
+		lead++;
+	if (text_insert(&e->t, c, name, (size_t)nl, 0) ||
+	    (lead == c.col - 2 && lead != ws &&
+	     (text_delete(&e->t, P(c.line, 0), P(c.line, lead)) ||
+	      text_insert(&e->t, P(c.line, 0), buf + bol, (size_t)ws, 0)))) {
+		free(buf);
+		return -1;
+	}
+	free(buf);
+	e->caret = P(c.line, c.col + nl - (lead == c.col - 2 ? lead - ws : 0));
+	return 0;
+}
+
 int ed_type(struct ed *e, const char *s, int n)
 {
 	int had_sel = e->sel, ret;
+	char up;
 
 	text_begin(&e->t, had_sel ? G_OTHER : n == 1 && is_space(s[0]) ? G_SPACE : G_TYPE, e->caret);
 	if (had_sel && delete_sel(e)) {
@@ -551,7 +630,13 @@ int ed_type(struct ed *e, const char *s, int n)
 		ret = text_insert(&e->t, e->caret, s, (size_t)n, &end);
 		if (!ret)
 			e->caret = end;
+		if (!ret && e->autoclose && e->mode == M_CODE && n == 1 && s[0] == '/')
+			ret = close_tag(e);
 	} else {
+		if (e->autocap && n == 1 && s[0] >= 'a' && s[0] <= 'z' && sentence_start(e)) {
+			up = (char)(s[0] - 'a' + 'A');
+			s = &up;
+		}
 		ret = rich_insert(e, s, n, s, 0, n, e->tstyle, e->tstyle < 0);
 	}
 	text_end(&e->t, e->caret);

@@ -37,6 +37,8 @@ struct ed {
 	int tstyle;		/* the style of what is typed next; -1: the caret's */
 	enum mode mode;
 	int indent;		/* M_CODE: spaces per level, 0: a tab */
+	int autocap;		/* M_RICH: a letter that starts a sentence is a capital */
+	int autoclose;		/* M_CODE: "</" closes the open element (HTML) */
 	struct mdline m, m2;	/* scratch */
 };
 

@@ -118,7 +118,7 @@ def test_new_document_and_save(env):
     tmp, home, _ = env
     s = ui(env, ["shot new", "type # My list", "enter", "type - milk", "enter", "type eggs",
                  "shot typed", "ctrl s", "shot saveas", "enter", "shot saved"])
-    assert (home / "my-list.md").read_text() == "# My list\n- milk\n- eggs"
+    assert (home / "my-list.md").read_text() == "# My list\n- Milk\n- Eggs"
     assert "my-list.md" in (tmp / "log").read_text()
     # Start typing... and the markdown tips on the empty document
     assert s["new"].count(48, 170, 400, 400, is_c(CYAN, 30)) > 50
@@ -195,16 +195,17 @@ def test_dialogs(env):
            home / "camp-notes.md")
     assert s["options"].count(96, 100, 624, 600, is_c(CYAN, 30)) > 100      # the focused Save
     assert s["discard"].count(96, 150, 624, 300, is_c(YELLOW, 30)) > 20      # UNSAVED CHANGES
-    assert s["settings"].count(500, 300, 624, 450, is_c(PINK, 30)) > 20      # the switch
+    assert s["settings"].count(500, 340, 624, 395, is_c(PINK, 30)) > 20      # the switches:
+    assert s["settings"].count(500, 405, 624, 455, is_c(PINK, 30)) > 20      # line numbers, capitals
     assert s["open"].count(48, 160, 672, 640, is_c(CYAN, 30)) > 50           # the focused file
-    assert (tmp / "config" / "settings").read_text() == "small=1\nlineno=1\n"
+    assert (tmp / "config" / "settings").read_text() == "small=1\nlineno=1\ncaps=1\n"
     assert (home / "camp-notes.md").read_text() == NOTES                    # discarded
 
 
 def test_logo_key_saves(env):
     _, home, _ = env
     ui(env, ["type note to self", "term"])
-    assert (home / "untitled.md").read_text() == "note to self"
+    assert (home / "untitled.md").read_text() == "Note to self"
 
 
 def test_small_text(env):

@@ -56,7 +56,7 @@ enum after { AF_NONE, AF_CLOSE, AF_NEW, AF_OPEN, AF_RUN };
 /* menu rows (Options, the find bar's menu, Settings) */
 enum act {
 	A_NONE, A_SAVE, A_SAVE_AS, A_NEW, A_OPEN, A_FIND, A_FULL, A_LANGUAGE, A_MATCH_CASE,
-	A_WHOLE_WORD, A_REPLACE_ALL, A_TEXT_SIZE, A_LINE_NUMBERS
+	A_WHOLE_WORD, A_REPLACE_ALL, A_TEXT_SIZE, A_LINE_NUMBERS, A_CAPITALS
 };
 
 struct menu_row { enum act act; const char *label; char value[48]; int sep, toggle, on, chev; };
@@ -115,7 +115,7 @@ struct app {
 	char log[LOG_LINES][120];
 	int n_log;
 
-	int small, lineno;	/* settings */
+	int small, lineno, caps;	/* settings */
 	int quit;		/* 1: done */
 	int run;		/* 1 run, 2 preview: main starts the program on path */
 	int redraw;		/* everything changed (a new document, a mode) */

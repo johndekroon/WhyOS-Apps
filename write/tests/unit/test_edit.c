@@ -497,3 +497,127 @@ TEST(indent_guess)
 	load(M_CODE, "nothing\n");
 	EQ(ed_guess_indent(&E), -1);
 }
+
+/* ---- capitals at the start of a sentence (as on a phone) ---- */
+
+static void caps(enum mode mode, const char *s)
+{
+	load(mode, s);
+	E.autocap = 1;
+}
+
+TEST(capitals_start_a_sentence)
+{
+	caps(M_RICH, "");
+	type("hi. how are you? fine! ok");
+	STREQ(src(), "Hi. How are you? Fine! Ok");
+	caps(M_RICH, "");
+	type("he said \"no.\" then (maybe) left");
+	STREQ(src(), "He said \"no.\" Then (maybe) left");
+	caps(M_RICH, "");
+	type("3.5 m and e.g. this");		/* no space after the stop: no sentence */
+	STREQ(src(), "3.5 m and e.g. This");
+}
+
+TEST(capitals_after_a_block_marker_and_on_a_new_line)
+{
+	caps(M_RICH, "");
+	type("- milk");
+	STREQ(src(), "- Milk");
+	caps(M_RICH, "");
+	type("## packing");
+	STREQ(src(), "## Packing");
+	caps(M_RICH, "");
+	type("> quote");
+	STREQ(src(), "> Quote");
+	caps(M_RICH, "one");
+	at(0, 3);
+	EQ(ed_newline(&E), 0);
+	type("two");
+	STREQ(src(), "one\nTwo");
+	caps(M_RICH, "");
+	type("**bold** text");
+	STREQ(src(), "**Bold** text");
+}
+
+TEST(capitals_only_where_a_sentence_starts)
+{
+	caps(M_RICH, "Bring badge");
+	at(0, 6);
+	type("the ");
+	STREQ(src(), "Bring the badge");
+	caps(M_RICH, "");
+	type("I");				/* typed capitals stay */
+	type("D");
+	STREQ(src(), "ID");
+	caps(M_RICH, "```\ncode\n```");		/* not in a code block */
+	at(1, 0);
+	type("x");
+	STREQ(src(), "```\nxcode\n```");
+	caps(M_SOURCE, "");			/* not in the markdown view, */
+	type("hi");
+	STREQ(src(), "hi");
+	caps(M_CODE, "");			/* nor in code */
+	type("hi");
+	STREQ(src(), "hi");
+	load(M_RICH, "");			/* and only when switched on */
+	type("hi");
+	STREQ(src(), "hi");
+}
+
+/* ---- "</" closes the open element (HTML) ---- */
+
+static void html(const char *s)
+{
+	load(M_CODE, s);
+	E.autoclose = 1;
+}
+
+TEST(slash_after_lt_closes_the_open_element)
+{
+	html("<ul>\n  <li>milk");
+	at(1, 10);
+	type("</");
+	STREQ(src(), "<ul>\n  <li>milk</li>");
+	EQ(E.caret.line, 1);
+	EQ(E.caret.col, 15);
+	EQ(ed_newline(&E), 0);
+	type("</");
+	STREQ(src(), "<ul>\n  <li>milk</li>\n</ul>");	/* at the indent of <ul> */
+	EQ(E.caret.col, 5);
+}
+
+TEST(slash_after_lt_takes_the_indent_of_the_opening_tag)
+{
+	html("<div>\n  <p>\n    text\n    ");
+	at(3, 4);
+	type("</");
+	STREQ(src(), "<div>\n  <p>\n    text\n  </p>");
+	EQ(E.caret.col, 6);
+}
+
+TEST(slash_after_lt_without_an_open_element)
+{
+	html("<p>a</p> ");
+	at(0, 9);
+	type("</");
+	STREQ(src(), "<p>a</p> </");
+	html("a ");
+	at(0, 2);
+	type("/");				/* no "<" before it */
+	STREQ(src(), "a /");
+	load(M_CODE, "<p>");			/* switched off: other languages */
+	at(0, 3);
+	type("</");
+	STREQ(src(), "<p></");
+}
+
+TEST(slash_after_lt_is_one_undo_step)
+{
+	html("<p>a");
+	at(0, 4);
+	type("</");
+	STREQ(src(), "<p>a</p>");
+	EQ(ed_undo(&E), 1);
+	STREQ(src(), "<p>a");
+}

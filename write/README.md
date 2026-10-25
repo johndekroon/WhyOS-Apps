@@ -13,6 +13,7 @@ like the store, listed under Apps; why2025-linux puts it in the image.
 | `src/md.c` | one markdown line as the rich view shows it: the block marker, the inline styles Write knows (`**`, `*`, `***`, `<u>`), the caret map between visible text and source, writing styles back |
 | `src/edit.c` | editing in the three modes (rich, markdown source, code): typing, Enter and Backspace rules, styles and paragraph styles, the clipboard, caret moves |
 | `src/find.c` | find and replace (§8 of the design) |
+| `src/tags.c` | the HTML element still open before the caret, so `</` in the code view finishes its closing tag |
 | `src/syntax.c` | the twelve languages of the Language screen and their highlighting |
 | `src/files.c` | loading (256 KB at most), saving through a temporary file and rename, names, the Open list, dates |
 | `src/layout.c` | lines into rows: wrapping, heights (cached per line), caret x/y, up and down |
@@ -54,5 +55,12 @@ took to stderr (`/tmp/app-write.log`). The clipboard is
 - ▲ in the code view runs Python (MicroPython from the store) and shell
   scripts in appterm's window, and shows HTML in NetSurf; other languages
   have no ▲.
+- As on a phone, a letter typed at the start of a paragraph or after
+  `. `, `! ` or `? ` in the rich view becomes a capital; Settings switches
+  it off ("Capital at sentence start", on by default). Not in code blocks,
+  the markdown view or code.
+- In HTML and PHP, `/` typed after `<` finishes the closing tag of the
+  innermost open element; on a line with only blanks before it, the line
+  takes the indent of the opening tag.
 - Help is drawn as the design's Help screen, not with wbdraw's
   `help_popup`: twelve keys do not fit in the shared pop-up.

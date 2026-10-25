@@ -133,6 +133,7 @@ static void settings_load(struct app *a)
 
 	a->small = 0;
 	a->lineno = 1;
+	a->caps = 1;
 	config_path(p, sizeof(p));
 	f = fopen(p, "r");
 	if (!f)
@@ -142,6 +143,8 @@ static void settings_load(struct app *a)
 			a->small = atoi(line + 6) != 0;
 		else if (!strncmp(line, "lineno=", 7))
 			a->lineno = atoi(line + 7) != 0;
+		else if (!strncmp(line, "caps=", 5))
+			a->caps = atoi(line + 5) != 0;
 	}
 	fclose(f);
 }
@@ -153,7 +156,7 @@ static void settings_save(struct app *a)
 
 	config_path(p, sizeof(p));
 	mkdirs(p);
-	n = snprintf(body, sizeof(body), "small=%d\nlineno=%d\n", a->small, a->lineno);
+	n = snprintf(body, sizeof(body), "small=%d\nlineno=%d\ncaps=%d\n", a->small, a->lineno, a->caps);
 	if (file_save(p, body, (size_t)n, err, sizeof(err)))
 		app_log(a, "error: settings not saved: %s", err);
 }
@@ -186,6 +189,8 @@ static void set_lang(struct app *a, enum lang l)
 		l = L_PLAIN;
 	a->lang = l;
 	a->is_md = l == L_MARKDOWN;
+	a->e.autocap = a->caps;
+	a->e.autoclose = l == L_HTML || l == L_PHP;
 	if (a->is_md) {
 		if (a->e.mode == M_CODE)
 			ed_set_mode(&a->e, M_RICH);
@@ -678,6 +683,9 @@ static void settings_rows(struct app *a)
 	row(a, A_LINE_NUMBERS, "Line numbers in markdown", "", 0);
 	a->rows[1].toggle = 1;
 	a->rows[1].on = a->lineno;
+	row(a, A_CAPITALS, "Capital at sentence start", "", 0);
+	a->rows[2].toggle = 1;
+	a->rows[2].on = a->caps;
 }
 
 static void menu_move(struct app *a, int dir)
@@ -1005,6 +1013,13 @@ static void act(struct app *a, enum act what)
 		break;
 	case A_LINE_NUMBERS:
 		a->lineno = !a->lineno;
+		settings_save(a);
+		settings_rows(a);
+		a->redraw = 1;
+		break;
+	case A_CAPITALS:
+		a->caps = !a->caps;
+		a->e.autocap = a->caps;
 		settings_save(a);
 		settings_rows(a);
 		a->redraw = 1;
