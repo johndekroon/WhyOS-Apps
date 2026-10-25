@@ -1,0 +1,75 @@
+# Write, the text editor of design/write (write/), in flash so it works
+# without a card, as the store does. A system app: not in the store's
+# browse tabs, in the menu under Apps; it updates itself like any app.
+format = 1
+id = "write"
+name = "Write"
+version = "1.0.0"
+build = 1
+summary = "Write notes and documents, edit text and code"
+description = """
+Write notes and documents on the badge, with headings, lists, bold,
+italic and underline, saved as markdown (.md) that any other editor can
+open. Markdown works while you type: "# " makes a heading, "- " a list,
+**bold** turns bold when you type the last star. The cross key shows the
+markdown itself.
+
+Code and other text open in a code view with line numbers, colours for
+Python, shell, HTML, CSS, JavaScript, JSON, YAML, C and more, and Tab
+and Enter keep the indent. The triangle runs a Python or shell script
+in a terminal window, or shows an HTML page in NetSurf.
+
+Select with Fn and the arrows, copy, cut and paste between documents,
+find and replace, full screen for long texts. Files opens .md and .txt
+files in Write. The logo key saves before going back to the menu."""
+author = "WhyOS-Apps"
+license = "MIT AND LGPL-2.1-or-later AND OFL-1.1"
+license_file = "write.txt"
+homepage = "https://github.com/johndekroon/WhyOS-Apps"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/write"
+changelog = "First release."
+
+type = "system"
+category = "other"
+tags = ["editor", "text", "markdown", "notes", "code"]
+permissions = ["files-all"]
+install_location = "flash"
+
+[launch]
+exec = "write"
+args = "%f"
+info = "notes and code"
+icon = "text"
+menu = "apps"
+opens = ["md", "markdown", "txt"]
+opens_also = ["conf", "cfg", "ini", "log", "sh", "py", "php", "c", "h", "json", "yml", "yaml", "js",
+              "css", "html", "htm", "csv"]
+
+[requires]
+os_api = 1
+memory_kb = 1536
+features = ["display", "keyboard"]
+
+[storage.config]
+max_kb = 4
+
+[[bundled]]
+name = "uClibc-ng"
+version = "1.0.57"
+license = "LGPL-2.1-or-later"
+source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
+license_file = "uClibc-ng.txt"
+
+[[bundled]]
+name = "Space Grotesk (rendered into the program)"
+version = "2.000"
+license = "OFL-1.1"
+source = "https://github.com/floriankarsten/space-grotesk"
+license_file = "OFL-SpaceGrotesk.txt"
+
+[[bundled]]
+name = "JetBrains Mono (rendered into the program)"
+version = "2.211"
+license = "OFL-1.1"
+source = "https://github.com/JetBrains/JetBrainsMono"
+license_file = "OFL-JetBrainsMono.txt"

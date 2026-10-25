@@ -633,12 +633,51 @@
    "terminal": true,
    "type": "system",
    "updated": "2026-10-23"
+  },
+  {
+   "author": "WhyOS-Apps",
+   "category": "other",
+   "commands": [],
+   "details_sha256": "268ce3bc4e9e851b6b76e8435fdb7a995ecb4506c7ee7c077790f08d492bf8d3",
+   "id": "write",
+   "install_location": "flash",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 568597,
+     "sha256": "9c2bd55416fecfec1aaf3d05a8b5cbd68ad42178f026627b3f0a79c67061c3f6",
+     "size": 249354,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/write-1.0.0.wpk"
+    },
+    "version": "1.0.0"
+   },
+   "menu_icon": "text",
+   "name": "Write",
+   "requires": {
+    "features": [
+     "display",
+     "keyboard"
+    ],
+    "memory_kb": 1536,
+    "os_api": 1
+   },
+   "summary": "Write notes and documents, edit text and code",
+   "tags": [
+    "editor",
+    "text",
+    "markdown",
+    "notes",
+    "code"
+   ],
+   "terminal": false,
+   "type": "system",
+   "updated": "2026-10-25"
   }
  ],
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-10-23T11:31:15Z",
- "serial": 23,
+ "generated": "2026-10-25T00:54:25Z",
+ "serial": 24,
  "source": "whyos"
 }

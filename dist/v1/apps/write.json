@@ -1,0 +1,120 @@
+{
+ "author": "WhyOS-Apps",
+ "bundled": [
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/write/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "OFL-SpaceGrotesk.txt",
+   "license_url": "licenses/write/OFL-SpaceGrotesk.txt",
+   "name": "Space Grotesk (rendered into the program)",
+   "source": "https://github.com/floriankarsten/space-grotesk",
+   "version": "2.000"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "OFL-JetBrainsMono.txt",
+   "license_url": "licenses/write/OFL-JetBrainsMono.txt",
+   "name": "JetBrains Mono (rendered into the program)",
+   "source": "https://github.com/JetBrains/JetBrainsMono",
+   "version": "2.211"
+  }
+ ],
+ "category": "other",
+ "cover": "screens/write-cover.qoi",
+ "description": "Write notes and documents on the badge, with headings, lists, bold,\nitalic and underline, saved as markdown (.md) that any other editor can\nopen. Markdown works while you type: \"# \" makes a heading, \"- \" a list,\n**bold** turns bold when you type the last star. The cross key shows the\nmarkdown itself.\n\nCode and other text open in a code view with line numbers, colours for\nPython, shell, HTML, CSS, JavaScript, JSON, YAML, C and more, and Tab\nand Enter keep the indent. The triangle runs a Python or shell script\nin a terminal window, or shows an HTML page in NetSurf.\n\nSelect with Fn and the arrows, copy, cut and paste between documents,\nfind and replace, full screen for long texts. Files opens .md and .txt\nfiles in Write. The logo key saves before going back to the menu.",
+ "format": 1,
+ "homepage": "https://github.com/johndekroon/WhyOS-Apps",
+ "icon": null,
+ "id": "write",
+ "install_location": "flash",
+ "launch": {
+  "args": "%f",
+  "exec": "write",
+  "icon": "text",
+  "info": "notes and code",
+  "menu": "apps",
+  "opens": [
+   "md",
+   "markdown",
+   "txt"
+  ],
+  "opens_also": [
+   "conf",
+   "cfg",
+   "ini",
+   "log",
+   "sh",
+   "py",
+   "php",
+   "c",
+   "h",
+   "json",
+   "yml",
+   "yaml",
+   "js",
+   "css",
+   "html",
+   "htm",
+   "csv"
+  ],
+  "rotation": "auto",
+  "terminal": false
+ },
+ "license": "MIT AND LGPL-2.1-or-later AND OFL-1.1",
+ "license_url": "licenses/write/write.txt",
+ "name": "Write",
+ "permissions": [
+  "files-all"
+ ],
+ "requires": {
+  "features": [
+   "display",
+   "keyboard"
+  ],
+  "memory_kb": 1536,
+  "os_api": 1
+ },
+ "screenshots": [
+  "screens/write-1.qoi",
+  "screens/write-2.qoi",
+  "screens/write-3.qoi",
+  "screens/write-4.qoi"
+ ],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/write",
+ "storage": {
+  "config": {
+   "max_kb": 4
+  }
+ },
+ "summary": "Write notes and documents, edit text and code",
+ "tags": [
+  "editor",
+  "text",
+  "markdown",
+  "notes",
+  "code"
+ ],
+ "type": "system",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "First release.",
+   "package": {
+    "installed_size": 568597,
+    "sha256": "9c2bd55416fecfec1aaf3d05a8b5cbd68ad42178f026627b3f0a79c67061c3f6",
+    "size": 249354,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/write-1.0.0.wpk"
+   },
+   "published": "2026-10-25T00:54:25Z",
+   "source_archive": null,
+   "version": "1.0.0"
+  }
+ ]
+}
