@@ -1,0 +1,88 @@
+{
+ "author": "WhyOS-Apps contributors",
+ "bundled": [
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/ohminous/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "jetbrains-mono.txt",
+   "license_url": "licenses/ohminous/jetbrains-mono.txt",
+   "name": "JetBrains Mono (font)",
+   "source": "https://github.com/JetBrains/JetBrainsMono",
+   "version": "2.211"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "space-grotesk.txt",
+   "license_url": "licenses/ohminous/space-grotesk.txt",
+   "name": "Space Grotesk (font)",
+   "source": "https://github.com/floriankarsten/space-grotesk",
+   "version": "2.000"
+  }
+ ],
+ "category": "hardware",
+ "cover": "screens/ohminous-cover.qoi",
+ "description": "Work on circuits from the badge's keypad, with the pins on the badge's\nJ3 and J7 headers, and with a Bus Pirate 6 on the bottom USB port when\nyou have one. Each tool has both sources; Tab switches between them.\n\n- Pins: IO0 to IO4 and STROBE as inputs (with a pull-up or pull-down)\n  or outputs, a map of both headers, and your own names for the pins.\n  With a Bus Pirate: its IO0 to IO7.\n- Logic: capture the pins, scroll and zoom, save to /root/capture.bin.\n  The badge samples in software, up to 50 kHz; a Bus Pirate captures 8\n  channels up to 50 MHz.\n- Buses: scan the I2C bus on J7, read and write a device's registers,\n  or talk to a serial device on IO3 (TX) and IO4 (RX) at 1200 to 19200\n  baud. SPI and 1-Wire need a Bus Pirate.\n- LEDs: the WS2812 LEDs on J7, or a Bus Pirate's WS2812 and APA102\n  strips.\n- Power: the headers' supply pins; a Bus Pirate's supply (0.8 to 5.0 V,\n  with a current limit) and pull-ups.\n- Serial: a terminal to a USB serial adapter on the bottom port, or to\n  the Bus Pirate's own.\n\nThe circle key shows a log of what the tools sent and read, the cloud\nthe settings, the diamond the help. Esc goes back, and closes OHMinous\nfrom the start screen; pins it made outputs go back to inputs.\n\nThe badge's pins are 3.3 V: do not connect 5 V signals to them.",
+ "format": 1,
+ "homepage": "https://github.com/johndekroon/WhyOS-Apps",
+ "icon": null,
+ "id": "ohminous",
+ "install_location": "sd",
+ "launch": {
+  "exec": "ohminous",
+  "icon": "chip",
+  "info": "pins, logic, buses, power",
+  "menu": "apps",
+  "rotation": "auto",
+  "terminal": false
+ },
+ "license": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
+ "license_url": "licenses/ohminous/ohminous.txt",
+ "name": "OHMinous",
+ "requires": {
+  "features": [
+   "display",
+   "keyboard"
+  ],
+  "memory_kb": 700,
+  "os_api": 1
+ },
+ "screenshots": [
+  "screens/ohminous-1.qoi",
+  "screens/ohminous-2.qoi",
+  "screens/ohminous-3.qoi"
+ ],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/ohminous/source",
+ "summary": "Pins, logic analyzer, I2C, UART and LEDs on the badge, or with a Bus Pirate 6.",
+ "tags": [
+  "gpio",
+  "logic-analyzer",
+  "i2c",
+  "uart",
+  "ws2812",
+  "bus-pirate",
+  "power-supply"
+ ],
+ "type": "app",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "First version. It replaces the Bus Pirate app and adds the badge's own header pins.",
+   "package": {
+    "installed_size": 520343,
+    "sha256": "cd437a945ba88aa7aa68771e77c0974eb1a92b8bc4c161eeb090b8c5c3052ed4",
+    "size": 213621,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/ohminous-1.0.0.wpk"
+   },
+   "published": "2026-10-25T23:36:49Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/ohminous-1.0.0-source.tar.gz",
+   "version": "1.0.0"
+  }
+ ]
+}

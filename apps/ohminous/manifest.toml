@@ -1,0 +1,76 @@
+# OHMinous (why2025-linux sdapps/ohminous), written for the badge; it
+# replaced the Bus Pirate app on 2026-10-26.
+format = 1
+id = "ohminous"
+name = "OHMinous"
+version = "1.0.0"
+build = 1
+summary = "Pins, logic analyzer, I2C, UART and LEDs on the badge, or with a Bus Pirate 6."
+description = """
+Work on circuits from the badge's keypad, with the pins on the badge's
+J3 and J7 headers, and with a Bus Pirate 6 on the bottom USB port when
+you have one. Each tool has both sources; Tab switches between them.
+
+- Pins: IO0 to IO4 and STROBE as inputs (with a pull-up or pull-down)
+  or outputs, a map of both headers, and your own names for the pins.
+  With a Bus Pirate: its IO0 to IO7.
+- Logic: capture the pins, scroll and zoom, save to /root/capture.bin.
+  The badge samples in software, up to 50 kHz; a Bus Pirate captures 8
+  channels up to 50 MHz.
+- Buses: scan the I2C bus on J7, read and write a device's registers,
+  or talk to a serial device on IO3 (TX) and IO4 (RX) at 1200 to 19200
+  baud. SPI and 1-Wire need a Bus Pirate.
+- LEDs: the WS2812 LEDs on J7, or a Bus Pirate's WS2812 and APA102
+  strips.
+- Power: the headers' supply pins; a Bus Pirate's supply (0.8 to 5.0 V,
+  with a current limit) and pull-ups.
+- Serial: a terminal to a USB serial adapter on the bottom port, or to
+  the Bus Pirate's own.
+
+The circle key shows a log of what the tools sent and read, the cloud
+the settings, the diamond the help. Esc goes back, and closes OHMinous
+from the start screen; pins it made outputs go back to inputs.
+
+The badge's pins are 3.3 V: do not connect 5 V signals to them."""
+author = "WhyOS-Apps contributors"
+license = "MIT AND OFL-1.1 AND LGPL-2.1-or-later"
+license_file = "ohminous.txt"
+homepage = "https://github.com/johndekroon/WhyOS-Apps"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/ohminous/source"
+changelog = "First version. It replaces the Bus Pirate app and adds the badge's own header pins."
+
+type = "app"
+category = "hardware"
+tags = ["gpio", "logic-analyzer", "i2c", "uart", "ws2812", "bus-pirate", "power-supply"]
+install_location = "sd"
+
+[launch]
+exec = "ohminous"
+info = "pins, logic, buses, power"
+icon = "chip"
+
+[requires]
+os_api = 1
+memory_kb = 700           # the program with its data, capture buffer and drawing band is 0.62 MB, the stack 32 KB; no heap
+features = ["display", "keyboard"]
+
+[[bundled]]
+name = "uClibc-ng"
+version = "1.0.57"
+license = "LGPL-2.1-or-later"
+source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
+license_file = "uClibc-ng.txt"
+
+[[bundled]]
+name = "JetBrains Mono (font)"
+version = "2.211"
+license = "OFL-1.1"
+source = "https://github.com/JetBrains/JetBrainsMono"
+license_file = "jetbrains-mono.txt"
+
+[[bundled]]
+name = "Space Grotesk (font)"
+version = "2.000"
+license = "OFL-1.1"
+source = "https://github.com/floriankarsten/space-grotesk"
+license_file = "space-grotesk.txt"

@@ -19,6 +19,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "lora_state.h"
@@ -81,15 +82,26 @@ static int wifi_ask(const char *cmd, char *r, int size)
  * as not connected (wpa_state other than COMPLETED, or no wpa_supplicant:
  * Wi-Fi off). When it does not answer in time, which happens on a weak
  * link, the last answer stands, so the icon does not flicker.
+ *
+ * Asked at most every WIFI_BARS_S: SIGNAL_POLL goes through the driver to
+ * the C6 and took ~230 ms, which the menu paid on every key (2026-10-19).
  */
+#define WIFI_BARS_S	5
+
 static int wifi_bars(void)
 {
 	static int last = -1;
+	static time_t asked;
+	struct timespec now;
 	char r[512], *q;
 	int rssi;
 
 	if (access(WIFI_CTRL, F_OK))
 		return last = -1;		/* Wi-Fi off */
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	if (asked && now.tv_sec - asked < WIFI_BARS_S)
+		return last;
+	asked = now.tv_sec;
 	if (wifi_ask("STATUS", r, sizeof(r)) < 0 || !strstr(r, "wpa_state="))
 		return last;		/* no (fitting) answer */
 	if (!strstr(r, "wpa_state=COMPLETED"))

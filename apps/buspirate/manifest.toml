@@ -1,64 +1,7 @@
 # The Bus Pirate 6 screens of the start menu (why2025-linux home.c built
-# with -DBP_APP, sdapps/buspirate), in the menu itself until 2026-10-12.
+# with -DBP_APP), withdrawn on 2026-10-26: OHMinous (apps/ohminous) does
+# what it did, with the same Bus Pirate code, and adds the badge's own pins.
 format = 1
 id = "buspirate"
 name = "Bus Pirate"
-version = "1.1.0"
-build = 2
-summary = "Power supply, logic analyzer, LEDs and console for a Bus Pirate 6"
-description = """
-Control a Bus Pirate 6 on the badge's bottom USB port from the keypad,
-with tiles like the home screen:
-
-- Power supply: on and off, 0.8 to 5.0 V, a current limit, pull-ups; the
-  voltage and current it measures, every second.
-- Logic analyzer: 8 channels at 10 kHz to 50 MHz, a trigger on one pin,
-  saved to /root/capture.bin; scroll and zoom with the arrows.
-- LEDs: WS2812 or APA102 strips or the Bus Pirate's own LEDs, colour,
-  brightness and count.
-- Console: the Bus Pirate's own terminal, in colour, for everything else.
-- Pins and Info: the voltage on every pin, and the output of "i".
-
-Esc on the tiles or the logo key closes it."""
-author = "why2025-linux contributors"
-license = "MIT AND OFL-1.1 AND LGPL-2.1-or-later"
-license_file = "buspirate.txt"
-homepage = "https://buspirate.com"
-source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/buspirate/source"
-changelog = "New key layout after the badge design: ▲ power supply, ✕ logic analyzer, ● console, ♣ pins, ■ menus, ◆ help on every screen."
-
-type = "app"
-category = "hardware"
-tags = ["bus-pirate", "logic-analyzer", "power-supply", "ws2812", "usb"]
-install_location = "sd"
-
-[launch]
-exec = "buspirate"
-info = "Bus Pirate 6 on the bottom port"
-icon = "chip"
-
-[requires]
-os_api = 1
-memory_kb = 1500          # the menu's program and its 1 MB screen buffer (derived)
-features = ["usb-host", "display", "keyboard"]
-
-[[bundled]]
-name = "uClibc-ng"
-version = "1.0.57"
-license = "LGPL-2.1-or-later"
-source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
-license_file = "uClibc-ng.txt"
-
-[[bundled]]
-name = "JetBrains Mono (font)"
-version = "2.211"
-license = "OFL-1.1"
-source = "https://github.com/JetBrains/JetBrainsMono"
-license_file = "jetbrains-mono.txt"
-
-[[bundled]]
-name = "Space Grotesk (font)"
-version = "2.000"
-license = "OFL-1.1"
-source = "https://github.com/floriankarsten/space-grotesk"
-license_file = "space-grotesk.txt"
+withdrawn = "Replaced by OHMinous, which does the same for a Bus Pirate 6 and adds the badge's own header pins."

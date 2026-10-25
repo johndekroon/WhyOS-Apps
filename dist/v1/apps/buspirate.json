@@ -92,5 +92,6 @@
    "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/buspirate-1.0.0-source.tar.gz",
    "version": "1.0.0"
   }
- ]
+ ],
+ "withdrawn": "Replaced by OHMinous, which does the same for a Bus Pirate 6 and adds the badge's own header pins."
 }

@@ -3,7 +3,8 @@
 # VM, with the toolchain of a badge build (Tools/usb/br.sh badge first).
 #
 #   sdapps/build.sh [gnuboy] [netsurf] [nmap] [imgview] [links] [nethack]
-#                   [doom] [sensorpanel] [buspirate] [nano] [calc] [hideous] [barbarious] [pdfview]
+#                   [doom] [sensorpanel] [nano] [calc] [hideous] [barbarious] [pdfview]
+#                   [ohminous] [buspirate: the old app, OHMinous replaced it]
 #                   [micropython]
 #                                                                          default: all
 #
@@ -529,6 +530,20 @@ build_barbarious() {
 	ls -l "$d"
 }
 
+# OHMinous (ohminous/): the workbench that took over the Bus Pirate app;
+# drawn as the menu is, the badge's pins through /dev/gpiochip0.
+build_ohminous() {
+	local d=$DEST/ohminous O=$HERE/../patches/buildroot/overlay-src
+	mkdir -p "$d"
+	flat 32768
+	"$CC" "${CFLAGS[@]}" -Wall -I"$O" "$HERE/ohminous/ohminous.c" "$HERE/ohminous/hw.c" "$HERE/ohminous/bp.c" \
+		"${LDFLAT[@]}" -o "$d/ohminous"
+	zero_page "$d/ohminous.gdb"
+	rm -f "$d/ohminous.gdb"
+	cp "$HERE/ohminous/app.conf" "$d/"
+	ls -l "$d"
+}
+
 # The PDF viewer (pdfview/pdfview.c): MuPDF 1.28.5 renders, cut down to
 # PDF (no HTML, XPS, SVG, JavaScript, ICC profiles, JPEG 2000, CJK or Noto
 # fonts; the base 14 fonts stay), drawn as imgview is. MuPDF always
@@ -626,7 +641,7 @@ build_micropython() {
 	ls -l "$d"
 }
 
-for app in "${@:-gnuboy netsurf nmap imgview links nethack doom sensorpanel buspirate nano calc hideous barbarious pdfview micropython}"; do
+for app in "${@:-gnuboy netsurf nmap imgview links nethack doom sensorpanel nano calc hideous barbarious pdfview ohminous micropython}"; do
 	for a in $app; do
 		case $a in
 		gnuboy) build_gnuboy ;;
@@ -644,6 +659,7 @@ for app in "${@:-gnuboy netsurf nmap imgview links nethack doom sensorpanel busp
 		hideous) build_hideous ;;
 		barbarious) build_barbarious ;;
 		pdfview) build_pdfview ;;
+		ohminous) build_ohminous ;;
 		micropython) build_micropython ;;
 		*) echo "unknown app $a" >&2; exit 2 ;;
 		esac

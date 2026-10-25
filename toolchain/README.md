@@ -11,7 +11,7 @@ commit `2be6d7c`.
 |---|---|
 | `why2025_defconfig` | The Buildroot configuration (`configs/why2025_defconfig` of why2025-linux) |
 | `uclibc/0001-linuxthreads-sigaction-vfork-safe.patch` | The badge's change to uClibc-ng (`patches/buildroot/global-patches/uclibc/`) |
-| `sdapps-build.sh` | The script that built the apps (`sdapps/build.sh`, copied again at commit `932f5ee` on 2026-10-26, with HIDeous, BARbarious and the PDF viewer); each app's `source/` has its own files |
+| `sdapps-build.sh` | The script that built the apps (`sdapps/build.sh`, copied again at commit `0161ded` on 2026-10-26, with HIDeous, BARbarious, the PDF viewer and OHMinous; the Bus Pirate app it replaced builds only by name); each app's `source/` has its own files |
 
 ## Components
 

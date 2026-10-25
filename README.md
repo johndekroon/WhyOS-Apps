@@ -28,7 +28,7 @@ the first store in the image, Write, the text editor ([write/](write/README.md),
 | [docs/roadmap.md](docs/roadmap.md) | Phases, open questions, non-goals |
 | [schema/](schema/) | JSON Schemas for the manifest, the index and the category tree |
 | [categories.json](categories.json) | The category tree |
-| [apps/](apps/) | The apps: gnuboy, NetSurf, Links, nmap, imgview, DOOM, the sensor panel, the Bus Pirate, NetHack, nano, the calculator, HIDeous, BARbarious, the PDF viewer, MicroPython, Flappy, Marble Orbit, Write, Files, and the store itself |
+| [apps/](apps/) | The apps: gnuboy, NetSurf, Links, nmap, imgview, DOOM, the sensor panel, OHMinous (which replaced the Bus Pirate app), NetHack, nano, the calculator, HIDeous, BARbarious, the PDF viewer, MicroPython, Flappy, Marble Orbit, Write, Files, and the store itself |
 | [client/](client/README.md) | The `store` program: CLI and UI, for the badge and the host |
 | [write/](write/README.md) | Write, the text editor: notes in rich text saved as markdown, code with highlighting; a system app in flash like the store (2026-10-25) |
 | [files/](files/README.md) | Files, the file browser the menu's Files tile starts; a system app in flash like the store (2026-10-25, until then part of the menu; not pushed yet) |

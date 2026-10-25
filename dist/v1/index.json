@@ -39,44 +39,9 @@
    "updated": "2026-10-25"
   },
   {
-   "author": "why2025-linux contributors",
-   "category": "hardware",
-   "commands": [],
-   "details_sha256": "82bb5a49cada5daf32287de77f0670d0971e0a9c8dc9d883869acd9ded3931c9",
    "id": "buspirate",
-   "install_location": "sd",
-   "latest": {
-    "build": 2,
-    "package": {
-     "installed_size": 530679,
-     "sha256": "f8688e9c16d6b0f5687d2cc416d3f45e338a10ae8d2ff25153bb1cc02c30b2d6",
-     "size": 235823,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/buspirate-1.1.0.wpk"
-    },
-    "version": "1.1.0"
-   },
-   "menu_icon": "chip",
    "name": "Bus Pirate",
-   "requires": {
-    "features": [
-     "usb-host",
-     "display",
-     "keyboard"
-    ],
-    "memory_kb": 1500,
-    "os_api": 1
-   },
-   "summary": "Power supply, logic analyzer, LEDs and console for a Bus Pirate 6",
-   "tags": [
-    "bus-pirate",
-    "logic-analyzer",
-    "power-supply",
-    "ws2812",
-    "usb"
-   ],
-   "terminal": false,
-   "type": "app",
-   "updated": "2026-10-18"
+   "withdrawn": "Replaced by OHMinous, which does the same for a Bus Pirate 6 and adds the badge's own header pins."
   },
   {
    "author": "WhyOS-Apps contributors",
@@ -633,6 +598,47 @@
    "updated": "2026-10-12"
   },
   {
+   "author": "WhyOS-Apps contributors",
+   "category": "hardware",
+   "commands": [],
+   "details_sha256": "9b18fcff160f545e59f5631a0e4c431015cbea577e8638796986822e91ef30cb",
+   "id": "ohminous",
+   "install_location": "sd",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 520343,
+     "sha256": "cd437a945ba88aa7aa68771e77c0974eb1a92b8bc4c161eeb090b8c5c3052ed4",
+     "size": 213621,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/ohminous-1.0.0.wpk"
+    },
+    "version": "1.0.0"
+   },
+   "menu_icon": "chip",
+   "name": "OHMinous",
+   "requires": {
+    "features": [
+     "display",
+     "keyboard"
+    ],
+    "memory_kb": 700,
+    "os_api": 1
+   },
+   "summary": "Pins, logic analyzer, I2C, UART and LEDs on the badge, or with a Bus Pirate 6.",
+   "tags": [
+    "gpio",
+    "logic-analyzer",
+    "i2c",
+    "uart",
+    "ws2812",
+    "bus-pirate",
+    "power-supply"
+   ],
+   "terminal": false,
+   "type": "app",
+   "updated": "2026-10-25"
+  },
+  {
    "author": "badge port",
    "category": "other",
    "commands": [],
@@ -791,7 +797,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-10-25T23:14:06Z",
- "serial": 31,
+ "generated": "2026-10-25T23:36:49Z",
+ "serial": 32,
  "source": "whyos"
 }
