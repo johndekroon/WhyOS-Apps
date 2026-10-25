@@ -1,0 +1,103 @@
+{
+ "author": "WhyOS-Apps contributors",
+ "bundled": [
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/barbarious/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "jetbrains-mono.txt",
+   "license_url": "licenses/barbarious/jetbrains-mono.txt",
+   "name": "JetBrains Mono (font)",
+   "source": "https://github.com/JetBrains/JetBrainsMono",
+   "version": "2.211"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "space-grotesk.txt",
+   "license_url": "licenses/barbarious/space-grotesk.txt",
+   "name": "Space Grotesk (font)",
+   "source": "https://github.com/floriankarsten/space-grotesk",
+   "version": "2.000"
+  },
+  {
+   "license": "MIT",
+   "license_file": "qrcodegen.txt",
+   "license_url": "licenses/barbarious/qrcodegen.txt",
+   "name": "QR Code generator library (Project Nayuki)",
+   "source": "https://github.com/nayuki/QR-Code-generator",
+   "version": "1.8.0"
+  },
+  {
+   "license": "BSD-3-Clause",
+   "license_file": "zint.txt",
+   "license_url": "licenses/barbarious/zint.txt",
+   "name": "zint's bar and codeword tables",
+   "source": "https://github.com/zint/zint",
+   "version": "master of 2026-10-25"
+  }
+ ],
+ "category": "tools",
+ "cover": "screens/barbarious-cover.qoi",
+ "description": "Keep the codes you show often, such as a Wi-Fi login, a ticket, a\nproduct number or a login for a barcode scanner, and show them on the\nbadge's screen for a scanner or a phone to read. Control characters\nsuch as Tab and Enter can be part of a code.\n\nShowing a code:\n- Choose it in the list and press Enter. The code is as big as the\n  screen allows; the screen goes to full brightness and stays on while\n  the code shows, up to 10 minutes after the last key.\n- Left and Right go to the previous and next code.\n\nQuick code, the list's first row: type a text and see its code at once.\nIt is not saved; Enter keeps it as a code of the list.\n\nMaking a code: the triangle adds one, the cross edits it, and the\nsquare has the other options (show, edit, type, move, delete). A code\nhas a name for the list, a type and a text of up to 1000 characters.\nIn the text:\n- Tab puts in a TAB, Shift+Enter a CR (LF or CR LF in the settings).\n- Ctrl with a letter puts in ^A to ^Z; Ctrl+] is GS.\n- The square puts in any other control character, or GS1's FNC1: type\n  its name to find it.\n- The triangle chooses the type. Next to each type it says what the\n  text needs of it: some take digits only, and Code 39 needs a scanner\n  with Full ASCII on for lower case and control characters.\n\nTypes: QR Code, Data Matrix, Aztec, PDF417, Code 128, Code 39, EAN-13,\nUPC-A, ITF and Codabar.\n\nSettings (cloud key): the type of a new code, QR's error correction,\nthe quiet zone, what Shift+Enter puts in, the text under a barcode and\nfull brightness.\n\nThe codes are stored as plain text on the badge, so do not save\npasswords in them.",
+ "format": 1,
+ "homepage": "https://github.com/johndekroon/WhyOS-Apps",
+ "icon": null,
+ "id": "barbarious",
+ "install_location": "sd",
+ "launch": {
+  "exec": "barbarious",
+  "icon": "barcode",
+  "info": "texts as barcodes and QR codes",
+  "menu": "apps",
+  "rotation": "auto",
+  "terminal": false
+ },
+ "license": "MIT AND BSD-3-Clause AND OFL-1.1 AND LGPL-2.1-or-later",
+ "license_url": "licenses/barbarious/barbarious.txt",
+ "name": "BARbarious",
+ "requires": {
+  "features": [
+   "display",
+   "keyboard"
+  ],
+  "memory_kb": 800,
+  "os_api": 1
+ },
+ "screenshots": [
+  "screens/barbarious-1.qoi",
+  "screens/barbarious-2.qoi",
+  "screens/barbarious-3.qoi",
+  "screens/barbarious-4.qoi",
+  "screens/barbarious-5.qoi"
+ ],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/barbarious/source",
+ "summary": "BARbarious shows your texts as barcodes and QR codes for a scanner to read.",
+ "tags": [
+  "barcode",
+  "qr-code",
+  "scanner",
+  "text"
+ ],
+ "type": "app",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "First version.",
+   "package": {
+    "installed_size": 402047,
+    "sha256": "7738d945d4346013de4943fb8e82a728f2f59800157edcd4293d828c83b48609",
+    "size": 182225,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/barbarious-1.0.0.wpk"
+   },
+   "published": "2026-10-25T21:46:48Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/barbarious-1.0.0-source.tar.gz",
+   "version": "1.0.0"
+  }
+ ]
+}

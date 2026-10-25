@@ -1,6 +1,44 @@
 {
  "apps": [
   {
+   "author": "WhyOS-Apps contributors",
+   "category": "tools",
+   "commands": [],
+   "details_sha256": "7a2c695d0cd51743f6fa5eea8cb2e970ada15398ee7b191d819c70d47c80f7e3",
+   "id": "barbarious",
+   "install_location": "sd",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 402047,
+     "sha256": "7738d945d4346013de4943fb8e82a728f2f59800157edcd4293d828c83b48609",
+     "size": 182225,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/barbarious-1.0.0.wpk"
+    },
+    "version": "1.0.0"
+   },
+   "menu_icon": "barcode",
+   "name": "BARbarious",
+   "requires": {
+    "features": [
+     "display",
+     "keyboard"
+    ],
+    "memory_kb": 800,
+    "os_api": 1
+   },
+   "summary": "BARbarious shows your texts as barcodes and QR codes for a scanner to read.",
+   "tags": [
+    "barcode",
+    "qr-code",
+    "scanner",
+    "text"
+   ],
+   "terminal": false,
+   "type": "app",
+   "updated": "2026-10-25"
+  },
+  {
    "author": "why2025-linux contributors",
    "category": "hardware",
    "commands": [],
@@ -716,7 +754,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-10-25T12:52:52Z",
- "serial": 28,
+ "generated": "2026-10-25T21:46:49Z",
+ "serial": 29,
  "source": "whyos"
 }

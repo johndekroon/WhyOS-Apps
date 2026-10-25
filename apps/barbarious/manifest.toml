@@ -1,0 +1,99 @@
+# BARbarious (why2025-linux sdapps/barbarious), written for the badge.
+format = 1
+id = "barbarious"
+name = "BARbarious"
+version = "1.0.0"
+build = 1
+summary = "BARbarious shows your texts as barcodes and QR codes for a scanner to read."
+description = """
+Keep the codes you show often, such as a Wi-Fi login, a ticket, a
+product number or a login for a barcode scanner, and show them on the
+badge's screen for a scanner or a phone to read. Control characters
+such as Tab and Enter can be part of a code.
+
+Showing a code:
+- Choose it in the list and press Enter. The code is as big as the
+  screen allows; the screen goes to full brightness and stays on while
+  the code shows, up to 10 minutes after the last key.
+- Left and Right go to the previous and next code.
+
+Quick code, the list's first row: type a text and see its code at once.
+It is not saved; Enter keeps it as a code of the list.
+
+Making a code: the triangle adds one, the cross edits it, and the
+square has the other options (show, edit, type, move, delete). A code
+has a name for the list, a type and a text of up to 1000 characters.
+In the text:
+- Tab puts in a TAB, Shift+Enter a CR (LF or CR LF in the settings).
+- Ctrl with a letter puts in ^A to ^Z; Ctrl+] is GS.
+- The square puts in any other control character, or GS1's FNC1: type
+  its name to find it.
+- The triangle chooses the type. Next to each type it says what the
+  text needs of it: some take digits only, and Code 39 needs a scanner
+  with Full ASCII on for lower case and control characters.
+
+Types: QR Code, Data Matrix, Aztec, PDF417, Code 128, Code 39, EAN-13,
+UPC-A, ITF and Codabar.
+
+Settings (cloud key): the type of a new code, QR's error correction,
+the quiet zone, what Shift+Enter puts in, the text under a barcode and
+full brightness.
+
+The codes are stored as plain text on the badge, so do not save
+passwords in them."""
+author = "WhyOS-Apps contributors"
+license = "MIT AND BSD-3-Clause AND OFL-1.1 AND LGPL-2.1-or-later"
+license_file = "barbarious.txt"
+homepage = "https://github.com/johndekroon/WhyOS-Apps"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/barbarious/source"
+changelog = "First version."
+
+type = "app"
+category = "utilities"
+tags = ["barcode", "qr-code", "scanner", "text"]
+install_location = "sd"
+
+[launch]
+exec = "barbarious"
+info = "texts as barcodes and QR codes"
+icon = "barcode"
+
+[requires]
+os_api = 1
+memory_kb = 800           # the program with its data and buffers is 0.74 MB, the stack 32 KB; it draws in bands
+features = ["display", "keyboard"]
+
+[[bundled]]
+name = "uClibc-ng"
+version = "1.0.57"
+license = "LGPL-2.1-or-later"
+source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
+license_file = "uClibc-ng.txt"
+
+[[bundled]]
+name = "JetBrains Mono (font)"
+version = "2.211"
+license = "OFL-1.1"
+source = "https://github.com/JetBrains/JetBrainsMono"
+license_file = "jetbrains-mono.txt"
+
+[[bundled]]
+name = "Space Grotesk (font)"
+version = "2.000"
+license = "OFL-1.1"
+source = "https://github.com/floriankarsten/space-grotesk"
+license_file = "space-grotesk.txt"
+
+[[bundled]]
+name = "QR Code generator library (Project Nayuki)"
+version = "1.8.0"
+license = "MIT"
+source = "https://github.com/nayuki/QR-Code-generator"
+license_file = "qrcodegen.txt"
+
+[[bundled]]
+name = "zint's bar and codeword tables"
+version = "master of 2026-10-25"
+license = "BSD-3-Clause"
+source = "https://github.com/zint/zint"
+license_file = "zint.txt"
