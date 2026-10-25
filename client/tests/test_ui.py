@@ -100,6 +100,20 @@ def test_open_asks_the_menu(env):
         assert f.read() == "tiny"
 
 
+def test_held_keys(env):
+    """A held key (the keypad's auto-repeat, value 2; "held" in the script)
+    repeats Backspace and the arrows, not Enter or Esc (keyrep.h)."""
+    env.store("install", "tiny")
+    # Backspace repeats (tinyx finds nothing); Esc held on the page stays
+    ui(env, ["enter", "type tinyx", "held bs", "down", "enter", "held esc", "enter"])
+    with open(os.path.join(env.tmpdir, "store-open")) as f:
+        assert f.read() == "tiny"
+    os.remove(os.path.join(env.tmpdir, "store-open"))
+    # Enter held on the result opens nothing: the next Enter opens the page
+    ui(env, ["enter", "type tiny", "down", "held enter", "enter"])
+    assert not os.path.exists(os.path.join(env.tmpdir, "store-open"))
+
+
 def test_files_only_app_has_no_open(env):
     """An app with CATEGORY="none" (menu = "none": Picture viewer) starts by
     opening a file; its page has no Open, which would start it without one."""

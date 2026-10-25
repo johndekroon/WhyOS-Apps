@@ -22,7 +22,7 @@ store-host: $(SRCS) $(HDRS) $(DEPS)/lib/libmbedtls.a
 
 ui-host: store-ui-host
 
-store-ui-host: $(wildcard src/*.c) $(HDRS) $(DEPS)/lib/libmbedtls.a $(MENU)/wbdraw.h $(MENU)/home_assets.h
+store-ui-host: $(wildcard src/*.c) $(HDRS) $(DEPS)/lib/libmbedtls.a $(MENU)/wbdraw.h $(MENU)/keyrep.h $(MENU)/home_assets.h
 	$(CC) $(CFLAGS) -Wno-sign-compare -DSTORE_UI -DSTORE_UI_HOST -I$(DEPS)/include -Isrc -I$(MENU) \
 		-o $@ $(wildcard src/*.c) -L$(DEPS)/lib -lmbedtls -lmbedx509 -lmbedcrypto -lz
 

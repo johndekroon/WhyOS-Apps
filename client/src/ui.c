@@ -65,6 +65,7 @@ int ui_main(int argc, char **argv)
 #define W		WB_SCREEN_W
 #define H		WB_SCREEN_H
 #include "wbdraw.h"
+#include "keyrep.h"
 
 #define S_(x)		((x) ? (x) : "")
 #define ARRAY_N(a)	((int)(sizeof(a) / sizeof((a)[0])))
@@ -1091,7 +1092,8 @@ static int code_of(char c)
 	return 0;
 }
 
-/* the next key from the script; -1 at its end; 0 with nothing yet (wait) */
+/* the next key from the script; -1 at its end; 0 with nothing yet (wait).
+ * "held <key>" is a repeat of it (value 2), as a key held down sends. */
 static int next_key(int wait_ms)
 {
 	char line[256];
@@ -1107,7 +1109,14 @@ static int next_key(int wait_ms)
 			{ "f5", KEY_SYM_SETTINGS }, { "f6", KEY_SYM_HELP }, { "tab", KEY_TAB },
 		};
 
+		const char *name = line;
+		int value = 1;
+
 		line[strcspn(line, "\n")] = 0;
+		if (!strncmp(line, "held ", 5)) {
+			name = line + 5;
+			value = 2;
+		}
 		if (!strncmp(line, "shot ", 5)) {
 			present();
 			save_ppm(line + 5);
@@ -1119,7 +1128,7 @@ static int next_key(int wait_ms)
 			return typing[0] ? code_of(typing[typed++]) : 0;
 		}
 		for (int i = 0; i < ARRAY_N(k); i++)
-			if (!strcmp(line, k[i].n))
+			if (!strcmp(name, k[i].n) && key_acts(k[i].c, value))
 				return k[i].c;
 	}
 	return -1;
@@ -1159,7 +1168,9 @@ static int next_key(int wait_ms)
 				shift = e.value != 0;
 				continue;
 			}
-			if (e.value == 1 || e.value == 2)	/* press, repeat */
+			/* a press; a repeat of a key that repeats, the newest
+			 * one when the screen fell behind */
+			if (key_acts(e.code, e.value) && !(e.value == 2 && key_waiting(ev_fd)))
 				return e.code;
 			continue;
 		}
