@@ -3,7 +3,8 @@
 # VM, with the toolchain of a badge build (Tools/usb/br.sh badge first).
 #
 #   sdapps/build.sh [gnuboy] [netsurf] [nmap] [imgview] [links] [nethack]
-#                   [doom] [sensorpanel] [buspirate] [nano] [calc] [micropython]
+#                   [doom] [sensorpanel] [buspirate] [nano] [calc] [hideous] [barbarious]
+#                   [micropython]
 #                                                                          default: all
 #
 # Sources are fetched at pinned versions into ~/sdapps/src; the result is
@@ -500,6 +501,34 @@ build_calc() {
 	ls -l "$d"
 }
 
+# HIDeous (hideous/hideous.c): saved texts typed on a computer through
+# usbd's keyboard, and its mouse; drawn as the calculator is.
+build_hideous() {
+	local d=$DEST/hideous O=$HERE/../patches/buildroot/overlay-src
+	mkdir -p "$d"
+	flat 16384
+	"$CC" "${CFLAGS[@]}" -Wall -I"$O" "$HERE/hideous/hideous.c" "${LDFLAT[@]}" -o "$d/hideous"
+	zero_page "$d/hideous.gdb"
+	rm -f "$d/hideous.gdb"
+	cp "$HERE/hideous/app.conf" "$d/"
+	ls -l "$d"
+}
+
+# BARbarious (barbarious/): texts as barcodes and QR Codes for a scanner,
+# drawn as HIDeous is; its QR Codes come from overlay-src's qrcodegen
+# (NDEBUG: no assert, which needs stdio).
+build_barbarious() {
+	local d=$DEST/barbarious O=$HERE/../patches/buildroot/overlay-src
+	mkdir -p "$d"
+	flat 32768
+	"$CC" "${CFLAGS[@]}" -Wall -DNDEBUG -I"$O" "$HERE/barbarious/barbarious.c" "$HERE/barbarious/symbol.c" \
+		"$O/qrcodegen/qrcodegen.c" "${LDFLAT[@]}" -o "$d/barbarious"
+	zero_page "$d/barbarious.gdb"
+	rm -f "$d/barbarious.gdb"
+	cp "$HERE/barbarious/app.conf" "$d/"
+	ls -l "$d"
+}
+
 # DOOM: fbDOOM (no SDL, the framebuffer and the VT's keys) with our patch
 # (global-patches/fbdoom), the shareware WAD, and doom.c to start it. Was
 # a Buildroot package in the image (buildroot-tree/0002) until 2026-10-12.
@@ -569,7 +598,7 @@ build_micropython() {
 	ls -l "$d"
 }
 
-for app in "${@:-gnuboy netsurf nmap imgview links nethack doom sensorpanel buspirate nano calc micropython}"; do
+for app in "${@:-gnuboy netsurf nmap imgview links nethack doom sensorpanel buspirate nano calc hideous barbarious micropython}"; do
 	for a in $app; do
 		case $a in
 		gnuboy) build_gnuboy ;;
@@ -584,6 +613,8 @@ for app in "${@:-gnuboy netsurf nmap imgview links nethack doom sensorpanel busp
 		buspirate) build_buspirate ;;
 		nano) build_nano ;;
 		calc) build_calc ;;
+		hideous) build_hideous ;;
+		barbarious) build_barbarious ;;
 		micropython) build_micropython ;;
 		*) echo "unknown app $a" >&2; exit 2 ;;
 		esac
