@@ -1,0 +1,6 @@
+tests/unit/bin-*/
+files-ui-host-*
+*.dSYM/
+tests/shots/
+build/
+__pycache__/
