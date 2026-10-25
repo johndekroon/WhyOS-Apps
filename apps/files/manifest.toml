@@ -1,0 +1,67 @@
+# Files, the file browser (files/), in flash so it works without a card,
+# as the store and Write. A system app: the menu's Files tile starts it
+# (menu "none": not in Apps); it updates itself like any app. Until
+# 2026-10-25 it was part of the menu (why2025-linux home.c).
+format = 1
+id = "files"
+name = "Files"
+version = "1.0.0"
+build = 1
+summary = "Browse every file on the badge, the SD card and USB drives"
+description = """
+Files shows every file on the badge as it is: the SD card, USB drives
+and the badge's own storage. Enter opens a folder, or a file with the app
+that opens it (Write for notes, the Picture viewer for photos); the
+square key's options open a file with another app, rename, copy, cut,
+paste, make a folder and delete. The triangle goes to your home folder,
+the cross to Drives, where Enter mounts a drive when it needs to.
+
+It opens from the Files tile on the home screen."""
+author = "WhyOS-Apps"
+license = "MIT AND LGPL-2.1-or-later AND OFL-1.1"
+license_file = "files.txt"
+homepage = "https://github.com/johndekroon/WhyOS-Apps"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/files"
+changelog = "Files is an app of its own now, so it updates from the store. The same screens and keys as before."
+
+type = "system"
+category = "other"
+tags = ["files", "folders", "drives", "sd-card", "usb"]
+permissions = ["files-all"]
+install_location = "flash"
+
+[launch]
+exec = "files"
+args = "%f"
+info = "every file on the badge"
+icon = "disk"
+menu = "none"
+
+[requires]
+os_api = 1
+memory_kb = 1024
+features = ["display", "keyboard"]
+
+[storage.config]
+max_kb = 4
+
+[[bundled]]
+name = "uClibc-ng"
+version = "1.0.57"
+license = "LGPL-2.1-or-later"
+source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
+license_file = "uClibc-ng.txt"
+
+[[bundled]]
+name = "Space Grotesk (rendered into the program)"
+version = "2.000"
+license = "OFL-1.1"
+source = "https://github.com/floriankarsten/space-grotesk"
+license_file = "OFL-SpaceGrotesk.txt"
+
+[[bundled]]
+name = "JetBrains Mono (rendered into the program)"
+version = "2.211"
+license = "OFL-1.1"
+source = "https://github.com/JetBrains/JetBrainsMono"
+license_file = "OFL-JetBrainsMono.txt"

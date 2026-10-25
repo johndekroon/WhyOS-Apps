@@ -1,0 +1,91 @@
+{
+ "author": "WhyOS-Apps",
+ "bundled": [
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/files/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "OFL-SpaceGrotesk.txt",
+   "license_url": "licenses/files/OFL-SpaceGrotesk.txt",
+   "name": "Space Grotesk (rendered into the program)",
+   "source": "https://github.com/floriankarsten/space-grotesk",
+   "version": "2.000"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "OFL-JetBrainsMono.txt",
+   "license_url": "licenses/files/OFL-JetBrainsMono.txt",
+   "name": "JetBrains Mono (rendered into the program)",
+   "source": "https://github.com/JetBrains/JetBrainsMono",
+   "version": "2.211"
+  }
+ ],
+ "category": "other",
+ "cover": null,
+ "description": "Files shows every file on the badge as it is: the SD card, USB drives\nand the badge's own storage. Enter opens a folder, or a file with the app\nthat opens it (Write for notes, the Picture viewer for photos); the\nsquare key's options open a file with another app, rename, copy, cut,\npaste, make a folder and delete. The triangle goes to your home folder,\nthe cross to Drives, where Enter mounts a drive when it needs to.\n\nIt opens from the Files tile on the home screen.",
+ "format": 1,
+ "homepage": "https://github.com/johndekroon/WhyOS-Apps",
+ "icon": null,
+ "id": "files",
+ "install_location": "flash",
+ "launch": {
+  "args": "%f",
+  "exec": "files",
+  "icon": "disk",
+  "info": "every file on the badge",
+  "menu": "none",
+  "rotation": "auto",
+  "terminal": false
+ },
+ "license": "MIT AND LGPL-2.1-or-later AND OFL-1.1",
+ "license_url": "licenses/files/files.txt",
+ "name": "Files",
+ "permissions": [
+  "files-all"
+ ],
+ "requires": {
+  "features": [
+   "display",
+   "keyboard"
+  ],
+  "memory_kb": 1024,
+  "os_api": 1
+ },
+ "screenshots": [],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/files",
+ "storage": {
+  "config": {
+   "max_kb": 4
+  }
+ },
+ "summary": "Browse every file on the badge, the SD card and USB drives",
+ "tags": [
+  "files",
+  "folders",
+  "drives",
+  "sd-card",
+  "usb"
+ ],
+ "type": "system",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "Files is an app of its own now, so it updates from the store. The same screens and keys as before.",
+   "package": {
+    "installed_size": 407002,
+    "sha256": "31b768a309e51d8f980a3a40e0a036510cf9f304e7c50f5596c6a21c561157ee",
+    "size": 183319,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/files-1.0.0.wpk"
+   },
+   "published": "2026-10-25T12:52:49Z",
+   "source_archive": null,
+   "version": "1.0.0"
+  }
+ ]
+}

@@ -45,6 +45,7 @@
 #include "wbdraw.h"
 #include "lora_state.h"
 #include "wbstatus.h"
+#include "keyrep.h"
 
 #ifndef CALC_HOST
 #include <poll.h>
@@ -1198,7 +1199,7 @@ int main(void)
 				K.shift = down;
 			else if (e.code == KEY_FN)
 				K.fn = down;
-			else if (down) {
+			else if (key_acts(e.code, e.value)) {
 				r = key(e.code);
 				if (r == 1)
 					quit = 1;

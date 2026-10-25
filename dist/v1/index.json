@@ -44,18 +44,18 @@
    "author": "WhyOS-Apps contributors",
    "category": "tools",
    "commands": [],
-   "details_sha256": "c025dad277b1060891b22390ee8cecc6e4d3e112d3dc5b171d9d906a88e3114f",
+   "details_sha256": "fe46fb4a05d440fb2a89ea15eeb11b81ddbb930f6183cb56baa70cfbc5dc9655",
    "id": "calc",
    "install_location": "sd",
    "latest": {
-    "build": 2,
+    "build": 3,
     "package": {
-     "installed_size": 399059,
-     "sha256": "0af1b0d3765f8196255544bf4450f34a34bbabfdaeaf1c4c078450c7bd131bc3",
-     "size": 179678,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.1.0.wpk"
+     "installed_size": 399219,
+     "sha256": "1e9296341ce1126a590a175128f327709db3054424624672f618e600e273ddbf",
+     "size": 179810,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.1.1.wpk"
     },
-    "version": "1.1.0"
+    "version": "1.1.1"
    },
    "menu_icon": "count",
    "name": "Calculator",
@@ -76,7 +76,7 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-10-18"
+   "updated": "2026-10-25"
   },
   {
    "author": "id Software (DOOM), maximevince (fbDOOM), badge port",
@@ -117,6 +117,45 @@
    "terminal": false,
    "type": "game",
    "updated": "2026-10-12"
+  },
+  {
+   "author": "WhyOS-Apps",
+   "category": "other",
+   "commands": [],
+   "details_sha256": "3f075e5ab542cb2052a61e94dfe745735edb3af3573054ba94b4ececc4ca98e7",
+   "id": "files",
+   "install_location": "flash",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 407002,
+     "sha256": "31b768a309e51d8f980a3a40e0a036510cf9f304e7c50f5596c6a21c561157ee",
+     "size": 183319,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/files-1.0.0.wpk"
+    },
+    "version": "1.0.0"
+   },
+   "menu_icon": "disk",
+   "name": "Files",
+   "requires": {
+    "features": [
+     "display",
+     "keyboard"
+    ],
+    "memory_kb": 1024,
+    "os_api": 1
+   },
+   "summary": "Browse every file on the badge, the SD card and USB drives",
+   "tags": [
+    "files",
+    "folders",
+    "drives",
+    "sd-card",
+    "usb"
+   ],
+   "terminal": false,
+   "type": "system",
+   "updated": "2026-10-25"
   },
   {
    "author": "WhyOS-Apps contributors",
@@ -238,18 +277,18 @@
    "author": "badge port",
    "category": "other",
    "commands": [],
-   "details_sha256": "507625b7ccd5ed8dc3ae7a401058545ba3fd72c59d6798d0d21d6780f7c8732b",
+   "details_sha256": "31f03c794d9d8778b54d37f7e3d12ec20c3a621d8badc1d6707a10e7bfdee794",
    "id": "imgview",
    "install_location": "sd",
    "latest": {
-    "build": 2,
+    "build": 3,
     "package": {
-     "installed_size": 522481,
-     "sha256": "1a90d1eb3bcc1d360014ec6f75cc87fde35c364710cf5ec87dbb0c02c483f6ad",
-     "size": 266576,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/imgview-1.1.0.wpk"
+     "installed_size": 522705,
+     "sha256": "e72745ae931933844abe93c3a3d7ec1f425ff5f56121f2761afeb956dd824542",
+     "size": 266808,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/imgview-1.1.1.wpk"
     },
-    "version": "1.1.0"
+    "version": "1.1.1"
    },
    "name": "Picture viewer",
    "requires": {
@@ -270,7 +309,7 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-10-18"
+   "updated": "2026-10-25"
   },
   {
    "author": "Twibright Labs (Links), badge port",
@@ -600,18 +639,18 @@
    "commands": [
     "store"
    ],
-   "details_sha256": "33b96ff77ca3534afde51b60a0d143611a8e66e190e9aad22a3101a9b5f22ec0",
+   "details_sha256": "2735192018227b4f6bd68a93b10df297522c5a36bd7a45228142463cdfb3cafc",
    "id": "store",
    "install_location": "flash",
    "latest": {
-    "build": 13,
+    "build": 14,
     "package": {
-     "installed_size": 999524,
-     "sha256": "07b1b6f14b90d1e255efc95b81617255ccb89fb141f8e484c809283eb2973cbe",
-     "size": 520363,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.12.wpk"
+     "installed_size": 999724,
+     "sha256": "2895f3dca9b63880875ad45e4a25cbc777f121e1c1a114baf4d6d200189035d2",
+     "size": 520541,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.13.wpk"
     },
-    "version": "0.2.12"
+    "version": "0.2.13"
    },
    "menu_icon": "store",
    "name": "App store",
@@ -677,7 +716,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-10-25T09:37:18Z",
- "serial": 27,
+ "generated": "2026-10-25T12:52:52Z",
+ "serial": 28,
  "source": "whyos"
 }

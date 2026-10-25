@@ -45,6 +45,7 @@
 #define W		WB_SCREEN_W
 #define H		WB_SCREEN_H
 #include "wbdraw.h"
+#include "keyrep.h"
 
 #ifndef IMGVIEW_HOST
 #include <poll.h>
@@ -661,8 +662,10 @@ int main(int argc, char **argv)
 
 		if (read(ev, &e, sizeof(e)) != sizeof(e))
 			break;
-		if (e.type != 1 || e.value == 0)
+		if (e.type != 1 || !key_acts(e.code, e.value))
 			continue;
+		if (e.value == 2 && key_stale(e.sec, e.usec))
+			continue;	/* fell behind a held arrow: skip what waited */
 		if (help) {		/* only an explanation: Esc or the diamond closes it */
 			if (e.code == KEY_ESC || e.code == KEY_SYM_HELP) {
 				help = 0;

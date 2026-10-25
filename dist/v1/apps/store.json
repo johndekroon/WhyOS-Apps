@@ -98,6 +98,19 @@
  "type": "system",
  "versions": [
   {
+   "build": 14,
+   "changelog": "A held Backspace, arrow or letter repeats; a held Enter or Esc does one step.",
+   "package": {
+    "installed_size": 999724,
+    "sha256": "2895f3dca9b63880875ad45e4a25cbc777f121e1c1a114baf4d6d200189035d2",
+    "size": 520541,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.13.wpk"
+   },
+   "published": "2026-10-25T12:52:52Z",
+   "source_archive": null,
+   "version": "0.2.13"
+  },
+  {
    "build": 13,
    "changelog": "At its first start the store also registers the other apps the system brings in flash (Write).",
    "package": {

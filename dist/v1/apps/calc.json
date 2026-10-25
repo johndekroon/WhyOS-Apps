@@ -68,6 +68,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 3,
+   "changelog": "A held key repeats letters, digits, Backspace and the arrows; a held Esc no longer clears and then closes the calculator.",
+   "package": {
+    "installed_size": 399219,
+    "sha256": "1e9296341ce1126a590a175128f327709db3054424624672f618e600e273ddbf",
+    "size": 179810,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.1.1.wpk"
+   },
+   "published": "2026-10-25T12:52:40Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/calc-1.1.1-source.tar.gz",
+   "version": "1.1.1"
+  },
+  {
    "build": 2,
    "changelog": "Esc clears, and closes when there is nothing to clear. ◆ help, ♣ settings (the angle unit as a pop-up).",
    "package": {

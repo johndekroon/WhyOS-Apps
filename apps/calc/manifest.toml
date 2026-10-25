@@ -2,8 +2,8 @@
 format = 1
 id = "calc"
 name = "Calculator"
-version = "1.1.0"
-build = 2
+version = "1.1.1"
+build = 3
 summary = "Type a sum, get the answer: functions, hex and binary"
 description = """
 Type a sum on the keyboard and press Enter (or =). Earlier sums stay on
@@ -23,7 +23,7 @@ license = "MIT AND OFL-1.1 AND LGPL-2.1-or-later"
 license_file = "calc.txt"
 homepage = "https://github.com/johndekroon/WhyOS-Apps"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/calc/source"
-changelog = "Esc clears, and closes when there is nothing to clear. ◆ help, ♣ settings (the angle unit as a pop-up)."
+changelog = "A held key repeats letters, digits, Backspace and the arrows; a held Esc no longer clears and then closes the calculator."
 
 type = "app"
 category = "utilities"
