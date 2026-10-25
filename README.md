@@ -14,7 +14,7 @@ published in `dist/v1/`. The `store`
 client ([client/](client/README.md)) installs, updates and removes them on
 a badge, from the command line and from its full-screen UI, which opens
 from the menu (Apps > App store, Settings > Storage & devices > My apps). why2025-linux puts
-the first store in the image.
+the first store in the image, and Write, the text editor ([write/](write/README.md), 2026-10-25).
 
 ## Documents
 
@@ -28,8 +28,9 @@ the first store in the image.
 | [docs/roadmap.md](docs/roadmap.md) | Phases, open questions, non-goals |
 | [schema/](schema/) | JSON Schemas for the manifest, the index and the category tree |
 | [categories.json](categories.json) | The category tree |
-| [apps/](apps/) | The apps: gnuboy, NetSurf, Links, nmap, imgview, DOOM, the sensor panel, the Bus Pirate, NetHack, nano, the calculator, HIDeous, MicroPython, Flappy, Marble Orbit, and the store itself |
+| [apps/](apps/) | The apps: gnuboy, NetSurf, Links, nmap, imgview, DOOM, the sensor panel, the Bus Pirate, NetHack, nano, the calculator, HIDeous, MicroPython, Flappy, Marble Orbit, Write, and the store itself |
 | [client/](client/README.md) | The `store` program: CLI and UI, for the badge and the host |
+| [write/](write/README.md) | Write, the text editor: notes in rich text saved as markdown, code with highlighting; a system app in flash like the store (2026-10-25, not pushed yet) |
 | [toolchain/](toolchain/README.md) | How the apps' toolchain is built (part of their corresponding source) |
 | [tools/](tools/) | `validate.py` (check apps against the spec), `publish.py` (pack and write `dist/v1/`), `import-sdapp.py` (package an app built by why2025-linux), `serve.py`/`local-source.sh` (a test source) |
 
