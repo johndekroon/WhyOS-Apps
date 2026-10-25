@@ -638,18 +638,18 @@
    "author": "WhyOS-Apps",
    "category": "other",
    "commands": [],
-   "details_sha256": "268ce3bc4e9e851b6b76e8435fdb7a995ecb4506c7ee7c077790f08d492bf8d3",
+   "details_sha256": "c02c93e140726e1c6b7550f9f593f6ec23c7869cb0242621f23d181c09598d60",
    "id": "write",
    "install_location": "flash",
    "latest": {
-    "build": 1,
+    "build": 2,
     "package": {
-     "installed_size": 568597,
-     "sha256": "9c2bd55416fecfec1aaf3d05a8b5cbd68ad42178f026627b3f0a79c67061c3f6",
-     "size": 249354,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/write-1.0.0.wpk"
+     "installed_size": 571733,
+     "sha256": "8d8fb962dc0bddb798125fc6e610294ea310b91e7e8baac671b56ba348f0d154",
+     "size": 251693,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/write-1.1.0.wpk"
     },
-    "version": "1.0.0"
+    "version": "1.1.0"
    },
    "menu_icon": "text",
    "name": "Write",
@@ -677,7 +677,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-10-25T07:51:39Z",
- "serial": 25,
+ "generated": "2026-10-25T08:16:46Z",
+ "serial": 26,
  "source": "whyos"
 }

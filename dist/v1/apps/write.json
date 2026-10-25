@@ -104,6 +104,19 @@
  "type": "system",
  "versions": [
   {
+   "build": 2,
+   "changelog": "Held keys repeat (Backspace, arrows, letters). A sentence starts with a capital in the rich view (Settings switches it off). In HTML and PHP, typing \"</\" finishes the closing tag.",
+   "package": {
+    "installed_size": 571733,
+    "sha256": "8d8fb962dc0bddb798125fc6e610294ea310b91e7e8baac671b56ba348f0d154",
+    "size": 251693,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/write-1.1.0.wpk"
+   },
+   "published": "2026-10-25T08:16:46Z",
+   "source_archive": null,
+   "version": "1.1.0"
+  },
+  {
    "build": 1,
    "changelog": "First release.",
    "package": {
