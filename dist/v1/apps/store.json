@@ -98,6 +98,19 @@
  "type": "system",
  "versions": [
   {
+   "build": 12,
+   "changelog": "Apps whose start script runs another program (MicroPython, nano, Links, NetSurf, NetHack, DOOM) run again from an f2fs card; the store repairs apps it installed before at the next start.",
+   "package": {
+    "installed_size": 999324,
+    "sha256": "b8568131096e5fa8ee744bd3349fb5e8eacf8588cc0694669a0b9e1d41aa225a",
+    "size": 520245,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.11.wpk"
+   },
+   "published": "2026-10-25T07:51:39Z",
+   "source_archive": null,
+   "version": "0.2.11"
+  },
+  {
    "build": 11,
    "changelog": "Lists scroll to their end, so the rows under the last one you can select show too.",
    "package": {
