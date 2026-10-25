@@ -41,7 +41,7 @@ version is unpacked next to the running one and moved into place; on NOMMU
 the running program is in RAM, so the new one takes over on the next
 start. A copy of the first version comes with the OS image (in `/data`'s
 initial contents, why2025-linux `stage-apps.py`, pinned by commit and
-SHA-256; Write, the text editor, comes the same way) with its `.package/`
+SHA-256; Write, the text editor, and Files, the file browser, come the same way) with its `.package/`
 but no registry entry; `store maintain` at the
 first boot registers them (adopt; every app in `/data/apps` with
 `.package/` and no entry, since 0.2.12; 0.2.11 and older took in only
@@ -137,7 +137,7 @@ Changes in why2025-linux, outside this repository (all done on its
 | `$HOME/.whyos/bin` on `PATH` | `/etc/profile.d/whyos-apps.sh` in the rootfs overlay (login and interactive shells); `DEFAULT_PATH` in `dropbear-localoptions.h`, path written out (commands run directly over SSH) | Commands of command-line apps in every shell (package.md §2.3.1) |
 | `/etc/whyos-release` | rootfs overlay | OS version and API level (device.md §6.3) |
 | `store maintain` after the card is mounted | `S15sdcard` at boot (with `HOME=/root`), and the menu's Settings > Storage & devices > Disks when it mounts the card. There is no automount when a card is inserted while the badge runs | Finish interrupted work, pending cleanups |
-| The first store and Write in `/data` | `post-build.sh` runs `stage-apps.py` | A fresh badge has a store and an editor |
+| The first store, Write and Files in `/data` | `post-build.sh` runs `stage-apps.py` | A fresh badge has a store, an editor and a file browser |
 | "Open" from the store | `home.c` reads `/tmp/store-open` when the store ends | The store cannot start apps itself: apprun and the menu do that |
 
 None of these break existing hand-installed apps.
