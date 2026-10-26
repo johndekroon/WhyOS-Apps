@@ -98,6 +98,19 @@
  "type": "system",
  "versions": [
   {
+   "build": 15,
+   "changelog": "The store, Files and Write come with WhyOS and can no longer be removed.",
+   "package": {
+    "installed_size": 1007524,
+    "sha256": "5d15a325930879e921a4e3bbe14bfa0afca6fa1d8a1a4e53f461ec9502acccc2",
+    "size": 523248,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.14.wpk"
+   },
+   "published": "2026-10-26T07:33:25Z",
+   "source_archive": null,
+   "version": "0.2.14"
+  },
+  {
    "build": 14,
    "changelog": "A held Backspace, arrow or letter repeats; a held Enter or Esc does one step.",
    "package": {
