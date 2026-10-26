@@ -68,6 +68,19 @@
  "upstream_version": "git c367bb4",
  "versions": [
   {
+   "build": 4,
+   "changelog": "Smoother: more pictures a second while the screen scrolls, and less memory while playing.",
+   "package": {
+    "installed_size": 426812,
+    "sha256": "3bc2c97b4c5c08317f15c2a7f8a0c305a61d0a58f58b483a7982a237f9a2a0d0",
+    "size": 209790,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/gnuboy-1.2.1.wpk"
+   },
+   "published": "2026-10-26T10:40:52Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/gnuboy-1.2.1-source.tar.gz",
+   "version": "1.2.1"
+  },
+  {
    "build": 3,
    "changelog": "Runs at full speed again. New keys: ■/Enter A, ▲/Backspace B, ✕/X Start, ●/O Select; save and load through Esc.",
    "package": {

@@ -4,10 +4,12 @@
  * (built into sys/badge/ by sdapps/build.sh; see sdapps/README.md).
  *
  * Video: gnuboy draws the 160x144 screen in RGB565 into a frame of its
- * own (delegate_scaling, as its SDL2 backend does); vid_end scales it up
- * (4x: 640x576) into a full-width band of the panel and writes the lines
- * that changed since the last frame shown with one pwrite. The
- * framebuffer cannot be mmapped on this NOMMU kernel.
+ * own (delegate_scaling, as its SDL2 backend does); vid_end writes each
+ * line that changed since the last frame shown, scaled up (4x: 640x576
+ * in all) into the middle of the panel, with one pwrite of its panel
+ * lines from a buffer that stays in the cache: PSRAM gives ~47 MB/s, so
+ * a band of the whole picture, filled and then copied by the kernel, cost
+ * ~35 ms a frame. The framebuffer cannot be mmapped on this NOMMU kernel.
  *
  * Speed: every write costs the kernel a quarter turn of those lines into
  * the panel's scan-out buffer (drm/esp32p4-dsi, ~70 ms for all 720x720),
@@ -53,8 +55,8 @@ static unsigned line;			/* bytes per panel line */
 static unsigned short frame[160 * 144];
 static unsigned short shown[160 * 144];	/* the frame last written */
 static int shown_ok;
-static unsigned short *band;		/* 144 * scale panel lines */
-static off_t band_off;
+static unsigned short *rows;		/* one Game Boy line: scale panel lines */
+static off_t band_off;			/* where the picture's panel lines start */
 static long long deadline;		/* when this frame should be done, in us */
 static int undrawn;			/* frames since the last one drawn */
 
@@ -94,9 +96,9 @@ void vid_init(void)
 		scale = 1;
 	while (scale > 1 && (160u * scale > w || 144u * scale > h))
 		scale--;
-	band = calloc(1, (size_t)line * 144 * scale);
-	if (!band)
-		die("gnuboy: no memory for the panel band\n");
+	rows = calloc(1, (size_t)line * scale);	/* black either side, for good */
+	if (!rows)
+		die("gnuboy: no memory for a line\n");
 	band_off = (off_t)((h - 144 * scale) / 2) * line;
 	{
 		/* black around it, once */
@@ -161,38 +163,31 @@ void vid_begin(void)
 static int draw(void)
 {
 	unsigned x0 = (line / 2 - 160 * scale) / 2;	/* in pixels */
-	unsigned rows = scale * (line / 2);		/* band pixels per Game Boy line */
-	int y0 = 0, y1 = 143;
+	int n = 0;
 
-	if (shown_ok) {
-		while (y0 < 144 && !memcmp(frame + y0 * 160, shown + y0 * 160, 320))
-			y0++;
-		if (y0 == 144)
-			return 0;
-		while (!memcmp(frame + y1 * 160, shown + y1 * 160, 320))
-			y1--;
-	}
-	for (int y = y0; y <= y1; y++) {
+	for (int y = 0; y < 144; y++) {
 		const unsigned short *src = frame + y * 160;
-		unsigned short *row = band + y * rows, *d = row + x0;
+		unsigned short *d = rows + x0;
 
+		if (shown_ok && !memcmp(src, shown + y * 160, 320))
+			continue;
 		for (int x = 0; x < 160; x++)
 			for (int k = 0; k < scale; k++)
 				*d++ = src[x];
 		for (int k = 1; k < scale; k++)
-			memcpy(row + k * (line / 2) + x0, row + x0, 160u * scale * 2);
+			memcpy(rows + k * (line / 2) + x0, rows + x0, 160u * scale * 2);
+		pwrite(fbfd, rows, (size_t)line * scale, band_off + (off_t)line * scale * y);
+		memcpy(shown + y * 160, src, 320);
+		n++;
 	}
-	pwrite(fbfd, band + y0 * rows, (size_t)line * scale * (y1 - y0 + 1),
-	       band_off + (off_t)line * scale * y0);
-	memcpy(shown + y0 * 160, frame + y0 * 160, 320u * (y1 - y0 + 1));
 	shown_ok = 1;
-	return y1 - y0 + 1;
+	return n;
 }
 
 void vid_end(void)
 {
 	static long long t_stats;
-	static int n_frames, n_drawn, n_lines, n_late;
+	static int n_frames, n_drawn, n_lines, n_late, n_behind, max_behind;
 	long long now = now_us();
 
 	if (!fb.enabled || fbfd < 0)
@@ -204,6 +199,11 @@ void vid_end(void)
 	}
 	deadline += FRAME_US;
 	n_frames++;
+	if (now >= deadline) {
+		n_behind++;
+		if (now - deadline > max_behind)
+			max_behind = now - deadline;
+	}
 	if (++undrawn > skip && (now < deadline || undrawn > MAX_UNDRAWN)) {
 		int n = draw();
 
@@ -213,11 +213,12 @@ void vid_end(void)
 	}
 	if (stats && now - t_stats >= 5000000) {
 		if (t_stats)
-			fprintf(stderr, "gnuboy: %.1f frames/s, %.1f drawn/s, %d lines a drawing, %d times 0.1 s behind\n",
+			fprintf(stderr, "gnuboy: %.1f frames/s, %.1f drawn/s, %d lines a drawing, "
+				"%d frames late (at most %d ms), %d times 0.1 s behind\n",
 				n_frames * 1e6 / (now - t_stats), n_drawn * 1e6 / (now - t_stats),
-				n_drawn ? n_lines / n_drawn : 0, n_late);
+				n_drawn ? n_lines / n_drawn : 0, n_behind, max_behind / 1000, n_late);
 		t_stats = now;
-		n_frames = n_drawn = n_lines = n_late = 0;
+		n_frames = n_drawn = n_lines = n_late = n_behind = max_behind = 0;
 	}
 	now = now_us();
 	if (now < deadline) {
@@ -271,7 +272,10 @@ struct kev {				/* 32-bit kernel input_event */
 /*
  * Esc: the pause screen; the diamond key: the key overview. The game
  * stands still meanwhile (we do not return to its loop). Keys held when it
- * opened are let go, or the game would see them held on.
+ * opened are let go, or the game would see them held on. The pause draws
+ * over the picture and puts it back: read from the panel into a buffer of
+ * its own, only while it is open (without memory for it, the next frame
+ * is drawn whole instead).
  */
 static void pause_game(int help)
 {
@@ -288,8 +292,10 @@ static void pause_game(int help)
 		{ "Logo", "Back to the menu" },
 	};
 	static const char *const items[] = { "Resume", "Save state", "Load state", "Keys", "Quit" };
+	size_t size = (size_t)line * 144 * scale;
+	unsigned short *game = malloc(size);
 	struct pause_screen s = {
-		.fbfd = fbfd, .evfd = evfd, .line = line, .game = band, .game_lines = 144 * scale,
+		.fbfd = fbfd, .evfd = evfd, .line = line, .game = game, .game_lines = 144 * scale,
 		.band_off = band_off, .app = "GAME BOY", .name = "Game Boy",
 		.about = "The game is paused. On the badge its buttons are these keys.",
 		.keys = keys, .n_keys = sizeof(keys) / sizeof(keys[0]),
@@ -297,6 +303,11 @@ static void pause_game(int help)
 	};
 	char save[] = "savestate", load[] = "loadstate", quit[] = "quit";	/* rc_command edits */
 	int flags = fcntl(evfd, F_GETFL);
+
+	if (game && pread(fbfd, game, size, band_off) != (ssize_t)size) {
+		free(game);
+		s.game = game = 0;
+	}
 
 	for (unsigned i = 0; i < sizeof(held) / sizeof(held[0]); i++) {
 		event_t ev = { .type = EV_RELEASE, .code = held[i] };
@@ -316,6 +327,9 @@ static void pause_game(int help)
 		break;
 	}
 	fcntl(evfd, F_SETFL, flags);
+	if (!game)
+		shown_ok = 0;
+	free(game);
 }
 
 void ev_poll(int wait)

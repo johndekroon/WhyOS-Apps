@@ -203,18 +203,18 @@
    "author": "gnuboy authors (rofl0r/gnuboy), badge port",
    "category": "emulators",
    "commands": [],
-   "details_sha256": "7f68f66cb7dea5c4083a5fa46797218ed6785b833cc87697b94726bdf01fa296",
+   "details_sha256": "ba7179de21e5e9010ff2bf26b6aadc028b417813f03578635437dbc08b403c74",
    "id": "gnuboy",
    "install_location": "sd",
    "latest": {
-    "build": 3,
+    "build": 4,
     "package": {
-     "installed_size": 426764,
-     "sha256": "c14e2d8935970e20cab1c9e0fc7f7877f9cec4e030888a426d3ef3cdac68586a",
-     "size": 209792,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/gnuboy-1.2.0.wpk"
+     "installed_size": 426812,
+     "sha256": "3bc2c97b4c5c08317f15c2a7f8a0c305a61d0a58f58b483a7982a237f9a2a0d0",
+     "size": 209790,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/gnuboy-1.2.1.wpk"
     },
-    "version": "1.2.0"
+    "version": "1.2.1"
    },
    "menu_icon": "gameboy",
    "name": "Game Boy",
@@ -797,7 +797,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-10-26T09:22:27Z",
- "serial": 34,
+ "generated": "2026-10-26T10:40:56Z",
+ "serial": 35,
  "source": "whyos"
 }
