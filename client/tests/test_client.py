@@ -566,6 +566,26 @@ def test_maintain_adopts_the_store_an_image_brought(env):
     assert "installed" in env.store("list").stdout
 
 
+def test_system_apps_are_not_removed(env):
+    # the store, Files and Write come with the image; removed, the menu's
+    # tiles break and only a new image brings them back
+    write_app(env.repo, "store", STORE_APP, {"store": "#!/bin/sh\necho store\n", "LICENSES/store.txt": "MIT\n"})
+    env.publish()
+    env.store("--yes", "install", "store")
+    s = os.path.join(env.flash, "store")
+    r = env.store("--yes", "remove", "store", check=False)
+    assert r.returncode == 1 and "comes with WhyOS" in r.stderr, r.stderr
+    assert os.path.isfile(os.path.join(s, "store")) and os.path.isfile(env.reg("store"))
+    os.unlink(env.reg("store"))          # as an image leaves it, before maintain
+    r = env.store("delete", "store", check=False)
+    assert r.returncode == 1 and "comes with WhyOS" in r.stderr, r.stderr
+    assert os.path.isfile(os.path.join(s, "store"))
+    env.store("adopt", "store")
+    env.store("install", "tiny")                        # other apps in flash still go
+    env.store("--yes", "remove", "tiny")
+    assert not os.path.exists(os.path.join(env.flash, "tiny"))
+
+
 WRAPPED = '''format = 1
 id = "wrapped"
 name = "Wrapped"

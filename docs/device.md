@@ -195,6 +195,11 @@ offered updates.
 
 ### 5.4 Remove
 
+A `system` package (the store, Files, Write) is not removed: the OS image
+brings it, the menu starts it, and without the store nothing brings it
+back. `store remove` and `store delete` refuse it (exit status 1), and its
+page shows "Comes with WhyOS" where Remove would be. Repair still works.
+
 Remove deletes everything the app owns, in this order:
 
 1. `hooks.pre_remove`, if the files are there.

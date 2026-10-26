@@ -317,6 +317,7 @@ static struct {			/* the app on the app page */
 	const struct wb_icon *ic;
 	int terminal;
 	int files_only;		/* CATEGORY="none": started by opening a file */
+	int system;		/* type "system": comes with WhyOS, not removed */
 } AP;
 
 /* the overlays: a question, a download, a line while something runs */
@@ -1814,6 +1815,7 @@ static void app_page_load(const char *id)
 		snprintf(AP.meta, sizeof(AP.meta), "%s", AP.r.version);
 	}
 	AP.ic = app_icon(AP.a);
+	AP.system = is_system_app(id);
 	if (AP.st != ST_ELSEWHERE && AP.st != ST_MISSING) {
 		char c[16];
 
@@ -1863,6 +1865,20 @@ static struct row *add_open(void)
 	return AP.files_only ? 0 : add(R_ACTION, "Open", &r_store, A_OPEN);
 }
 
+/* Remove or Delete; an app WhyOS brings (the store, Files, Write) stays:
+ * the menu starts it, and only a new image would bring it back */
+static void add_remove(const char *label, enum act act)
+{
+	struct row *r;
+
+	if (!AP.system) {
+		add(R_ACTION, label, &r_trash, act);
+		return;
+	}
+	r = add(R_INFO, "Comes with WhyOS", &r_info, A_NONE);
+	snprintf(r->value, sizeof(r->value), "Not removable");
+}
+
 static void build_app(void)
 {
 	struct app *a = AP.a;
@@ -1896,20 +1912,24 @@ static void build_app(void)
 			if ((r = add_open()))
 				snprintf(r->value, sizeof(r->value), "%s", AP.r.version);
 		}
-		add(R_ACTION, "Remove", &r_trash, A_REMOVE);
+		add_remove("Remove", A_REMOVE);
 		break;
 	case ST_MISSING:
 		add(R_ACTION, "Reinstall on this card", &r_refresh, A_REINSTALL);
+		if (AP.system) {
+			add_remove(0, A_REMOVE);
+			break;
+		}
 		r = add(R_ACTION, "Forget it", &r_trash, A_REMOVE);
 		snprintf(r->value, sizeof(r->value), "Its data stays where it is");
 		break;
 	case ST_DAMAGED:
 		add(R_ACTION, "Repair", &r_refresh, A_REPAIR);
-		add(R_ACTION, "Remove", &r_trash, A_REMOVE);
+		add_remove("Remove", A_REMOVE);
 		break;
 	case ST_UNREGISTERED:
 		add(R_ACTION, "Adopt", &r_check, A_ADOPT);
-		add(R_ACTION, "Delete", &r_trash, A_DELETE);
+		add_remove("Delete", A_DELETE);
 		break;
 	case ST_LEGACY:
 		r = add(R_INFO, "Installed by hand", &r_check, A_NONE);
@@ -1919,14 +1939,14 @@ static void build_app(void)
 			r = add(R_ACTION, "Replace with the store version", &r_refresh, A_REPLACE);
 			snprintf(r->value, sizeof(r->value), "Gets updates");
 		}
-		add(R_ACTION, "Delete", &r_trash, A_DELETE);
+		add_remove("Delete", A_DELETE);
 		break;
 	case ST_WITHDRAWN:
 		r = add(R_INFO, "Withdrawn from the store", &r_info, A_NONE);
 		snprintf(r->value, sizeof(r->value), "%s", S_(a ? a->withdrawn : 0));
 		r->value_c = WB_COLOR_WARN;
 		add_open();
-		add(R_ACTION, "Remove", &r_trash, A_REMOVE);
+		add_remove("Remove", A_REMOVE);
 		break;
 	}
 	if (!AP.have_j)

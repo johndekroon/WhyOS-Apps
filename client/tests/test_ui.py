@@ -169,3 +169,15 @@ def test_no_network(env):
     env.stop()
     shots = ui(env, ["shot offline"])
     assert shots
+
+
+def test_system_app_has_no_remove(env):
+    """The store, Files and Write come with WhyOS: their page says so where
+    Remove would be, a row that takes no focus (Enter opens Description)."""
+    tc.write_app(env.repo, "store", tc.STORE_APP, {"store": "#!/bin/sh\necho store\n",
+                                                   "LICENSES/store.txt": "MIT\n"})
+    env.publish()
+    env.store("--yes", "install", "store")
+    ui(env, ["enter", "shot sys-app", "enter", "shot sys-description", "esc", "esc", "esc"], "--my-apps")
+    assert os.path.isfile(env.reg("store"))
+    assert os.path.isfile(os.path.join(env.flash, "store", "store"))

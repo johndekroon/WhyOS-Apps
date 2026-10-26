@@ -217,6 +217,7 @@ int store_repair(const char *id, const struct opts *o);
 int store_adopt(const char *id);
 int store_maintain(void);
 int store_delete_legacy(const char *id);
+int is_system_app(const char *id);
 int write_wrappers(const struct json *m, const char *app_dir_path);
 int remove_wrappers(const char *id);
 int legacy_list(char ids[][33], int max, int with_package);

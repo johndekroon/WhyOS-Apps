@@ -816,6 +816,31 @@ static void tmp_files(const char *id, const struct json *m)
 	rm_rf(p);
 }
 
+/* type "system" (the store, Files, Write): the image brings them and the
+ * menu starts them; removed, only a new image brings them back */
+int is_system_app(const char *id)
+{
+	struct app *a = index_find(id, 0);
+	int sys = a && a->type && !strcmp(a->type, "system");
+
+	for (int loc = 0; loc < 2 && !sys; loc++) {
+		char dir[256], *text;
+		struct json j;
+		int t;
+
+		if (!loc && !P.sd_present)
+			continue;
+		app_dir(dir, sizeof(dir), id, loc ? "flash" : "sd");
+		if (read_installed(dir, &text, &j))
+			continue;
+		t = json_get(&j, 0, "type");
+		sys = t >= 0 && json_eq(&j, t, "system");
+		json_free(&j);
+		free(text);
+	}
+	return sys;
+}
+
 int store_remove(const char *id, const struct opts *o)
 {
 	struct reg r;
@@ -823,6 +848,10 @@ int store_remove(const char *id, const struct opts *o)
 	struct json m;
 	int have_m = 0, there;
 
+	if (is_system_app(id)) {
+		warn("%s comes with WhyOS and stays: store repair %s fixes it", id, id);
+		return 1;
+	}
 	if (reg_read(id, &r)) {
 		enum state s = app_state(id, 0, 0);
 
@@ -908,6 +937,10 @@ int store_delete_legacy(const char *id)
 
 	if (s != ST_LEGACY && s != ST_UNREGISTERED) {
 		warn("%s is not an app the store left alone: use store remove %s", id, id);
+		return 1;
+	}
+	if (is_system_app(id)) {
+		warn("%s comes with WhyOS and stays: store adopt %s takes it in", id, id);
 		return 1;
 	}
 	for (int loc = 0; loc < 2; loc++) {

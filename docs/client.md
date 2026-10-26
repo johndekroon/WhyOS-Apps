@@ -106,7 +106,8 @@ As built (2026-10-12, `client/src/ui.c`):
   lists. Featured comes from `featured` in the index (none yet).
 - Questions the install asks (replacing a hand-installed app, a big app
   in flash, a downgrade) come up as dialogs with Cancel focused. Remove
-  and delete ask first.
+  and delete ask first. A `system` app (the store, Files, Write) has no
+  Remove: "Comes with WhyOS" in its place (2026-10-26).
 - Esc cancels a download. The unpack after it is not cancelled (it is
   short, and the journal covers an interruption). The partial download
   stays in `badge/.store/download/` for resuming, until "Clear cache".
