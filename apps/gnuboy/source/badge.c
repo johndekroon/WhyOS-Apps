@@ -5,11 +5,19 @@
  *
  * Video: gnuboy draws the 160x144 screen in RGB565 into a frame of its
  * own (delegate_scaling, as its SDL2 backend does); vid_end scales it up
- * (4x: 640x576) into a full-width band of the panel and writes that with
- * one pwrite. The framebuffer cannot be mmapped on this NOMMU kernel.
- * Writing ~0.8 MB 60 times a second is more than the badge does, so only
- * every (panelskip + 1)th frame is written; the emulation itself runs at
- * full speed.
+ * (4x: 640x576) into a full-width band of the panel and writes the lines
+ * that changed since the last frame shown with one pwrite. The
+ * framebuffer cannot be mmapped on this NOMMU kernel.
+ *
+ * Speed: every write costs the kernel a quarter turn of those lines into
+ * the panel's scan-out buffer (drm/esp32p4-dsi, ~70 ms for all 720x720),
+ * in a worker that shares the one CPU with the game. gnuboy's own timing
+ * sleeps for what is left of a frame and lets the game slow down when
+ * nothing is left; here vid_end keeps the time instead (gnuboy's
+ * framelen is 0): a deadline per Game Boy frame, a frame not drawn when
+ * the game is behind it (at most MAX_UNDRAWN in a row), and a sleep up to
+ * the deadline, which also makes up for usleep's ticks (HZ=250).
+ * panelskip frames are left out after each one drawn in any case.
  *
  * Keys: evdev events from the keypad, as gnuboy key codes; what they do is
  * bound in badge.rc. The keypad is not grabbed: the menu's runner
@@ -19,8 +27,10 @@
  */
 #include <fcntl.h>
 #include <poll.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <linux/fb.h>
 #include <sys/ioctl.h>
@@ -32,20 +42,36 @@
 #include "sys.h"
 #include "pause.h"
 
+#define FRAME_US	16743		/* a Game Boy frame: 59.7 per second */
+#define MAX_UNDRAWN	8		/* frames not drawn in a row, at most */
+
 struct fb fb;
 
 static int fbfd = -1, evfd = -1;
-static int scale = 4, skip = 1, frames;
+static int scale = 4, skip = 1, stats;
 static unsigned line;			/* bytes per panel line */
 static unsigned short frame[160 * 144];
+static unsigned short shown[160 * 144];	/* the frame last written */
+static int shown_ok;
 static unsigned short *band;		/* 144 * scale panel lines */
 static off_t band_off;
+static long long deadline;		/* when this frame should be done, in us */
+static int undrawn;			/* frames since the last one drawn */
 
 rcvar_t vid_exports[] = {
 	RCV_INT("panelscale", &scale, "scale on the panel, 1 to 4"),
 	RCV_INT("panelskip", &skip, "frames not drawn after each one that is"),
+	RCV_INT("panelstats", &stats, "every 5 s to stderr: frames, drawn, lines"),
 	RCV_END
 };
+
+static long long now_us(void)
+{
+	struct timespec t;
+
+	clock_gettime(CLOCK_MONOTONIC, &t);
+	return t.tv_sec * 1000000LL + t.tv_nsec / 1000;
+}
 
 void vid_preinit(void)
 {
@@ -97,6 +123,11 @@ void vid_init(void)
 	fb.enabled = 1;
 	fb.dirty = 0;
 	fb.delegate_scaling = 1;
+	{
+		char zero[] = "0", *v = zero;
+
+		rc_setvar("framelen", 1, &v);	/* vid_end keeps the time */
+	}
 
 	evfd = open("/dev/input/event0", O_RDONLY | O_NONBLOCK | O_CLOEXEC);
 }
@@ -126,25 +157,74 @@ void vid_begin(void)
 	fb.ptr = (byte *)frame;
 }
 
-void vid_end(void)
+/* the lines that changed since the last frame shown; 0 if none did */
+static int draw(void)
 {
 	unsigned x0 = (line / 2 - 160 * scale) / 2;	/* in pixels */
-	unsigned short *row = band;
+	unsigned rows = scale * (line / 2);		/* band pixels per Game Boy line */
+	int y0 = 0, y1 = 143;
 
-	if (!fb.enabled || fbfd < 0 || frames++ % (skip + 1))
-		return;
-	for (int y = 0; y < 144; y++) {
+	if (shown_ok) {
+		while (y0 < 144 && !memcmp(frame + y0 * 160, shown + y0 * 160, 320))
+			y0++;
+		if (y0 == 144)
+			return 0;
+		while (!memcmp(frame + y1 * 160, shown + y1 * 160, 320))
+			y1--;
+	}
+	for (int y = y0; y <= y1; y++) {
 		const unsigned short *src = frame + y * 160;
-		unsigned short *d = row + x0;
+		unsigned short *row = band + y * rows, *d = row + x0;
 
 		for (int x = 0; x < 160; x++)
 			for (int k = 0; k < scale; k++)
 				*d++ = src[x];
 		for (int k = 1; k < scale; k++)
 			memcpy(row + k * (line / 2) + x0, row + x0, 160u * scale * 2);
-		row += scale * (line / 2);
 	}
-	pwrite(fbfd, band, (size_t)line * 144 * scale, band_off);
+	pwrite(fbfd, band + y0 * rows, (size_t)line * scale * (y1 - y0 + 1),
+	       band_off + (off_t)line * scale * y0);
+	memcpy(shown + y0 * 160, frame + y0 * 160, 320u * (y1 - y0 + 1));
+	shown_ok = 1;
+	return y1 - y0 + 1;
+}
+
+void vid_end(void)
+{
+	static long long t_stats;
+	static int n_frames, n_drawn, n_lines, n_late;
+	long long now = now_us();
+
+	if (!fb.enabled || fbfd < 0)
+		return;
+	if (!deadline || now > deadline + 100000) {
+		/* the start, after the pause, or the game itself too slow */
+		n_late += deadline != 0;
+		deadline = now;
+	}
+	deadline += FRAME_US;
+	n_frames++;
+	if (++undrawn > skip && (now < deadline || undrawn > MAX_UNDRAWN)) {
+		int n = draw();
+
+		undrawn = 0;
+		n_drawn += n > 0;
+		n_lines += n;
+	}
+	if (stats && now - t_stats >= 5000000) {
+		if (t_stats)
+			fprintf(stderr, "gnuboy: %.1f frames/s, %.1f drawn/s, %d lines a drawing, %d times 0.1 s behind\n",
+				n_frames * 1e6 / (now - t_stats), n_drawn * 1e6 / (now - t_stats),
+				n_drawn ? n_lines / n_drawn : 0, n_late);
+		t_stats = now;
+		n_frames = n_drawn = n_lines = n_late = 0;
+	}
+	now = now_us();
+	if (now < deadline) {
+		struct timespec t = { deadline / 1000000, deadline % 1000000 * 1000 };
+
+		clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &t, 0);
+	}
 }
 
 /* evdev code -> gnuboy key code; 0 for keys it does not use. */
@@ -195,16 +275,14 @@ struct kev {				/* 32-bit kernel input_event */
  */
 static void pause_game(int help)
 {
-	static const int held[] = { K_UP, K_DOWN, K_LEFT, K_RIGHT, K_F3, K_F4, 'x', 'z',
-				    K_ENTER, K_SPACE, K_BS };
+	static const int held[] = { K_UP, K_DOWN, K_LEFT, K_RIGHT, K_F1, K_F2, K_F3, K_F4,
+				    K_ENTER, K_BS, 'x', 'o' };
 	static const struct pause_key keys[] = {
 		{ "\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "The D-pad" },
-		{ "#4", "A (X does too)" },
-		{ "#3", "B (Z does too)" },
-		{ "Enter", "Start" },
-		{ "Space", "Select (Backspace does too)" },
-		{ "#1", "Save the game's state" },
-		{ "#2", "Load the saved state" },
+		{ "#1", "A (Enter does too)" },
+		{ "#2", "B (Backspace does too)" },
+		{ "#3", "Start (X does too)" },
+		{ "#4", "Select (O does too)" },
 		{ "#6", "These keys" },
 		{ "Esc", "Pause: resume, save, load, quit" },
 		{ "Logo", "Back to the menu" },

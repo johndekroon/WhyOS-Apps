@@ -12,7 +12,7 @@
  ],
  "category": "emulators",
  "cover": null,
- "description": "Plays Game Boy and Game Boy Color games, scaled 4x to 640x576 in the\nmiddle of the panel. The emulation runs at full speed and the screen is\ndrawn at 30 frames a second. There is no sound.\n\nPut your .gb and .gbc files in the roms folder of this app: on the SD card\nin badge/appdata/gnuboy/roms. Battery saves go to roms/saves.\n\nKeys: arrows are the D-pad, circle or X is A, cross or Z is B, Enter is\nStart, Space or Backspace is Select. Square saves a state, triangle loads\nit, Esc quits.",
+ "description": "Plays Game Boy and Game Boy Color games, scaled 4x to 640x576 in the\nmiddle of the panel. The emulation runs at full speed; the screen is drawn\nup to 30 times a second, less often while the whole screen scrolls. There\nis no sound.\n\nPut your .gb and .gbc files in the roms folder of this app: on the SD card\nin badge/appdata/gnuboy/roms. Battery saves go to roms/saves.\n\nKeys: arrows are the D-pad, square or Enter is A, triangle or Backspace\nis B, cross or X is Start, circle or O is Select. Esc pauses: save or load\nthe state there, or quit. Diamond shows the keys.",
  "format": 1,
  "homepage": "https://github.com/rofl0r/gnuboy",
  "icon": null,
@@ -67,6 +67,19 @@
  "type": "game",
  "upstream_version": "git c367bb4",
  "versions": [
+  {
+   "build": 3,
+   "changelog": "Runs at full speed again. New keys: ■/Enter A, ▲/Backspace B, ✕/X Start, ●/O Select; save and load through Esc.",
+   "package": {
+    "installed_size": 426764,
+    "sha256": "c14e2d8935970e20cab1c9e0fc7f7877f9cec4e030888a426d3ef3cdac68586a",
+    "size": 209792,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/gnuboy-1.2.0.wpk"
+   },
+   "published": "2026-10-26T09:22:23Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/gnuboy-1.2.0-source.tar.gz",
+   "version": "1.2.0"
+  },
   {
    "build": 2,
    "changelog": "Esc opens a pause screen: resume, save or load the state, the keys, quit. ◆ shows the keys.",
