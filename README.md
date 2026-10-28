@@ -26,7 +26,7 @@ the first store in the image, Write, the text editor ([write/](write/README.md),
 | [docs/device.md](docs/device.md) | On the badge: directories, registry, install, update, remove, what an app may rely on |
 | [docs/client.md](docs/client.md) | The store client and its UI, and what the OS must provide |
 | [docs/roadmap.md](docs/roadmap.md) | Phases, open questions, non-goals |
-| [docs/micropython/](docs/micropython/README.md) | MicroPython on the badge: quick reference, the port, the modules this build has, the language, and the hardware from Python (2026-10-28) |
+| [docs/micropython/](docs/micropython/README.md) | Python on the badge: getting started, programming for the badge's text window and keys, sensors, LEDs, network and USB from Python, and the modules MicroPython has |
 | [schema/](schema/) | JSON Schemas for the manifest, the index and the category tree |
 | [categories.json](categories.json) | The category tree |
 | [apps/](apps/) | The apps: gnuboy, NetSurf, Links, nmap, imgview, DOOM, the sensor panel, OHMinous (which replaced the Bus Pirate app), NetHack, nano, the calculator, HIDeous, BARbarious, the PDF viewer, MicroPython, Flappy, Marble Orbit, Write, Files, and the store itself |
