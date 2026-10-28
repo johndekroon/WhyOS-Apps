@@ -68,6 +68,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 5,
+   "changelog": "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time.",
+   "package": {
+    "installed_size": 417615,
+    "sha256": "4a52a12351e30e3fe731490b4a00d72dc37bbece1fb151ba9a317480545c8f1b",
+    "size": 195594,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.2.1.wpk"
+   },
+   "published": "2026-10-28T11:48:06Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/calc-1.2.1-source.tar.gz",
+   "version": "1.2.1"
+  },
+  {
    "build": 4,
    "changelog": "The new WhyOS look: the frontpanel's figures behind the screens, calm flat rows and bars, frosted pop-ups with their keys inside. Faster: a key redraws only what changed.",
    "package": {

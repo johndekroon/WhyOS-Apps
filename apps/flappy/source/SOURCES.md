@@ -3,7 +3,7 @@
 Flappy is our own program, written for the badge. This directory is its
 source (it is not part of why2025-linux); the drawing code, fonts and
 design tokens are a copy of why2025-linux's drawing library `libwb/`
-(commit `c8cfa09`):
+(commit `647c8ea`):
 
 | File | What |
 |---|---|

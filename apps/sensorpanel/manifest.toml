@@ -3,8 +3,8 @@
 format = 1
 id = "sensorpanel"
 name = "Sensor panel"
-version = "1.1.0"
-build = 2
+version = "1.1.1"
+build = 3
 summary = "Live readings of the badge's environment and motion sensors"
 description = """
 Shows the BME680's temperature, humidity and pressure and the BMI270's
@@ -18,7 +18,7 @@ license = "GPL-2.0-only AND LGPL-2.1-or-later"
 license_file = "sensorpanel.txt"
 homepage = "https://github.com/mrbreaker/why2025-linux"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/sensorpanel/source"
-changelog = "The new WhyOS look: the frontpanel's figures behind the screens, calm flat rows and bars, frosted pop-ups with their keys inside. Faster: a key redraws only what changed."
+changelog = "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time."
 
 type = "app"
 category = "sensors"

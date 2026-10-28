@@ -74,6 +74,19 @@
  "type": "game",
  "versions": [
   {
+   "build": 3,
+   "changelog": "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time.",
+   "package": {
+    "installed_size": 359331,
+    "sha256": "4d1d62026e57099282db0a52bddd6941b1024e1fb5305a78e835b374e7d4a2cd",
+    "size": 160595,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/marble-1.1.1.wpk"
+   },
+   "published": "2026-10-28T11:48:08Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/marble-1.1.1-source.tar.gz",
+   "version": "1.1.1"
+  },
+  {
    "build": 2,
    "changelog": "The new WhyOS look: the title on the frontpanel's figures, flat tiles and cards, frosted pop-ups with their keys inside; the title and pop-ups redraw only what changed.",
    "package": {

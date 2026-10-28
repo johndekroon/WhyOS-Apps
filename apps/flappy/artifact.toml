@@ -1,4 +1,4 @@
 # The prebuilt files/ archive (docs/repository.md §1.1), written by tools/import-sdapp.py
 path = "files.tar.gz"
-sha256 = "8501ea3dfa9fb96cf2c843bfe2476b5de5b134a3981398f650f3d4d6bafd4b3a"
-built_from = "apps/flappy/source (SOURCES.md, libwb/ from why2025-linux c8cfa09), 2026-10-28"
+sha256 = "26464029194f4cf9197df1c3e4cb792df3b792170b792ea20e3a860a3cdd5242"
+built_from = "apps/flappy/source (SOURCES.md, libwb/ from why2025-linux 647c8ea), 2026-10-28"

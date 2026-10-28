@@ -4,7 +4,7 @@ Marble Orbit is our own program, written for the badge. This directory is
 its source (it is no longer part of why2025-linux, where it started in
 `sdapps/marble` at commit `ebdcc16`); the drawing code, fonts and design
 tokens are a copy of why2025-linux's drawing library `libwb/` (commit
-`c8cfa09`):
+`647c8ea`):
 
 | File | What |
 |---|---|

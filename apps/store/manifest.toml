@@ -4,8 +4,8 @@
 format = 1
 id = "store"
 name = "App store"
-version = "0.2.15"
-build = 16
+version = "0.2.16"
+build = 17
 summary = "Find, install and update apps and games"
 description = """
 The WhyOS app store: browse and search the apps and games, install them on
@@ -20,7 +20,7 @@ license = "MIT AND (Apache-2.0 OR GPL-2.0-or-later) AND Zlib AND LGPL-2.1-or-lat
 license_file = "store.txt"
 homepage = "https://github.com/johndekroon/WhyOS-Apps"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/client"
-changelog = "The new WhyOS look: the frontpanel's figures behind the screens, calm flat rows and bars, frosted pop-ups with their keys inside. Faster: a key redraws only what changed."
+changelog = "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time."
 
 type = "system"
 category = "store"

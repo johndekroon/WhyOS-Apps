@@ -2,8 +2,8 @@
 format = 1
 id = "calc"
 name = "Calculator"
-version = "1.2.0"
-build = 4
+version = "1.2.1"
+build = 5
 summary = "Type a sum, get the answer: functions, hex and binary"
 description = """
 Type a sum on the keyboard and press Enter (or =). Earlier sums stay on
@@ -23,7 +23,7 @@ license = "MIT AND OFL-1.1 AND LGPL-2.1-or-later"
 license_file = "calc.txt"
 homepage = "https://github.com/johndekroon/WhyOS-Apps"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/calc/source"
-changelog = "The new WhyOS look: the frontpanel's figures behind the screens, calm flat rows and bars, frosted pop-ups with their keys inside. Faster: a key redraws only what changed."
+changelog = "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time."
 
 type = "app"
 category = "utilities"

@@ -1957,7 +1957,7 @@ static void draw_type_pop(void)
 {
 	static const struct hint hs[] = { { "Enter", "choose", 0 }, { "Esc", "cancel", 1 } };
 	const unsigned short *t;
-	int n, *type, ys[N_TYPES], rh[N_TYPES], cut, scroll, top, x0, w;
+	int n, *type, ys[N_TYPES], scroll, top, x0, w;
 	int list_h = PK_VIS * (BP_ROW + BP_GAP) - BP_GAP;
 	char eb[NM_MAX + 8];
 
@@ -1972,22 +1972,28 @@ static void draw_type_pop(void)
 		*p = (char)(*p >= 'a' && *p <= 'z' ? *p - 32 : *p);
 	top = pop_frame2(eb, "Barcode type", "10 options", "Right: what this text needs from the type", list_h, hs,
 			 2, &x0, &w);
-	for (int i = 0; i < N_TYPES; i++) {
+	for (int i = 0; i < N_TYPES; i++)
 		ys[i] = i * (BP_ROW + BP_GAP);
-		rh[i] = BP_ROW;
+	/* as menu_popup(): by whole rows, only rows that fit whole, so none
+	 * is cut off against the note above or the line below; the focus's
+	 * box with room for its glow */
+	scroll = 0;
+	if (C.pf >= 0 && C.pf < N_TYPES) {
+		for (int f = 0; f < C.pf && ys[C.pf] + BP_ROW - ys[f] > list_h; f++)
+			scroll = ys[f + 1];
+		clip_rows(top - 14, top + list_h + 14);
+		box_shaped(x0, top + ys[C.pf] - scroll, w, BP_ROW, 10, WB_COLOR_CYAN, 56, WB_COLOR_CYAN, 2, &GLOW_POP);
+		clip_end();
 	}
-	scroll = list_scroll(ys, rh, N_TYPES, C.pf, C.pf, list_h, &cut);
-	clip_rows(top - 16, top + cut + 16);	/* room for the focus's glow */
+	clip_rows(top, top + list_h);
 	for (int i = 0; i < N_TYPES; i++) {
 		int ry = top + ys[i] - scroll, cy = ry + BP_ROW / 2, on = i == C.pf, x = x0 + 14;
 		uint32_t nc = C.need[i] == NEED_OK ? (on ? WB_COLOR_TEXT_HI : WB_COLOR_TEXT_MID) :
 			      C.need[i] == NEED_WARN ? WB_COLOR_WARN : WB_COLOR_ERROR;
 		const char *note = C.need_note[i];
 
-		if (ry + BP_ROW <= top || ry >= top + cut)
+		if (ry < top || ry + BP_ROW > top + list_h)
 			continue;
-		if (on)
-			box_shaped(x0, ry, w, BP_ROW, 10, WB_COLOR_CYAN, 56, WB_COLOR_CYAN, 2, &GLOW_POP);
 		if (i == *type) {	/* the present type's box, ticked */
 			box(x, cy - 12, 24, 24, 4, WB_COLOR_CYAN, 255, 0, 0, 0);
 			tick(x + 4, cy, WB_COLOR_VOID);

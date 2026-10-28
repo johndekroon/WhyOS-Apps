@@ -104,6 +104,19 @@
  "type": "system",
  "versions": [
   {
+   "build": 4,
+   "changelog": "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time.",
+   "package": {
+    "installed_size": 732029,
+    "sha256": "1058b555f82364d68f43b2f9d2a5b22b09fc865d88afb19fcc18552d88ae5edb",
+    "size": 316464,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/write-1.2.1.wpk"
+   },
+   "published": "2026-10-28T11:48:11Z",
+   "source_archive": null,
+   "version": "1.2.1"
+  },
+  {
    "build": 3,
    "changelog": "The new WhyOS look: the frontpanel's figures behind the bars, flat bars, frosted pop-ups with their keys inside.",
    "package": {

@@ -14,11 +14,10 @@ vt100) [ "$COLUMNS" = 73 ] && TERM=appterm ;;
 appterm | vt102 | ansi | linux | xterm | xterm-256color | screen | screen-256color | tmux | tmux-256color) ;;
 *) TERM=vt100 ;;
 esac
-# From the menu without a file: start on the card, where you save it.
+# From the menu without a file: start in the home folder (/root), where a
+# new file is saved, as Write does.
 if [ "$TERM" = appterm ] && [ $# -eq 0 ]; then
-	SD=/mnt/sd
-	[ -r /etc/whyos-release ] && . /etc/whyos-release
-	cd "$SD" 2>/dev/null || cd "${HOME:-/root}"
+	cd "${HOME:-/root}" 2>/dev/null || cd /root
 fi
 # The settings: ours, the syntax colours, then yours (nano reads one
 # file). One file for every nano, replaced whole: nothing is left behind

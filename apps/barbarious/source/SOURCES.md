@@ -2,7 +2,7 @@
 
 BARbarious is our own program, written for the badge. The files are
 copied from why2025-linux `sdapps/barbarious/` and
-`patches/buildroot/overlay-src/`, and its `libwb/`, at commit `c8cfa09`:
+`patches/buildroot/overlay-src/`, and its `libwb/`, at commit `3063aba`:
 
 | File | What |
 |---|---|

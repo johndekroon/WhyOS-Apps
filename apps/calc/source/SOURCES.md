@@ -1,7 +1,7 @@
 # Corresponding source: Calculator
 
 The calculator is our own program, written for the badge. The files are
-copied from why2025-linux `sdapps/calc/` and `libwb/` at commit `c8cfa09`:
+copied from why2025-linux `sdapps/calc/` and `libwb/` at commit `647c8ea`:
 
 | File | What |
 |---|---|

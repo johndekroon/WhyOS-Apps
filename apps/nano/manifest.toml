@@ -3,8 +3,8 @@
 format = 1
 id = "nano"
 name = "nano"
-version = "9.2.0"
-build = 1
+version = "9.2.1"
+build = 2
 summary = "A small, easy text editor"
 description = """
 Edit text files on the badge: notes, configuration files, scripts. GNU
@@ -12,8 +12,9 @@ nano shows its main short-cuts at the bottom of the screen: Ctrl+S
 saves, Ctrl+X closes, Ctrl+W searches, Ctrl+K cuts a line and Ctrl+U
 pastes it, Ctrl+G shows the help.
 
-From the menu it starts on a new file on the SD card; Files opens text
-files with it (.txt, .md, .conf, .sh, .py, .json and more). In a shell
+From the menu it starts on a new file in your home folder (/root), as
+Write does; Files opens text files with it (.txt, .md, .conf, .sh, .py,
+.json and more). In a shell
 (serial console or SSH) "nano file" edits in your own terminal, at full
 width, with syntax colours for many languages.
 
@@ -28,7 +29,7 @@ license_file = "nano.txt"
 homepage = "https://www.nano-editor.org"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/nano/source"
 upstream_version = "9.2"
-changelog = "First store release."
+changelog = "From the menu nano starts in your home folder (/root), where a new file is saved, as Write does."
 
 type = "app"
 category = "productivity"

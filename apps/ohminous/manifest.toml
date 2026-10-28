@@ -3,8 +3,8 @@
 format = 1
 id = "ohminous"
 name = "OHMinous"
-version = "1.1.0"
-build = 2
+version = "1.1.1"
+build = 3
 summary = "Pins, logic analyzer, I2C, UART and LEDs on the badge, or with a Bus Pirate 6."
 description = """
 Work on circuits from the badge's keypad, with the pins on the badge's
@@ -37,7 +37,7 @@ license = "MIT AND OFL-1.1 AND LGPL-2.1-or-later"
 license_file = "ohminous.txt"
 homepage = "https://github.com/johndekroon/WhyOS-Apps"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/ohminous/source"
-changelog = "The new WhyOS look: the frontpanel's figures behind the screens, calm flat rows and bars, frosted pop-ups with their keys inside. Faster: a key redraws only what changed."
+changelog = "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time."
 
 type = "app"
 category = "hardware"

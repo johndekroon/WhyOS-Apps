@@ -119,6 +119,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 3,
+   "changelog": "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time.",
+   "package": {
+    "installed_size": 3413998,
+    "sha256": "04dd290447d4ebdea3d714649bdf3f0da2ebdcfc5738d21572511c833ec520d0",
+    "size": 2221333,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/pdfview-1.1.1.wpk"
+   },
+   "published": "2026-10-28T11:48:10Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/pdfview-1.1.1-source.tar.gz",
+   "version": "1.1.1"
+  },
+  {
    "build": 2,
    "changelog": "The new WhyOS look: the page fills the screen; flat bars, frosted pop-ups with their keys inside. A key redraws only what changed.",
    "package": {

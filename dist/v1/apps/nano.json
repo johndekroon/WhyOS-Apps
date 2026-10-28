@@ -34,7 +34,7 @@
   }
  ],
  "cover": "screens/nano-cover.qoi",
- "description": "Edit text files on the badge: notes, configuration files, scripts. GNU\nnano shows its main short-cuts at the bottom of the screen: Ctrl+S\nsaves, Ctrl+X closes, Ctrl+W searches, Ctrl+K cuts a line and Ctrl+U\npastes it, Ctrl+G shows the help.\n\nFrom the menu it starts on a new file on the SD card; Files opens text\nfiles with it (.txt, .md, .conf, .sh, .py, .json and more). In a shell\n(serial console or SSH) \"nano file\" edits in your own terminal, at full\nwidth, with syntax colours for many languages.\n\nThe logo key closes it; unsaved text is then kept in a file with\n\".save\" added to its name. Your own settings go in nanorc in the app's\nconfig folder. Running a command from nano (Ctrl+T) is not possible on\nthe badge, and the spell checker is left out. Plain ASCII and Latin-1\nonly: no UTF-8.",
+ "description": "Edit text files on the badge: notes, configuration files, scripts. GNU\nnano shows its main short-cuts at the bottom of the screen: Ctrl+S\nsaves, Ctrl+X closes, Ctrl+W searches, Ctrl+K cuts a line and Ctrl+U\npastes it, Ctrl+G shows the help.\n\nFrom the menu it starts on a new file in your home folder (/root), as\nWrite does; Files opens text files with it (.txt, .md, .conf, .sh, .py,\n.json and more). In a shell\n(serial console or SSH) \"nano file\" edits in your own terminal, at full\nwidth, with syntax colours for many languages.\n\nThe logo key closes it; unsaved text is then kept in a file with\n\".save\" added to its name. Your own settings go in nanorc in the app's\nconfig folder. Running a command from nano (Ctrl+T) is not possible on\nthe badge, and the spell checker is left out. Plain ASCII and Latin-1\nonly: no UTF-8.",
  "format": 1,
  "homepage": "https://www.nano-editor.org",
  "icon": null,
@@ -96,6 +96,19 @@
  "type": "app",
  "upstream_version": "9.2",
  "versions": [
+  {
+   "build": 2,
+   "changelog": "From the menu nano starts in your home folder (/root), where a new file is saved, as Write does.",
+   "package": {
+    "installed_size": 659257,
+    "sha256": "c5100df45d9f246337208a6d11a3b71b6107ff2fe7dfce3d94182aa7747650fc",
+    "size": 335417,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/nano-9.2.1.wpk"
+   },
+   "published": "2026-10-28T11:48:09Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/nano-9.2.1-source.tar.gz",
+   "version": "9.2.1"
+  },
   {
    "build": 1,
    "changelog": "First store release.",

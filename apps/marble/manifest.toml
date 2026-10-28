@@ -2,8 +2,8 @@
 format = 1
 id = "marble"
 name = "Marble Orbit"
-version = "1.1.0"
-build = 2
+version = "1.1.1"
+build = 3
 summary = "Tilt the badge to roll a marble into the ring"
 description = """
 Tilt the badge to roll a marble through a level and into the glowing ring.
@@ -26,7 +26,7 @@ license = "MIT AND OFL-1.1 AND LGPL-2.1-or-later"
 license_file = "marble.txt"
 homepage = "https://github.com/johndekroon/WhyOS-Apps"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/marble/source"
-changelog = "The new WhyOS look: the title on the frontpanel's figures, flat tiles and cards, frosted pop-ups with their keys inside; the title and pop-ups redraw only what changed."
+changelog = "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time."
 
 type = "game"
 category = "puzzle"

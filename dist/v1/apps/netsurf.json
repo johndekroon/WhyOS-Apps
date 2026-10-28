@@ -243,6 +243,19 @@
  "upstream_version": "3.11",
  "versions": [
   {
+   "build": 4,
+   "changelog": "The pause screen dims what is behind it less, as every pop-up in WhyOS now does.",
+   "package": {
+    "installed_size": 3483121,
+    "sha256": "806bf3a5ff1e7763f8ab5440d805a673cec1ef7fbc213f59c8aba75be5489ff7",
+    "size": 1684625,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/netsurf-1.2.1.wpk"
+   },
+   "published": "2026-10-28T11:48:09Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/netsurf-1.2.1-source.tar.gz",
+   "version": "1.2.1"
+  },
+  {
    "build": 3,
    "changelog": "The pause screen in the new WhyOS look: a frosted pop-up with its keys inside.",
    "package": {

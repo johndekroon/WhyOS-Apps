@@ -1,7 +1,7 @@
 # Corresponding source: Sensor panel
 
 `sensorpanel.c` is the program, copied from why2025-linux
-`sdapps/sensorpanel/` at commit `c8cfa09` (it was `overlay-src/sensorpanel.c`
+`sdapps/sensorpanel/` at commit `647c8ea` (it was `overlay-src/sensorpanel.c`
 of the OS image before). `libwb/` is why2025-linux's drawing library
 (`libwb/` at the same commit: the design tokens, fonts and icons, the
 frontpanel's scene, glass, the status bar, drawing only what changed), as

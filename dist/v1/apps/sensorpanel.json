@@ -67,6 +67,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 3,
+   "changelog": "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time.",
+   "package": {
+    "installed_size": 337907,
+    "sha256": "dd4935b92e901737ea54d642096f8ecfb58844c862d58eaeef3487a829f74e30",
+    "size": 143070,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/sensorpanel-1.1.1.wpk"
+   },
+   "published": "2026-10-28T11:48:11Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/sensorpanel-1.1.1-source.tar.gz",
+   "version": "1.1.1"
+  },
+  {
    "build": 2,
    "changelog": "The new WhyOS look: the frontpanel's figures behind the screens, calm flat rows and bars, frosted pop-ups with their keys inside. Faster: a key redraws only what changed.",
    "package": {

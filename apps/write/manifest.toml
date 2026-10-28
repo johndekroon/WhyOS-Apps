@@ -4,8 +4,8 @@
 format = 1
 id = "write"
 name = "Write"
-version = "1.2.0"
-build = 3
+version = "1.2.1"
+build = 4
 summary = "Write notes and documents, edit text and code"
 description = """
 Write notes and documents on the badge, with headings, lists, bold,
@@ -27,7 +27,7 @@ license = "MIT AND LGPL-2.1-or-later AND OFL-1.1"
 license_file = "write.txt"
 homepage = "https://github.com/johndekroon/WhyOS-Apps"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/write"
-changelog = "The new WhyOS look: the frontpanel's figures behind the bars, flat bars, frosted pop-ups with their keys inside."
+changelog = "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time."
 
 type = "system"
 category = "other"

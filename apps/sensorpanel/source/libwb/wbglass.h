@@ -66,7 +66,10 @@ static const struct glass_style {
 	[GLASS_HOME]  = { 217, 18, 5, 45, 66, 61, 13, 1, 0, 0xFFFFFF },	/* home tiles, the pill */
 	[GLASS_FOCUS] = { 217, 71, 26, 50, 0, 71, 0, 2, 0, WB_COLOR_CYAN },
 	[GLASS_BAR]   = { 217, 10, 5, 50, 56, 0, 0, 1, 0, 0xFFFFFF },	/* edge: the top line */
-	[GLASS_PANEL] = { 153, 20, 8, 45, 51, 66, 0, 1, 1, 0xFFFFFF },	/* pop-ups, dialogs */
+	/* every frosted panel alike (john, 2026-10-28): the canvas's Apps
+	 * panel; its dialogs had a fainter sheen and edge (20 -> 8 at 45 %,
+	 * edge 51, highlight 66) */
+	[GLASS_PANEL] = { 153, 26, 8, 40, 71, 77, 0, 1, 1, 0xFFFFFF },	/* pop-ups, dialogs */
 	[GLASS_APPS]  = { 153, 26, 8, 40, 71, 77, 0, 1, 1, 0xFFFFFF },	/* the Apps panel */
 };
 
@@ -356,7 +359,7 @@ static const struct glass_corner *glass_corner(int x, int y, int w, int h, int r
  * 4 Bayer matrix: a few percent of white over the dark scene are less than
  * one RGB565 step, and would show as bands). A frosted kind reads gb, as
  * glass_backdrop() left it; without it (drawn in bands), what is drawn
- * under the box, with the void at 90 % instead of 60 %.
+ * under the box, with the void at 95 % instead of 60 %.
  */
 static void glass(int x, int y, int w, int h, int r, int kind)
 {
@@ -396,8 +399,10 @@ static void glass(int x, int y, int w, int h, int r, int kind)
 	for (int j = 0; j < h; j++) {
 		int py = y + j, mid = h * st->at_pct / 100;
 		/* a frosted kind without its blurred backdrop (drawn in bands):
-		 * the void at 90 %, or the text under it shows through */
-		unsigned sa, ta = flat ? 255 : !gb_ok ? 230 : st->tint;
+		 * the void at 95 %, or the text under it shows through (90 %
+		 * was enough while pop-ups dimmed by 68 %; under the 35 % of
+		 * WB_DIM_A Write's text read through it) */
+		unsigned sa, ta = flat ? 255 : !gb_ok ? 242 : st->tint;
 		unsigned k16, m16[3], kp, mp[3];	/* with the row's edge; without */
 		short v0 = 0, v1 = 0;
 		uint8_t fv = 0;

@@ -2,8 +2,8 @@
 format = 1
 id = "hideous"
 name = "HIDeous"
-version = "1.1.0"
-build = 3
+version = "1.1.1"
+build = 4
 summary = "HIDeous lets you control your computer using pre-recorded input from your badge."
 description = """
 The badge as a USB keyboard and mouse for a computer. Save texts you
@@ -48,7 +48,7 @@ license = "MIT AND OFL-1.1 AND LGPL-2.1-or-later"
 license_file = "hideous.txt"
 homepage = "https://github.com/johndekroon/WhyOS-Apps"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/hideous/source"
-changelog = "The new WhyOS look: the frontpanel's figures behind the screens, calm flat rows and bars, frosted pop-ups with their keys inside. Faster: a key redraws only what changed."
+changelog = "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time."
 
 type = "app"
 category = "utilities"

@@ -41,10 +41,14 @@
 #endif
 
 /* The canvas's style: square corners (every radius 4), pop-ups 96 px from
- * the sides over the void at 68 %. */
+ * the sides. What is under a pop-up recedes by the void at 35 %, as under
+ * the Apps panel: the canvas had 68 % for dialogs, and on the panel that
+ * left too little under the frosted glass to see it (john, 2026-10-28:
+ * the glass must look the same everywhere). */
 #define WB_SQUARE	4
 #define POP_X		96
-#define WB_DIM		WB_COLOR_VOID, 173
+#define WB_DIM_A	89
+#define WB_DIM		WB_COLOR_VOID, WB_DIM_A
 
 /* wbdraw.h's panels, cards and hint bar are glass over the scene
  * (wbglass.h) */

@@ -95,6 +95,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 5,
+   "changelog": "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time.",
+   "package": {
+    "installed_size": 594053,
+    "sha256": "86b0db7084f6be70f1125f9fa24c5de0d08c99f678caaf749aad18dfb3ecf2f5",
+    "size": 307746,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/imgview-1.2.1.wpk"
+   },
+   "published": "2026-10-28T11:48:08Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/imgview-1.2.1-source.tar.gz",
+   "version": "1.2.1"
+  },
+  {
    "build": 4,
    "changelog": "The new WhyOS look: the picture fills the screen; flat bars, frosted pop-ups with their keys inside. A key redraws only what changed.",
    "package": {

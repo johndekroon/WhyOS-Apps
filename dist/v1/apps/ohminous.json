@@ -72,6 +72,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 3,
+   "changelog": "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time.",
+   "package": {
+    "installed_size": 546039,
+    "sha256": "658ef630fc23a4109e7a901368dd7154bdd267e4a82fa2a48615b36dda161f5d",
+    "size": 232417,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/ohminous-1.1.1.wpk"
+   },
+   "published": "2026-10-28T11:48:10Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/ohminous-1.1.1-source.tar.gz",
+   "version": "1.1.1"
+  },
+  {
    "build": 2,
    "changelog": "The new WhyOS look: the frontpanel's figures behind the screens, calm flat rows and bars, frosted pop-ups with their keys inside. Faster: a key redraws only what changed.",
    "package": {

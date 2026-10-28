@@ -4,8 +4,8 @@
 format = 1
 id = "gnuboy"
 name = "Game Boy"
-version = "1.3.0"
-build = 5
+version = "1.3.1"
+build = 6
 summary = "Game Boy and Game Boy Color emulator"
 description = """
 Plays Game Boy and Game Boy Color games, scaled 4x to 640x576 in the
@@ -25,7 +25,7 @@ license_file = "gnuboy.txt"
 homepage = "https://github.com/rofl0r/gnuboy"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/gnuboy/source"
 upstream_version = "git c367bb4"
-changelog = "The pause screen in the new WhyOS look: a frosted pop-up with its keys inside."
+changelog = "The pause screen dims what is behind it less, as every pop-up in WhyOS now does."
 
 type = "game"
 category = "emulators"

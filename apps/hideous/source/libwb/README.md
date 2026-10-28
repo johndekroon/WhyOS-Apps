@@ -58,7 +58,7 @@ row 0, outside the band), and writes it to `/dev/fb0` itself.
    present one, -1 when it is filtered out), `dialog()` + `dlg_hints()`
    for a question; `help_popup()` for the diamond key's help (its Esc
    inside too). Blurring needs the whole picture in `fb`: a program
-   drawing in bands gets unblurred glass there, with the void at 90 %
+   drawing in bands gets unblurred glass there, with the void at 95 %
    instead of 60 % so what is under it does not read through. A program
    whose `fb` holds the whole panel while it redraws one band (the menu)
    sets `fb_whole = 1`; otherwise only a frame drawn whole

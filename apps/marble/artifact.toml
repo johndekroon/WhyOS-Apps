@@ -1,4 +1,4 @@
 # The prebuilt files/ archive (docs/repository.md §1.1), written by tools/import-sdapp.py
 path = "files.tar.gz"
-sha256 = "6b0bc979f08582dac6990ad34a2695c9c624e8a61d6232e0774861ad59052460"
-built_from = "apps/marble/source (SOURCES.md, libwb/ from why2025-linux c8cfa09), 2026-10-28"
+sha256 = "7f6b7d1260da59fc80e73f0b9fdd727db27fa1a6b60774b8e91e22ad9862c4f7"
+built_from = "apps/marble/source (SOURCES.md, libwb/ from why2025-linux 647c8ea), 2026-10-28"

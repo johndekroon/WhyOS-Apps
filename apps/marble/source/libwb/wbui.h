@@ -208,7 +208,7 @@ static void menu_popup(const char *eb_s, const char *title, const char *count,
 		       const struct menu_item *items, const int *map, int n, int focus, int cur,
 		       const char *filter, const char *filter_hint, const struct hint *hs, int nh)
 {
-	int ys[96], rh[96], yy = 0, vis, list_h, h, y, x0, w, top, scroll, cut;
+	int ys[96], yy = 0, vis, list_h, h, y, x0, w, top, scroll, cut;
 	int ticks = cur >= -1;	/* -2: a menu, no choice */
 	char buf[96], eb[48];
 
@@ -220,7 +220,6 @@ static void menu_popup(const char *eb_s, const char *title, const char *count,
 		if (i && it->sep)
 			yy += 9;
 		ys[i] = yy;
-		rh[i] = PK_ROW;
 		yy += PK_ROW + PK_GAP;
 	}
 	vis = filter || n > PK_VIS ? PK_VIS : n ? n : 1;
@@ -258,19 +257,32 @@ static void menu_popup(const char *eb_s, const char *title, const char *count,
 	if (!n)
 		text(&f_ui18, x0 + 14, text_top(&f_ui18, top + PK_ROW / 2), "Nothing matches",
 		     WB_COLOR_TEXT_LOW, 0);
-	scroll = list_scroll(ys, rh, n, focus, focus, list_h, &cut);
-	clip_rows(top - 16, top + cut + 16);	/* room for the focus's glow */
+	/* scrolled by whole rows: the first row shown is the first from which
+	 * the focus fits, and only rows that fit whole are drawn, so none is
+	 * cut off against the filter above or the line below (the scroll bar
+	 * says there is more) */
+	scroll = 0;
+	if (focus >= 0 && focus < n)
+		for (int f = 0; f < focus && ys[focus] + PK_ROW - ys[f] > list_h; f++)
+			scroll = ys[f + 1];
+	cut = list_h;
+	/* the focus's box with room for its glow, the rows in the list's area */
+	if (focus >= 0 && focus < n) {
+		int ry = top + ys[focus] - scroll;
+
+		clip_rows(top - 14, top + cut + 14);
+		box_shaped(x0, ry, w, PK_ROW, 10, WB_COLOR_CYAN, 56, WB_COLOR_CYAN, 2, &GLOW_POP);
+		clip_end();
+	}
+	clip_rows(top, top + cut);
 	for (int i = 0; i < n; i++) {
 		const struct menu_item *it = &items[map ? map[i] : i];
 		int ry = top + ys[i] - scroll, cy = ry + PK_ROW / 2, x = x0 + 14, rx = x0 + w - 14;
-		int on = i == focus;
 
-		if (ry + PK_ROW <= top || ry >= top + cut)
+		if (ry < top || ry + PK_ROW > top + cut)
 			continue;
 		if (i && it->sep)
 			fill(x0 + 8, ry - 7, w - 16, 1, 0x2C2C40);
-		if (on)
-			box_shaped(x0, ry, w, PK_ROW, 10, WB_COLOR_CYAN, 56, WB_COLOR_CYAN, 2, &GLOW_POP);
 		if (ticks) {	/* the choice's box, ticked on the present one */
 			if (i == cur) {
 				box(x, cy - 12, 24, 24, 12, WB_COLOR_CYAN, 255, 0, 0, 0);

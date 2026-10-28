@@ -4,8 +4,8 @@
 format = 1
 id = "netsurf"
 name = "NetSurf"
-version = "1.2.0"
-build = 3
+version = "1.2.1"
+build = 4
 summary = "Graphical web browser with HTTPS, without JavaScript"
 description = """
 A web browser with its own layout engine: HTML, CSS, PNG, JPEG and GIF,
@@ -25,7 +25,7 @@ license_file = "netsurf.txt"
 homepage = "https://www.netsurf-browser.org"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/netsurf/source"
 upstream_version = "3.11"
-changelog = "The pause screen in the new WhyOS look: a frosted pop-up with its keys inside."
+changelog = "The pause screen dims what is behind it less, as every pop-up in WhyOS now does."
 
 type = "app"
 category = "internet"
