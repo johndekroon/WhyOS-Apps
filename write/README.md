@@ -90,7 +90,7 @@ took to stderr (`/tmp/app-write.log`). The clipboard is
   Replace? and errors its `dialog`; Options, Settings, the find menu,
   Style, Save as and Help are Write's own in the same style. Drawn in
   bands, the panels are not frosted: libwb draws them as unblurred glass
-  with the void at 90 %, so the text under it does not show through.
+  with the void at 95 %, so the text under it does not show through.
 - The badge turning: the main loop wakes at least every 250 ms and each
   frame reads the rotation; a turn redraws the screen (the scene turns).
   Switches are libwb's (cyan when on, as the canvas).

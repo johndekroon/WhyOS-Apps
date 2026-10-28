@@ -28,7 +28,7 @@ UI_BIN  = write-ui-host-$(shell uname -s)
 
 ui-host: $(UI_BIN)
 
-$(UI_BIN): $(wildcard src/*.c) $(HDRS) $(MENU)/wbdraw.h $(MENU)/wb_assets.h
+$(UI_BIN): $(wildcard src/*.c) $(HDRS) $(wildcard $(MENU)/*.h)
 	$(CC) $(CFLAGS) -Wno-sign-compare -DWRITE_HOST -DWRITE_UI_HOST -DWB_HOST -Isrc -I$(MENU) \
 		-o $@ $(wildcard src/*.c)
 
