@@ -30,9 +30,11 @@
 #define K_F5		63	/* the cloud: settings */
 #define K_F6		64	/* the diamond: help */
 #define K_UP		103
+#define K_PGUP		104	/* Fn + Up */
 #define K_LEFT		105
 #define K_RIGHT		106
 #define K_DOWN		108
+#define K_PGDN		109	/* Fn + Down */
 #define K_DELETE	111
 #define K_FN		0x1d0
 
@@ -47,7 +49,8 @@ struct row {
 	enum row_kind kind;
 	enum row_icon ic;
 	char label[64];
-	char value[32];		/* a file's size, a folder's free space */
+	char value[32];		/* a file's size, a folder's entries ("4 items") */
+	char date[16];		/* when it changed: "today", "24 Oct", "Mar 2025" */
 	int idx;		/* R_FOLDER, R_FILE: the entry; R_DRIVE: the drive */
 	int on;			/* R_TOGGLE */
 };
@@ -59,13 +62,16 @@ struct list {
 	char title_buf[64];
 	char title_r[24];		/* right of the title: free space, "read-only" */
 	char path[96];			/* under the title in mono */
-	char tag[96];			/* the clipboard, in pink after the path */
+	char tag[96];			/* the clipboard, in pink under the list */
 	const char *notice;
 	int notice_bad;
 	struct row rows[LIST_MAX];
 	int n, focus;			/* focus: a row, or -1 */
-	int sb_total, sb_first;		/* the scroll bar over all entries, in px */
 };
+
+/* PgUp, PgDn and the arrows across move this many entries: the rows the
+ * list shows less one (ui.c) */
+#define FILES_PAGE	8
 
 /* the square key's options and Open with */
 enum op { OP_OPENWITH, OP_RENAME, OP_COPY, OP_CUT, OP_PASTE, OP_MKDIR, OP_DELETE };
@@ -101,6 +107,7 @@ struct files {
 	struct apps apps;
 	int drive;			/* Drives: the focused drive (d.fs index) */
 	enum screen sc, under;		/* under: what the help or a pop-up is over */
+	enum screen log_under;		/* what the log is over (the help may be over it) */
 	struct list l;
 	struct pick p;
 	struct input in;

@@ -8,6 +8,9 @@
 #include <string.h>
 #include <strings.h>
 #include <sys/stat.h>
+#ifdef __linux__
+#include <sys/vfs.h>
+#endif
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -144,6 +147,7 @@ static int list_dir(struct browse *b)
 			e->dir = S_ISDIR(st.st_mode);
 			e->reg = S_ISREG(st.st_mode);
 			e->size = (unsigned long long)st.st_size;
+			e->mtime = (long long)st.st_mtime;
 		}
 		e->kind = br_kind_of(e->name, e->dir);
 		b->n++;
@@ -151,6 +155,40 @@ static int list_dir(struct browse *b)
 	closedir(d);
 	qsort(b->e, (size_t)b->n, sizeof(b->e[0]), br_cmp);
 	return 0;
+}
+
+int br_items(struct browse *b, int i)
+{
+	struct br_ent *e = &b->e[i];
+	char path[320];
+	struct dirent *de;
+	DIR *d;
+	int n = 0;
+
+	if (!e->dir)
+		return -1;
+	if (e->items)
+		return e->items > 0 ? e->items - 1 : -1;
+	e->items = -1;		/* unless counted below */
+	if (!br_join(path, sizeof(path), b->dir, e->name))
+		return -1;
+#ifdef __linux__
+	{
+		struct statfs sf;
+
+		/* proc, sysfs: live, and slow to list */
+		if (statfs(path, &sf) == 0 && (sf.f_type == 0x9fa0 || sf.f_type == 0x62656572))
+			return -1;
+	}
+#endif
+	if (!(d = opendir(path)))
+		return -1;
+	while ((de = readdir(d)))
+		n += de->d_name[0] != '.' || (b->hidden && de->d_name[1] &&
+					      (de->d_name[1] != '.' || de->d_name[2]));
+	closedir(d);
+	e->items = n + 1;
+	return n;
 }
 
 void br_say(struct browse *b, const char *a, const char *c, int bad)

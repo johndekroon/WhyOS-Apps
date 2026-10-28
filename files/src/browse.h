@@ -22,8 +22,11 @@ enum br_kind { BK_FILE, BK_FOLDER, BK_IMAGE, BK_WEB, BK_DOC, BK_GAMEBOY, BK_TEXT
 struct br_ent {
 	char name[64];
 	unsigned long long size;	/* bytes */
+	long long mtime;		/* when it last changed (seconds) */
 	int dir;
 	int reg;			/* a regular file: only those open */
+	int items;			/* a folder's entries + 1, counted when first
+					 * shown (br_items); 0 not yet, -1 not counted */
 	enum br_kind kind;
 };
 
@@ -62,6 +65,10 @@ void br_read(struct browse *b);
 void br_say(struct browse *b, const char *a, const char *c, int bad);
 /* the focused entry's path into out; 0 when there is none */
 int br_sel_path(const struct browse *b, char *out, size_t n);
+/* folder entry i's entries as the list would show them (hidden ones only
+ * when hidden is set), counted once; -1 when it cannot be read or lives in
+ * /proc or /sys (they change while one looks) */
+int br_items(struct browse *b, int i);
 /* does the file start like text (no NUL, mostly printable)? */
 int br_textlike(const char *path);
 

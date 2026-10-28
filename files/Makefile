@@ -1,15 +1,14 @@
 # Files, the WhyOS file browser: host builds for the tests.
 #   make -C files test        the modules' unit tests (tests/unit), then the
-#                             screens (tests/test_ui.py) where the menu's
-#                             drawing code is
+#                             screens (tests/test_ui.py) where libwb is
 #   make -C files ui-host     files-ui-host-<system>: the screens, keys from a
 #                             script, screens as PPM
-# The badge build is build.sh. The screens draw with the menu's code from
+# The badge build is build.sh. The screens draw with libwb from
 # why2025-linux (WHY2025_LINUX, default ../../why2025-linux).
 CC     ?= cc
 CFLAGS ?= -O1 -g -Wall -Wextra -Werror -Wno-format-truncation -fsanitize=address,undefined
 WHY2025_LINUX ?= $(abspath ../../why2025-linux)
-MENU    = $(WHY2025_LINUX)/patches/buildroot/overlay-src
+MENU    = $(WHY2025_LINUX)/libwb
 
 # the modules without the screens
 CORE    = $(filter-out src/ui.c src/main.c,$(wildcard src/*.c))
@@ -28,7 +27,7 @@ UI_BIN  = files-ui-host-$(shell uname -s)
 
 ui-host: $(UI_BIN)
 
-$(UI_BIN): $(wildcard src/*.c) $(HDRS) $(MENU)/wbdraw.h $(MENU)/wbstatus.h $(MENU)/keyrep.h $(MENU)/home_assets.h
+$(UI_BIN): $(wildcard src/*.c) $(HDRS) $(wildcard $(MENU)/*.h)
 	$(CC) $(CFLAGS) -Wno-sign-compare -DFILES_HOST -DFILES_UI_HOST -Isrc -I$(MENU) \
 		-o $@ $(wildcard src/*.c)
 

@@ -18,11 +18,10 @@ import pytest
 HERE = os.path.dirname(os.path.abspath(__file__))
 UI = os.path.join(HERE, "..", "files-ui-host-" + platform.system())
 
-VOID = (0x0A, 0x0A, 0x14)
-SURFACE1 = (0x13, 0x13, 0x1F)
 CYAN = (0x61, 0xF2, 0xFF)
 PINK = (0xF2, 0x5E, 0x95)
 TEXT_HI = (0xF2, 0xF2, 0xFA)
+TEXT_MID = (0xC8, 0xC8, 0xDC)
 
 
 class Shot:
@@ -50,6 +49,11 @@ def is_c(c, tol=24):
 
 def reddish(p):
     return p[0] > 180 and p[1] < 120 and p[2] < 140
+
+
+def scene_pink(p):
+    """the scene behind the screen, tinted pink top left"""
+    return p[0] > p[1] + 40 and p[0] > 60
 
 
 @pytest.fixture
@@ -111,10 +115,13 @@ def where(env):
 def test_folder(env):
     _, home, _ = env
     s = ui(env, ["shot folder"], home / "notes.md")["folder"]
-    assert s.near(5, 5, VOID)
-    assert s.count(48, 90, 300, 130, is_c(TEXT_HI)) > 200          # the title: "home"
-    # notes.md has the focus: the cyan glow around its row, its icon cyan
-    assert s.count(48, 180, 680, 600, is_c(CYAN, 40)) > 100
+    assert s.count(0, 0, 200, 200, scene_pink) > 2000               # the scene behind it
+    assert s.count(54, 96, 200, 140, is_c(TEXT_HI)) > 200          # the title: "Files"
+    assert s.count(54, 72, 400, 90, is_c(CYAN, 40)) > 100          # the eyebrow: where it is
+    # the columns' names, then notes.md with the focus: its row cyan, in the panel
+    assert s.count(100, 150, 680, 182, is_c((0x9A, 0x9A, 0xB6), 30)) > 50
+    assert s.count(48, 184, 672, 646, is_c(CYAN, 40)) > 300
+    assert s.count(540, 670, 620, 710, is_c(TEXT_MID, 40)) > 20     # "3 / 4" in the hint bar
     assert where(env)[:3] == ("home", str(home), "notes.md")
 
 
@@ -124,7 +131,7 @@ def test_drives(env):
     assert where(env)[0] == "Drives"
     # the drive the folder is on: Memory (/tmp) or System (/)
     assert where(env)[2] == ("Memory" if str(home).startswith("/tmp/") else "System")
-    assert s.count(48, 120, 300, 160, is_c(TEXT_HI)) > 200
+    assert s.count(54, 96, 300, 140, is_c(TEXT_HI)) > 200
     s = ui(env, ["f3", "up", "up", "up", "up", "up", "enter"], home)
     assert where(env)[:2] == ("SD card, Partition 1", "/media/sd")
 
@@ -154,7 +161,7 @@ def test_no_app_for_it(env):
     import shutil
     shutil.rmtree(tmp / "apps" / "hexview")
     s = ui(env, ["enter", "shot noapp"], home / "firmware.bin")["noapp"]
-    assert s.count(48, 160, 680, 200, reddish) > 20          # "No app opens this kind of file: ..."
+    assert s.count(48, 600, 680, 646, reddish) > 20          # "No app opens this kind of file: ..."
     assert not (tmp / "open").exists()
 
 
@@ -174,7 +181,7 @@ def test_copy_paste_and_the_tag(env):
     s = ui(env, ["f1", "down", "down", "enter", "shot copied", "up", "up", "up", "enter", "f1", "enter",
                  "shot pasted"], home / "notes.md")
     assert (home / "photos" / "notes.md").read_text() == (home / "notes.md").read_text()
-    assert s["copied"].count(48, 130, 680, 170, is_c(PINK, 40)) > 30   # "Copied: notes.md"
+    assert s["copied"].count(48, 600, 680, 646, is_c(PINK, 40)) > 30   # "Copied: notes.md"
     assert "cp -a" in (tmp / "files.log").read_text()
     assert where(env)[:3] == ("photos", str(home / "photos"), "notes.md")
 
@@ -182,15 +189,56 @@ def test_copy_paste_and_the_tag(env):
 def test_settings_help_log(env):
     tmp, home, _ = env
     (home / ".profile").write_text("x")
-    s = ui(env, ["f5", "shot settings", "enter", "esc", "f6", "shot help", "esc", "f4", "shot log", "esc"],
-           home)
-    assert s["log"].count(48, 140, 400, 200, is_c((0x7C, 0x7C, 0x99), 40)) > 20   # "No log yet."
+    s = ui(env, ["f5", "shot settings", "enter", "shot on", "esc", "f6", "shot help", "esc", "f4", "shot log",
+                 "esc"], home)
+    assert s["log"].count(54, 150, 400, 200, is_c(TEXT_MID, 30)) > 20      # "No log yet."
     assert (tmp / "config" / "settings").read_text() == "hidden=1\n"
-    assert s["settings"].count(560, 150, 680, 260, is_c(PINK, 40)) == 0     # off
-    assert s["help"].count(100, 70, 120, 90, is_c((0xC4, 0x5C, 0xFF), 60)) > 5     # the diamond
+    # the switch: off, then on (cyan)
+    assert s["settings"].count(600, 180, 656, 210, is_c(CYAN, 40)) < 50
+    assert s["on"].count(600, 180, 656, 210, is_c(CYAN, 40)) > 400
+    assert s["help"].count(110, 40, 160, 200, is_c((0xC4, 0x5C, 0xFF), 60)) > 5    # the diamond
     assert where(env)[4] == "list"
     ui(env, [], home / ".profile")              # the next start: hidden files show
     assert where(env)[2] == ".profile"
+
+
+def test_del_and_pages(env):
+    tmp, home, _ = env
+    for i in range(30):
+        (home / ("f%02d.txt" % i)).write_text("x")
+    s = ui(env, ["code 109", "shot paged", "code 111", "shot del", "enter"], home / "camp-map.png")
+    # photos/, camp-map.png, f00..f29, firmware.bin, notes.md: a page is 8 down
+    assert where(env)[2] == "f07.txt"
+    assert s["del"].count(104, 300, 616, 600, reddish) > 20          # Delete? with Delete in red
+    assert (home / "f07.txt").exists()                               # Cancel is first: nothing gone
+    # the scroll bar's thumb in the panel's right edge
+    assert s["paged"].count(660, 184, 668, 646, is_c(CYAN, 40)) > 40
+    ui(env, ["code 111", "down", "enter"], home / "f07.txt")
+    assert not (home / "f07.txt").exists()
+
+
+def test_popups_in_bands(env):
+    """no room for a whole frame: the pop-ups in bands, unblurred, read nothing outside the band"""
+    tmp, home, e = env
+    e["FILES_BANDS_ONLY"] = "1"
+    s = ui(env, ["f1", "shot options", "esc", "f6", "shot help", "esc", "code 111", "shot del"], home / "notes.md")
+    assert s["options"].count(72, 100, 648, 680, reddish) > 20        # Delete, last, in red
+    assert s["del"].count(104, 300, 616, 600, reddish) > 20
+
+
+def test_focus_moves_drawn_partly(env):
+    """a focus that moves draws its two rows and the hint bar again: the
+    screen is the same as drawn whole every time"""
+    tmp, home, e = env
+    for i in range(30):
+        (home / ("f%02d.txt" % i)).write_text("x")
+    keys = ["down", "shot a", "down", "shot b", "up", "up", "up", "shot c", "f1", "shot d", "down", "shot d2",
+            "down", "shot d3", "esc",
+            "shot e", "down", "down", "down", "down", "down", "down", "shot f", "code 109", "shot g",
+            "up", "shot h"]
+    part = {k: v.px for k, v in ui(env, keys, home / "f03.txt").items()}
+    whole = {k: v.px for k, v in ui((tmp, home, dict(e, WB_FULL="1")), keys, home / "f03.txt").items()}
+    assert [k for k in part if part[k] != whole[k]] == []
 
 
 def test_esc_closes_at_the_top(env):

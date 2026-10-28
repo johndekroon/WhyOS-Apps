@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "app.h"
@@ -151,6 +152,26 @@ static void build_drives(struct files *f)
 			l->focus = i;
 }
 
+/* when an entry changed, for the list's last column: "today", "24 Oct"
+ * within the year, else "Mar 2025"; "" when unknown */
+static void when(char *out, size_t n, long long t)
+{
+	static const char mon[12][4] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+					 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+	time_t now = time(0), tt = (time_t)t;
+	struct tm a, b;
+
+	out[0] = 0;
+	if (t <= 0 || !localtime_r(&tt, &a) || !localtime_r(&now, &b))
+		return;
+	if (b.tm_year >= 124 && a.tm_year == b.tm_year && a.tm_yday == b.tm_yday)
+		snprintf(out, n, "today");	/* only with the clock set */
+	else if (t <= (long long)now && (long long)now - t < 300LL * 86400)
+		snprintf(out, n, "%d %s", a.tm_mday, mon[a.tm_mon]);
+	else
+		snprintf(out, n, "%s %d", mon[a.tm_mon], a.tm_year + 1900);
+}
+
 static void build_folder(struct files *f)
 {
 	struct browse *b = &f->b;
@@ -199,16 +220,13 @@ static void build_folder(struct files *f)
 		l->focus = -1;
 		return;
 	}
-	if (b->sel < b->off || b->sel >= b->off + BR_SHOWN)
-		b->off = b->sel - BR_SHOWN / 2;
+	/* the list holds the entries around the focus: all the screen shows */
+	b->off = b->sel - BR_SHOWN / 2;
 	if (b->off > b->n - BR_SHOWN)
 		b->off = b->n - BR_SHOWN;
 	if (b->off < 0)
 		b->off = 0;
 	last = b->off + BR_SHOWN < b->n ? b->off + BR_SHOWN : b->n;
-	/* the scroll bar stands for all entries, not the 20 in the list */
-	l->sb_total = b->n * (56 + 10) - 10;
-	l->sb_first = b->off * (56 + 10);
 	for (int i = b->off; i < last; i++) {
 		const struct br_ent *e = &b->e[i];
 		struct row *r = add(l, e->dir ? R_FOLDER : R_FILE, e->name, icon_of(e->kind));
@@ -216,16 +234,15 @@ static void build_folder(struct files *f)
 		r->idx = i;
 		if (i == b->sel)
 			l->focus = l->n - 1;
-		if (e->dir) {		/* a mount point: its free space */
-			char path[320];
-			const struct fsinfo *m = br_join(path, sizeof(path), b->dir, e->name) ?
-						 disks_mount_at(&f->d, path) : 0;
+		if (e->dir) {
+			int n = br_items(b, i);
 
-			if (m && m->size > m->used)
-				strcat(human(r->value, m->size - m->used), " free");
+			if (n >= 0)
+				snprintf(r->value, sizeof(r->value), "%d item%s", n, n == 1 ? "" : "s");
 		} else if (e->reg) {
 			human(r->value, e->size);
 		}
+		when(r->date, sizeof(r->date), e->mtime);
 	}
 }
 
@@ -584,14 +601,19 @@ static void list_key(struct files *f, int key, int steps)
 		}
 		return;
 	}
-	if (key == K_UP || key == K_DOWN || key == K_LEFT || key == K_RIGHT) {
-		/* the arrows across: a page */
-		b->sel += key == K_UP ? -steps : key == K_DOWN ? steps : key == K_LEFT ? -7 : 7;
+	if (key == K_UP || key == K_DOWN || key == K_LEFT || key == K_RIGHT || key == K_PGUP || key == K_PGDN) {
+		/* the arrows across and PgUp, PgDn: a page */
+		b->sel += key == K_UP ? -steps : key == K_DOWN ? steps :
+			  key == K_LEFT || key == K_PGUP ? -FILES_PAGE : FILES_PAGE;
 		b->sel = b->sel < 0 ? 0 : b->sel >= b->n ? b->n - 1 : b->sel;
 		if (b->sel < 0)
 			b->sel = 0;
 	} else if (key == K_ENTER) {
 		enter(f);
+	} else if (key == K_DELETE && b->n) {	/* as the options' Delete */
+		f->cfocus = 0;
+		f->sc = SC_CONFIRM;
+		f->under = SC_LIST;
 	} else if (key == K_F1) {
 		options(f);
 	} else if (key == K_F2) {
@@ -616,6 +638,7 @@ void files_key(struct files *f, int key, int value)
 		/* held: the steps that repeat (why2025-linux keyrep.h), faster
 		 * after 1.5 s (30 repeats) and 2.5 s, as the menu's lists */
 		int step = key == K_UP || key == K_DOWN || key == K_LEFT || key == K_RIGHT ||
+			   key == K_PGUP || key == K_PGDN ||
 			   key == K_BACKSPACE || key == K_DELETE || key_char(key, 0);
 
 		if (!step)
@@ -639,7 +662,7 @@ void files_key(struct files *f, int key, int value)
 			f->sc = SC_HELP;
 		} else if (key == K_F4 && f->sc != SC_LOG) {
 			log_open(f);
-			f->under = f->sc;
+			f->under = f->log_under = f->sc;
 			f->sc = SC_LOG;
 		} else if (key == K_F5 && f->sc == SC_LIST) {
 			f->sc = SC_SETTINGS;
@@ -652,12 +675,13 @@ void files_key(struct files *f, int key, int value)
 			f->sc = f->under;
 		break;
 	case SC_LOG:
-		if (key == K_ESC)
-			f->sc = f->under;
-		else if (key == K_UP)
+		if (key == K_ESC) {	/* back to what the log is over */
+			f->sc = f->under = f->log_under;
+		} else if (key == K_UP) {
 			f->log_top = f->log_top > steps ? f->log_top - steps : 0;
-		else if (key == K_DOWN && f->log_top + LOG_ROWS < f->log_n)
+		} else if (key == K_DOWN && f->log_top + LOG_ROWS < f->log_n) {
 			f->log_top++;
+		}
 		break;
 	case SC_SETTINGS:
 		if (key == K_ESC) {

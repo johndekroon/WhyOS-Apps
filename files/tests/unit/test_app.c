@@ -311,8 +311,36 @@ TEST(settings_log_and_help)
 	EQ(f->sc, SC_LOG);
 	EQ(f->log_n, 3);
 	STREQ(f->log_line[2], "failed, status 1");
+	KEYS(f, K_F6, K_ESC);			/* the help over the log, closed */
+	EQ(f->sc, SC_LOG);
+	KEYS(f, K_ESC);				/* back to the list, not the log again */
+	EQ(f->sc, SC_LIST);
+}
+
+TEST(the_columns_page_keys_and_del)
+{
+	struct files *f = setup();
+
+	STREQ(f->l.rows[0].label, "docs");
+	STREQ(f->l.rows[0].value, "0 items");
+	STREQ(f->l.rows[1].date, "today");
+	KEYS(f, K_PGDN);			/* a page: to the end of these four */
+	STREQ(focused(f), "x.bin");
+	KEYS(f, K_PGUP);
+	STREQ(focused(f), "docs");
+	KEYS(f, K_RIGHT);			/* the arrows across too */
+	STREQ(focused(f), "x.bin");
+	KEYS(f, K_DELETE);			/* as the options' Delete: Cancel first */
+	EQ(f->sc, SC_CONFIRM);
+	EQ(f->cfocus, 0);
 	KEYS(f, K_ESC);
 	EQ(f->sc, SC_LIST);
+	OK(access(at("x.bin"), F_OK) == 0);
+	put(at("docs/a"), "", 0644);
+	put(at("docs/.b"), "", 0644);
+	f->b.stale = 1;
+	files_build(f);
+	STREQ(f->l.rows[0].value, "1 item");	/* .b is hidden */
 }
 
 TEST(not_a_regular_file)

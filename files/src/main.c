@@ -115,7 +115,9 @@ static void key_word(const char *w)
  *   shot PATH            the screen as PPM
  * FILES_APPS: the app folders to read (":" between), FILES_LOG the log,
  * FILES_OPEN where a file to open goes, FILES_WHERE the where file after
- * every line.
+ * every line, FILES_MSG_SHOT the message shown while a copy, move or
+ * delete runs (as PPM); FILES_BANDS_ONLY draws pop-ups in bands too (ui.c:
+ * as when there is no room for a whole frame).
  */
 static uint16_t screen[W * H];
 
@@ -184,6 +186,8 @@ static void ui_run(struct browse *b, const char *what)
 {
 	(void)b;
 	ui_message("FILES", what, out_band);
+	if (getenv("FILES_MSG_SHOT"))	/* the message while it runs, as PPM */
+		save_ppm(getenv("FILES_MSG_SHOT"));
 }
 
 static int run(struct browse *b, const char *what, char *const argv[])
@@ -277,10 +281,12 @@ static void out_band(const uint16_t *b, int y0, int y1)
 		return;
 }
 
+static int fifo_more;		/* keys from the test FIFO still to come */
+
 static void present(void)
 {
 	ui_present(&F, out_band);
-	if (fifo_used)
+	if (fifo_used && !fifo_more)	/* after the last of them: the tests wait for it */
 		where_write(WHERE);
 }
 
@@ -339,14 +345,16 @@ static void read_fifo(void)
 	fifo_used = 1;
 	for (char *w = strtok_r(buf, " \n", &save); w && !F.quit; w = strtok_r(0, " \n", &save)) {
 		key_word(w);
+		fifo_more = save && strspn(save, " \n") < strlen(save);
 		present();
 	}
+	fifo_more = 0;
 }
 
 int main(int argc, char **argv)
 {
 	struct sigaction sa;
-	long last_status = 0;
+	long last_status = 0, last_disks = 0;
 	char notice[160];
 	int fd;
 
@@ -386,7 +394,8 @@ int main(int argc, char **argv)
 	while (!F.quit && !term) {
 		struct pollfd p[2] = { { ev_fd, POLLIN, 0 }, { fifo_fd, POLLIN, 0 } };
 		int drives = F.sc == SC_LIST && br_drives(&F.b);
-		int r = poll(p, fifo_fd >= 0 ? 2 : 1, drives ? 1500 : 5000);
+		/* four times a second: has the badge turned (the scene with it)? */
+		int r = poll(p, fifo_fd >= 0 ? 2 : 1, 250);
 		long t = now_ms();
 		int dirty = 0;
 
@@ -400,7 +409,8 @@ int main(int argc, char **argv)
 			read_fifo();
 		if (F.quit)
 			break;
-		if (drives && r == 0) {		/* disks come and go */
+		if (drives && t - last_disks >= 1500) {		/* disks come and go */
+			last_disks = t;
 			files_refresh(&F);
 			files_build(&F);
 			dirty = 1;
@@ -409,7 +419,7 @@ int main(int argc, char **argv)
 			last_status = t;
 			dirty |= status_read();
 		}
-		if (dirty)
+		if (dirty || ui_turned())
 			present();
 	}
 	if (fifo_fd >= 0)
