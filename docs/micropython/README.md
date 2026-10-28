@@ -31,5 +31,9 @@ reference; these pages cover what is particular to the badge.
 - A program gets 2 MB of memory by default.
 
 These pages were written on 2026-10-28 from the MicroPython build and the
-WhyOS source. Not every example has been run on a badge yet; if one does
-not work, that is a bug in these pages.
+WhyOS source. On 2026-10-28 every program in them was run on a badge, and
+the keys and the window from a tile in the menu. Not run there: typing on
+a computer (no computer was connected), a serial device (none was
+connected), sending over LoRa (tried with simulated MeshCore nodes), and
+the steps in Write and Files. If an example does not work, that is a bug
+in these pages.

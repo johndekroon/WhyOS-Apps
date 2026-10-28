@@ -69,7 +69,7 @@ and in some special methods) are listed in MicroPython's
 | `os` | `listdir`, `mkdir`, `remove`, `rename`, `rmdir`, `stat`, `statvfs`, `getcwd`, `chdir`, `getenv`, `putenv`, `system`, `urandom`; not `os.path`, `os.uname` |
 | `platform` | `platform()` |
 | `random` | `random`, `randint`, `randrange`, `choice`, `uniform`, `getrandbits`, `seed` |
-| `re` | `compile`, `match`, `search`, `sub`, `split` |
+| `re` | `compile`, `match`, `search`, `sub`; `split` only on a compiled pattern: `re.compile(",").split(text)` |
 | `select` | `poll` (not `select.select`) |
 | `socket` | TCP and UDP, clients and servers, `getaddrinfo` |
 | `ssl` | `wrap_socket`, `SSLContext` (TLS through Mbed TLS) |

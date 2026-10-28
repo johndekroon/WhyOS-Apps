@@ -112,7 +112,7 @@ ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 ctx.load_verify_locations(cafile="/mnt/sd/badge/appdata/micropython/ca.pem")
 ctx.verify_mode = ssl.CERT_REQUIRED
 s = socket.socket()
-s.connect(socket.getaddrinfo("example.org", 443)[0][-1])
+s.connect(socket.getaddrinfo("example.org", 443, socket.AF_INET)[0][-1])
 s = ctx.wrap_socket(s, server_hostname="example.org")
 s.write(b"GET / HTTP/1.0\r\nHost: example.org\r\n\r\n")
 print(s.read(200))
@@ -136,10 +136,18 @@ while True:
     c.close()
 ```
 
-UDP works the same way with `socket.SOCK_DGRAM`. The badge has no IPv6.
+UDP works the same way with `socket.SOCK_DGRAM`.
+
+**The badge has no IPv6.** Ask `socket.getaddrinfo()` for IPv4 addresses
+with `socket.AF_INET`, as in the example above: many sites also have an
+IPv6 address, and connecting to it fails with `OSError: 97`. MicroPython
+1.29.0 build 1 (the one in the store on 2026-10-28) returns those IPv6
+addresses first, so there `requests` fails for such sites too (Google,
+example.org); build 2 returns only IPv4 addresses, as Python on a PC does.
 
 Without a network, `socket.getaddrinfo()` and `requests` raise `OSError`;
-catch it to show a message instead of a traceback.
+catch it to show a message instead of a traceback. A certificate that does
+not match the CA file raises `ValueError` in `wrap_socket()`.
 
 ## Time
 
@@ -154,7 +162,7 @@ catch it to show a message instead of a traceback.
 
 ```python
 import time
-y, mo, d, h, mi, s, wd, yd = time.localtime()
+y, mo, d, h, mi, s, wd, yd, dst = time.localtime()   # nine values, as in CPython
 print("%02d:%02d" % (h, mi))
 ```
 
@@ -194,6 +202,7 @@ type_text("Hello from the badge\n")
   layout. This table matches the US layout; on a German or French layout
   some letters come out differently.
 - Is a computer connected? `/var/run/usb.state` contains `computer=1`.
+  Without one, writing to `/dev/hidg0` raises `OSError: 108`.
 - The mouse is `/dev/hidg1`, 4 bytes: buttons (1 left, 2 right, 4 middle),
   X, Y and wheel as signed steps (`struct.pack("<Bbbb", 0, 10, 0, 0)` moves
   10 to the right).
@@ -229,8 +238,9 @@ print(read_reply())
 f.close()
 ```
 
-The speeds with a name in this build are `B9600`, `B57600`, `B115200` and
-`B230400`.
+The speeds with a name in this build are `B9600`, `B57600`, `B115200`,
+`B230400`, `B460800`, `B500000`, `B576000`, `B921600`, `B1000000` and
+`B1152000`.
 
 ## LoRa: MeshCore messages and bots
 
