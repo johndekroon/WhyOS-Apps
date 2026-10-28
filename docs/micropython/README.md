@@ -9,7 +9,7 @@ sensors, talks to the internet or types on a computer.
 |---|---|
 | [getting-started.md](getting-started.md) | Install MicroPython, try the prompt, write and run your first script, get scripts from your computer onto the badge |
 | [programming.md](programming.md) | Write real programs: the terminal window, colours, reading keys, saving data, errors, several things at once, memory, packages, your own menu tile |
-| [badge.md](badge.md) | Use the badge: sensors, LEDs, the network, the clock and calendars, typing on a computer over USB, serial devices, LoRa messages and bots (MeshCore) |
+| [badge.md](badge.md) | Use the badge: sensors, LEDs, the network, the clock and calendars, XML, typing on a computer over USB, serial devices, LoRa messages and bots (MeshCore) |
 | [python.md](python.md) | Know what Python you get: the modules, and what differs from Python on your computer |
 
 For the language and the details of a module, the

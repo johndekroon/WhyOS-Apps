@@ -211,6 +211,61 @@ for e in cal.between(now, now + 90 * 86400):  # the next 90 days
 - `ics` on PyPI is something else and does not run on MicroPython; `mip`
   does not install from PyPI.
 
+## XML (feeds, schedules, GPX)
+
+From MicroPython 1.29.0 build 2 on, `xml.etree.ElementTree` reads and
+writes XML as Python on a computer does: RSS and Atom feeds, GPX tracks,
+event schedules, the answers of many web APIs. A small document at once:
+
+```python
+import xml.etree.ElementTree as ET
+
+root = ET.fromstring('<feed><item id="1"><title>Hello</title></item></feed>')
+for item in root.findall("item"):
+    print(item.get("id"), item.findtext("title"))
+```
+
+A big one piece by piece, while it downloads: the talks in hall One on the
+second day of the 39th Chaos Communication Congress (1.9 MB, 1008 talks):
+
+```python
+import requests
+import xml.etree.ElementTree as ET
+
+URL = "https://fahrplan.events.ccc.de/congress/2025/fahrplan/schedules/schedule.xml"
+
+r = requests.get(URL)
+for event, el in ET.iterparse(r.raw):      # each element once it is complete
+    if el.tag == "event":
+        if el.findtext("room") == "One" and el.findtext("date").startswith("2025-12-28"):
+            print(el.findtext("start"), el.findtext("title"))
+        el.clear()                           # done with it: free what is in it
+r.close()
+```
+
+- `ET.parse(path)` and `ET.fromstring(text)` give the whole tree. `find`,
+  `findall`, `findtext`, `iter`, `get`, `.text` and `.attrib` work as in
+  CPython, with the same paths (`channel/item[@id='2']/title`,
+  `.//title`). Namespaces become `{uri}tag`; with
+  `namespaces={"a": "http://www.w3.org/2005/Atom"}` you can write
+  `a:entry`.
+- **Memory:** a whole tree takes about 2.4 times the size of the file, so
+  with the usual 2 MB files up to about 500 KB fit (that one takes 3.3 s).
+  For bigger ones use `ET.iterparse()` as above: it reads in small pieces
+  and gives each element when its end tag has come; `el.clear()` there
+  keeps memory low. The congress schedule takes 16 s over Wi-Fi and
+  190 KB at most.
+- Writing: `ET.tostring(root, encoding="unicode")` gives the text,
+  `ET.ElementTree(root).write(path)` a file, `ET.indent(root)` adds line
+  breaks and indentation first. `ET.Element`, `ET.SubElement` and
+  `el.set()` build a tree.
+- Encodings: UTF-8, ASCII, ISO-8859-1 and Windows-1252, as the file
+  declares. Not there: UTF-16, entities declared in a DOCTYPE,
+  `xml.dom.minidom`, `xml.sax` and `lxml`.
+- One difference from CPython: `el.attrib` is an `OrderedDict`, so the
+  attributes keep their order, and `==` then also compares the order. To
+  compare with a dict, write `dict(el.attrib) == {"id": "1"}`.
+
 ## Typing on a computer (USB keyboard and mouse)
 
 Connected to a computer by its **bottom** USB port (with the side port
