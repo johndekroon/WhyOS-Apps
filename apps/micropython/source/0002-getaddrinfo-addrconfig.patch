@@ -1,0 +1,18 @@
+--- a/ports/unix/modsocket.c
++++ b/ports/unix/modsocket.c
+@@ -633,6 +633,15 @@
+         }
+     }
+ 
++    #ifdef AI_ADDRCONFIG
++    // As glibc does without hints: only the address families this host has
++    // an address of. A badge without IPv6 otherwise gets a site's IPv6
++    // address first, and connecting to it fails with EAFNOSUPPORT.
++    if (n_args <= 5) {
++        hints.ai_flags |= AI_ADDRCONFIG;
++    }
++    #endif
++
+     struct addrinfo *addr_list;
+     MP_THREAD_GIL_EXIT();
+     int res = getaddrinfo(host, serv, &hints, &addr_list);

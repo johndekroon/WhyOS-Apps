@@ -192,7 +192,7 @@ save(data)
 
 The badge keeps its general settings (the name, the time zone, the LoRa
 radio, ...) in one place, which the `setting` command in the shell reads
-and writes. From MicroPython 1.29.0 build 2 on, the `setting` module does
+and writes. From the store's MicroPython 1.29.1 on, the `setting` module does
 the same from Python:
 
 ```python

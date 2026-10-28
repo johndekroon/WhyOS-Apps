@@ -1,0 +1,24 @@
+--- a/meshcore/events.py
++++ b/meshcore/events.py
+@@ -234,13 +234,15 @@
+                     # Call sync callbacks inline so futures are resolved before asyncio.wait()
+                     # returns - avoids the race where create_task schedules the callback after
+                     # the waiter has already timed out with done=set().
+-                    if asyncio.iscoroutinefunction(subscription.callback):
+-                        self._spawn_background(self._execute_callback(subscription.callback, event.clone()))
++                    # MicroPython cannot tell an async function from a closure or bound
++                    # method of one: call it, and run what it returns if that is a coroutine.
++                    try:
++                        result = subscription.callback(event.clone())
++                    except Exception as e:
++                        logger.error(f"Error in event handler for {event.type}: {e}", exc_info=True)
+                     else:
+-                        try:
+-                            subscription.callback(event.clone())
+-                        except Exception as e:
+-                            logger.error(f"Error in event handler for {event.type}: {e}", exc_info=True)
++                        if inspect.iscoroutine(result):
++                            self._spawn_background(self._execute_callback(lambda _, r=result: r, event))
+                         
+             self.queue.task_done()
+ 

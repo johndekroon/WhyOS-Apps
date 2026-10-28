@@ -5,6 +5,10 @@ pages are for writing your own Python programs for the badge: from the first
 `print("hello")` to a program with its own tile in the menu that reads the
 sensors, talks to the internet or types on a computer.
 
+The store's MicroPython 1.29.1 (2026-10-28) is MicroPython 1.29.0 with
+the badge's own modules built in (`meshcore`, `setting`, `ics`,
+`xml.etree.ElementTree`); the prompt and `sys.version` say 1.29.0.
+
 | Page | Read it when you want to |
 |---|---|
 | [getting-started.md](getting-started.md) | Install MicroPython, try the prompt, write and run your first script, get scripts from your computer onto the badge |

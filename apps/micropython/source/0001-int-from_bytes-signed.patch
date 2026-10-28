@@ -1,0 +1,63 @@
+--- a/py/objint.c
++++ b/py/objint.c
+@@ -398,17 +398,9 @@
+     return MP_OBJ_NULL; // op not supported
+ }
+ 
+-// this is a classmethod
+-static mp_obj_t int_from_bytes(size_t n_args, const mp_obj_t *args) {
+-    // TODO: Support signed param (assumes signed=False at the moment)
+-
+-    // get the buffer info
+-    mp_buffer_info_t bufinfo;
+-    mp_get_buffer_raise(args[1], &bufinfo, MP_BUFFER_READ);
+-
++static mp_obj_t int_from_bytes_unsigned(bool big_endian, mp_buffer_info_t bufinfo) {
+     const byte *buf = (const byte *)bufinfo.buf;
+     int delta = 1;
+-    bool big_endian = n_args < 3 || args[2] != MP_OBJ_NEW_QSTR(MP_QSTR_little);
+     if (!big_endian) {
+         buf += bufinfo.len - 1;
+         delta = -1;
+@@ -428,7 +420,40 @@
+     return mp_obj_new_int_from_uint(value);
+ }
+ 
+-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(int_from_bytes_fun_obj, 2, 4, int_from_bytes);
++// this is a classmethod: from_bytes(bytes, byteorder="big", *, signed=False);
++// byteorder and signed may also be given by keyword or position
++static mp_obj_t int_from_bytes(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
++    mp_arg_check_num(n_args, kw_args->used, 2, 4, true);
++
++    // get the buffer info
++    mp_buffer_info_t bufinfo;
++    mp_get_buffer_raise(args[1], &bufinfo, MP_BUFFER_READ);
++
++    mp_obj_t byteorder = n_args > 2 ? args[2] : MP_OBJ_NEW_QSTR(MP_QSTR_big);
++    mp_obj_t is_signed = n_args > 3 ? args[3] : mp_const_false;
++    mp_map_elem_t *kw = mp_map_lookup(kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_byteorder), MP_MAP_LOOKUP);
++    if (kw != NULL) {
++        byteorder = kw->value;
++    }
++    kw = mp_map_lookup(kw_args, MP_OBJ_NEW_QSTR(MP_QSTR_signed), MP_MAP_LOOKUP);
++    if (kw != NULL) {
++        is_signed = kw->value;
++    }
++    bool big_endian = byteorder != MP_OBJ_NEW_QSTR(MP_QSTR_little);
++
++    mp_obj_t value = int_from_bytes_unsigned(big_endian, bufinfo);
++    const byte *buf = (const byte *)bufinfo.buf;
++    if (bufinfo.len > 0 && mp_obj_is_true(is_signed)
++        && (buf[big_endian ? 0 : bufinfo.len - 1] & 0x80)) {
++        // two's complement: the top bit set means value - 2**(8*len)
++        mp_obj_t range = mp_binary_op(MP_BINARY_OP_LSHIFT, MP_OBJ_NEW_SMALL_INT(1),
++            MP_OBJ_NEW_SMALL_INT(8 * bufinfo.len));
++        value = mp_binary_op(MP_BINARY_OP_SUBTRACT, value, range);
++    }
++    return value;
++}
++
++static MP_DEFINE_CONST_FUN_OBJ_KW(int_from_bytes_fun_obj, 2, int_from_bytes);
+ static MP_DEFINE_CONST_CLASSMETHOD_OBJ(int_from_bytes_obj, MP_ROM_PTR(&int_from_bytes_fun_obj));
+ 
+ static mp_obj_t int_to_bytes(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {

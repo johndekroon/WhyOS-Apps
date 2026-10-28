@@ -1,11 +1,13 @@
 # MicroPython 1.29.0 (why2025-linux sdapps/micropython), the Python REPL in
 # the menu's terminal window, and the "micropython" and "python" commands
 # in any shell. Files runs a .py file with it (Open with).
+# Package 1.29.1 (build 2) is MicroPython 1.29.0 (upstream_version) with
+# meshcore_py and our setting, ics and xml modules frozen in.
 format = 1
 id = "micropython"
 name = "MicroPython"
-version = "1.29.0"
-build = 1
+version = "1.29.1"
+build = 2
 summary = "Python 3 on the badge: an interactive prompt and your own scripts"
 description = """
 MicroPython is a lean implementation of Python 3. From the menu it opens
@@ -22,18 +24,21 @@ in the lib folder there can be imported from anywhere, and
 "python -m mip install <package>" installs packages from micropython-lib
 into it (Wi-Fi needed).
 
-Included: json, re, socket and ssl (HTTPS), asyncio, hashlib, time,
-os, math, struct, binascii, deflate, select and more, and the
-@micropython.native and viper decorators for fast code. Not included:
-threads, ffi, and CPython's larger standard library. The heap is 2 MB;
-MICROPY_HEAP=4M before the command gives a script more."""
+Included: json, re, socket and ssl (HTTPS), requests, asyncio,
+hashlib, time, os, math, struct, binascii, deflate, select and more, and
+the @micropython.native and viper decorators for fast code. For the
+badge: meshcore (MeshCore messages and bots over LoRa, with an example
+bot), setting (the badge's settings), ics (calendars from an .ics link,
+repeats worked out) and xml.etree.ElementTree (XML as in CPython). Not
+included: threads, ffi, and CPython's larger standard library. The heap
+is 2 MB; MICROPY_HEAP=4M before the command gives a script more."""
 author = "Damien P. George and the MicroPython contributors, badge port"
 license = "MIT AND (Apache-2.0 OR GPL-2.0-or-later) AND BSD-3-Clause AND Zlib AND LGPL-2.1-or-later"
 license_file = "micropython.txt"
 homepage = "https://micropython.org"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/micropython/source"
 upstream_version = "1.29.0"
-changelog = "First store release."
+changelog = "Built in: meshcore for LoRa messages and bots (with an example bot), setting for the badge's settings, ics for calendars from an .ics link, and xml.etree.ElementTree for XML. Sites that also have an IPv6 address, such as Google, now work."
 
 type = "app"
 category = "development"
@@ -58,7 +63,7 @@ exec = "start"
 
 [requires]
 os_api = 1
-memory_kb = 3000          # peak 2.8 MB in the simulator: the 0.7 MB program and its 2 MB heap
+memory_kb = 3100          # the 0.86 MB program and its 2 MB heap (build 1: peak 2.8 MB in the simulator with 0.7 MB)
 features = ["sd-card", "keyboard"]
 
 [storage.data]
@@ -79,6 +84,20 @@ source = "https://github.com/micropython/micropython/releases/download/v1.29.0/m
 license_file = "micropython-lib.txt"
 
 [[bundled]]
+name = "meshcore_py (frozen into the program)"
+version = "2.3.17"
+license = "MIT"
+source = "https://github.com/meshcore-dev/meshcore_py"
+license_file = "meshcore_py.txt"
+
+[[bundled]]
+name = "pycayennelpp (frozen in, for meshcore_py)"
+version = "28f2ba4"
+license = "MIT"
+source = "https://github.com/smlng/pycayennelpp"
+license_file = "pycayennelpp.txt"
+
+[[bundled]]
 name = "uzlib and re1.5"
 version = "1.29.0"
 license = "Zlib AND BSD-3-Clause"
@@ -93,8 +112,8 @@ source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
 license_file = "uClibc-ng.txt"
 
 [[bundled]]
-name = "Badge port (start script, build options)"
-version = "fa51576"
+name = "Badge port (start script, patches, setting, ics, xml)"
+version = "8a412f9"
 license = "MIT"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/micropython/source"
 license_file = "badge-port.txt"

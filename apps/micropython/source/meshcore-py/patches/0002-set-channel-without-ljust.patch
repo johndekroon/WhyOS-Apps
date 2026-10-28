@@ -1,0 +1,11 @@
+--- a/meshcore/commands/device.py
++++ b/meshcore/commands/device.py
+@@ -230,7 +230,7 @@
+ 
+         # Pad channel name to 32 bytes
+         name_bytes = channel_name.encode("utf-8")[:32]
+-        name_bytes = name_bytes.ljust(32, b"\x00")
++        name_bytes = name_bytes + bytes(32 - len(name_bytes))  # MicroPython: no ljust
+ 
+         if channel_name.startswith("#") or channel_secret is None: # auto name => key calculated from hash
+             channel_secret = sha256(channel_name.encode("utf-8")).digest()[0:16]

@@ -18,6 +18,22 @@
    "version": "1.29.0"
   },
   {
+   "license": "MIT",
+   "license_file": "meshcore_py.txt",
+   "license_url": "licenses/micropython/meshcore_py.txt",
+   "name": "meshcore_py (frozen into the program)",
+   "source": "https://github.com/meshcore-dev/meshcore_py",
+   "version": "2.3.17"
+  },
+  {
+   "license": "MIT",
+   "license_file": "pycayennelpp.txt",
+   "license_url": "licenses/micropython/pycayennelpp.txt",
+   "name": "pycayennelpp (frozen in, for meshcore_py)",
+   "source": "https://github.com/smlng/pycayennelpp",
+   "version": "28f2ba4"
+  },
+  {
    "license": "Zlib AND BSD-3-Clause",
    "license_file": "third-party.txt",
    "license_url": "licenses/micropython/third-party.txt",
@@ -37,9 +53,9 @@
    "license": "MIT",
    "license_file": "badge-port.txt",
    "license_url": "licenses/micropython/badge-port.txt",
-   "name": "Badge port (start script, build options)",
+   "name": "Badge port (start script, patches, setting, ics, xml)",
    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/micropython/source",
-   "version": "fa51576"
+   "version": "8a412f9"
   }
  ],
  "category": "tools",
@@ -54,7 +70,7 @@
   }
  ],
  "cover": "screens/micropython-cover.qoi",
- "description": "MicroPython is a lean implementation of Python 3. From the menu it opens\nthe interactive prompt (the REPL): type Python and see the result at\nonce, with history (arrow keys), Tab completion and automatic\nindentation. Ctrl+D closes it, Ctrl+E pastes a block of code. In a shell\n(serial console or SSH) \"micropython\" or \"python\" starts the prompt in\nyour own terminal, and \"python script.py\" runs a script.\n\nPut your scripts in badge/appdata/micropython on the SD card: the prompt\nstarts there, so \"import myscript\" runs myscript.py. Files also runs a\n.py file under Open with, and leaves the prompt open afterwards. Modules\nin the lib folder there can be imported from anywhere, and\n\"python -m mip install <package>\" installs packages from micropython-lib\ninto it (Wi-Fi needed).\n\nIncluded: json, re, socket and ssl (HTTPS), asyncio, hashlib, time,\nos, math, struct, binascii, deflate, select and more, and the\n@micropython.native and viper decorators for fast code. Not included:\nthreads, ffi, and CPython's larger standard library. The heap is 2 MB;\nMICROPY_HEAP=4M before the command gives a script more.",
+ "description": "MicroPython is a lean implementation of Python 3. From the menu it opens\nthe interactive prompt (the REPL): type Python and see the result at\nonce, with history (arrow keys), Tab completion and automatic\nindentation. Ctrl+D closes it, Ctrl+E pastes a block of code. In a shell\n(serial console or SSH) \"micropython\" or \"python\" starts the prompt in\nyour own terminal, and \"python script.py\" runs a script.\n\nPut your scripts in badge/appdata/micropython on the SD card: the prompt\nstarts there, so \"import myscript\" runs myscript.py. Files also runs a\n.py file under Open with, and leaves the prompt open afterwards. Modules\nin the lib folder there can be imported from anywhere, and\n\"python -m mip install <package>\" installs packages from micropython-lib\ninto it (Wi-Fi needed).\n\nIncluded: json, re, socket and ssl (HTTPS), requests, asyncio,\nhashlib, time, os, math, struct, binascii, deflate, select and more, and\nthe @micropython.native and viper decorators for fast code. For the\nbadge: meshcore (MeshCore messages and bots over LoRa, with an example\nbot), setting (the badge's settings), ics (calendars from an .ics link,\nrepeats worked out) and xml.etree.ElementTree (XML as in CPython). Not\nincluded: threads, ffi, and CPython's larger standard library. The heap\nis 2 MB; MICROPY_HEAP=4M before the command gives a script more.",
  "format": 1,
  "homepage": "https://micropython.org",
  "icon": null,
@@ -80,7 +96,7 @@
    "sd-card",
    "keyboard"
   ],
-  "memory_kb": 3000,
+  "memory_kb": 3100,
   "os_api": 1
  },
  "screenshots": [
@@ -107,6 +123,19 @@
  "type": "app",
  "upstream_version": "1.29.0",
  "versions": [
+  {
+   "build": 2,
+   "changelog": "Built in: meshcore for LoRa messages and bots (with an example bot), setting for the badge's settings, ics for calendars from an .ics link, and xml.etree.ElementTree for XML. Sites that also have an IPv6 address, such as Google, now work.",
+   "package": {
+    "installed_size": 965977,
+    "sha256": "4d8bd7adb3457def4eb42d0d3f0394bd03e49515bcd73bf42072e7efa9559906",
+    "size": 535102,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/micropython-1.29.1.wpk"
+   },
+   "published": "2026-10-28T20:59:32Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/micropython-1.29.1-source.tar.gz",
+   "version": "1.29.1"
+  },
   {
    "build": 1,
    "changelog": "First store release.",

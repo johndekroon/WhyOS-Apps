@@ -617,17 +617,39 @@ build_doom() {
 # micropython command (micropython/start). Its own readline, mbedTLS for
 # ssl (mip installs over HTTPS) and the RV32 native emitter; no threads,
 # ffi, btree or littlefs/FAT VFS. mpy-cross runs on the build VM to freeze
-# the bundled modules (mip, asyncio, ...). Its printf and uClibc's both
-# define vsnprintf: MicroPython's wins (it ties output to its streams),
-# uClibc keeps its own for internal calls.
+# the bundled modules (mip, asyncio, ...) and meshcore_py, the MeshCore
+# companion library (micropython/meshcore-py, staged by its stage.sh), and
+# our own modules (micropython/modules: setting, the badge's settings;
+# ics, calendars).
+# micropython/*.patch: int.from_bytes takes signed=, which meshcore_py
+# uses; getaddrinfo() asks only for the address families the badge has
+# (AI_ADDRCONFIG, as glibc), so a site with an IPv6 address is reached
+# over IPv4 (the badge has no IPv6). Its printf and uClibc's both define vsnprintf: MicroPython's wins
+# (it ties output to its streams), uClibc keeps its own for internal calls.
 MPY_URL=https://github.com/micropython/micropython/releases/download/v1.29.0/micropython-1.29.0.tar.xz
 MPY_SHA=d925a7c664e79a2bdf3dfcb285ba5e2237041cc35a0bd4ee573b6c5711efeca0
 
 build_micropython() {
 	local s d=$DEST/micropython
 	s=$SRC/$(get "$MPY_URL" "$MPY_SHA")
+	for f in "$HERE"/micropython/*.patch; do	# get unpacks afresh: apply each
+		patch -d "$s" -p1 -s < "$f"
+	done
+	"$HERE/micropython/meshcore-py/stage.sh" "$SRC/meshcore-py"
+	cat > "$SRC/meshcore-py/manifest.py" <<-EOF
+	include("\$(PORT_DIR)/variants/standard/manifest.py")
+	package("meshcore")
+	package("cayennelpp")
+	module("setting.py", base_path="$HERE/micropython/modules")
+	module("ics.py", base_path="$HERE/micropython/modules")
+	package("xml", base_path="$HERE/micropython/modules")
+	EOF
+	# from scratch: after a change, its incremental build fails in
+	# makeqstrdefs.py (compressed.split)
+	rm -rf "$s/ports/unix/build-standard"
 	make -s -C "$s/mpy-cross" -j"$(nproc)"
 	make -s -C "$s/ports/unix" -j"$(nproc)" CROSS_COMPILE="$T-" STRIP=true SIZE=true CWARN=-Wall \
+		FROZEN_MANIFEST="$SRC/meshcore-py/manifest.py" \
 		MICROPY_PY_FFI=0 MICROPY_PY_BTREE=0 MICROPY_PY_THREAD=0 \
 		MICROPY_VFS_LFS1=0 MICROPY_VFS_LFS2=0 MICROPY_VFS_FAT=0 CFLAGS_EXTRA="-fPIC" \
 		LDFLAGS_EXTRA="-static -Wl,--allow-multiple-definition -Wl,--no-relax -Wl,-elf2flt=-r"
@@ -638,6 +660,10 @@ build_micropython() {
 	mkdir -p "$d"
 	cp "$s/ports/unix/build-standard/micropython" "$s/LICENSE" "$d/"
 	cp "$HERE/micropython/start" "$HERE/micropython/app.conf" "$d/"
+	cp "$SRC/meshcore-py/meshcore/LICENSE" "$d/LICENSE-meshcore_py"
+	cp "$SRC/meshcore-py/cayennelpp/LICENSE" "$d/LICENSE-pycayennelpp"
+	mkdir -p "$d/examples"
+	cp "$HERE/micropython/meshcore-py/examples/ping_bot.py" "$d/examples/"
 	ls -l "$d"
 }
 

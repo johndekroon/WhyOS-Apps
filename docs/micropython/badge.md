@@ -140,10 +140,10 @@ UDP works the same way with `socket.SOCK_DGRAM`.
 
 **The badge has no IPv6.** Ask `socket.getaddrinfo()` for IPv4 addresses
 with `socket.AF_INET`, as in the example above: many sites also have an
-IPv6 address, and connecting to it fails with `OSError: 97`. MicroPython
-1.29.0 build 1 (the one in the store on 2026-10-28) returns those IPv6
-addresses first, so there `requests` fails for such sites too (Google,
-example.org); build 2 returns only IPv4 addresses, as Python on a PC does.
+IPv6 address, and connecting to it fails with `OSError: 97`. The store's
+MicroPython 1.29.0 (until 2026-10-28) returns those IPv6 addresses first,
+so there `requests` fails for such sites too (Google, example.org);
+1.29.1 returns only IPv4 addresses, as Python on a PC does.
 
 Without a network, `socket.getaddrinfo()` and `requests` raise `OSError`;
 catch it to show a message instead of a traceback. A certificate that does
@@ -168,7 +168,7 @@ print("%02d:%02d" % (h, mi))
 
 ### Calendars (.ics links)
 
-From MicroPython 1.29.0 build 2 on, the `ics` module reads calendars in
+From the store's MicroPython 1.29.1 on, the `ics` module reads calendars in
 iCalendar format: the "iCal" or "webcal" link that Google Calendar,
 Outlook, Nextcloud and event sites give. The next 90 days of a calendar:
 
@@ -213,7 +213,7 @@ for e in cal.between(now, now + 90 * 86400):  # the next 90 days
 
 ## XML (feeds, schedules, GPX)
 
-From MicroPython 1.29.0 build 2 on, `xml.etree.ElementTree` reads and
+From the store's MicroPython 1.29.1 on, `xml.etree.ElementTree` reads and
 writes XML as Python on a computer does: RSS and Atom feeds, GPX tracks,
 event schedules, the answers of many web APIs. A small document at once:
 
@@ -353,9 +353,9 @@ adverts, and make a bot that answers. It is
 the MeshCore tools on a computer use, with one addition for the badge:
 `MeshCore.create_unix()`, which connects to the badge's own node.
 
-`meshcore` comes with MicroPython 1.29.0 build 2 and later. On 2026-10-28
-that version is built but not yet in the store; with an older one,
-`import meshcore` raises `ImportError`.
+`meshcore` comes with the store's MicroPython 1.29.1 and later (in the
+store since 2026-10-28); with an older one, `import meshcore` raises
+`ImportError`.
 
 **Before you start:**
 
