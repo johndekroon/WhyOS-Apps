@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 /*
- * flappy — Flappy Bird for the badge, drawn like the menu (wbdraw.h, the
- * design's colours and fonts), as an app from the store (SOURCES.md).
+ * flappy — Flappy Bird for the badge, drawn like the menu (libwb: the
+ * design's colours, fonts and glass), as an app from the store (SOURCES.md).
  *
  * A bird falls; Space, Enter, Up or a symbol key (not the diamond) makes it
  * flap. Fly through the gaps between the pipes: each pipe passed is a
@@ -14,11 +14,21 @@
  * keys, the logo key ends it through apprun (SIGTERM, which saves the best
  * score). The start screen shows the keys too.
  *
+ * The game field fills the panel; the chrome over it is the canvas "Menu's
+ * met frontpaneel": the start screen's and the game over's cards and the
+ * hint bar are glass over the field, the pause and the keys are frosted
+ * pop-ups with square corners (Docs/06-design-system.md).
+ *
  * The world moves in ticks of 1/60 s, in fixed point (FP, 1/256 px): the
  * toolchain is soft-float. The panel is drawn at most 25 times a second,
- * one band of BAND_H rows at a time through wbdraw.h's clipping, as the
- * calculator does: no 1 MB frame buffer. On exit, the frame count and the
- * average time to draw one go to stderr (apprun's log).
+ * one band of BAND_H rows at a time through libwb's clipping, as the
+ * calculator does: no 1 MB frame buffer while it moves. While the game
+ * stands still, a frame is recorded first and only the bands that changed
+ * are drawn (libwb's wb_bands and wb_frame); a pop-up is drawn in a whole
+ * picture (1 MB, taken while it is open) so it can blur what is under it,
+ * and a key that moves its focus draws the pop-up's changed rows. On exit,
+ * the frame count and the average time to draw one go to stderr (apprun's
+ * log); FLAPPY_UI_TIMING=1 adds a line per frame.
  *
  * Built with -DFLAPPY_HOST, it takes a script from its first argument and
  * writes the screen as PPM to its second: the host test (test_flappy.py).
@@ -37,12 +47,11 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "home_assets.h"
-#include "home-assets/wb_tokens.h"
+#include "wb_tokens.h"
 
 #define W		WB_SCREEN_W
 #define H		WB_SCREEN_H
-#include "wbdraw.h"
+#include "wb.h"
 
 #ifndef FLAPPY_HOST
 #include <poll.h>
@@ -109,6 +118,7 @@ static struct {
 	uint32_t seed;
 	int paused, focus;		/* Esc's pop-up */
 	int help, help_paused;		/* the keys; opened from the pause */
+	unsigned gen;			/* one more each time the field changes (recording a frame) */
 } G;
 
 static struct { int16_t x, y; uint8_t near; uint8_t c; } stars[N_STARS];
@@ -200,6 +210,7 @@ static void reset(void)
 {
 	int cy = (GAP_LO + GAP_HI) / 2;
 
+	G.gen++;
 	G.mode = READY;
 	G.t = 0;
 	G.y = READY_Y * FP;
@@ -226,6 +237,7 @@ static void flap(void)
 		G.mode = PLAY;
 		G.t = 0;
 	}
+	G.gen++;
 	G.v = FLAP;
 	G.flap_t = 0;
 }
@@ -282,6 +294,7 @@ static void step(void)
 {
 	int speed = level(SPEED_EASY, SPEED_HARD);
 
+	G.gen++;
 	G.t++;
 	G.flap_t++;
 	if (G.mode != DEAD) {
@@ -510,7 +523,7 @@ static void ground(void)
 	fill(0, GROUND_Y, W, 4, WB_COLOR_PINK);
 }
 
-/* ---- sprites: drawn once with wbdraw.h, blended in every frame -------- */
+/* ---- sprites: drawn once with libwb, blended in every frame ------------ */
 
 /*
  * Blend premultiplied colours c with alpha a (w x h) in at (x, y). The
@@ -665,6 +678,13 @@ static void big_draw(const struct big *m, int x, int y, uint32_t c)
 
 	x--;
 	y--;
+	if (wb_rec) {		/* blended into fb: its rows, the line and where */
+		int k[] = { 0x6267, x, y, (int)c, m->w };
+
+		wb_rec_rows(y, y + BIG_H, k, sizeof(k));
+		wb_rec_rows(y, y + BIG_H, m->s, strlen(m->s));
+		return;
+	}
 	for (int j = 0; j < BIG_H; j++) {
 		uint16_t *row = fb + (y + j) * W;
 
@@ -700,36 +720,58 @@ static void score(int y)
 	big_draw(&big_score, x, y, WB_COLOR_TEXT_HI);
 }
 
+/*
+ * libwb draws cards, panels and the hint bar as glass only over its scene;
+ * here the game field stands in for the scene. A pop-up's panel blurs what
+ * is under it (glass_backdrop() reads those rows), so it is glass only with
+ * the whole picture in fb (draw() says so), else a plain panel.
+ */
+static int whole_frame;
+
+static void flappy_glass(int popup)
+{
+	scene_shown = !popup || whole_frame;
+	gb_ok = 0;
+}
+
+/* The start screen: the field with the bird bobbing, the name on a card
+ * above it, the keys on one below. */
 static void ready_screen(void)
 {
 	const struct wb_font *f = &f_ui22;
-	int cy = 470, w, x;
-	char buf[24], *n;
+	const int x = POP_X, y = 88, w = W - 2 * POP_X, h = 172;
+	int cy = 470, kw, kx;
+	char buf[24];
 
-	text(&f_mono14, (W - text_w(&f_mono14, "GAMES", 22)) / 2, 96, "GAMES", WB_COLOR_CYAN, 22);
+	wb_card(x, y, w, h, WB_RADIUS_LG, 0, 0);
+	eyebrow(x + 32, y + 30, "APP");
 	big_make(&big_title, "Flappy");
-	big_draw(&big_title, (W - big_title.w + 4) / 2, 120, WB_COLOR_TEXT_HI);
-	/* "[Space] or [▲] to flap" */
-	w = keycap_w("Space") + 18 + 10 + text_w(f, "or", 0) + 10 + keycap_w("#2") + 18 + 10 +
-	    text_w(f, "to flap", 0);
-	x = (W - w) / 2;
-	x = keycap(x, cy, "Space") + 10;
-	x = text(f, x, text_top(f, cy), "or", WB_COLOR_TEXT_MID, 0) + 10;
-	x = keycap(x, cy, "#2") + 10;
-	text(f, x, text_top(f, cy), "to flap", WB_COLOR_TEXT_MID, 0);
+	big_draw(&big_title, x + 30, y + 50, WB_COLOR_TEXT_HI);
 	if (G.best) {
-		n = utoa((unsigned)G.best, buf + sizeof(buf));
-		memcpy(n - 5, "Best ", 5);
-		centred(&f_mono16b, 512, n - 5, WB_COLOR_TEXT_LOW);
+		const char *n = utoa((unsigned)G.best, buf + sizeof(buf));
+
+		text(&f_mono14, x + w - 32 - text_w(&f_mono14, "BEST", 22), y + 30, "BEST",
+		     WB_COLOR_TEXT_MID, 22);
+		text(&f_ui36b, x + w - 32 - text_w(&f_ui36b, n, 0), y + 86, n, WB_COLOR_TEXT_HI, 0);
 	}
+	/* "[Space] or [▲] to flap" */
+	kw = keycap_w("Space") + 18 + 10 + text_w(f, "or", 0) + 10 + keycap_w("#2") + 18 + 10 +
+	     text_w(f, "to flap", 0);
+	wb_card((W - kw) / 2 - 28, cy - 30, kw + 56, 60, WB_RADIUS_MD, 0, 0);
+	kx = (W - kw) / 2;
+	kx = keycap(kx, cy, "Space") + 10;
+	kx = text(f, kx, text_top(f, cy), "or", WB_COLOR_TEXT_MID, 0) + 10;
+	kx = keycap(kx, cy, "#2") + 10;
+	text(f, kx, text_top(f, cy), "to flap", WB_COLOR_TEXT_MID, 0);
 }
 
+/* The game over: a glass card over the field, the score big. */
 static void dead_card(void)
 {
 	const int cw = 400, ch = 250, x = (W - cw) / 2, y = 180;
 	char buf[24], *n;
 
-	box_plain(x, y, cw, ch, WB_RADIUS_LG, WB_COLOR_SURFACE1);
+	wb_card(x, y, cw, ch, WB_RADIUS_LG, 0, 0);
 	text(&f_mono14, (W - text_w(&f_mono14, "GAME OVER", 22)) / 2, y + 30, "GAME OVER",
 	     WB_COLOR_PINK, 22);
 	big_make(&big_card, utoa((unsigned)G.score, buf + sizeof(buf)));
@@ -757,6 +799,8 @@ static void draw_help(void)
 		   "A pipe or the ground ends the game.", keys, sizeof(keys) / sizeof(keys[0]));
 }
 
+/* The screen, clipped to fb_y0..fb_y1: it only draws (libwb runs it once
+ * more to record the frame). */
 static void draw_band(void)
 {
 	static const struct hint ready_hints[] = { { "Space", "flap", 0 }, { "Esc", "pause", 1 } };
@@ -767,28 +811,38 @@ static void draw_band(void)
 		{ .label = "Quit", .sep = 1 },
 	};
 
-	sky();
-	for (int i = 0; i < N_PIPES; i++) {
-		int x = G.p[i].x / FP;
+	if (wb_rec) {		/* the field writes fb itself: recorded by its generation */
+		int k[] = { 0x666c, (int)G.gen };
 
-		if (x < W + LIP_X && x > -(PIPE_W + LIP_X))
-			draw_pipe(x, G.p[i].cy, G.p[i].gap);
+		wb_rec_rows(0, H, k, sizeof(k));
+	} else {
+		sky();
+		for (int i = 0; i < N_PIPES; i++) {
+			int x = G.p[i].x / FP;
+
+			if (x < W + LIP_X && x > -(PIPE_W + LIP_X))
+				draw_pipe(x, G.p[i].cy, G.p[i].gap);
+		}
+		ground();
+		bird();
 	}
-	ground();
-	bird();
+	flappy_glass(0);
 	if (G.mode == READY) {
 		ready_screen();
-		hint_bar(ready_hints, 2);
+		if (!G.help)		/* the help has a bar of its own */
+			hint_bar(ready_hints, 2);
 	} else if (G.mode == DEAD && G.t >= CARD_T) {
 		dead_card();
-		hint_bar(dead_hints, 2);
+		if (!G.help)
+			hint_bar(dead_hints, 2);
 	} else {
 		score(40);
 	}
+	flappy_glass(1);
 	if (G.help)
 		draw_help();
 	else if (G.paused)
-		menu_popup("FLAPPY", "Paused", 0, items, 0, P_N, G.focus, -1, 0, 0, pause_hints, 2);
+		menu_popup("FLAPPY", "Paused", 0, items, 0, P_N, G.focus, -2, 0, 0, pause_hints, 2);
 }
 
 static void init_stars(void)
@@ -806,35 +860,106 @@ static void init_stars(void)
 #define BAND_H	20	/* measured on the badge: 41 ms a frame; 40 rows 54, 8 rows 54 */
 static uint32_t band32[W * BIRD_SH / 2];	/* BIRD_SH rows: make_birds draws here */
 #define band	((uint16_t *)band32)
+static uint16_t *whole;			/* the whole picture, while a pop-up is open */
 #ifdef FLAPPY_HOST
 static uint16_t screen[W * H];
 #else
 static int fb_fd = -1;
 #endif
 
+/* a band (or the whole picture) to the panel */
+static void out(const uint16_t *b, int y0, int y1)
+{
+#ifdef FLAPPY_HOST
+	memcpy(screen + y0 * W, b, (size_t)(y1 - y0) * W * 2);
+#else
+	pwrite(fb_fd, b, (size_t)(y1 - y0) * W * 2, (off_t)y0 * W * 2);
+#endif
+}
+
+static void paint(void *unused)
+{
+	(void)unused;
+	draw_band();
+}
+
+/* FLAPPY_UI_TIMING=1: a line per frame on stderr (apprun's log): its time,
+ * how (moving, bands, whole), the bands drawn, libwb's glass (us) */
+static void timing(long t0, const char *how, int n)
+{
+	static int on = -1;
+	char line[96] = "flappy: frame ", num[12];
+
+	if (on < 0)
+		on = getenv("FLAPPY_UI_TIMING") != 0;
+	if (on) {
+		strcat(line, utoa((unsigned)(wb_now_us() - t0), num + sizeof(num)));
+		strcat(line, " us (");
+		strcat(line, how);
+		strcat(line, ", ");
+		strcat(line, utoa((unsigned)n, num + sizeof(num)));
+		strcat(line, " bands), glass ");
+		strcat(line, utoa((unsigned)tm_glass, num + sizeof(num)));
+		strcat(line, "\n");
+		if (write(2, line, strlen(line)) < 0)
+			on = 0;
+	}
+	tm_scene = tm_glass = 0;
+}
+
+/*
+ * While the game moves every band changes: all of them are drawn, without
+ * recording. Standing still (a pop-up, the game over), the frame is
+ * recorded and only the bands that changed are drawn; a pop-up in the
+ * whole picture (if there is room), so it is frosted.
+ */
 static void draw(void)
 {
-	for (int y0 = 0; y0 < H; y0 += BAND_H) {
+	long t0 = wb_now_us();
+	int n = 0;
+
+	if ((G.paused || G.help) && !whole) {
+#ifdef FLAPPY_HOST
+		if (!getenv("FLAPPY_BANDS_ONLY"))	/* the tests: as if there were no room */
+#endif
+			whole = malloc((size_t)W * H * 2);
+		if (whole)
+			wb_rec_invalidate();	/* nothing in it yet */
+	} else if (!G.paused && !G.help && whole) {
+		free(whole);
+		whole = 0;
+	}
+	if (whole) {
+		whole_frame = 1;
+		n = wb_frame(paint, 0, whole, BAND_H, out);
+		whole_frame = 0;
+		timing(t0, "whole", n);
+		return;
+	}
+	if (!running()) {
+		n = wb_bands(paint, 0, band, BAND_H, out);
+		timing(t0, "bands", n);
+		return;
+	}
+	for (int y0 = 0; y0 < H; y0 += BAND_H, n++) {
 		int y1 = y0 + BAND_H < H ? y0 + BAND_H : H;
 
 		fb = band - (long)y0 * W;
 		fb_y0 = y0;
 		fb_y1 = y1;
 		draw_band();
-#ifdef FLAPPY_HOST
-		memcpy(screen + y0 * W, band, (size_t)(y1 - y0) * W * 2);
-#else
-		pwrite(fb_fd, band, (size_t)(y1 - y0) * W * 2, (off_t)y0 * W * 2);
-#endif
+		out(band, y0, y1);
 	}
+	wb_rec_invalidate();	/* drawn without recording */
+	timing(t0, "moving", n);
 }
 
 /* ---- the host test ------------------------------------------------------ */
 
 #ifdef FLAPPY_HOST
-static void save_ppm(const char *path)
+/* the screen as PPM to fd */
+static void write_ppm(int fd)
 {
-	int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	static uint8_t rgb_[W * H * 3];
 	static const char hdr[] = "P6\n720 720\n255\n";
 
@@ -847,6 +972,13 @@ static void save_ppm(const char *path)
 	}
 	if (fd < 0 || write(fd, hdr, sizeof(hdr) - 1) < 0 || write(fd, rgb_, sizeof(rgb_)) < 0)
 		_exit(1);
+}
+
+static void save_ppm(const char *path)
+{
+	int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
+	write_ppm(fd);
 	close(fd);
 }
 
@@ -868,14 +1000,17 @@ static void autopilot(void)
 }
 
 /*
- * flappy-host SCRIPT [OUT.ppm]: SCRIPT is words: f (a flap: Space), kN (key
- * code N), tN (N ticks), aN (N ticks of autopilot). Prints the state; the
- * screen goes to OUT.ppm. The seed is fixed.
+ * flappy-host SCRIPT [OUT.ppm [FRAMES.ppm]]: SCRIPT is words: f (a flap:
+ * Space), kN (key code N), tN (N ticks), aN (N ticks of autopilot), d (a
+ * frame drawn, as the badge draws one after a key; written to FRAMES.ppm).
+ * Prints the state; the screen at the end goes to OUT.ppm. The seed is
+ * fixed.
  */
 int main(int argc, char **argv)
 {
 	const char *s = argc > 1 ? argv[1] : "";
 	char out[256] = "", num[12];
+	int frames = argc > 3 ? open(argv[3], O_WRONLY | O_CREAT | O_TRUNC, 0644) : -1;
 
 	G.seed = 12345;
 	init_stars();
@@ -893,7 +1028,11 @@ int main(int argc, char **argv)
 			s++;
 		if (c == 'f')
 			key(KEY_SPACE);
-		else if (c == 'k' && key(n)) {
+		else if (c == 'd') {
+			draw();
+			if (frames >= 0)
+				write_ppm(frames);
+		} else if (c == 'k' && key(n)) {
 			write(1, "closed\n", 7);
 			return 0;
 		} else if (c == 't' || c == 'a') {
@@ -906,6 +1045,8 @@ int main(int argc, char **argv)
 		}
 	}
 	draw();
+	if (frames >= 0)
+		close(frames);
 	if (argc > 2)
 		save_ppm(argv[2]);
 	strcat(out, G.mode == READY ? "mode ready" : G.mode == PLAY ? "mode play" : "mode dead");

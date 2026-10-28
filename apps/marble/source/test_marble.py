@@ -15,7 +15,10 @@ import tempfile
 from collections import deque
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-O = HERE                 # wbdraw.h and the fonts are next to it
+# libwb (wb.h, the fonts): the copy next to it, else why2025-linux's
+O = os.path.join(HERE, "libwb")
+if not os.path.isfile(os.path.join(O, "wb.h")):
+    O = os.path.normpath(os.path.join(HERE, "../../../../why2025-linux/libwb"))
 ESC, ENTER, UP, DOWN, LEFT, RIGHT = 1, 28, 103, 108, 105, 106
 SQUARE, TRIANGLE, CROSS, CIRCLE, CLOUD, DIAMOND = 59, 60, 61, 62, 63, 64
 G1 = 4096                       # a g, in sensor counts
@@ -171,7 +174,7 @@ def main():
     check("falls in a hole", s["mode"] == "fall", s)
     s = g.run("l0 x2000 t45 x0 t60", hole)
     check("a life less, back at the start", s["lives"] == 2 and s["x"] == 60 and s["mode"] == "play", s)
-    s = g.run("l0 x2000 t100 t100 t50", hole)
+    s = g.run("l0 x2000 t100 t100 t50", hole, shot="over")
     check("out of lives", s["mode"] == "over", s)
     s = g.run("l0 x2000 t100 t100 t50 x0 t200", hole)
     check("the level starts over", s["mode"] == "ready" and s["lives"] == 3 and s["time"] == 0, s)
@@ -290,6 +293,8 @@ def main():
     check("the cloud: settings", s["mode"] == "play settings")
     s = g.run("k%d k%d" % (CLOUD, ENTER))
     check("controls: arrows", s["control"] == 1 and "control=1" in g.file("settings"), s)
+    s = g.run("k%d k%d k%d" % (CLOUD, DOWN, ENTER), shot="sensitivity")
+    check("the sensitivity's choice", s["mode"] == "title sensitivity" and s["focus"] == 1, s)
     s = g.run("k%d k%d k%d k%d k%d" % (CLOUD, DOWN, ENTER, DOWN, ENTER))
     check("sensitivity: high", s["sens"] == 2 and "sensitivity=2" in g.file("settings"), s)
     s = g.run("l0 k%d t60 r%d" % (RIGHT, RIGHT), open_)
@@ -308,8 +313,47 @@ def main():
     # alone (a run-up for ramps, a wait for lasers), within the par time
     pars = [int(p) for p in re.findall(r'\{ "[^"]+", "[^"]*", (\d+),', open(os.path.join(HERE, "levels.h")).read())]
     for li in range(18):
-        s = g.run("l%d p5400" % li)
+        s = g.run("l%d p5400" % li, shot="won" if li == 1 else None)
         check("level %d won by tilting" % li, s["mode"] == "won" and s["time"] < pars[li] * 60, s)
+
+    # drawn only where the screen changed (libwb's recording) or whole
+    # (WB_FULL=1), a pop-up frosted or in bands: every frame the same
+    size = len(b"P6\n720 720\n255\n") + 720 * 720 * 3
+    frames = [
+        # the title: moves, the keys over it, the results and their focus,
+        # the settings, Sensitivity and back
+        "d " + " d ".join("k%d" % k for k in (RIGHT, RIGHT, DOWN, LEFT, UP, DIAMOND, ESC, CIRCLE, DOWN, DOWN,
+                                               ESC, CLOUD, DOWN, ENTER, ESC, ESC)) + " d",
+        # a level: the pause and its focus, the keys and back, Resume; on,
+        # paused again
+        "l0 t10 d " + " d ".join("k%d" % k for k in (ESC, DOWN, DOWN, UP, DIAMOND, ESC, DOWN, DOWN, ENTER,
+                                                     ESC, ESC)) + " d t5 d k%d d k%d d" % (ESC, ENTER),
+        # a level won: its card, the pause over it
+        "l1 p5400 d k%d d k%d d k%d d" % (ESC, DOWN, ESC),
+        # paused, resumed, rolled on, paused again: the level under it moved
+        "l0 x3000 t10 d k%d d k%d d t30 d k%d d" % (ESC, ENTER, ESC),
+    ]
+    for script in frames:
+        for bands in (False, True):
+            got = {}
+            for full in (False, True):
+                env = dict(os.environ, APP_CONFIG=tempfile.mkdtemp())
+                for k in ("WB_FULL", "MARBLE_BANDS_ONLY", "MARBLE_MAP"):
+                    env.pop(k, None)
+                if full:
+                    env["WB_FULL"] = "1"
+                if bands:
+                    env["MARBLE_BANDS_ONLY"] = "1"
+                path = os.path.join(g.dir, "frames-%d.ppm" % full)
+                subprocess.run([exe, script, os.path.join(g.dir, "last.ppm"), path], env=env, check=True,
+                               capture_output=True)
+                got[full] = open(path, "rb").read()
+            n = script.split().count("d")
+            same = len(got[False]) == len(got[True]) == n * size
+            first = next((i for i in range(n) if got[False][i * size:(i + 1) * size] !=
+                          got[True][i * size:(i + 1) * size]), None) if same else -1
+            check("drawn partly = drawn whole%s: %s" % (" in bands" if bands else "", script), first is None,
+                  "frame %s differs" % first)
 
     print("%d of %d failed" % (bad, checks))
     sys.exit(1 if bad else 0)

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 /*
  * marble — Marble Orbit: tilt the badge to roll a marble into the ring, in
- * eighteen levels of six worlds (levels.h), drawn like the menu (wbdraw.h,
- * the design's fonts) as a store app (SOURCES.md).
+ * eighteen levels of six worlds (levels.h), drawn like the menu (libwb: the
+ * design's fonts and glass) as a store app (SOURCES.md).
  *
  * A level is one screen of 18 x 18 tiles of 40 px; the top row is the HUD.
  * The marble rolls with the accelerometer (the BMI270 through IIO, as sleepd
@@ -18,12 +18,22 @@
  * cloud the settings, the circle the results; the logo key ends it through
  * apprun.
  *
+ * The chrome is the canvas "Menu's met frontpaneel" (Docs/06): the title
+ * (the levels) lies on the frontpanel's figures with its tiles as glass;
+ * a level fills the panel, and its cards are glass over it; the pause,
+ * settings, results and keys are frosted pop-ups.
+ *
  * Ticks of 1/60 s in fixed point (FP, 1/256 px): the toolchain is
  * soft-float. The screen is drawn in bands of one tile row, and only the
  * rows that changed (the marble's, moving things', the HUD's): a band is
  * built from tiles rendered once per level into a cache, then the things
- * on them. On exit the frame count, the time to draw and to read the
- * sensor go to stderr (apprun's log).
+ * on them. The title and a pop-up (the game stands still) are recorded
+ * first and only the bands that changed are drawn (libwb's wb_bands and
+ * wb_frame): a move on the title draws two tiles' rows. A pop-up is drawn
+ * in a whole picture (1 MB, taken while it is open), so it can blur what is
+ * under it, and a key that moves its focus draws its changed rows. On exit
+ * the frame count, the time to draw and to read the sensor go to stderr
+ * (apprun's log); MARBLE_UI_TIMING=1 adds a line per frame.
  *
  * Built with -DMARBLE_HOST, it takes a script from its first argument and
  * writes the screen as PPM to its second: the host test (test_marble.py).
@@ -42,12 +52,11 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "home_assets.h"
-#include "home-assets/wb_tokens.h"
+#include "wb_tokens.h"
 
 #define W		WB_SCREEN_W
 #define H		WB_SCREEN_H
-#include "wbdraw.h"
+#include "wb.h"
 #include "levels.h"
 
 #ifndef MARBLE_HOST
@@ -194,6 +203,7 @@ static struct {
 	int score, new_best;		/* the last level finished */
 	int anim;
 	uint32_t dirty;			/* rows to draw */
+	unsigned gen;			/* one more each time the level's picture changes (recording) */
 	int tilt_x, tilt_y;		/* sensor counts, 4096 a g, after the neutral */
 	int raw_x, raw_y;		/* filtered, before it */
 	int zero_x, zero_y, zero_n, zsum_x, zsum_y;
@@ -606,6 +616,7 @@ static void tile_cache(void);
 
 static void start_level(int li)
 {
+	G.gen++;
 	load_level(li);
 	tile_cache();
 	place_marble(L.sx, L.sy);
@@ -940,6 +951,7 @@ static void triggers(void)
 
 static void step(void)
 {
+	G.gen++;
 	G.t++;
 	if (G.t % ANIM_T == 0) {
 		G.anim++;
@@ -1755,9 +1767,24 @@ static void hud(void)
 		    i < G.lives ? w->ball_rim : WB_COLOR_LINE, 1, 0);
 }
 
+/*
+ * libwb draws cards, panels and the hint bar as glass only over its scene;
+ * over a level the level stands in for the scene. A pop-up's panel blurs
+ * what is under it (glass_backdrop() reads those rows), so it is glass only
+ * with the whole picture in fb (draw() says so), else a plain panel.
+ */
+static int whole_frame;
+
+static void marble_glass(int popup)
+{
+	scene_shown = !popup || whole_frame;
+	gb_ok = 0;
+}
+
+/* a card over the level: glass */
 static void card_frame(int y, int h)
 {
-	box(110, y, W - 220, h, WB_RADIUS_LG, WB_COLOR_SURFACE1, 240, WB_COLOR_LINE, 1, 0);
+	wb_card(110, y, W - 220, h, WB_RADIUS_LG, 0, 0);
 }
 
 static void ready_card(void)
@@ -1775,7 +1802,7 @@ static void ready_card(void)
 	centred(&f_ui28b, y + 86, levels[L.li].name, WB_COLOR_TEXT_HI);
 	text_wrap(&f_ui18, 150, y + 140, W - 300, 26, levels[L.li].hint, WB_COLOR_TEXT_MID, 2, 1);
 	centred(&f_ui16, y + 200, G.no_sensor ? "No tilt sensor: use the arrows" :
-		G.control ? "Roll with the arrows" : "Hold the badge as you like to play", WB_COLOR_TEXT_LOW);
+		G.control ? "Roll with the arrows" : "Hold the badge as you like to play", WB_COLOR_PLACEHOLDER);
 	box(150, y + 232, W - 300, 6, 3, WB_COLOR_LINE, 255, 0, 0, 0);
 	if (done > 6)
 		box(150, y + 232, done, 6, 3, w->accent, 255, 0, 0, 0);
@@ -1800,7 +1827,7 @@ static void won_card(void)
 	b[0] = 0;
 	cat(cat_u(cat(cat_u(cat(cat_u(cat(b, "500 + "), (unsigned)L.stars * 250), " stars + "),
 				(unsigned)G.lives * 100), " lives + "), (unsigned)(bonus > 0 ? bonus / 6 : 0)), " time");
-	centred(&f_ui16, y + 204, b, WB_COLOR_TEXT_LOW);
+	centred(&f_ui16, y + 204, b, WB_COLOR_PLACEHOLDER);
 	if (G.new_best)
 		centred(&f_ui22, y + 240, "New best!", WB_COLOR_YELLOW);
 	else {
@@ -1819,50 +1846,46 @@ static void over_card(void)
 	centred(&f_ui18, 362, "The level starts over", WB_COLOR_TEXT_MID);
 }
 
+/*
+ * The title: the levels, a world to a row, on the frontpanel's figures as
+ * an app's main screen (eyebrow APP, the high score right of the name);
+ * each level a glass tile, the focus cyan.
+ */
 static void title(void)
 {
 	char b[48];
-	int x0 = 54, y0 = 210, cw = 196, ch = 64, gap = 10;
+	int gap = 12, x0 = WB_CONTENT_PAD, y0 = WB_ROWS_TOP, ch = 70;
+	int cw = (W - 2 * WB_CONTENT_PAD - 2 * gap) / 3;
 
-	fill(0, fb_y0, W, fb_y1 - fb_y0, WB_COLOR_VOID);
-	seed = 7;
-	for (int i = 0; i < 70; i++) {
-		int x = (int)(rnd() % W), y = (int)(rnd() % (H - 60)), c = (int)(rnd() % 7);
-
-		fill(x, y, 1 + (c == 0), 1 + (c == 0), c < 2 ? WB_COLOR_TEXT_MID : c < 3 ? WB_COLOR_CYAN :
-		     c < 4 ? WB_COLOR_PINK : 0x3A3A58);
-	}
-	text(&f_mono14, (W - text_w(&f_mono14, "GAMES", 22)) / 2, 40, "GAMES", WB_COLOR_CYAN, 22);
-	big_text(&f_ui36b, (W - big_w(&f_ui36b, "Marble Orbit")) / 2, 62, "Marble Orbit", WB_COLOR_TEXT_HI);
+	wb_scene();
 	b[0] = 0;
 	cat_u(cat(b, "High score "), (unsigned)total_score());
-	centred(&f_mono16b, 164, b, WB_COLOR_YELLOW);
+	wb_header("APP", "Marble Orbit", b);
 	for (int i = 0; i < N_LEVELS; i++) {
 		const struct world *w = &worlds[i / 3];
 		int x = x0 + (i % 3) * (cw + gap), y = y0 + (i / 3) * (ch + gap), locked = i > G.unlocked;
+		int on = i == G.sel;
 		char l[4];
 
-		if (y + ch < fb_y0 || y >= fb_y1)
+		if (y + ch + 20 < fb_y0 || y - 20 >= fb_y1)	/* the focus's glow reaches out */
 			continue;
-		if (i == G.sel)
-			box_focus(x, y, cw, ch, WB_RADIUS_MD, &GLOW_ROW);
-		else
-			box_plain(x, y, cw, ch, WB_RADIUS_MD, WB_COLOR_SURFACE1);
-		fill(x + 12, y + 14, 4, ch - 28, locked ? WB_COLOR_LINE : w->accent);
+		wb_card(x, y, cw, ch, WB_RADIUS_MD, on, &GLOW_FOCUS);
+		fill(x + 14, y + 16, 4, ch - 32, locked ? WB_COLOR_LINE : w->accent);
 		level_label(l, i);
-		text(&f_mono13, x + 26, y + 12, l, locked ? WB_COLOR_TEXT_LOW : w->accent, 0);
-		text(&f_ui18, x + 26 + 30, y + 9, wb_fit(&f_ui18, levels[i].name, cw - 66, b, sizeof(b)),
+		text(&f_mono13, x + 30, y + 14, l, locked ? WB_COLOR_TEXT_LOW : on ? WB_COLOR_CYAN : w->accent, 0);
+		text(&f_ui18, x + 30 + 30, y + 11, wb_fit(&f_ui18, levels[i].name, cw - 74, b, sizeof(b)),
 		     locked ? WB_COLOR_TEXT_LOW : WB_COLOR_TEXT_HI, 0);
 		if (locked) {
-			text(&f_ui16, x + 26, y + 36, "Locked", WB_COLOR_TEXT_LOW, 0);
+			text(&f_ui16, x + 30, y + 40, "Locked", WB_COLOR_TEXT_LOW, 0);
 			continue;
 		}
 		for (int s = 0; s < 3; s++)
-			sparkle(x + 34 + s * 20, y + 45, 7, s < G.best_s[i] ? C_STAR : WB_COLOR_LINE);
+			sparkle(x + 38 + s * 20, y + 49, 7, s < G.best_s[i] ? C_STAR : WB_COLOR_LINE);
 		if (G.best[i]) {
 			b[0] = 0;
 			cat_time(b, G.best_t[i]);
-			text(&f_mono13, x + cw - 14 - text_w(&f_mono13, b, 0), y + 38, b, WB_COLOR_TEXT_MID, 0);
+			text(&f_mono13, x + cw - 16 - text_w(&f_mono13, b, 0), y + 42, b,
+			     on ? WB_COLOR_TEXT_HI : WB_COLOR_TEXT_MID, 0);
 		}
 	}
 }
@@ -1908,7 +1931,7 @@ static void draw_pop(void)
 		it[3].label = "Keys";
 		it[4].label = "Quit";
 		it[4].sep = 1;
-		menu_popup("MARBLE ORBIT", "Paused", 0, it, 0, P_N, G.pf, -1, 0, 0, pick, 2);
+		menu_popup("MARBLE ORBIT", "Paused", 0, it, 0, P_N, G.pf, -2, 0, 0, pick, 2);
 		break;
 	case POP_SETTINGS:
 		it[0].label = "Controls";
@@ -1917,7 +1940,7 @@ static void draw_pop(void)
 		strcpy(it[1].value, sens_names[G.sens]);
 		it[2].label = "Neutral";
 		strcpy(it[2].value, G.neutral ? "Flat" : "At start");
-		menu_popup("SETTINGS", "Marble Orbit", 0, it, 0, 3, G.pf, -1, 0, 0, pick, 2);
+		menu_popup("MARBLE ORBIT", "Settings", 0, it, 0, 3, G.pf, -2, 0, 0, pick, 2);
 		break;
 	case POP_SENS:
 		for (int i = 0; i < 3; i++)
@@ -1953,12 +1976,14 @@ static void draw_pop(void)
 		}
 		t[0] = 0;
 		cat_u(cat(t, "High score "), (unsigned)total_score());
-		menu_popup("RESULTS", t, 0, it, 0, N_LEVELS, G.pf, -1, 0, 0, pick, 2);
+		menu_popup("MARBLE ORBIT", "Results", t, it, 0, N_LEVELS, G.pf, -2, 0, 0, pick, 2);
 		break;
 	}
 	}
 }
 
+/* The screen, clipped to fb_y0..fb_y1: it only draws (libwb runs it once
+ * more to record the frame). */
 static void draw_band(void)
 {
 	static const struct hint title_h[] = { { "Enter", "play", 0 }, { "#4", "results", 0 }, { "Esc", "quit", 1 } };
@@ -1967,7 +1992,12 @@ static void draw_band(void)
 
 	if (G.mode == TITLE) {
 		title();
-		hint_bar(title_h, 3);
+		if (G.pop != POP_HELP)		/* the help has a bar of its own */
+			hint_bar(title_h, 3);
+	} else if (wb_rec) {	/* the level writes fb itself: recorded by its generation */
+		int k[] = { 0x6d62, (int)G.gen };
+
+		wb_rec_rows(0, H, k, sizeof(k));
 	} else {
 		int r0 = fb_y0 / T, r1 = (fb_y1 - 1) / T;
 
@@ -1977,37 +2007,115 @@ static void draw_band(void)
 		draw_things();
 		draw_marble();
 		hud();
+	}
+	if (G.mode != TITLE) {
+		marble_glass(0);
 		if (G.mode == READY) {
 			ready_card();
-			hint_bar(ready_h, 2);
+			if (G.pop != POP_HELP)
+				hint_bar(ready_h, 2);
 		} else if (G.mode == WON) {
 			won_card();
-			hint_bar(won_h, 2);
+			if (G.pop != POP_HELP)
+				hint_bar(won_h, 2);
 		} else if (G.mode == OVER) {
 			over_card();
 		}
 	}
-	if (G.pop)
+	if (G.pop) {
+		marble_glass(1);
 		draw_pop();
+	}
 }
 
 /* ---- output: the panel, or a PPM on the host ---------------------------- */
 
+static uint16_t *whole;			/* the whole picture, while a pop-up is open */
 #ifdef MARBLE_HOST
 static uint16_t screen[W * H];
 #else
 static int fb_fd = -1;
 #endif
 
-/* The rows marked (all of them on the host), one band each. */
+/* a band (or the whole picture) to the panel */
+static void out(const uint16_t *b, int y0, int y1)
+{
+#ifdef MARBLE_HOST
+	memcpy(screen + y0 * W, b, (size_t)(y1 - y0) * W * 2);
+#else
+	pwrite(fb_fd, b, (size_t)(y1 - y0) * W * 2, (off_t)y0 * W * 2);
+#endif
+}
+
+static void paint(void *unused)
+{
+	(void)unused;
+	draw_band();
+}
+
+/* MARBLE_UI_TIMING=1: a line per frame on stderr (apprun's log): its time,
+ * how (rows, bands, whole), the bands drawn, libwb's scene and glass (us) */
+static void timing(long t0, const char *how, int n)
+{
+	static int on = -1;
+	char line[128];
+
+	if (on < 0)
+		on = getenv("MARBLE_UI_TIMING") != 0;
+	if (on) {
+		char *o = line;
+
+		line[0] = 0;
+		o = cat_u(cat(o, "marble: frame "), (unsigned)(wb_now_us() - t0));
+		o = cat(cat(cat(o, " us ("), how), ", ");
+		o = cat_u(o, (unsigned)n);
+		o = cat_u(cat(o, " bands), scene "), (unsigned)tm_scene);
+		cat(cat_u(cat(o, ", glass "), (unsigned)tm_glass), "\n");
+		if (write(2, line, strlen(line)) < 0)
+			on = 0;
+	}
+	tm_scene = tm_glass = 0;
+}
+
+/*
+ * A level: the rows marked (all of them on the host), one band each,
+ * without recording. The title and a pop-up: recorded, and only the bands
+ * that changed drawn; a pop-up in the whole picture (if there is room), so
+ * it is frosted.
+ */
 static void draw(void)
 {
 	uint32_t rows = G.dirty;
+	long t0 = wb_now_us();
+	int n = 0;
 
 #ifdef MARBLE_HOST
 	rows = (1u << N) - 1;
 #endif
 	G.dirty = 0;
+	if (G.pop && !whole) {
+#ifdef MARBLE_HOST
+		if (!getenv("MARBLE_BANDS_ONLY"))	/* the tests: as if there were no room */
+#endif
+			whole = malloc((size_t)W * H * 2);
+		if (whole)
+			wb_rec_invalidate();	/* nothing in it yet */
+	} else if (!G.pop && whole) {
+		free(whole);
+		whole = 0;
+	}
+	if (whole) {
+		whole_frame = 1;
+		n = wb_frame(paint, 0, whole, BAND_H, out);
+		whole_frame = 0;
+		timing(t0, "whole", n);
+		return;
+	}
+	if (G.mode == TITLE || G.pop) {
+		n = wb_bands(paint, 0, band, BAND_H, out);
+		timing(t0, "bands", n);
+		return;
+	}
 	for (int r = 0; r < N; r++) {
 		int y0 = r * T, y1 = y0 + T;
 
@@ -2017,20 +2125,19 @@ static void draw(void)
 		fb_y0 = y0;
 		fb_y1 = y1;
 		draw_band();
-#ifdef MARBLE_HOST
-		memcpy(screen + y0 * W, band, (size_t)(y1 - y0) * W * 2);
-#else
-		pwrite(fb_fd, band, (size_t)(y1 - y0) * W * 2, (off_t)y0 * W * 2);
-#endif
+		out(band, y0, y1);
+		n++;
 	}
+	wb_rec_invalidate();	/* drawn without recording */
+	timing(t0, "rows", n);
 }
 
 /* ---- the host test ------------------------------------------------------ */
 
 #ifdef MARBLE_HOST
-static void save_ppm(const char *path)
+/* the screen as PPM to fd */
+static void write_ppm(int fd)
 {
-	int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	static uint8_t rgb_[W * H * 3];
 	static const char hdr[] = "P6\n720 720\n255\n";
 
@@ -2043,6 +2150,13 @@ static void save_ppm(const char *path)
 	}
 	if (fd < 0 || write(fd, hdr, sizeof(hdr) - 1) < 0 || write(fd, rgb_, sizeof(rgb_)) < 0)
 		_exit(1);
+}
+
+static void save_ppm(const char *path)
+{
+	int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
+	write_ppm(fd);
 	close(fd);
 }
 
@@ -2164,16 +2278,18 @@ static char *line_int(char *o, const char *name, int v)
 }
 
 /*
- * marble-host SCRIPT [OUT.ppm]: SCRIPT is words: xN, yN (the tilt in sensor
- * counts, 4096 a g, signed), kN (key code N pressed), rN (released), tN (N
- * ticks), pN (N ticks of the autopilot, until the goal), lN (level N, past
- * the card), aN (anim frame N, for screenshots).
+ * marble-host SCRIPT [OUT.ppm [FRAMES.ppm]]: SCRIPT is words: xN, yN (the
+ * tilt in sensor counts, 4096 a g, signed), kN (key code N pressed), rN
+ * (released), tN (N ticks), pN (N ticks of the autopilot, until the goal),
+ * lN (level N, past the card), aN (anim frame N, for screenshots), d (a
+ * frame drawn, as the badge draws one after a key; written to FRAMES.ppm).
  * Prints the state; the screen goes to OUT.ppm. APP_CONFIG holds the files,
  * MARBLE_MAP replaces level 0's map.
  */
 int main(int argc, char **argv)
 {
 	const char *s = argc > 1 ? argv[1] : "";
+	int frames = argc > 3 ? open(argv[3], O_WRONLY | O_CREAT | O_TRUNC, 0644) : -1;
 	static char out[2048];
 	static const char *const modes[] = { "title", "ready", "play", "fall", "won", "over" };
 	static const char *const pops[] = { "", " pause", " help", " settings", " sensitivity", " neutral",
@@ -2210,6 +2326,11 @@ int main(int argc, char **argv)
 			G.t = 0;
 		} else if (c == 'a') {
 			G.anim = n;
+			G.gen++;
+		} else if (c == 'd') {
+			draw();
+			if (frames >= 0)
+				write_ppm(frames);
 		} else if (c == 't' || c == 'p') {
 			for (int i = 0; i < n && G.mode != WON; i++) {
 				if (running())
@@ -2223,6 +2344,8 @@ int main(int argc, char **argv)
 	if (quit)
 		write(1, "closed\n", 7);
 	draw();
+	if (frames >= 0)
+		close(frames);
 	if (argc > 2 && argv[2][0])
 		save_ppm(argv[2]);
 	out[0] = 0;
@@ -2450,6 +2573,8 @@ int main(void)
 			read_us += (unsigned)(now_us() - now);
 			reads++;
 		}
+		if (G.mode == TITLE && wb_scene_turned())	/* the figures turn with the badge */
+			mark_all();
 		if (run && !was_running)
 			tick_due = now;
 		was_running = run;
@@ -2477,6 +2602,8 @@ int main(void)
 			timeout = (int)(last_frame + FRAME_US - now_us()) / 1000;
 			timeout = timeout < 0 ? 0 : timeout > 1000 ? 1000 : timeout;
 		}
+		if (G.mode == TITLE && (timeout < 0 || timeout > 250))
+			timeout = 250;		/* to look whether the badge turned */
 		if (poll(p, (nfds_t)nfds, timeout) <= 0)
 			continue;
 		if (p[0].revents & POLLIN) {
