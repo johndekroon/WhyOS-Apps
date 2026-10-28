@@ -188,6 +188,42 @@ data["high_score"] = max(data["high_score"], 42)
 save(data)
 ```
 
+### The badge's settings
+
+The badge keeps its general settings (the name, the time zone, the LoRa
+radio, ...) in one place, which the `setting` command in the shell reads
+and writes. From MicroPython 1.29.0 build 2 on, the `setting` module does
+the same from Python:
+
+```python
+import setting
+
+print("Hello,", setting.get("name"))         # what Settings > General > Name holds
+print(setting.get("timezone"))               # "auto" or a zone like "Europe/Amsterdam"
+print(setting.get("my.colour", "blue"))      # a default when it is not there
+
+setting.set("my.colour", "red")              # a setting of your own
+setting.set("callsign", "PD0ABC", menu="Call sign")   # also under Settings > General
+setting.unset("my.colour")                   # gone again
+
+for key, menu, label, value in setting.list():
+    print(key, "=", value)
+```
+
+- Values are text: `setting.set("count", 5)` stores `"5"`, and `get`
+  gives `"5"` back.
+- A key is letters, digits, `.`, `_` and `-` (up to 31); a value one line
+  of up to 127 bytes. Anything else raises `ValueError`.
+- `menu="Label"` shows the setting under Settings > General, where the
+  user can change it; `menu=False` hides it again.
+- The settings live in the badge's flash (`/etc/badge/settings`), at most
+  32 in all, including the badge's own: use them for a few small values,
+  and a file for more.
+- Read the badge's own settings (`lora`, `timezone`, `power.*`, ...), but
+  leave changing them to Settings: Settings also applies a change
+  (switches the LoRa radio, sets the clock's time zone), which writing the
+  value does not.
+
 The badge can reset when its USB cable is pulled while it runs on the
 battery. Close files (a `with` block does) right after writing, so little
 is lost when that happens.
