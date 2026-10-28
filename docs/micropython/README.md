@@ -23,6 +23,8 @@ reference; these pages cover what is particular to the badge.
   Linux's. It is not the ESP32 port, so there is no `machine.Pin`, no
   `network.WLAN` and no `main.py` that runs at start-up.
 - Your scripts live on the SD card in `badge/appdata/micropython/`.
+- Write, the badge's text editor, edits Python with syntax colours and
+  runs the script with one key (▲).
 - A program runs in a text window of 73 × 25 characters with 16 colours.
   Drawing graphics on the screen from Python is not possible yet.
 - There are no threads; `asyncio` does several things at once.

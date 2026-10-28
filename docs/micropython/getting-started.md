@@ -46,12 +46,28 @@ Your scripts belong in the folder **`badge/appdata/micropython`** on the SD
 card (`/mnt/sd/badge/appdata/micropython` on the badge). The prompt from
 the menu starts there, so `import hello` there runs `hello.py`.
 
-### Write it on the badge
+### Write it on the badge, in Write
 
-Write, the badge's text editor (Apps > Write), can edit and run Python:
+Write, the badge's text editor (Apps > Write), is also a Python editor:
+
+- **Syntax colours** for Python: keywords, `True`, `False` and `None`,
+  strings and comments.
+  A file ending in `.py` opens as Python by itself.
+- **Indentation:** Tab indents by 4 spaces, as Python expects, and Enter
+  keeps the indent of the line above. In an existing file Write follows
+  the indentation it finds.
+- **▲ runs the script.** Write saves it first, then runs it with
+  MicroPython in a text window. The window stays open when the program
+  ends, also after an error, so you can read the output or the traceback;
+  Enter or Esc takes you back to the code.
+- Line numbers (♣ Settings), find and replace (Ctrl+F, Ctrl+H), undo
+  (Ctrl+Z), copy and paste (Ctrl+C, Ctrl+X, Ctrl+V), selecting with Fn and
+  the arrows. ◆ shows all keys.
+
+Your first script:
 
 1. Ctrl+N for a new document.
-2. ■ Options > Language > Python. Write now shows code with colours.
+2. ■ Options > Language > Python.
 3. Type the program:
 
    ```python
@@ -60,19 +76,22 @@ Write, the badge's text editor (Apps > Write), can edit and run Python:
        print("Hello", name, "from the badge!")
    ```
 
-4. Ctrl+S, type the name `hello`; Write adds `.py`. Press ↓ to choose the
-   folder: SD card > `badge` > `appdata` > `micropython`. Without that
+4. Ctrl+S and type the name `hello`; Write adds `.py`. Press ↓ to choose
+   the folder: SD card > `badge` > `appdata` > `micropython`. Without that
    step the file goes to `/root`, in the badge's small flash memory.
-5. ▲ runs it: Write saves it first and runs it in a text window. The
-   window stays open when the program ends, so you can read the output;
-   Enter or Esc takes you back to Write.
+5. Press ▲.
+
+Change something, press ▲ again: Write saves and runs the new version.
+That is the whole loop of writing a program on the badge. To edit a script
+later, open it with Ctrl+O in Write, or in Files with ■ > Open with >
+Write.
 
 ### Run a script from Files
 
 In Files (✕ on the home screen), select a `.py` file and press ■ > Open
 with > MicroPython. The program runs; afterwards the prompt stays open with
 everything the program defined, handy for trying things out. Ctrl-D closes
-it. Open with > Write edits the file.
+it.
 
 ### Run a script from the shell
 
