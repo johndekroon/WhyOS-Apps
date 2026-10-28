@@ -105,8 +105,9 @@ def ui(env, keys, *args):
 def test_editor_rich(env):
     _, home, _ = env
     s = ui(env, ["shot main"], home / "camp-notes.md")["main"]
-    assert s.near(5, 5, VOID)
-    assert s.near(5, 700, SURFACE1)                    # the hint bar
+    assert s.near(5, 400, VOID)                        # the page
+    # the scene behind the bars: the moon, pink, top left
+    assert s.count(0, 0, 300, 90, lambda p: p[0] > p[2] + 30) > 500
     assert s.count(24, 60, 120, 82, is_c(TEXT_HI)) > 50   # the name in the document bar
     # the caret: cyan, at the text's left edge on the first line
     assert s.count(44, 106, 52, 150, is_c(CYAN, 40)) > 10
@@ -175,7 +176,8 @@ def test_full_screen(env):
     # the hint for three seconds, then gone
     assert s["hint"].count(200, 620, 520, 664, is_c((0xC4, 0x5C, 0xFF), 40)) > 5
     assert s["full"].count(200, 620, 520, 664, is_c((0xC4, 0x5C, 0xFF), 40)) == 0
-    assert s["back"].near(5, 700, SURFACE1)
+    assert s["full"].count(0, 0, 300, 90, lambda p: p[0] > p[2] + 30) == 0   # no scene
+    assert s["back"].count(0, 0, 300, 90, lambda p: p[0] > p[2] + 30) > 500
 
 
 def test_code_view_and_run(env):
@@ -194,9 +196,9 @@ def test_dialogs(env):
                  "ctrl o", "shot open", "esc", "esc", "shot discard2", "down", "down", "enter"],
            home / "camp-notes.md")
     assert s["options"].count(96, 100, 624, 600, is_c(CYAN, 30)) > 100      # the focused Save
-    assert s["discard"].count(96, 150, 624, 300, is_c(YELLOW, 30)) > 20      # UNSAVED CHANGES
-    assert s["settings"].count(500, 340, 624, 395, is_c(PINK, 30)) > 20      # the switches:
-    assert s["settings"].count(500, 405, 624, 455, is_c(PINK, 30)) > 20      # line numbers, capitals
+    assert s["discard"].count(96, 450, 624, 530, is_c((0xFF, 0x7A, 0x6E), 30)) > 20  # Discard, red
+    assert s["settings"].count(520, 355, 600, 390, is_c(CYAN, 30)) > 20      # the switches:
+    assert s["settings"].count(520, 407, 600, 442, is_c(CYAN, 30)) > 20      # line numbers, capitals
     assert s["open"].count(48, 160, 672, 640, is_c(CYAN, 30)) > 50           # the focused file
     assert (tmp / "config" / "settings").read_text() == "small=1\nlineno=1\ncaps=1\n"
     assert (home / "camp-notes.md").read_text() == NOTES                    # discarded
@@ -215,3 +217,19 @@ def test_small_text(env):
     # smaller text: the paragraph line sits higher with the small size
     row = lambda sh: next(y for y in range(150, 400) if sh.count(48, y, 600, y + 1, is_c(TEXT_HI)) > 3)
     assert row(s) < row(big)
+
+
+def test_more_pop_ups(env):
+    _, home, _ = env
+    s = ui(env, ["f6", "shot help", "esc", "f1", "down", "down", "down", "down", "down", "enter",
+                 "shot language", "esc", "ctrl f", "f1", "shot findmenu", "esc", "esc",
+                 "ctrl shift s", "bs", "bs", "bs", "enter", "shot replace", "esc", "esc"],
+           home / "camp-notes.md")
+    # the pop-ups' keys are inside them, above the hint bar
+    for k, y0, y1 in (("help", 600, 664), ("language", 540, 600), ("findmenu", 470, 520),
+                      ("replace", 520, 620)):
+        assert s[k].count(96, y0, 624, y1, is_c(TEXT_HI, 30)) > 10, k
+    # Language: the present choice (Markdown) has its box ticked in cyan
+    assert s["language"].count(96, 100, 624, 600, is_c(CYAN, 30)) > 300
+    # Replace?: the destructive choice in red
+    assert s["replace"].count(96, 100, 624, 600, is_c((0xFF, 0x7A, 0x6E), 30)) > 20

@@ -1,25 +1,35 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * Write: the screens (design/write/canvas), drawn with the menu's code from
- * why2025-linux (wbdraw.h, wbstatus.h, home_assets.h) and Write's own fonts
- * for the document (write_fonts.h: Latin-1, 4-bit alpha, italic slanted).
+ * Write: the screens (design/write/canvas, in the style of the canvas
+ * "Menu's met frontpaneel"), drawn with libwb from why2025-linux (wb.h,
+ * wbstatus.h) and Write's own fonts for the document (write_fonts.h:
+ * Latin-1, 4-bit alpha, italic slanted).
  *
- *   editor      status bar, document bar (name, edited dot, what is going
- *               on, the caret's style), the text, word count, hint bar
+ *   editor      the frontpanel's scene behind the status bar, the document
+ *               bar (name, edited dot, what is going on, the caret's style
+ *               on glass chips) and the hint bar (glass); the text on an
+ *               opaque page between them, its word count
  *   text        rich (markdown with its styles), markdown source with line
  *               numbers, code with line numbers and highlighting
- *   find bar    under the document bar (over the text in full screen)
+ *   find bar    a glass card under the document bar (over the text in full
+ *               screen)
  *   pop-ups     Options, Style, Discard, Save as, Replace?, Language,
- *               Settings, the find menu, errors; Help and an empty log are
- *               wbdraw's help_popup and empty_screen
- *   Open        a screen of its own, as Files' lists
+ *               Settings, the find menu, errors, Help: glass panels 96 px
+ *               from the sides over the dimmed screen, their keys inside
+ *   Open, Log   screens of their own on the scene, as Files' lists
  *   full screen the text alone, a footer line, a hint for three seconds
+ *
+ * The page is opaque, not glass: the scene through 24 px text would be
+ * noise under the letters, and the text's bands are drawn the most (typing,
+ * scrolling): there they cost what they did before, the scene is drawn only
+ * in the bands of the bars.
  *
  * Bands: every frame works out, per band of BAND_H rows, a hash of what is
  * drawn there (the rows of text with their selection, matches and caret,
  * the bars, the counter); a band whose hash did not change is not drawn
  * again, so typing redraws a line's bands and not the screen. Pop-ups and
- * Open redraw everything.
+ * Open redraw everything. With no whole picture in memory, the pop-ups are
+ * glass over what is drawn, not frosted (blurred).
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,12 +38,11 @@
 
 #include "ui.h"
 
-#include "home_assets.h"
-#include "home-assets/wb_tokens.h"
+#include "wb_tokens.h"
 
 #define W	WB_SCREEN_W
 #define H	WB_SCREEN_H
-#include "wbdraw.h"
+#include "wb.h"
 #include "wbstatus.h"
 #include "write_fonts.h"
 
@@ -52,6 +61,45 @@ static const struct wf_font *const FONTS[FONT_COUNT] = {
 #define SEL_A		41	/* cyan at 16 % */
 #define MATCH_A		41
 #define MATCH_CUR_A	82
+
+#define DOC_TOP		(WB_STATUS_BAR_H + 44)	/* the page, under the document bar */
+#define PAGE_BOT	(H - WB_HINT_BAR_H)
+
+/* ---- the scene and glass ------------------------------------------------------------ */
+
+/* The screens with chrome have the scene behind them: the editor (but in
+ * full screen, where the text fills the panel), Open and the log. */
+static int scene_screen(const struct app *a)
+{
+	return a->screen == SC_OPEN || a->ov == OV_LOG || !a->full;
+}
+
+/*
+ * What lies under this band: the scene where it shows (rotation rot, read
+ * once a frame by ui_present), else the void. Every band is "on the scene"
+ * for libwb, so cards, the hint bar and the pop-ups are glass; nothing is
+ * frosted (gb_ok 0: glass() then reads what is drawn in the band).
+ */
+static void backdrop(const struct app *a)
+{
+	int bars_only = a->screen == SC_EDIT && a->ov != OV_LOG;
+
+	scene_shown = 1;
+	gb_ok = 0;
+	if (scene_screen(a) && (!bars_only || fb_y0 < DOC_TOP || fb_y1 > PAGE_BOT))
+		scene_draw();
+	else
+		fill(0, fb_y0, W, fb_y1 - fb_y0, WB_COLOR_VOID);
+}
+
+/* A 1 px line of white at alpha a: the light edge of glass. */
+static void hline_a(int x, int y, int w, unsigned a)
+{
+	if (y < fb_y0 || y >= fb_y1)
+		return;
+	for (int i = 0; i < w; i++)
+		put(x + i, y, 0xFFFFFF, a);
+}
 
 /* ---- Write's fonts --------------------------------------------------------------- */
 
@@ -213,14 +261,28 @@ static int hint_wk(const struct hintk *h)
 	return keycap_w(h->keys) + 18 + (h->label[0] ? 8 + text_w(&f_ui16, h->label, 0) : 0);
 }
 
-static void hints(const struct app *a)
+/* The keys of the screen under a pop-up: the hint bar stays, dimmed with
+ * the screen, and the pop-up carries its own keys (pop_keys). */
+static int screen_hints(struct app *a, struct hintk *h, int max)
+{
+	enum overlay ov = a->ov;
+	int n;
+
+	if (ov == OV_LOG)
+		return app_hints(a, h, max);
+	a->ov = OV_NONE;
+	n = app_hints(a, h, max);
+	a->ov = ov;
+	return n;
+}
+
+static void hints(struct app *a)
 {
 	struct hintk h[12];
-	int n = app_hints(a, h, 12), x = WB_CHROME_PAD, rx = W - WB_CHROME_PAD;
+	int n = screen_hints(a, h, 12), x = WB_CHROME_PAD, rx = W - WB_CHROME_PAD;
 	int y0 = H - WB_HINT_BAR_H, cy = y0 + WB_HINT_BAR_H / 2;
 
-	fill(0, y0, W, WB_HINT_BAR_H, WB_COLOR_SURFACE1);
-	fill(0, y0, W, 1, WB_COLOR_LINE);
+	hint_glass(y0);
 	for (int i = n - 1; i >= 0; i--) {	/* the right ones from the right: Esc, then Fn */
 		int hx, ex;
 
@@ -243,9 +305,12 @@ static void hints(const struct app *a)
 	}
 }
 
-static int chip(int x, int cy, int w, uint32_t bg, unsigned bga, uint32_t border)
+/* A chip of the document bar: glass over the scene; on: pink over it. */
+static int chip(int x, int cy, int w, int on)
 {
-	box(x, cy - 14, w, 28, 6, bg, bga, border, 1, 0);
+	glass(x, cy - 14, w, 28, WB_SQUARE, GLASS_TILE);
+	if (on)
+		box(x, cy - 14, w, 28, WB_SQUARE, WB_COLOR_PINK, PINK_TINT, WB_COLOR_PINK, 1, 0);
 	return x + w;
 }
 
@@ -258,10 +323,10 @@ static void docbar_right(struct app *a, const struct docbar *d, int cy)
 		int iw = text_w(&f_mono13, d->indent, 0) + 20, lw = 14 + 6 + text_w(&f_ui16, d->lang, 0) + 20;
 
 		x -= iw;
-		chip(x, cy, iw, WB_COLOR_SURFACE1, 255, WB_COLOR_LINE);
+		chip(x, cy, iw, 0);
 		text(&f_mono13, x + 10, text_top(&f_mono13, cy), d->indent, WB_COLOR_TEXT_MID, 0);
 		x -= 6 + lw;
-		chip(x, cy, lw, WB_COLOR_SURFACE1, 255, WB_COLOR_LINE);
+		chip(x, cy, lw, 0);
 		wicon(&wi_code14, x + 10, cy - 7, WB_COLOR_TEXT_MID);
 		text(&f_ui16, x + 10 + 14 + 6, text_top(&f_ui16, cy), d->lang, WB_COLOR_TEXT_HI, 0);
 		return;
@@ -270,8 +335,8 @@ static void docbar_right(struct app *a, const struct docbar *d, int cy)
 		int rw = text_w(&f_mono13, "Rich", 0) + 16, mw = text_w(&f_mono13, "MD", 0) + 16;
 
 		x -= rw + mw;
-		box(x, cy - 13, rw + mw, 26, 6, 0, 0, WB_COLOR_LINE, 1, 0);
-		fill(d->md_view ? x + rw : x + 1, cy - 12, d->md_view ? mw - 1 : rw - 1, 24, WB_COLOR_SURFACE2);
+		glass(x, cy - 13, rw + mw, 26, WB_SQUARE, GLASS_TILE);
+		box(d->md_view ? x + rw : x + 1, cy - 12, d->md_view ? mw - 1 : rw - 1, 24, 3, 0xFFFFFF, 31, 0, 0, 0);
 		text(&f_mono13, x + 8, text_top(&f_mono13, cy), "Rich", d->md_view ? WB_COLOR_TEXT_LOW : WB_COLOR_TEXT_HI, 0);
 		text(&f_mono13, x + rw + 8, text_top(&f_mono13, cy), "MD", d->md_view ? WB_COLOR_TEXT_HI : WB_COLOR_TEXT_LOW, 0);
 		x -= 4;
@@ -281,10 +346,7 @@ static void docbar_right(struct app *a, const struct docbar *d, int cy)
 		uint32_t c = on ? WB_COLOR_PINK : WB_COLOR_TEXT_MID;
 
 		x -= 28 + 6;
-		if (on)
-			chip(x, cy, 28, WB_COLOR_PINK, PINK_TINT, WB_COLOR_PINK);
-		else
-			chip(x, cy, 28, WB_COLOR_SURFACE1, 255, WB_COLOR_LINE);
+		chip(x, cy, 28, on != 0);
 		if (i == 0)
 			text(&f_ui18b, x + 14 - text_w(&f_ui18b, "B", 0) / 2, text_top(&f_ui18b, cy), "B", c, 0);
 		else if (i == 1)
@@ -300,7 +362,7 @@ static void docbar_right(struct app *a, const struct docbar *d, int cy)
 		int pw = text_w(&f_ui16, d->para, 0) + 20;
 
 		x -= 6 + pw;
-		chip(x, cy, pw, WB_COLOR_SURFACE1, 255, WB_COLOR_LINE);
+		chip(x, cy, pw, 0);
 		text(&f_ui16, x + 10, text_top(&f_ui16, cy), d->para, WB_COLOR_TEXT_HI, 0);
 	}
 	(void)a;
@@ -313,7 +375,6 @@ static void docbar(struct app *a)
 	char buf[160];
 
 	app_docbar(a, &d);
-	fill(0, WB_STATUS_BAR_H + 43, W, 1, WB_COLOR_SURFACE2);
 	maxw = a->find_open ? W - 2 * WB_CHROME_PAD : 240;
 	x = text(&f_ui18b, x, text_top(&f_ui18b, cy), wb_fit(&f_ui18b, d.name, maxw, buf, sizeof(buf)), WB_COLOR_TEXT_HI, 0);
 	if (d.edited) {
@@ -329,13 +390,24 @@ static void docbar(struct app *a)
 			wicon(&wi_copy, x + 8, cy - 6, WB_COLOR_PINK);
 			text(&f_mono13, x + 8 + 12 + 6, text_top(&f_mono13, cy), d.info, WB_COLOR_PINK, 0);
 		} else {
-			uint32_t c = d.info_kind == 1 ? WB_COLOR_CYAN : d.info_kind == 3 ? WB_COLOR_ERROR : WB_COLOR_TEXT_LOW;
+			uint32_t c = d.info_kind == 1 ? WB_COLOR_CYAN : d.info_kind == 3 ? WB_COLOR_ERROR : WB_COLOR_TEXT_MID;
 
 			text(&f_mono13, x, text_top(&f_mono13, cy), d.info, c, 0);
 		}
 	}
 	if (!a->find_open)
 		docbar_right(a, &d, cy);
+}
+
+/* The page under the bars: opaque, with the light top edge of the canvas's
+ * glass (see the top of this file). */
+static void page(void)
+{
+	int y0 = fb_y0 > DOC_TOP ? fb_y0 : DOC_TOP, y1 = fb_y1 < PAGE_BOT ? fb_y1 : PAGE_BOT;
+
+	if (y1 > y0)
+		fill(0, y0, W, y1 - y0, WB_COLOR_VOID);
+	hline_a(0, DOC_TOP, W, 41);
 }
 
 /* ---- the text -------------------------------------------------------------------- */
@@ -613,7 +685,7 @@ static void new_doc_tips(struct app *a)
 					    "Heading 3", "Quote", "Bold", "Italic", "Underline", "Code block" };
 	int y = TY + 32 + 36, colw = (TW - 24) / 2;
 
-	wtext(&wf_ui24, TX + 4, wtop(&wf_ui24, TY + 16), "Start typing\xe2\x80\xa6", WB_COLOR_TEXT_LOW, 0);
+	wtext(&wf_ui24, TX + 4, wtop(&wf_ui24, TY + 16), "Start typing\xe2\x80\xa6", WB_COLOR_PLACEHOLDER, 0);
 	text(&f_mono13, TX, y, "MARKDOWN WORKS WHILE YOU TYPE", WB_COLOR_TEXT_LOW, 21);
 	y += 17 + 10;
 	for (int i = 0; i < 10; i++) {
@@ -693,12 +765,23 @@ static int find_y(struct app *a)
 	return a->full ? 16 : WB_STATUS_BAR_H + 44 + 10;
 }
 
+/* A text field: the focus's cyan glass, else the canvas's search field (the
+ * void at 45 % and a faint edge); c the focus's colour (red for an error). */
+static void field_h(int x, int y, int w, int h, int focus, uint32_t c)
+{
+	if (focus && c == WB_COLOR_CYAN) {
+		wb_card(x, y, w, h, WB_RADIUS_MD, 1, &GLOW_FOCUS);
+	} else if (focus) {
+		box(x, y, w, h, WB_SQUARE, c, 20, c, 2, &GLOW_ROW);
+	} else {
+		box(x, y, w, h, WB_SQUARE, WB_COLOR_VOID, 115, 0, 0, 0);
+		edge_rect(x, y, w, h, 0xFFFFFF, 41);
+	}
+}
+
 static void field(int x, int y, int w, int focus)
 {
-	if (focus)
-		box(x, y, w, 44, 10, WB_COLOR_CYAN, 20, WB_COLOR_CYAN, 2, &GLOW_ROW);
-	else
-		box(x, y, w, 44, 10, WB_COLOR_VOID, 255, WB_COLOR_LINE, 1, 0);
+	field_h(x, y, w, 44, focus, WB_COLOR_CYAN);
 }
 
 static void toggle_box(int x, int cy, int on, const char *label, int underline)
@@ -706,10 +789,12 @@ static void toggle_box(int x, int cy, int on, const char *label, int underline)
 	uint32_t c = on ? WB_COLOR_PINK : WB_COLOR_TEXT_MID;
 	int tw = text_w(&f_mono14, label, 0);
 
-	if (on)
-		box(x, cy - 18, 36, 36, 8, WB_COLOR_PINK, PINK_TINT, WB_COLOR_PINK, 1, 0);
-	else
-		box(x, cy - 18, 36, 36, 8, WB_COLOR_SURFACE2, 255, WB_COLOR_LINE, 1, 0);
+	if (on) {
+		box(x, cy - 18, 36, 36, WB_SQUARE, WB_COLOR_PINK, PINK_TINT, WB_COLOR_PINK, 1, 0);
+	} else {
+		box(x, cy - 18, 36, 36, WB_SQUARE, 0xFFFFFF, 15, 0, 0, 0);
+		edge_rect(x, cy - 18, 36, 36, 0xFFFFFF, 56);
+	}
 	text(&f_mono14, x + 18 - tw / 2, text_top(&f_mono14, cy), label, c, 0);
 	if (underline)
 		fill(x + 18 - tw / 2 - 2, cy + 8, tw + 4, 2, c);
@@ -722,7 +807,7 @@ static void find_bar(struct app *a)
 	int fw = w - 12 - 72 - 10 - 10 - 36 - 12;
 	char cnt[32], buf[160];
 
-	box(x, y, w, h, 14, WB_COLOR_SURFACE1, 255, WB_COLOR_LINE, 1, 0);
+	wb_card(x, y, w, h, WB_RADIUS_MD, 0, 0);
 	for (int r = 0; r < 2; r++) {
 		int ry = y + 12 + r * 52, cy = ry + 22, focus = a->find_focus == r && a->ov == OV_NONE;
 		const char *v = r ? a->f.repl : a->f.q;
@@ -731,7 +816,7 @@ static void find_bar(struct app *a)
 		text(&f_ui16, x + 12, text_top(&f_ui16, cy), r ? "Replace" : "Find", WB_COLOR_TEXT_MID, 0);
 		field(fx, ry, fw, focus);
 		if (!v[0] && r) {
-			text(&f_ui16, tx, text_top(&f_ui16, cy), "Replace with\xe2\x80\xa6", WB_COLOR_TEXT_LOW, 0);
+			text(&f_ui16, tx, text_top(&f_ui16, cy), "Replace with\xe2\x80\xa6", WB_COLOR_PLACEHOLDER, 0);
 		} else {
 			tx = wtext(&wf_mono18, tx, wtop(&wf_mono18, cy), wfit(&wf_mono18, v, fw - 120, buf, sizeof(buf)),
 				   WB_COLOR_TEXT_HI, 0);
@@ -754,7 +839,7 @@ static void find_bar(struct app *a)
 		cw = text_w(&f_ui16, rep, 0) + 20;
 		box(fx, cy - 11, cw, 22, 11, WB_COLOR_PINK, PINK_TINT, WB_COLOR_PINK, 1, 0);
 		text(&f_ui16, fx + 10, text_top(&f_ui16, cy), rep, WB_COLOR_PINK, 0);
-		text(&f_ui16, fx + cw + 10, text_top(&f_ui16, cy), undo, WB_COLOR_TEXT_LOW, 0);
+		text(&f_ui16, fx + cw + 10, text_top(&f_ui16, cy), undo, WB_COLOR_TEXT_MID, 0);
 	}
 }
 
@@ -784,7 +869,7 @@ static void full_hint(void)
 		text_w(&f_ui16, t2, 0) + 16;
 	int x = (W - w) / 2, y = H - 56 - 44, cy = y + 22;
 
-	box(x, y, w, 44, 14, WB_COLOR_SURFACE2, 255, WB_COLOR_LINE, 1, 0);
+	glass(x, y, w, 44, WB_SQUARE, GLASS_TILE);
 	x = keycap(x + 16, cy, "Esc");
 	x = text(&f_ui16, x + 10, text_top(&f_ui16, cy), t1, WB_COLOR_TEXT_MID, 0);
 	x = text(&f_ui16, x + 10, text_top(&f_ui16, cy), "\xe2\x80\xa2", WB_COLOR_LINE, 0);
@@ -794,72 +879,102 @@ static void full_hint(void)
 
 /* ---- pop-ups ------------------------------------------------------------------------- */
 
-#define DX	96
-#define DW	(W - 2 * DX)
+/*
+ * The canvas's pop-ups: a glass panel 96 px from the sides (POP_X) over the
+ * dimmed screen, the eyebrow and the title, the options, and the pop-up's
+ * keys inside at its bottom (the hint bar under it is the screen's). Drawn
+ * in bands, libwb makes the panel plain glass, not frosted.
+ */
+#define PX	(POP_X + 22)	/* a pop-up's content, as menu_popup()'s */
+#define PW	(POP_W - 44)
+#define POP_ROW	48		/* an option of a menu, as menu_popup()'s */
+#define POP_GAP	4
+#define POP_SEP	9		/* more between two groups */
+#define KEYS_H	(14 + 50)	/* the keys at a pop-up's bottom: a gap, a line, the keys */
 
-static void dialog_box(int y, int h)
+/* A pop-up's panel: drawn in bands it cannot be frosted, so libwb draws
+ * it as darker unblurred glass. */
+static void pop_panel(int y, int h)
 {
-	dim(WB_COLOR_CONSOLE, 184);
-	box(DX, y, DW, h, WB_RADIUS_LG, WB_COLOR_SURFACE2, 255, WB_COLOR_LINE, 1, 0);
+	dim(WB_DIM);
+	wb_panel(POP_X, y, POP_W, h, WB_RADIUS_LG);
 }
 
 static int centered(int h)
 {
-	return (H - WB_HINT_BAR_H - h) / 2;
+	return (H - h) / 2;
 }
 
-static void row_box(int x, int y, int w, int h, int focus)
+/* The open pop-up's keys, under a line at top, inside it (panel_hints) */
+static void pop_keys(struct app *a, int x0, int w, int top)
 {
-	if (focus)
-		box_focus(x, y, w, h, WB_RADIUS_MD, &GLOW_ROW);
-	else
-		box(x, y, w, h, WB_RADIUS_MD, WB_COLOR_SURFACE1, 255, WB_COLOR_LINE, 1, 0);
+	struct hintk hk[8];
+	struct hint hs[8];
+	int n = app_hints(a, hk, 8);
+
+	for (int i = 0; i < n; i++)
+		hs[i] = (struct hint){ hk[i].keys, hk[i].label, hk[i].right };
+	panel_hints(x0, w, top, hs, n);
 }
 
-static void switch_draw(int x, int cy, int on)
+/* An option's focus, as menu_popup()'s: cyan glass with a glow; the other
+ * options have no box */
+static void pop_focus(int x, int y, int w, int h, int f)
 {
-	int y = cy - 14;
-
-	box(x, y, 48, 28, 14, on ? WB_COLOR_PINK : WB_COLOR_LINE, 255, 0, 0, 0);
-	box(on ? x + 48 - 3 - 22 : x + 3, y + 3, 22, 22, 11, on ? WB_COLOR_VOID : WB_COLOR_TEXT_MID, 255, 0, 0, 0);
+	if (f)
+		box_shaped(x, y, w, h, WB_SQUARE, WB_COLOR_CYAN, 56, WB_COLOR_CYAN, 2, &GLOW_POP);
 }
 
-static void head(int x, int y, const char *eb, uint32_t ebc, const char *title, const char *sub, int tw)
+/* The box of a choice, ticked on the present one (menu_popup()'s) */
+static void choice_box(int x, int cy, int on)
+{
+	if (on) {
+		box(x, cy - 12, 24, 24, WB_SQUARE, WB_COLOR_CYAN, 255, 0, 0, 0);
+		tick(x + 4, cy, WB_COLOR_VOID);
+	} else {
+		edge_rect(x, cy - 12, 24, 24, 0xFFFFFF, 56);
+		edge_rect(x + 1, cy - 11, 22, 22, 0xFFFFFF, 56);
+	}
+}
+
+/* eyebrow (mono 13, as menu_popup()'s), title (28 px) and a line under it;
+ * 55 px, 77 with sub */
+static void head(int x, int y, const char *eb, const char *title, const char *sub, int tw)
 {
 	char buf[160];
 
-	text(&f_mono14, x, y, eb, ebc, 22);
-	wtext(&wf_ui24b, x, y + 18 + 4, wfit(&wf_ui24b, title, tw, buf, sizeof(buf)), WB_COLOR_TEXT_HI, 0);
+	text(&f_mono13, x, y, eb, WB_COLOR_CYAN, 21);
+	wtext(&wf_ui28b, x, y + 17 + 6, wfit(&wf_ui28b, title, tw, buf, sizeof(buf)), WB_COLOR_TEXT_HI, 0);
 	if (sub)
-		text(&f_mono14, x, y + 18 + 4 + 32 + 4, wb_fit(&f_mono14, sub, tw, buf, sizeof(buf)), WB_COLOR_TEXT_LOW, 0);
+		text(&f_mono14, x, y + 55 + 4, wb_fit(&f_mono14, sub, tw, buf, sizeof(buf)), WB_COLOR_TEXT_MID, 0);
 }
 
 static void menu_rows_draw(struct app *a, int x, int y, int w)
 {
 	for (int i = 0; i < a->n_rows; i++) {
 		const struct menu_row *r = &a->rows[i];
-		int f = i == a->focus, cy, rx = x + w - 16;
+		int f = i == a->focus, cy, rx = x + w - 14;
 
 		if (r->sep) {
-			fill(x + 8, y + 6 - 6 + 6, w - 16, 1, WB_COLOR_LINE);
-			y += 13 - 6 + 6;
+			fill(x + 8, y + POP_SEP - 7, w - 16, 1, 0x2C2C40);
+			y += POP_SEP;
 			continue;
 		}
-		row_box(x, y, w, 56, f);
-		cy = y + 28;
-		wtext(&wf_ui20, x + 16, wtop(&wf_ui20, cy), r->label, WB_COLOR_TEXT_HI, 0);
+		pop_focus(x, y, w, POP_ROW, f);
+		cy = y + POP_ROW / 2;
+		wtext(&wf_ui20, x + 14, wtop(&wf_ui20, cy), r->label, WB_COLOR_TEXT_HI, 0);
 		if (r->chev) {
-			wicon(&wi_chev, rx - 18, cy - 9, WB_COLOR_TEXT_MID);
+			wicon(&wi_chev, rx - 18, cy - 9, f ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID);
 			rx -= 18 + 12;
 		}
 		if (r->toggle) {
-			switch_draw(rx - 48, cy, r->on);
-			rx -= 48 + 12;
+			wb_switch(rx - 52, cy, r->on);
+			rx -= 52 + 14;
 		}
 		if (r->value[0])
 			text(&f_mono14, rx - text_w(&f_mono14, r->value, 0), text_top(&f_mono14, cy), r->value,
 			     f ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 0);
-		y += 56 + 6;
+		y += POP_ROW + POP_GAP;
 	}
 }
 
@@ -868,19 +983,23 @@ static int menu_rows_h(const struct app *a)
 	int h = 0;
 
 	for (int i = 0; i < a->n_rows; i++)
-		h += a->rows[i].sep ? 13 : 56 + 6;
-	return h - 6;
+		h += a->rows[i].sep ? POP_SEP : POP_ROW + POP_GAP;
+	return h - POP_GAP;
 }
 
+/* Options, Settings and the find bar's menu */
 static void options_draw(struct app *a, const char *eb, const char *title, const char *sub)
 {
-	int hh = 18 + 4 + 32 + (sub ? 4 + 18 : 0), h = 22 + hh + 14 + menu_rows_h(a) + 20;
-	int y = centered(h);
+	int hh = 55 + (sub ? 22 : 0), rh = menu_rows_h(a), h = 22 + hh + 14 + rh + KEYS_H;
+	int y = centered(h), top = y + 22 + hh + 14;
 
-	dialog_box(y, h);
-	head(DX + 20 + 8, y + 22, eb, WB_COLOR_CYAN, title, sub, DW - 56);
-	menu_rows_draw(a, DX + 20, y + 22 + hh + 14, DW - 40);
+	pop_panel(y, h);
+	head(PX, y + 22, eb, title, sub, PW);
+	menu_rows_draw(a, PX, top, PW);
+	pop_keys(a, PX, PW, top + rh + 14);
 }
+
+#define ST_ROW	44	/* Style's paragraph styles */
 
 static void style_draw(struct app *a)
 {
@@ -891,7 +1010,8 @@ static void style_draw(struct app *a)
 	static const char *const pkeys[8] = { "Ctrl+0", "Ctrl+1", "Ctrl+2", "Ctrl+3", "Ctrl+Shift+8",
 		"Ctrl+Shift+7", "", "" };
 	static const enum blk kinds[8] = { B_BODY, B_H1, B_H2, B_H3, B_BULLET, B_NUMBER, B_QUOTE, B_CODE };
-	int x = DX + 20, w = DW - 40, y = 16, h = 20 + 52 + 14 + 18 + 8 + 56 + 14 + 25 + 8 * 46 + 7 * 4 + 20;
+	int x = PX, w = PW, list_h = 8 * (ST_ROW + POP_GAP) - POP_GAP;
+	int h = 22 + 55 + 14 + 25 + 56 + 14 + 25 + list_h + KEYS_H, y = centered(h);
 	int style, cur = 0, tw = (w - 16) / 3;
 	enum blk b;
 	char word[64], title[80];
@@ -908,29 +1028,26 @@ static void style_draw(struct app *a)
 			cur = i;
 	ed_word_at(&a->e, word, sizeof(word));
 	snprintf(title, sizeof(title), "\xe2\x80\x9c%s\xe2\x80\x9d", word[0] ? word : "\xe2\x80\xa6");
-	dialog_box(y, h);
-	y += 20;
-	wicon(&wi_triangle, x + 8, y + 2, WB_COLOR_KEY_TRIANGLE);
-	text(&f_mono14, x + 8 + 12 + 8, y, "STYLE", WB_COLOR_CYAN, 22);
+	pop_panel(y, h);
+	y += 22;
+	wicon(&wi_triangle, x, y + 1, WB_COLOR_KEY_TRIANGLE);
+	text(&f_mono13, x + 12 + 8, y, "STYLE", WB_COLOR_CYAN, 21);
 	{
 		char buf[100];
 
-		wtext(&wf_ui24b, x + 8, y + 20, wfit(&wf_ui24b, title, w - 16, buf, sizeof(buf)), WB_COLOR_TEXT_HI, 0);
+		wtext(&wf_ui28b, x, y + 17 + 6, wfit(&wf_ui28b, title, w, buf, sizeof(buf)), WB_COLOR_TEXT_HI, 0);
 	}
-	y += 52 + 14;
-	text(&f_mono13, x + 8, y, "TEXT", WB_COLOR_TEXT_LOW, 21);
-	y += 18 + 8;
+	y += 55 + 14;
+	text(&f_mono13, x, y, "TEXT", WB_COLOR_TEXT_LOW, 21);
+	y += 17 + 8;
 	for (int i = 0; i < 3; i++) {
 		int on = style & (i == 0 ? ST_B : i == 1 ? ST_I : ST_U), tx = x + i * (tw + 8), cy = y + 28;
 		uint32_t c = on ? WB_COLOR_PINK : WB_COLOR_TEXT_HI;
 		const struct wf_font *lf = i == 0 ? &wf_ui20b : &wf_ui20;
 
-		if (a->focus == i)
-			box_focus(tx, y, tw, 56, WB_RADIUS_MD, &GLOW_ROW);
-		else if (on)
-			box(tx, y, tw, 56, WB_RADIUS_MD, WB_COLOR_PINK, PINK_TINT, WB_COLOR_PINK, 1, 0);
-		else
-			box(tx, y, tw, 56, WB_RADIUS_MD, WB_COLOR_SURFACE1, 255, WB_COLOR_LINE, 1, 0);
+		wb_card(tx, y, tw, 56, WB_RADIUS_MD, a->focus == i, &GLOW_FOCUS);
+		if (on && a->focus != i)	/* on: pink (6.2) */
+			box(tx, y, tw, 56, WB_SQUARE, WB_COLOR_PINK, PINK_TINT, WB_COLOR_PINK, 1, 0);
 		/* the shortcut small under the label (design/write/README.md §7) */
 		wtext(lf, tx + 14, wtop(lf, cy - 8), marks[i], c, i == 1);
 		if (i == 2)
@@ -938,81 +1055,61 @@ static void style_draw(struct app *a)
 		text(&f_mono13, tx + 14, text_top(&f_mono13, cy + 14), keys[i], on ? WB_COLOR_PINK : WB_COLOR_TEXT_MID, 0);
 	}
 	y += 56 + 14;
-	text(&f_mono13, x + 8, y, "PARAGRAPH", WB_COLOR_TEXT_LOW, 21);
+	text(&f_mono13, x, y, "PARAGRAPH", WB_COLOR_TEXT_LOW, 21);
 	y += 17 + 8;
-	for (int i = 0; i < 8; i++, y += 46 + 4) {
-		int f = a->focus == 3 + i, cy = y + 23, lx = x + 16 + 20 + 14;
+	for (int i = 0; i < 8; i++, y += ST_ROW + POP_GAP) {
+		int f = a->focus == 3 + i, cy = y + ST_ROW / 2, lx = x + 14 + 24 + 14;
 		const struct wf_font *lf = i == 1 ? &wf_ui28b : i == 2 ? &wf_ui24b : i == 3 ? &wf_ui20b :
 					   i == 7 ? &wf_mono16 : &wf_ui20;
 
-		row_box(x, y, w, 46, f);
-		if (i == cur)
-			wicon(&wi_check, x + 16, cy - 10, WB_COLOR_CYAN);
+		pop_focus(x, y, w, ST_ROW, f);
+		choice_box(x + 14, cy, i == cur);
 		wtext(lf, lx, wtop(lf, cy), paras[i], i == 6 ? WB_COLOR_TEXT_MID : WB_COLOR_TEXT_HI, i == 6);
 		if (pkeys[i][0])
-			text(&f_mono14, x + w - 16 - text_w(&f_mono14, pkeys[i], 0), text_top(&f_mono14, cy), pkeys[i],
+			text(&f_mono14, x + w - 14 - text_w(&f_mono14, pkeys[i], 0), text_top(&f_mono14, cy), pkeys[i],
 			     f ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 0);
 	}
+	pop_keys(a, x, w, y - POP_GAP + 14);
 }
 
-/* Discard changes? and Replace? */
-static void ask_draw(struct app *a, const char *eb, uint32_t ebc, const char *title, const char *desc,
-		     const char *const *buttons, int nb, int danger)
+/* Discard changes?, Replace? and errors: libwb's dialog(), a sentence in
+ * its body, the keys inside */
+static void ask_draw(struct app *a, const char *eb, const char *title, const char *desc,
+		     const char *const *buttons, const struct wb_icon *const *ics, int nb, int danger)
 {
-	int x = DX + 22, w = DW - 44, lines, h, y;
+	int w = DLG_W - 64, lines, y;
 	char dbuf[300];
+	struct hintk hk[8];
+	struct hint hs[8];
+	int n = app_hints(a, hk, 8);
 
 	snprintf(dbuf, sizeof(dbuf), "%s", desc);
-	lines = text_wrap(&f_ui18, 0, 0, w - 16, 26, dbuf, 0, 3, 0);
-	h = 26 + 18 + 6 + 36 + 6 + lines * 26 + 18 + nb * 56 + (nb - 1) * 8 + (danger >= 0 ? 13 : 0) + 22;
-	y = centered(h);
-	dialog_box(y, h);
-	y += 26;
-	text(&f_mono14, x + 8, y, eb, ebc, 22);
-	y += 18 + 6;
-	wtext(&wf_ui28b, x + 8, y, title, WB_COLOR_TEXT_HI, 0);
-	y += 36 + 6;
-	text_wrap(&f_ui18, x + 8, y, w - 16, 26, dbuf, WB_COLOR_TEXT_MID, 3, 1);
-	y += lines * 26 + 18;
-	for (int i = 0; i < nb; i++) {
-		int cy, tx = x + 16;
-
-		if (i == danger) {
-			fill(x + 8, y - 8 + 6, w - 16, 1, WB_COLOR_LINE);
-			y += 13;
-		}
-		row_box(x, y, w, 56, a->focus == i);
-		cy = y + 28;
-		if (i == danger) {
-			wicon(&wi_trash, tx, cy - 10, WB_COLOR_ERROR);
-			tx += 20 + 12;
-		}
-		wtext(&wf_ui20, tx, wtop(&wf_ui20, cy), buttons[i], i == danger ? WB_COLOR_ERROR : WB_COLOR_TEXT_HI, 0);
-		y += 56 + 8;
-	}
+	lines = text_wrap(&f_ui18, 0, 0, w, 26, dbuf, 0, 3, 0);
+	y = dialog(eb, title, lines * 26, buttons, ics, nb, a->focus, danger);
+	text_wrap(&f_ui18, DLG_X + 32, y, w, 26, dbuf, WB_COLOR_TEXT_MID, 3, 1);
+	for (int i = 0; i < n; i++)
+		hs[i] = (struct hint){ hk[i].keys, hk[i].label, hk[i].right };
+	dlg_hints(hs, n);
 }
 
 static void saveas_draw(struct app *a)
 {
-	int x = 72 + 24, w = W - 144 - 48, h = 26 + 18 + 4 + 36 + 20 + 20 + 8 + 56 + 8 + 44 + 20 + 56 + 24, y;
+	int x = POP_X + 32, w = POP_W - 64;
+	int h = 32 + 18 + 6 + 36 + 20 + 20 + 8 + 56 + 8 + 44 + 12 + 60 + KEYS_H + 10, y;
 	int cy, ok = !a->sa_err[0], bad = a->sa_err[0] != 0;
 	uint32_t c = bad ? WB_COLOR_ERROR : WB_COLOR_CYAN;
 	char buf[160];
 
 	y = centered(h);
-	dim(WB_COLOR_CONSOLE, 184);
-	box(72, y, W - 144, h, WB_RADIUS_LG, WB_COLOR_SURFACE2, 255, WB_COLOR_LINE, 1, 0);
-	y += 26;
-	text(&f_mono14, x + 4, y, "WRITE", WB_COLOR_CYAN, 22);
-	wtext(&wf_ui28b, x + 4, y + 18 + 4, "Save as", WB_COLOR_TEXT_HI, 0);
-	y += 18 + 4 + 36 + 20;
-	text(&f_ui16, x + 4, y, "Name", WB_COLOR_TEXT_MID, 0);
+	pop_panel(y, h);
+	y += 32;
+	eyebrow(x, y, "WRITE");
+	wtext(&wf_ui28b, x, y + 18 + 6, "Save as", WB_COLOR_TEXT_HI, 0);
+	y += 18 + 6 + 36 + 20;
+	text(&f_ui16, x, y, "Name", WB_COLOR_TEXT_MID, 0);
 	y += 20 + 8;
 	cy = y + 28;
-	if (a->sa_focus == 0)
-		box(x, y, w, 56, WB_RADIUS_MD, c, 20, c, 2, &GLOW_ROW);
-	else
-		box(x, y, w, 56, WB_RADIUS_MD, WB_COLOR_VOID, 255, WB_COLOR_LINE, 1, 0);
+	field_h(x, y, w, 56, a->sa_focus == 0, c);
 	{
 		char before[NAME_MAX_W + 1];
 		int tx;
@@ -1022,79 +1119,68 @@ static void saveas_draw(struct app *a)
 		if (a->sa_focus == 0)
 			fill(tx, cy - 12, 2, 24, c);
 		tx = wtext(&wf_mono20, tx + 2, wtop(&wf_mono20, cy), a->sa_name + a->sa_caret, WB_COLOR_TEXT_HI, 0);
-		wtext(&wf_mono20, tx, wtop(&wf_mono20, cy), a->sa_ext, WB_COLOR_TEXT_LOW, 0);
+		wtext(&wf_mono20, tx, wtop(&wf_mono20, cy), a->sa_ext, WB_COLOR_PLACEHOLDER, 0);
 	}
 	y += 56 + 8;
 	snprintf(buf, sizeof(buf), "%s", ok ? (!strcmp(a->sa_ext, ".md") ? "Saved as markdown. \xe2\x86\x93 to choose another folder." :
 				       "\xe2\x86\x93 to choose another folder.") : a->sa_err);
-	text_wrap(&f_ui16, x + 4, y, w - 8, 22, buf, bad ? WB_COLOR_ERROR : WB_COLOR_TEXT_LOW, 2, 1);
-	y += 44 + 20;
-	cy = y + 28;
-	row_box(x, y, w, 56, a->sa_focus == 1);
-	wicon(&wi_folder, x + 16, cy - 11, WB_COLOR_TEXT_MID);
-	wtext(&wf_ui20, x + 16 + 22 + 14, wtop(&wf_ui20, cy), "Folder", WB_COLOR_TEXT_HI, 0);
-	wicon(&wi_chev, x + w - 16 - 18, cy - 9, WB_COLOR_TEXT_LOW);
+	text_wrap(&f_ui16, x, y, w, 22, buf, bad ? WB_COLOR_ERROR : WB_COLOR_TEXT_MID, 2, 1);
+	y += 44 + 12;
+	cy = y + 30;
+	wb_card(x, y, w, 60, WB_RADIUS_MD, a->sa_focus == 1, &GLOW_FOCUS);
+	wicon(&wi_folder, x + 18, cy - 11, a->sa_focus == 1 ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID);
+	wtext(&wf_ui20, x + 18 + 22 + 14, wtop(&wf_ui20, cy), "Folder", WB_COLOR_TEXT_HI, 0);
+	wicon(&wi_chev, x + w - 16 - 18, cy - 9, a->sa_focus == 1 ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID);
 	{
 		char pb[96];
 		const char *p = wb_fit(&f_mono14, a->sa_dir, w - 200, pb, sizeof(pb));
 
 		text(&f_mono14, x + w - 16 - 18 - 14 - text_w(&f_mono14, p, 0), text_top(&f_mono14, cy), p,
-		     WB_COLOR_TEXT_MID, 0);
+		     a->sa_focus == 1 ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 0);
 	}
+	y += 60 + 10;
+	pop_keys(a, x, w, y + 14);
 }
 
+/* Language: a choice, libwb's menu_popup() (the present one ticked) */
 static void language_draw(struct app *a)
 {
-	int x = DX + 20, w = DW - 40, y = 24, h = H - 72 - 24, ly, first = 0, vis;
+	static struct menu_item items[L_COUNT];
+	struct hintk hk[8];
+	struct hint hs[8];
+	int n = app_hints(a, hk, 8);
 	char cnt[24];
 
-	dialog_box(y, h);
-	text(&f_mono14, x + 8, y + 22, "OPTIONS", WB_COLOR_CYAN, 22);
-	wtext(&wf_ui24b, x + 8, y + 22 + 18 + 4, "Language", WB_COLOR_TEXT_HI, 0);
-	snprintf(cnt, sizeof(cnt), "%d options", L_COUNT);
-	text(&f_mono13, x + w - 8 - text_w(&f_mono13, cnt, 0), y + 22 + 18 + 4 + 10, cnt, WB_COLOR_TEXT_LOW, 0);
-	ly = y + 22 + 18 + 4 + 32 + 14;
-	vis = (y + h - ly) / 50;
-	if (a->focus >= vis)
-		first = a->focus - vis + 1;
-	clip_rows(ly, y + h - 2);
-	for (int i = first; i < L_COUNT; i++) {
-		int ry = ly + (i - first) * 50, cy = ry + 23, f = i == a->focus;
-
-		if (ry > y + h)
-			break;
-		row_box(x, ry, w - 14, 46, f);
-		if (i == a->lang)
-			wicon(&wi_check, x + 16, cy - 10, WB_COLOR_CYAN);
-		wtext(&wf_ui20, x + 16 + 20 + 14, wtop(&wf_ui20, cy), lang_name((enum lang)i), WB_COLOR_TEXT_HI, 0);
-		text(&f_mono14, x + w - 14 - 16 - text_w(&f_mono14, lang_exts((enum lang)i), 0), text_top(&f_mono14, cy),
-		     lang_exts((enum lang)i), f ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 0);
+	for (int i = 0; i < L_COUNT; i++) {
+		items[i] = (struct menu_item){ .label = lang_name((enum lang)i) };
+		snprintf(items[i].value, sizeof(items[i].value), "%s", lang_exts((enum lang)i));
 	}
-	clip_end();
-	scrollbar(x + w - 4, ly, y + h - ly - 20, L_COUNT * 50, vis * 50, first * 50);
+	for (int i = 0; i < n; i++)
+		hs[i] = (struct hint){ hk[i].keys, hk[i].label, hk[i].right };
+	snprintf(cnt, sizeof(cnt), "%d options", L_COUNT);
+	menu_popup("OPTIONS", "Language", cnt, items, 0, L_COUNT, a->focus, a->lang, 0, 0, hs, n);
 }
 
 static void log_draw(struct app *a)
 {
 	static const struct hint esc[] = { { "Esc", "close", 1 } };
-	int y = WB_STATUS_BAR_H + 20;
+	int x = WB_CONTENT_PAD, w = W - 2 * WB_CONTENT_PAD, y = WB_ROWS_TOP;
+	int rows = (PAGE_BOT - 16 - y - 32) / 26, first = a->n_log > rows ? a->n_log - rows : 0;
+	int shown = a->n_log ? a->n_log - first : 1;
 	char buf[140];
 
-	/* as wbdraw's empty_screen, in Write's fonts */
-	fill(0, 0, W, H, WB_COLOR_VOID);
-	eyebrow(WB_CONTENT_PAD, y, "WRITE");
-	wtext(&wf_ui36b, WB_CONTENT_PAD, y + 18 + 6, "Log", WB_COLOR_TEXT_HI, 0);
-	y += 18 + 6 + 44 + 24;
+	/* as libwb's empty_screen, in Write's fonts, on a card */
+	status_bar();
+	wb_header("WRITE \xe2\x80\xba", "Log", 0);
+	wb_card(x, y, w, 32 + shown * 26, WB_RADIUS_MD, 0, 0);
+	y += 16;
 	if (!a->n_log) {
-		wtext(&wf_ui20, WB_CONTENT_PAD, y, "No log yet.", WB_COLOR_TEXT_LOW, 0);
+		wtext(&wf_ui20, x + 20, y, "No log yet.", WB_COLOR_TEXT_MID, 0);
 	} else {
-		int rows = (H - WB_HINT_BAR_H - 16 - y) / 26, first = a->n_log > rows ? a->n_log - rows : 0;
-
 		for (int i = first; i < a->n_log; i++, y += 26)
-			text(&f_mono14, WB_CONTENT_PAD, y, wb_fit(&f_mono14, a->log[i], W - 2 * WB_CONTENT_PAD, buf, sizeof(buf)),
+			text(&f_mono14, x + 20, y + 4, wb_fit(&f_mono14, a->log[i], w - 40, buf, sizeof(buf)),
 			     strstr(a->log[i], "error") ? WB_COLOR_ERROR : WB_COLOR_TEXT_MID, 0);
 	}
-	status_bar();
 	hint_bar(esc, 1);
 }
 
@@ -1103,13 +1189,22 @@ static int help_cap(int x, int cy, const char *k)
 {
 	int sym = one_sym(k), w = (sym ? 12 : text_w(&f_mono13, k, 0)) + 16;
 
-	box(x, cy - 12, w, 24, 6, WB_COLOR_SURFACE1, 255, WB_COLOR_LINE, 1, 0);
+	box(x, cy - 12, w, 24, WB_SQUARE, WB_COLOR_SURFACE2, 255, WB_COLOR_LINE, 1, 0);
 	fill(x + 3, cy + 11, w - 6, 1, WB_COLOR_LINE);
 	if (sym)
 		icon(keycap_syms[sym - 1], x + 8, cy - 6, key_colors[sym - 1], 255);
 	else
 		text(&f_mono13, x + 8, text_top(&f_mono13, cy), k, WB_COLOR_TEXT_HI, 0);
 	return x + w;
+}
+
+static int help_caps_w(const char *const *caps)
+{
+	int w = -4;
+
+	for (int c = 0; c < 3 && caps[c]; c++)
+		w += (one_sym(caps[c]) ? 12 : text_w(&f_mono13, caps[c], 0)) + 16 + 4;
+	return w;
 }
 
 struct help_row { const char *caps[3]; const char *what; };
@@ -1144,36 +1239,42 @@ static void help_draw(struct app *a)
 		{ { "Esc" }, "Close. Asks first if there are unsaved changes" },
 		{ { "Logo" }, "Back to the menu. Write saves first" },
 	};
-	static const struct hint esc[] = { { "Esc", "close", 1 } };
 	const struct help_row *k = a->e.mode == M_CODE ? code : rich;
 	const char *about = a->e.mode == M_CODE ? "Edit text and code. Files stay as they are: Write adds nothing." :
 			    "Write notes and documents. Files are saved as markdown (.md), so any other editor can open them.";
-	int x = 48 + 30, w = W - 96 - 60, y = 16, lines = text_wrap(&f_ui18, 0, 0, w, 25, about, 0, 2, 0);
-	int h = 20 + 18 + 6 + 36 + 6 + lines * 25 + 16 + 25 + 12 * 32 + 20;
+	int x = PX, w = PW, lines = text_wrap(&f_ui18, 0, 0, w, 25, about, 0, 2, 0), kw = 0;
+	int h = 22 + 55 + 8 + lines * 25 + 14 + 17 + 6 + 12 * 32 + KEYS_H - 14 + 6, y = centered(h);
+	const struct wb_font *df = &f_ui18;
 	char buf[100];
 
-	dim(WB_COLOR_CONSOLE, 184);
-	box(48, y, W - 96, h, WB_RADIUS_LG, WB_COLOR_SURFACE2, 255, WB_COLOR_LINE, 1, 0);
-	y += 20;
-	icon(&kc_diamond, x, y + 2, WB_COLOR_KEY_DIAMOND, 255);
-	text(&f_mono14, x + 12 + 8, y, "HELP", WB_COLOR_CYAN, 22);
-	y += 18 + 6;
-	wtext(&wf_ui28b, x, y, "Write", WB_COLOR_TEXT_HI, 0);
-	y += 36 + 6;
+	/* the descriptions in 18 px, or all in 16 px when one does not fit */
+	for (int i = 0; i < 12; i++)
+		if (help_caps_w(k[i].caps) > kw)
+			kw = help_caps_w(k[i].caps);
+	for (int i = 0; i < 12; i++)
+		if (text_w(&f_ui18, k[i].what, 0) > w - kw - 14)
+			df = &f_ui16;
+	pop_panel(y, h);
+	y += 22;
+	icon(&kc_diamond, x, y + 1, WB_COLOR_KEY_DIAMOND, 255);
+	text(&f_mono13, x + 12 + 8, y, "HELP", WB_COLOR_CYAN, 21);
+	wtext(&wf_ui28b, x, y + 17 + 6, "Write", WB_COLOR_TEXT_HI, 0);
+	y += 55 + 8;
 	text_wrap(&f_ui18, x, y, w, 25, about, WB_COLOR_TEXT_MID, 2, 1);
-	y += lines * 25 + 16;
+	y += lines * 25 + 14;
 	text(&f_mono13, x, y, "KEYS ON THIS SCREEN", WB_COLOR_TEXT_LOW, 21);
-	y += 17 + 8;
+	y += 17 + 6;
 	for (int i = 0; i < 12; i++, y += 32) {
 		int cx = x, cy = y + 16;
 
-		fill(x, y, w, 1, WB_COLOR_LINE);
+		if (i)
+			fill(x, y, w, 1, 0x26262F);
 		for (int c = 0; c < 3 && k[i].caps[c]; c++)
 			cx = help_cap(cx, cy, k[i].caps[c]) + 4;
-		text(&f_ui18, x + 168 + 16, text_top(&f_ui18, cy), wb_fit(&f_ui18, k[i].what, w - 184, buf, sizeof(buf)),
+		text(df, x + kw + 14, text_top(df, cy), wb_fit(df, k[i].what, w - kw - 14, buf, sizeof(buf)),
 		     WB_COLOR_TEXT_HI, 0);
 	}
-	hint_bar(esc, 1);
+	pop_keys(a, x, w, y + 6);
 }
 
 /* ---- Open ------------------------------------------------------------------------------- */
@@ -1195,34 +1296,47 @@ static const char *drive_label(const char *p, const char *home)
 	return p;
 }
 
+/* The eyebrow of Open: Write, then the folder (as Files' "SD CARD › /home"),
+ * cut at the front when it is long */
+static const char *open_crumb(const struct app *a, char *buf, int size)
+{
+	const char *p = a->op_dir;
+
+	if (a->op_drives)
+		return "WRITE \xe2\x80\xba";
+	snprintf(buf, (size_t)size, "WRITE \xe2\x80\xba %s", p);
+	while (*p && text_w(&f_mono14, buf, 22) > W - WB_CONTENT_PAD - 6 - WB_CONTENT_PAD - 120) {
+		p++;
+		while (((unsigned char)*p & 0xc0) == 0x80)
+			p++;
+		snprintf(buf, (size_t)size, "WRITE \xe2\x80\xba \xe2\x80\xa6%s", p);
+	}
+	return buf;
+}
+
 static void open_draw(struct app *a)
 {
-	int x = WB_CONTENT_PAD, w = W - 2 * WB_CONTENT_PAD - 16, y = WB_STATUS_BAR_H + 20, ly, vis, first = 0;
-	char buf[160];
+	int x = WB_CONTENT_PAD, w = W - 2 * WB_CONTENT_PAD - 16, ly = WB_ROWS_TOP, vis, first = 0;
+	char buf[160], eb[600];
 	time_t now = time(0);
 
-	fill(0, 0, W, H, WB_COLOR_VOID);
 	status_bar();
-	text(&f_mono14, x, y, "WRITE", WB_COLOR_CYAN, 22);
-	wtext(&wf_ui36b, x, y + 18 + 4, a->op_folders ? "Choose a folder" : a->op_drives ? "Drives" : "Open",
-	      WB_COLOR_TEXT_HI, 0);
-	if (!a->op_folders && !a->op_drives)
-		text(&f_ui16, x + w + 16 - text_w(&f_ui16, "text and code", 0), y + 18 + 4 + 16, "text and code",
-		     WB_COLOR_TEXT_LOW, 0);
-	text(&f_mono14, x, y + 18 + 4 + 44 + 4, wb_fit(&f_mono14, a->op_drives ? "" : a->op_dir, w, buf, sizeof(buf)),
-	     WB_COLOR_TEXT_LOW, 0);
-	ly = y + 18 + 4 + 44 + 4 + 20 + 20;
-	if (a->op_filter[0]) {
-		box(x, ly, w, 44, 10, WB_COLOR_SURFACE1, 255, WB_COLOR_LINE, 1, 0);
-		fill(wtext(&wf_mono18, x + 16, wtop(&wf_mono18, ly + 22), a->op_filter, WB_COLOR_TEXT_HI, 0) + 2, ly + 11,
-		     2, 22, WB_COLOR_CYAN);
+	wb_header(open_crumb(a, eb, sizeof(eb)), a->op_folders ? "Choose a folder" : a->op_drives ? "Drives" : "Open",
+		  !a->op_folders && !a->op_drives ? "text and code" : 0);
+	if (a->op_filter[0]) {	/* the canvas's search field */
+		int tx;
+
+		field_h(x, ly, w, 44, 0, 0);
+		loupe(x + 14, ly + 13, WB_COLOR_TEXT_MID);
+		tx = wtext(&wf_ui20, x + 14 + 18 + 10, wtop(&wf_ui20, ly + 22), a->op_filter, WB_COLOR_TEXT_HI, 0);
+		fill(tx + 2, ly + 12, 2, 20, WB_COLOR_CYAN);
 		ly += 44 + 12;
 	}
 	vis = (H - WB_HINT_BAR_H - 8 - ly) / 64;
 	if (a->op_focus >= vis)
 		first = a->op_focus - vis + 1;
 	if (!a->op_n)
-		text(&f_ui18, x + 4, ly + 16, a->op_err[0] ? a->op_err : "Nothing matches", WB_COLOR_TEXT_LOW, 0);
+		text(&f_ui18, x + 4, ly + 16, a->op_err[0] ? a->op_err : "Nothing matches", WB_COLOR_TEXT_MID, 0);
 	clip_rows(ly - 20, H - WB_HINT_BAR_H);
 	for (int i = first; i < a->op_n; i++) {
 		const struct open_row *r = &a->op[i];
@@ -1233,12 +1347,12 @@ static void open_draw(struct app *a)
 
 		if (ry > H)
 			break;
-		row_box(x, ry, w, 56, f);
+		wb_card(x, ry, w, 56, WB_RADIUS_MD, f, &GLOW_FOCUS);
 		wicon(r->isnew ? &wi_plus : r->here ? &wi_check : a->op_drives ? &wi_drive : r->dir ? &wi_folder :
 		      lang_of_path(r->name) == L_MARKDOWN || lang_of_path(r->name) == L_PLAIN ? &wi_doc : &wi_code,
 		      x + 16, cy - 11, ink);
 		if (r->dir) {
-			wicon(&wi_chev, rx - 18, cy - 9, f ? WB_COLOR_CYAN : WB_COLOR_TEXT_LOW);
+			wicon(&wi_chev, rx - 18, cy - 9, ink);
 			rx -= 18 + 14;
 		}
 		if (r->isnew)
@@ -1267,12 +1381,14 @@ static void open_draw(struct app *a)
 static void error_draw(struct app *a)
 {
 	static const char *const ok[] = { "OK" };
+	static const struct wb_icon *const ics[] = { &r_check };
 
-	ask_draw(a, "WRITE", WB_COLOR_ERROR, a->err_title, a->err_text, ok, 1, -1);
+	ask_draw(a, "WRITE", a->err_title, a->err_text, ok, ics, 1, -1);
 }
 
 static void draw(struct app *a)
 {
+	backdrop(a);
 	if (a->screen == SC_OPEN) {
 		open_draw(a);
 		return;
@@ -1281,19 +1397,21 @@ static void draw(struct app *a)
 		log_draw(a);
 		return;
 	}
-	fill(0, fb_y0, W, fb_y1 - fb_y0, WB_COLOR_VOID);
 	if (!a->full) {
 		status_bar();
 		docbar(a);
+		page();
 	}
 	text_area(a);
 	if (a->find_open)
 		find_bar(a);
 	scroll_bar(a);
-	if (a->full)
+	if (a->full) {
 		full_footer(a);
-	else
+	} else {
 		word_count(a);
+		hints(a);	/* the editor's, also under a pop-up (dimmed with it) */
+	}
 	switch (a->ov) {
 	case OV_OPTIONS: {
 		char sub[160], when[32] = "not saved yet";
@@ -1320,20 +1438,22 @@ static void draw(struct app *a)
 	case OV_DISCARD: {
 		static const char *const close_b[] = { "Keep editing", "Save and close", "Discard changes" };
 		static const char *const go_b[] = { "Keep editing", "Save first", "Discard changes" };
+		static const struct wb_icon *const ics[] = { &r_text, &r_check, &r_trash };
 		char desc[200];
 
 		snprintf(desc, sizeof(desc), "%s has changes since the last save.", a->name);
-		ask_draw(a, "UNSAVED CHANGES", WB_COLOR_YELLOW, "Discard changes?", desc,
-			 a->after == AF_CLOSE ? close_b : go_b, 3, 2);
+		ask_draw(a, "UNSAVED CHANGES", "Discard changes?", desc, a->after == AF_CLOSE ? close_b : go_b,
+			 ics, 3, 2);
 		break;
 	}
 	case OV_REPLACE_ASK: {
 		static const char *const b[] = { "Cancel", "Replace" };
+		static const struct wb_icon *const ics[] = { &r_doc, &r_file };
 		char title[160], desc[200];
 
 		snprintf(title, sizeof(title), "Replace %s%s?", a->sa_name, a->sa_ext);
 		snprintf(desc, sizeof(desc), "The file in %s is overwritten with this document.", a->sa_dir);
-		ask_draw(a, "SAVE AS", WB_COLOR_CYAN, title, desc, b, 2, 1);
+		ask_draw(a, "SAVE AS", title, desc, b, ics, 2, 1);
 		break;
 	}
 	case OV_SAVEAS:
@@ -1347,14 +1467,12 @@ static void draw(struct app *a)
 		break;
 	case OV_HELP:
 		help_draw(a);
-		return;		/* help_popup drew its own hint bar */
+		break;
 	default:
 		break;
 	}
 	if (a->full && a->hint_until && a->ov == OV_NONE)
 		full_hint();
-	if (!a->full || a->ov != OV_NONE)
-		hints(a);
 }
 
 /* ---- bands ---------------------------------------------------------------------------- */
@@ -1398,6 +1516,7 @@ static void signatures(struct app *a)
 	g = mix(g, (unsigned)a->lay.total);
 	g = mix(g, (unsigned)a->lang);
 	g = mix(g, (unsigned)empty_new(a));
+	g = mix(g, (unsigned)rot);	/* the scene turned: everything anew */
 	g = hash_str(g, a->name, (int)strlen(a->name));
 	for (int b = 0; b < BANDS; b++)
 		sig_now[b] = g;
@@ -1469,6 +1588,8 @@ int ui_present(struct app *a, int force, void (*out)(const uint16_t *band, int y
 {
 	int sent = 0;
 
+	if (scene_screen(a))
+		rot = rot_read();
 	app_follow(a);
 	app_geometry(a, &TX, &TY, &TW, &TH);
 	frame_rows(a);
@@ -1495,6 +1616,7 @@ int ui_present(struct app *a, int force, void (*out)(const uint16_t *band, int y
 void ui_init(void)
 {
 	app_adv16 = ui_adv16;
+	wb_init();
 }
 
 int ui_wifi_bars(void)

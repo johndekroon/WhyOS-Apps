@@ -18,7 +18,7 @@ like the store, listed under Apps; why2025-linux puts it in the image.
 | `src/files.c` | loading (256 KB at most), saving through a temporary file and rename, names, the Open list, dates |
 | `src/layout.c` | lines into rows: wrapping, heights (cached per line), caret x/y, up and down |
 | `src/app.c` | the app as a state machine: keys in; document, overlays, requests out |
-| `src/ui.c` | the screens, with the menu's drawing code from why2025-linux (`wbdraw.h`, `wbstatus.h`, `home_assets.h`) |
+| `src/ui.c` | the screens, drawn with libwb from why2025-linux (`libwb/wb.h`, `wbstatus.h`) in the style of the canvas "Menu's met frontpaneel" (2026-10-27) |
 | `src/repeat.c` | a key held down repeats, by Write's own timer: which keys, when |
 | `src/main.c` | the badge program (keypad, panel, SIGTERM, running scripts) and the host program for the screen tests |
 | `src/write_fonts.h` | the document fonts and a few icons, from `assets/gen.py` (checked in) |
@@ -35,6 +35,10 @@ The screen tests set `WRITE_UI_CHECK`: every frame drawn band by band
 (only the bands whose contents changed) must equal the same frame drawn
 whole. Host builds go to `tests/unit/bin-<system>/` and
 `write-ui-host-<system>`, as this folder is shared with the build VM.
+
+The screens as PNG: `SHOTS=dir python3 -m pytest -q tests` in the build VM
+(PIL); on macOS the screen tests stop at ASan's `detect_leaks`, which the
+platform lacks (`ASAN_OPTIONS` in `tests/test_ui.py`).
 
 On the badge: `/tmp/write.keys` takes key codes from a test (`c31` is
 Ctrl+S, `f106` Fn+Right); `WRITE_UI_TIMING=1` writes how long each frame
@@ -68,5 +72,25 @@ took to stderr (`/tmp/app-write.log`). The clipboard is
   Tab, Esc or the symbol keys. Write's own timer, as the menu's lists:
   the keypad's own repeats (why2025-linux kernel patch 0060, the same
   pace) are ignored, so a repeat comes only after the last one is drawn.
-- Help is drawn as the design's Help screen, not with wbdraw's
-  `help_popup`: twelve keys do not fit in the shared pop-up.
+- Help is drawn as the design's Help screen, not with libwb's
+  `help_popup`: twelve keys, some with three caps, do not fit in the
+  shared pop-up.
+- The look (2026-10-27, the canvas "Menu's met frontpaneel"): the
+  frontpanel's scene behind the status bar, the document bar (its chips
+  glass) and the hint bar (glass); the text on an opaque page between
+  them, as the design's layout (2a) keeps it. Glass under 24 px text would
+  show the scene's lines through the letters, and the page's bands are the
+  ones typing and scrolling redraw: there the scene costs nothing, it is
+  drawn only in the bands of the bars. Full screen has no scene (the text
+  fills the panel). Open and the log are screens on the scene with libwb's
+  header ("WRITE ›" and the folder as the eyebrow) and glass cards.
+- Pop-ups are glass panels 96 px from the sides with their keys inside at
+  the bottom; the hint bar under them stays the editor's, dimmed (in full
+  screen there is none). Language is libwb's `menu_popup`, Discard,
+  Replace? and errors its `dialog`; Options, Settings, the find menu,
+  Style, Save as and Help are Write's own in the same style. Drawn in
+  bands, the panels are not frosted: libwb draws them as unblurred glass
+  with the void at 90 %, so the text under it does not show through.
+- The badge turning: the main loop wakes at least every 250 ms and each
+  frame reads the rotation; a turn redraws the screen (the scene turns).
+  Switches are libwb's (cyan when on, as the canvas).

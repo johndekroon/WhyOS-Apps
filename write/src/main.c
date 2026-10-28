@@ -463,7 +463,9 @@ int main(int argc, char **argv)
 	while (!A.quit) {
 		struct pollfd p[2] = { { ev_fd, POLLIN, 0 }, { fifo_fd, POLLIN, 0 } };
 		long t, w = rep_wait(&held, now_ms());
-		int r = poll(p, fifo_fd >= 0 ? 2 : 1, w >= 0 && w < 530 ? (int)w : 530);
+		/* at least four times a second: present() also sees the badge turn
+		 * (the scene behind the bars turns with it) */
+		int r = poll(p, fifo_fd >= 0 ? 2 : 1, w >= 0 && w < 250 ? (int)w : 250);
 
 		if (term) {
 			/* keys typed before the logo key belong in the document */
