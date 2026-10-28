@@ -153,7 +153,9 @@ static void build_drives(struct files *f)
 }
 
 /* when an entry changed, for the list's last column: "today", "24 Oct"
- * within the year, else "Mar 2025"; "" when unknown */
+ * within the year, else "Mar 2025"; "" when unknown, or before 2020: the
+ * badge has no clock that runs while it is off, so such a time was taken
+ * before the clock was set over Wi-Fi ("Jan 1970" says nothing) */
 static void when(char *out, size_t n, long long t)
 {
 	static const char mon[12][4] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -162,7 +164,7 @@ static void when(char *out, size_t n, long long t)
 	struct tm a, b;
 
 	out[0] = 0;
-	if (t <= 0 || !localtime_r(&tt, &a) || !localtime_r(&now, &b))
+	if (t < 1577836800 || !localtime_r(&tt, &a) || !localtime_r(&now, &b))
 		return;
 	if (b.tm_year >= 124 && a.tm_year == b.tm_year && a.tm_yday == b.tm_yday)
 		snprintf(out, n, "today");	/* only with the clock set */

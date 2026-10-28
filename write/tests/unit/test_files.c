@@ -204,6 +204,11 @@ TEST(dates_as_people_say_them)
 	STREQ(out, "19 Oct");
 	when_text(t - 400 * 86400, now, out, sizeof(out));
 	STREQ(out, "19 Sep 2025");
+	/* saved before the clock was set (no RTC): no date, then or later */
+	when_text(37, now, out, sizeof(out));
+	STREQ(out, "");
+	when_text(37, 60, out, sizeof(out));
+	STREQ(out, "");
 }
 
 TEST(path_parts)

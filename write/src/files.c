@@ -319,6 +319,12 @@ void when_text(time_t t, time_t now, char *out, int n)
 	struct tm a, b, y;
 	time_t yest = now - 86400;
 
+	/* the badge has no clock that runs while it is off: a time before
+	 * 2020 was taken before the clock was set over Wi-Fi, and "1 Jan
+	 * 1970" says nothing; no date then */
+	out[0] = 0;
+	if (t < 1577836800 || now < 1577836800)
+		return;
 	localtime_r(&t, &a);
 	localtime_r(&now, &b);
 	localtime_r(&yest, &y);

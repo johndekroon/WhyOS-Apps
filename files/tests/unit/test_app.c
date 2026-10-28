@@ -2,6 +2,7 @@
 /* app.c: the screens and keys, on a folder and apps of their own. */
 #include <stdio.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include "app.h"
@@ -324,6 +325,15 @@ TEST(the_columns_page_keys_and_del)
 	STREQ(f->l.rows[0].label, "docs");
 	STREQ(f->l.rows[0].value, "0 items");
 	STREQ(f->l.rows[1].date, "today");
+	{	/* changed before the clock was set (no RTC): no date */
+		struct timeval tv[2] = { { 37, 0 }, { 37, 0 } };
+
+		EQ(utimes(at("notes.md"), tv), 0);
+		f->b.stale = 1;			/* read the folder again */
+		files_build(f);
+		STREQ(f->l.rows[1].label, "notes.md");
+		STREQ(f->l.rows[1].date, "");
+	}
 	KEYS(f, K_PGDN);			/* a page: to the end of these four */
 	STREQ(focused(f), "x.bin");
 	KEYS(f, K_PGUP);
