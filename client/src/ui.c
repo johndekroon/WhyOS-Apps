@@ -1,9 +1,12 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * store: the full-screen UI (docs/client.md §4), in the menu's style
- * (why2025-linux overlay-src: wbdraw.h, home_assets.h, the WhyBadge design).
+ * store: the full-screen UI (docs/client.md §4), drawn with libwb
+ * (why2025-linux libwb/: wb.h, wbstatus.h) in the menu's style: the
+ * frontpanel's scene behind every screen, lists of glass rows (an icon, the
+ * name, a second line, a value or state on the right), the eyebrow saying
+ * where the screen lies, frosted pop-ups with their keys inside.
  *
- *   Discover    updates, featured, recently updated, the types
+ *   Discover    ("App store") updates, featured, recently updated, the types
  *   Apps/Games  All, then categories with counts, then their apps (#1: a menu to sort)
  *   Search      typing filters the cached index, offline
  *   App page    cover (or icon), facts, state and actions, then description,
@@ -17,7 +20,10 @@
  * downloads as a progress dialog where Esc cancels.
  *
  * Memory: no 1 MB frame buffer (client.md §3: 1.5 MB in all). Every
- * screen is drawn band by band, 40 rows at a time, as appterm does.
+ * screen is drawn band by band, 40 rows at a time, as appterm does, and
+ * only the bands that changed since the frame before (libwb wb_bands); the
+ * scene is kept per rotation (~80 KB), and a pop-up is glass over the band,
+ * not blurred (that needs the whole picture).
  *
  * "Open" writes the app's id to /tmp/store-open (P.tmp) and ends: the menu, back
  * from apprun, starts it (why2025-linux home.c).
@@ -29,8 +35,7 @@
  * store's log (apprun's /tmp/app-store.log), the cloud its settings, the
  * diamond a help pop-up with this screen's keys.
  *
- * Built only for the badge (build.sh: -DSTORE_UI and the menu's drawing
- * code) and, with -DSTORE_UI_HOST, as a host program that takes its keys
+ * Built only for the badge (build.sh: -DSTORE_UI and libwb) and, with -DSTORE_UI_HOST, as a host program that takes its keys
  * from a script and writes screens as PPM (tests/test_ui.py).
  */
 #include <errno.h>
@@ -59,12 +64,16 @@ int ui_main(int argc, char **argv)
 
 #include <poll.h>
 
-#include "home_assets.h"
-#include "home-assets/wb_tokens.h"
+#include "wb_tokens.h"
 
 #define W		WB_SCREEN_W
 #define H		WB_SCREEN_H
-#include "wbdraw.h"
+#ifdef STORE_UI_HOST
+#define WB_HOST		/* no panel to turn: rot_read() keeps 0 */
+#endif
+
+#include "wb.h"
+#include "wbstatus.h"
 #include "keyrep.h"
 
 #define S_(x)		((x) ? (x) : "")
@@ -109,27 +118,8 @@ static void human(char *out, size_t n, long long b)
 		snprintf(out, n, "%lld.%lld MB", b / (1024 * 1024), b % (1024 * 1024) * 10 / (1024 * 1024));
 }
 
-/* Text cut to max_w px with an ellipsis, into buf (home.c's fit). */
-static const char *fit(const struct wb_font *f, const char *s, int max_w, char *buf, int size)
-{
-	int n;
-
-	if (text_w(f, s, 0) <= max_w)
-		return s;
-	n = (int)strlen(s);
-	if (n > size - 4)
-		n = size - 4;
-	while (n > 0) {
-		while (n > 0 && ((unsigned char)s[n] & 0xc0) == 0x80)
-			n--;		/* not inside a character */
-		memcpy(buf, s, (size_t)n);
-		cat(buf + n, "\xe2\x80\xa6");
-		if (text_w(f, buf, 0) <= max_w)
-			return buf;
-		n--;
-	}
-	return "";
-}
+/* Text cut to max_w px with an ellipsis, into buf. */
+#define fit		wb_fit
 
 static int ci_has(const char *hay, const char *needle)
 {
@@ -261,6 +251,7 @@ struct row {
 	enum act act;
 	const struct wb_icon *ic;
 	char label[64];
+	char sub[96];		/* the second line (a summary, what is in it) */
 	char value[64];
 	uint32_t value_c;	/* 0: text-mid */
 	char arg[48];
@@ -275,12 +266,13 @@ enum view { V_DISCOVER, V_TYPE, V_CAT, V_SEARCH, V_APP, V_TEXT, V_MYAPPS, V_SETT
 struct frame {
 	enum view v;
 	char arg[48], arg2[48];
+	char title[64];		/* its title, for the eyebrows of the screens it opens */
 	int focus, scroll;
 	int sort;		/* V_CAT: 0 by name, 1 recently updated */
 };
 
 static struct {
-	const char *eyebrow;
+	char eyebrow[72];	/* where the screen lies (crumb()) */
 	char title[64];
 	struct row rows[LIST_MAX];
 	int n;
@@ -313,7 +305,7 @@ static struct {			/* the app on the app page */
 	struct picture thumb;	/* its cover (180 px, repository.md §5.3), in the header */
 	int n_shots, shot;
 	/* the header, copied: installing reloads the index under AP.a */
-	char name[64], author[96], meta[96], summary[200], eyebrow[64];
+	char name[64], author[96], meta[96], summary[200];
 	const struct wb_icon *ic;
 	int terminal;
 	int files_only;		/* CATEGORY="none": started by opening a file */
@@ -336,7 +328,7 @@ static struct {
 
 static struct {
 	char hhmm[6];
-	int clock_ok, wifi_up;
+	int clock_ok, wifi_bars, lora;
 } SB;
 
 static struct row *add(enum kind k, const char *label, const struct wb_icon *ic, enum act a)
@@ -405,33 +397,45 @@ static void net_notice(const char *err)
 
 /* ---- drawing ------------------------------------------------------------- */
 
+/* WhyOS on the left; LoRa, Wi-Fi and the clock on the right (wbstatus.h),
+ * as the menu draws them */
 static void status_bar(void)
 {
-	const struct wb_font *f = &f_mono16b, *n = &f_ui18b;
-	const struct wb_icon *w = &i_wifi22;
+	const struct wb_font *n = &f_ui18b;
 	int cy = WB_STATUS_BAR_H / 2;
-	int cx = W - WB_CHROME_PAD - text_w(f, SB.hhmm, 0);
 
 	text(n, text(n, WB_CHROME_PAD, text_top(n, cy), "Why", WB_COLOR_TEXT_HI, -3),
 	     text_top(n, cy), "OS", WB_COLOR_CYAN, -3);
-	text(f, cx, text_top(f, cy), SB.hhmm, SB.clock_ok ? WB_COLOR_TEXT_HI : WB_COLOR_TEXT_LOW, 0);
-	icon(w, cx - 14 - w->w, (WB_STATUS_BAR_H - w->h) / 2,
-	     SB.wifi_up ? WB_COLOR_CYAN : WB_COLOR_TEXT_LOW, 255);
+	status_right(SB.hhmm, SB.clock_ok, SB.wifi_bars, SB.lora);
+}
+
+/* The time; on the host STORE_UI_TIME (seconds since 1970) when set, so that
+ * the tests' screens do not depend on the minute they ran in */
+static time_t ui_time(time_t t)
+{
+#ifdef STORE_UI_HOST
+	const char *s = getenv("STORE_UI_TIME");
+
+	if (s)
+		return (time_t)atol(s);
+#endif
+	return t;
 }
 
 static int status_read(void)
 {
-	time_t t = time(0);
+	time_t t = ui_time(time(0));
 	struct tm tm;
 	char old[6];
-	int wifi = SB.wifi_up, ok = SB.clock_ok;
+	int bars = SB.wifi_bars, lora = SB.lora, ok = SB.clock_ok;
 
 	memcpy(old, SB.hhmm, sizeof(old));
 	localtime_r(&t, &tm);
 	SB.clock_ok = tm.tm_year >= 124;
 	snprintf(SB.hhmm, sizeof(SB.hhmm), "%02d:%02d", tm.tm_hour % 24, tm.tm_min % 60);
-	SB.wifi_up = net_up();
-	return wifi != SB.wifi_up || ok != SB.clock_ok || memcmp(old, SB.hhmm, sizeof(old));
+	SB.wifi_bars = wifi_bars();
+	SB.lora = lora_on();
+	return bars != SB.wifi_bars || lora != SB.lora || ok != SB.clock_ok || memcmp(old, SB.hhmm, sizeof(old));
 }
 
 static int focusable(const struct row *r)
@@ -444,48 +448,57 @@ static int row_h(const struct row *r)
 	return r->kind == R_GROUP ? 17 : 68;
 }
 
-static void toggle(int x, int cy, int on)
+/*
+ * A list row: wb_row() (the menu's Settings and Connection rows: a glass
+ * card, the icon, the label with the second line under it, a value in mono
+ * and a chevron or the switch on the right), but with the value in its own
+ * colour: an app's state (installed green, an update yellow).
+ */
+static void store_row(int x, int y, int w, int h, const struct wb_icon *ic, const char *label,
+		      const char *sub, const char *value, uint32_t value_c, int right, int sw, int on)
 {
-	int y = cy - 16;
+	int top = y + h / 2, rx = x + w - 18, lx = x + 20 + (ic ? 26 + 16 : 0);
+	int ly = sub && sub[0] ? y + h / 2 - 11 : top;
+	uint32_t ic_c = on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID;
+	char buf[96];
 
-	box(x, y, 56, 32, 16, on ? WB_COLOR_PINK : WB_COLOR_LINE, 255, 0, 0, 0);
-	box(on ? x + 56 - 3 - 26 : x + 3, y + 3, 26, 26, 13,
-	    on ? WB_COLOR_VOID : WB_COLOR_TEXT_MID, 255, 0, 0, 0);
+	if (!value_c) {
+		wb_row(x, y, w, h, ic, label, sub, value, right, sw, on);
+		return;
+	}
+	wb_card(x, y, w, h, WB_RADIUS_MD, on, &GLOW_FOCUS);
+	if (ic)
+		icon(ic, x + 20, top - ic->h / 2, ic_c, 255);
+	if (right == WB_ROW_OPEN) {
+		icon(&r_chevron, rx - 20, top - 10, ic_c, 255);
+		rx -= 20 + 16;
+	} else if (right == WB_ROW_SWITCH) {
+		wb_switch(rx - 52, top, sw);
+		rx -= 52 + 16;
+	}
+	if (value && value[0]) {
+		const char *v = wb_fit(&f_mono14, value, (rx - lx) / 2, buf, sizeof(buf));
+
+		rx -= text_w(&f_mono14, v, 0);
+		text(&f_mono14, rx, text_top(&f_mono14, top), v, value_c, 0);
+		rx -= 16;
+	}
+	text(&f_ui22, lx, text_top(&f_ui22, ly), wb_fit(&f_ui22, label, rx - lx, buf, sizeof(buf)),
+	     WB_COLOR_TEXT_HI, 0);
+	if (sub && sub[0])
+		text(&f_ui16, lx, text_top(&f_ui16, ly + 14 + 2 + 10), wb_fit(&f_ui16, sub, rx - lx, buf, sizeof(buf)),
+		     WB_COLOR_TEXT_MID, 0);
 }
 
 static void draw_row(const struct row *r, int y, int on)
 {
-	int x = WB_CONTENT_PAD, w = W - 2 * WB_CONTENT_PAD, h = row_h(r), top = y + h / 2;
-	int rx = x + w - 20, lx = x + 20 + (r->ic ? 26 + 16 : 0);
-	char buf[96], vbuf[96];
-
-	if (r->kind == R_GROUP) {
-		text(&f_mono13, x, y, r->label, WB_COLOR_TEXT_LOW, 21);
+	if (r->kind == R_GROUP) {	/* a group's label, as the menu's */
+		text(&f_mono13, WB_CONTENT_PAD, y, r->label, WB_COLOR_TEXT_LOW, 21);
 		return;
 	}
-	if (on)
-		box_focus(x, y, w, h, WB_RADIUS_MD, &GLOW_ROW);
-	else
-		box_plain(x, y, w, h, WB_RADIUS_MD, WB_COLOR_SURFACE1);
-	if (r->ic)
-		icon(r->ic, x + 20, top - 13, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 255);
-	if (r->kind == R_ACTION) {
-		icon(&r_chevron, rx - 20, top - 10, WB_COLOR_TEXT_LOW, 255);
-		rx -= 20 + 16;
-	} else if (r->kind == R_TOGGLE) {
-		toggle(rx - 56, top, r->on);
-		rx -= 56 + 16;
-	}
-	if (r->value[0]) {
-		/* the label keeps at least its first 40 % */
-		const char *v = fit(&f_ui18, r->value, (rx - lx) * 6 / 10, vbuf, sizeof(vbuf));
-
-		rx -= text_w(&f_ui18, v, 0);
-		text(&f_ui18, rx, text_top(&f_ui18, top), v, r->value_c ? r->value_c : WB_COLOR_TEXT_MID, 0);
-		rx -= 16;
-	}
-	text(&f_ui22, lx, text_top(&f_ui22, top), fit(&f_ui22, r->label, rx - lx, buf, sizeof(buf)),
-	     WB_COLOR_TEXT_HI, 0);
+	store_row(WB_CONTENT_PAD, y, W - 2 * WB_CONTENT_PAD, row_h(r), r->ic, r->label, r->sub, r->value,
+		  r->value_c, r->kind == R_ACTION ? WB_ROW_OPEN : r->kind == R_TOGGLE ? WB_ROW_SWITCH : WB_ROW_NONE,
+		  r->on, on);
 }
 
 /* lines of s wrapped to w px in font f; calls out(line, len, i) per line; returns the count */
@@ -554,8 +567,18 @@ static void text_line(const char *line, int len, int i, void *arg)
 	text(t->f, t->x, t->y + (i - t->first) * t->lh, buf, t->c, 0);
 }
 
+/* Bumped whenever a picture of the app page is loaded or freed: what a
+ * picture draws, for the frame's recording (its pixels are not hashed) */
+static unsigned pic_gen;
+
 static void picture_draw(const struct picture *p, int x0, int y0, uint32_t bg)
 {
+	if (wb_rec) {		/* it writes fb itself: what decides its pixels */
+		int k[] = { 0x51c7, x0, p->w, (int)pic_gen, WB_P(p->rgb), WB_P(p->alpha) };
+
+		wb_rec_rows(y0, y0 + p->h, k, sizeof(k));
+		return;
+	}
 	for (int y = 0; y < p->h; y++) {
 		int sy = y0 + y;
 
@@ -584,7 +607,7 @@ static void picture_draw(const struct picture *p, int x0, int y0, uint32_t bg)
 /*
  * The app page's header: the cover (THUMB px, a screenshot or a crop of
  * one) with name, author, facts and summary beside it; without one the
- * icon (96 px), with the summary below.
+ * icon (on a 96 px glass tile), with the summary below.
  */
 #define THUMB		180
 
@@ -596,42 +619,44 @@ static void draw_app_head(int y)
 	struct textpos tp = { &f_ui18, WB_CONTENT_PAD, y + 96 + 20, 26, 0, 2, WB_COLOR_TEXT_MID };
 
 	if (AP.thumb.rgb) {
-		box(WB_CONTENT_PAD - 2, y - 2, AP.thumb.w + 4, AP.thumb.h + 4, 4, WB_COLOR_VOID, 0,
-		    WB_COLOR_LINE, 1, 0);
+		edge_rect(WB_CONTENT_PAD - 1, y - 1, AP.thumb.w + 2, AP.thumb.h + 2, 0xFFFFFF, 66);
 		picture_draw(&AP.thumb, WB_CONTENT_PAD, y, WB_COLOR_VOID);
 		tp.x = tx;
 		tp.y = y + 108;
 		tp.max = 3;
 	} else {
-		box_plain(WB_CONTENT_PAD, y, 96, 96, WB_RADIUS_LG, WB_COLOR_SURFACE1);
+		wb_card(WB_CONTENT_PAD, y, 96, 96, WB_RADIUS_LG, 0, &GLOW_FOCUS);
 		if (AP.icon.rgb)
 			picture_draw(&AP.icon, WB_CONTENT_PAD + (96 - AP.icon.w) / 2, y + (96 - AP.icon.h) / 2,
-				     WB_COLOR_SURFACE1);
+				     WB_COLOR_VOID);
 		else
-			icon(AP.ic, WB_CONTENT_PAD + 35, y + 35, WB_COLOR_CYAN, 255);
+			icon_scaled(AP.ic, WB_CONTENT_PAD + 22, y + 22, 52, WB_COLOR_CYAN);
 	}
 	text(&f_ui28b, tx, y + 4, fit(&f_ui28b, AP.name, tw, buf, sizeof(buf)), WB_COLOR_TEXT_HI, -8);
 	text(&f_ui18, tx, y + 44, fit(&f_ui18, AP.author, tw, buf, sizeof(buf)), WB_COLOR_TEXT_MID, 0);
 	text(&f_mono14, tx, y + 74, fit(&f_mono14, AP.meta, tw, buf, sizeof(buf)),
-	     AP.terminal ? WB_COLOR_YELLOW : WB_COLOR_TEXT_LOW, 0);
+	     AP.terminal ? WB_COLOR_YELLOW : WB_COLOR_PLACEHOLDER, 0);
 	if (AP.summary[0])
 		wrap(&f_ui18, AP.summary, AP.thumb.rgb ? tw : W - 2 * WB_CONTENT_PAD, text_line, &tp);
 }
 
+/* Search's field: a glass card with the loupe, what was typed (or what to
+ * type, as a field's hint) and the cursor */
 static void draw_search_head(int y)
 {
-	int fx = WB_CONTENT_PAD, fw = W - 2 * WB_CONTENT_PAD, tx;
+	int fx = WB_CONTENT_PAD, fw = W - 2 * WB_CONTENT_PAD, tx = fx + 18 + 18 + 12;
 	const char *t = query;
 
-	box_focus(fx, y, fw, 56, WB_RADIUS_MD, &GLOW_ROW);
-	while (*t && text_w(&f_mono18, t, 0) > fw - 60)
+	wb_card(fx, y, fw, 56, WB_RADIUS_MD, 0, &GLOW_FOCUS);
+	loupe(fx + 18, y + 19, WB_COLOR_TEXT_MID);
+	while (*t && text_w(&f_ui20, t, 0) > fw - (tx - fx) - 24)
 		next_cp(&t);
 	if (!query[0])
-		text(&f_ui18, fx + 20, text_top(&f_ui18, y + 28), "Type a name, a tag or a command",
-		     WB_COLOR_TEXT_LOW, 0);
-	tx = query[0] ? text(&f_mono18, fx + 20, text_top(&f_mono18, y + 28), t, WB_COLOR_TEXT_HI, 0) :
-			fx + 18;
-	fill(tx + 2, y + 16, 2, 24, WB_COLOR_CYAN);
+		text(&f_ui20, tx + 6, text_top(&f_ui20, y + 28), "Type a name, a tag or a command",
+		     WB_COLOR_PLACEHOLDER, 0);
+	else
+		tx = text(&f_ui20, tx, text_top(&f_ui20, y + 28), t, WB_COLOR_TEXT_HI, 0) + 2;
+	fill(tx, y + 17, 2, 22, WB_COLOR_CYAN);
 }
 
 /*
@@ -723,18 +748,25 @@ static void draw_help(void)
 		help_popup(title, about, k_list, ARRAY_N(k_list));
 }
 
+/* Where the content ends: above the hint bar */
+#define CONTENT_BOTTOM	(H - WB_HINT_BAR_H - 8)
+
 static void draw_list(void)
 {
 	struct frame *f = TOP;
-	int ys[LIST_MAX], hs[LIST_MAX], y = 0, top, bottom = H - WB_HINT_BAR_H - 8, scroll, cut, keep, show;
+	int ys[LIST_MAX], hs[LIST_MAX], y = 0, top, bottom = CONTENT_BOTTOM, scroll, cut, keep, show;
 
 	top = WB_STATUS_BAR_H + 20;
-	eyebrow(WB_CONTENT_PAD, top, L.eyebrow);
 	if (f->v != V_APP) {
-		text(&f_ui36b, WB_CONTENT_PAD, top + 18 + 6, L.title, WB_COLOR_TEXT_HI, -11);
+		char n[24] = "";
+
+		if (f->v == V_CAT)	/* the category's size, right of its name */
+			snprintf(n, sizeof(n), "%d app%s", L.n - 1, L.n == 2 ? "" : "s");
+		wb_header(L.eyebrow, L.title, n);
 		top += 18 + 6 + 44;
-	} else {
-		top += 18 + 12;
+	} else {		/* the app's name is in its header */
+		eyebrow(WB_CONTENT_PAD + 6, 72, L.eyebrow);
+		top = 72 + 18 + 12;
 	}
 	if (L.head_h) {
 		if (f->v == V_APP)
@@ -746,8 +778,8 @@ static void draw_list(void)
 	if (notice[0]) {
 		char buf[200];
 
-		text(&f_ui18, WB_CONTENT_PAD, top + 8,
-		     fit(&f_ui18, notice, W - 2 * WB_CONTENT_PAD, buf, sizeof(buf)),
+		text(&f_ui18, WB_CONTENT_PAD + 6, top + 8,
+		     fit(&f_ui18, notice, W - 2 * WB_CONTENT_PAD - 6, buf, sizeof(buf)),
 		     notice_bad ? WB_COLOR_ERROR : WB_COLOR_OK, 0);
 		top += 8 + 24;
 	}
@@ -776,12 +808,23 @@ static void draw_list(void)
 			continue;
 		if (ry >= top + cut)
 			break;
+		if (ry + hs[i] + 40 <= fb_y0 || ry - 40 >= fb_y1)
+			continue;	/* not in this band, glow included */
 		draw_row(&L.rows[i], ry, i == f->focus);
 	}
 	clip_end();
+	/* a narrow scroll bar right of a list that does not fit (the menu's) */
+	if (L.n)
+		scrollbar(W - WB_CONTENT_PAD + 18, top, bottom - top, y - 10, bottom - top, scroll);
 	if (!L.n && f->v == V_SEARCH && query[0])
-		text(&f_ui18, WB_CONTENT_PAD, top, "Nothing found", WB_COLOR_TEXT_LOW, 0);
+		text(&f_ui18, WB_CONTENT_PAD + 6, top, "Nothing found", WB_COLOR_TEXT_MID, 0);
 }
+
+/* A page of text (a description, a licence, the log): on a glass card
+ * under the header, TEXT_PAD inside it */
+#define TEXT_PAD	24
+#define TEXT_LH		26
+#define TEXT_W		(W - 2 * WB_CONTENT_PAD - 2 * TEXT_PAD)
 
 static void tl_add(const char *line, int len, int i, void *arg)
 {
@@ -796,77 +839,54 @@ static void tl_add(const char *line, int len, int i, void *arg)
 static void text_layout(void)
 {
 	n_tl = 0;
-	wrap(&f_ui18, textbuf, W - 2 * WB_CONTENT_PAD, tl_add, 0);
+	wrap(&f_ui18, textbuf, TEXT_W, tl_add, 0);
 }
 
 static int text_rows(void)
 {
-	return (H - WB_HINT_BAR_H - 16 - (WB_STATUS_BAR_H + 20 + 18 + 6 + 44 + 24)) / 26;
+	return (CONTENT_BOTTOM - WB_ROWS_TOP - 2 * 20) / TEXT_LH;
 }
 
 static void draw_text(void)
 {
 	struct frame *f = TOP;
-	int top = WB_STATUS_BAR_H + 20, lh = 26, rows = text_rows();
+	int top = WB_ROWS_TOP + 20, rows = text_rows();
 
-	eyebrow(WB_CONTENT_PAD, top, L.eyebrow);
-	text(&f_ui36b, WB_CONTENT_PAD, top + 18 + 6, text_title, WB_COLOR_TEXT_HI, -11);
-	top += 18 + 6 + 44 + 24;
+	wb_header(L.eyebrow, text_title, 0);
+	wb_card(WB_CONTENT_PAD, WB_ROWS_TOP, W - 2 * WB_CONTENT_PAD, CONTENT_BOTTOM - WB_ROWS_TOP,
+		WB_RADIUS_MD, 0, &GLOW_FOCUS);
 	for (int i = f->scroll; i < n_tl && i < f->scroll + rows; i++) {
 		char buf[256];
-		int y = top + (i - f->scroll) * lh, len = tl_len[i] < 255 ? tl_len[i] : 255;
+		int y = top + (i - f->scroll) * TEXT_LH, len = tl_len[i] < 255 ? tl_len[i] : 255;
 
-		if (y + lh <= fb_y0 || y >= fb_y1 || len <= 0)
+		if (y + TEXT_LH <= fb_y0 || y >= fb_y1 || len <= 0)
 			continue;
 		memcpy(buf, textbuf + tl_off[i], (size_t)len);
 		buf[len] = 0;
-		text(&f_ui18, WB_CONTENT_PAD, y, buf, WB_COLOR_TEXT_HI, 0);
+		text(&f_ui18, WB_CONTENT_PAD + TEXT_PAD, y, buf, WB_COLOR_TEXT_HI, 0);
 	}
-	if (f->scroll > 0)
-		text(&f_ui18, W - WB_CONTENT_PAD - 16, top - 30, "\xe2\x86\x91", WB_COLOR_TEXT_MID, 0);
-	if (f->scroll + rows < n_tl)
-		text(&f_ui18, W - WB_CONTENT_PAD - 16, H - WB_HINT_BAR_H - 34, "\xe2\x86\x93",
-		     WB_COLOR_TEXT_MID, 0);
+	scrollbar(W - WB_CONTENT_PAD + 18, WB_ROWS_TOP, CONTENT_BOTTOM - WB_ROWS_TOP, n_tl, rows, f->scroll);
 }
 
 static void draw_shots(void)
 {
 	char b[48];
-	int top = WB_STATUS_BAR_H + 20;
 
-	eyebrow(WB_CONTENT_PAD, top, L.eyebrow);
 	snprintf(b, sizeof(b), "%d of %d", AP.shot + 1, AP.n_shots);
-	text(&f_ui36b, WB_CONTENT_PAD, top + 18 + 6, AP.name, WB_COLOR_TEXT_HI, -11);
-	text(&f_mono14, W - WB_CONTENT_PAD - text_w(&f_mono14, b, 0), top + 18 + 20, b,
-	     WB_COLOR_TEXT_MID, 0);
+	wb_header(L.eyebrow, "Screenshots", b);
 	if (AP.pic.rgb) {
-		int x = (W - AP.pic.w) / 2, y = top + 18 + 6 + 52 + (H - WB_HINT_BAR_H - top - 96 - AP.pic.h) / 2;
+		int x = (W - AP.pic.w) / 2, y = WB_ROWS_TOP + (CONTENT_BOTTOM - WB_ROWS_TOP - AP.pic.h) / 2;
 
-		box(x - 2, y - 2, AP.pic.w + 4, AP.pic.h + 4, 4, WB_COLOR_VOID, 0, WB_COLOR_LINE, 1, 0);
+		edge_rect(x - 1, y - 1, AP.pic.w + 2, AP.pic.h + 2, 0xFFFFFF, 66);
 		picture_draw(&AP.pic, x, y, WB_COLOR_VOID);
 	} else {
-		text(&f_ui18, WB_CONTENT_PAD, H / 2, notice[0] ? notice : "Loading\xe2\x80\xa6",
-		     notice_bad ? WB_COLOR_ERROR : WB_COLOR_TEXT_LOW, 0);
+		text(&f_ui18, WB_CONTENT_PAD + 6, WB_ROWS_TOP, notice[0] ? notice : "Loading\xe2\x80\xa6",
+		     notice_bad ? WB_COLOR_ERROR : WB_COLOR_TEXT_MID, 0);
 	}
 }
 
-#define DLG_X	72
-#define DLG_W	(W - 2 * DLG_X)
-
-/* the design's dialog (home.c dialog()): backdrop, eyebrow, title; the body's y */
-static int dialog(const char *eb, const char *title, int body_h)
-{
-	int h = 32 + 18 + 6 + 36 + 24 + body_h + 32, y = (H - h) / 2;
-	char tbuf[128];
-
-	dim(WB_COLOR_CONSOLE, 184);
-	box_plain(DLG_X, y, DLG_W, h, WB_RADIUS_LG, WB_COLOR_SURFACE2);
-	eyebrow(DLG_X + 32, y + 32, eb);
-	text(&f_ui28b, DLG_X + 32, y + 32 + 18 + 6 + 2, fit(&f_ui28b, title, DLG_W - 64, tbuf, sizeof(tbuf)),
-	     WB_COLOR_TEXT_HI, 0);
-	return y + 32 + 18 + 6 + 36 + 24;
-}
-
+/* The overlays: libwb's dialog (wbui.h), frosted over the dimmed screen,
+ * with its keys inside at the bottom */
 static void draw_overlay(void)
 {
 	static const struct hint ask_h[] = {
@@ -875,35 +895,29 @@ static void draw_overlay(void)
 	static const struct hint prog_h[] = { { "Esc", "cancel", 1 } };
 	static const struct hint input_h[] = { { "Enter", "save", 0 }, { "Esc", "cancel", 1 } };
 	int fx = DLG_X + 32, fw = DLG_W - 64, lines, y;
-	struct textpos tp = { &f_ui18, fx, 0, 26, 0, 4, WB_COLOR_TEXT_MID };
+	struct textpos tp = { &f_ui20, fx, 0, 30, 0, 4, WB_COLOR_TEXT_MID };
 
 	switch (O.kind) {
-	case OV_ASK:
-		lines = wrap(&f_ui18, O.body, fw, 0, 0);
+	case OV_ASK: {
+		const struct wb_icon *ics[2] = { &r_chevron, O.yes_ic };
+
+		lines = wrap(&f_ui20, O.body, fw, 0, 0);
 		if (lines > 4)
 			lines = 4;
-		y = dialog(O.eyebrow, O.title, lines * 26 + 16 + 2 * 68 + 12);
+		/* removing, deleting, clearing: the choice in red */
+		y = dialog(O.eyebrow, O.title, lines * 30, O.labels, ics, 2, O.focus,
+			   O.yes_ic == &r_trash ? 1 : -1);
 		tp.y = y;
-		wrap(&f_ui18, O.body, fw, text_line, &tp);
-		y += lines * 26 + 16;
-		for (int i = 0; i < 2; i++, y += 68 + 12) {
-			if (i == O.focus)
-				box_focus(fx, y, fw, 68, WB_RADIUS_MD, &GLOW_ROW);
-			else
-				box_plain(fx, y, fw, 68, WB_RADIUS_MD, WB_COLOR_SURFACE1);
-			icon(i ? O.yes_ic : &r_chevron, fx + 20, y + 21, i == O.focus ? WB_COLOR_CYAN :
-			     WB_COLOR_TEXT_MID, 255);
-			text(&f_ui22, fx + 20 + 26 + 16, text_top(&f_ui22, y + 34), O.labels[i],
-			     WB_COLOR_TEXT_HI, 0);
-		}
-		hint_bar(ask_h, 3);
+		wrap(&f_ui20, O.body, fw, text_line, &tp);
+		dlg_hints(ask_h, 3);
 		break;
+	}
 	case OV_PROGRESS: {
 		char b[64], d[24], t[24];
 		int pct = O.total > 0 ? (int)(O.done * 100 / O.total) : 0;
 
-		y = dialog(O.eyebrow, O.title, 8 + 24 + 16 + 26);
-		box(fx, y + 8, fw, 8, 4, WB_COLOR_LINE, 255, 0, 0, 0);
+		y = dialog(O.eyebrow, O.title, 8 + 24 + 18, 0, 0, 0, 0, -1);
+		box(fx, y + 8, fw, 8, 4, 0xFFFFFF, 46, 0, 0, 0);
 		if (pct)
 			box(fx, y + 8, fw * pct / 100 < 8 ? 8 : fw * pct / 100, 8, 4, WB_COLOR_CYAN, 255, 0, 0, 0);
 		human(d, sizeof(d), O.done);
@@ -915,36 +929,41 @@ static void draw_overlay(void)
 		else
 			snprintf(b, sizeof(b), "%s", d);
 		text(&f_mono14, fx, y + 8 + 24, b, WB_COLOR_TEXT_MID, 0);
-		hint_bar(prog_h, O.body[0] ? 0 : 1);
+		dlg_hints(prog_h, O.body[0] ? 0 : 1);
 		break;
 	}
-	case OV_BUSY:
-		dialog(O.eyebrow, O.title, 0);
-		hint_bar(prog_h, 0);
+	case OV_BUSY:		/* no keys: it ends by itself */
+		dialog(O.eyebrow, O.title, 0, 0, 0, 0, 0, -1);
 		break;
-	case OV_INPUT: {
+	case OV_INPUT: {	/* the menu's text field (home.c draw_input) */
 		const char *t = O.input;
+		char buf[200];
 		int tx;
 
-		y = dialog(O.eyebrow, O.title, 56 + 34);
-		box_focus(fx, y, fw, 56, WB_RADIUS_MD, &GLOW_ROW);
+		y = dialog(O.eyebrow, O.title, 56 + 34, 0, 0, 0, 0, -1);
+		box_focus(fx, y, fw, 56, WB_RADIUS_MD, &GLOW_FOCUS);
 		while (*t && text_w(&f_mono18, t, 0) > fw - 40)
 			next_cp(&t);
 		tx = text(&f_mono18, fx + 20, text_top(&f_mono18, y + 28), t, WB_COLOR_TEXT_HI, 0);
-		fill(tx + 2, y + 16, 2, 24, WB_COLOR_CYAN);
-		text(&f_ui18, fx, y + 56 + 10, O.body, WB_COLOR_TEXT_LOW, 0);
-		hint_bar(input_h, 2);
+		fill(tx + 1, y + 16, 2, 24, WB_COLOR_CYAN);
+		text(&f_ui18, fx, y + 56 + 10, fit(&f_ui18, O.body, fw, buf, sizeof(buf)),
+		     WB_COLOR_PLACEHOLDER, 0);
+		dlg_hints(input_h, 2);
 		break;
 	}
 	case OV_HELP:
 		draw_help();
 		break;
-	case OV_MENU: {
+	case OV_MENU: {		/* a choice: the present order ticked */
 		static const struct hint menu_h[] = { { "Enter", "choose", 0 }, { "Esc", "cancel", 1 } };
 		struct menu_item it[2] = { { .label = "By name" }, { .label = "Recently updated first" } };
+		char eb[48];
+		int j = 0;
 
-		menu_popup("SORT", L.title[0] ? L.title : "Apps", 0, it, 0, 2, O.focus, TOP->sort, 0, 0,
-			   menu_h, 2);
+		for (const char *p = L.title[0] ? L.title : "Apps"; *p && j < (int)sizeof(eb) - 1; p++)
+			eb[j++] = (char)(*p >= 'a' && *p <= 'z' ? *p - 32 : *p);
+		eb[j] = 0;
+		menu_popup(eb, "Sort", 0, it, 0, 2, O.focus, TOP->sort, 0, 0, menu_h, 2);
 		break;
 	}
 	default:
@@ -952,9 +971,12 @@ static void draw_overlay(void)
 	}
 }
 
+/* The screen. It only draws (present() runs it once more to record the
+ * frame): wb_scene() reads the rotation while recording and keeps it for
+ * the bands drawn after. */
 static void draw(void)
 {
-	fill(0, 0, W, H, WB_COLOR_VOID);
+	wb_scene();
 	status_bar();
 	if (TOP->v == V_TEXT)
 		draw_text();
@@ -962,9 +984,8 @@ static void draw(void)
 		draw_shots();
 	else
 		draw_list();
-	if (O.kind == OV_NONE)
-		hints();
-	else
+	hints();		/* under an overlay too: dimmed, as the menu's */
+	if (O.kind != OV_NONE)
 		draw_overlay();
 }
 
@@ -978,48 +999,56 @@ static uint16_t screen[W * H];
 static int fb_fd = -1;
 #endif
 
-static long now_ms(void);
+static long tm_out, tm_rec;	/* us writing bands out, recording (STORE_UI_TIMING) */
 
-/* rows y0..y1 of the screen (whole bands), drawn and sent to the panel */
-static void present_rows(int y0, int y1)
+static void out_band(const uint16_t *b, int y0, int y1)
 {
-	static int timing = -1;
-	long t0 = now_ms(), tw = 0;
+	long t = wb_now_us();
 
-	if (timing < 0)
-		timing = getenv("STORE_UI_TIMING") != 0;
-	for (int b0 = y0 / BAND_H * BAND_H; b0 < y1 && b0 < H; b0 += BAND_H) {
-		int b1 = b0 + BAND_H < H ? b0 + BAND_H : H;
-
-		fb = band - (long)b0 * W;
-		fb_y0 = b0;
-		fb_y1 = b1;
-		draw();
 #ifdef STORE_UI_HOST
-		memcpy(screen + b0 * W, band, (size_t)(b1 - b0) * W * 2);
+	memcpy(screen + y0 * W, b, (size_t)(y1 - y0) * W * 2);
 #else
-		{
-			long t1 = now_ms();
-
-			if (pwrite(fb_fd, band, (size_t)(b1 - b0) * W * 2, (off_t)b0 * W * 2) < 0)
-				break;
-			tw += now_ms() - t1;
-		}
+	if (pwrite(fb_fd, b, (size_t)(y1 - y0) * W * 2, (off_t)y0 * W * 2) < 0)
+		return;	/* the panel is gone: nothing to show it on */
 #endif
-	}
-	if (timing) {
-		char b[64];
-		int n = snprintf(b, sizeof(b), "store-ui: rows %d-%d %ld ms, writing %ld\n", y0, y1,
-				 now_ms() - t0, tw);
-
-		if (write(2, b, (size_t)n) < 0)
-			timing = 0;
-	}
+	tm_out += wb_now_us() - t;
 }
 
+static void paint(void *arg)
+{
+	long t = wb_rec ? wb_now_us() : 0;
+
+	(void)arg;
+	draw();
+	if (t)
+		tm_rec += wb_now_us() - t;
+}
+
+/*
+ * The screen to the panel: recorded first, then only the bands that changed
+ * since the frame before drawn and written (libwb wb_bands). A focus that
+ * moves draws its two rows' bands and the hint bar; a download's progress
+ * the bar's and its numbers' bands; a pop-up's focus its choices' bands.
+ * STORE_UI_TIMING=1: a line per frame on stderr (the store's log).
+ */
 static void present(void)
 {
-	present_rows(0, H);
+	static int timing = -1;
+	long t0 = wb_now_us();
+	int n;
+
+	n = wb_bands(paint, 0, band, BAND_H, out_band);
+	if (timing < 0)
+		timing = getenv("STORE_UI_TIMING") != 0;
+	if (timing) {
+		char b[128];
+		int l = snprintf(b, sizeof(b), "store-ui: frame %ld us, %d bands, record %ld, scene %ld, "
+				 "glass %ld, out %ld\n", wb_now_us() - t0, n, tm_rec, tm_scene, tm_glass, tm_out);
+
+		if (write(2, b, (size_t)l) < 0)
+			timing = 0;
+	}
+	tm_out = tm_rec = tm_scene = tm_glass = 0;
 }
 
 /* ---- keys ---------------------------------------------------------------- */
@@ -1185,6 +1214,20 @@ static int next_key(int wait_ms)
 
 #endif
 
+/* The next key (-1 when input is gone); meanwhile the screen turns with the
+ * badge (the scene's figures are drawn for each rotation). */
+static int wait_key(void)
+{
+	for (;;) {
+		int k = next_key(250);
+
+		if (k)
+			return k;
+		if (wb_scene_turned())
+			present();
+	}
+}
+
 /* ---- questions and progress for the store's functions ------------------- */
 
 static int ask(const char *eb, const char *title, const char *body, const char *yes)
@@ -1201,7 +1244,7 @@ static int ask(const char *eb, const char *title, const char *body, const char *
 		int k;
 
 		present();
-		k = next_key(60000);
+		k = wait_key();
 		if (k < 0 || k == KEY_ESC) {
 			O.kind = OV_NONE;
 			return 0;
@@ -1265,7 +1308,7 @@ static int progress_cb(long long done, long long total, void *arg)
 		present();
 	} else if (t - last >= 250 || (total > 0 && done >= total)) {
 		last = t;
-		present_rows(H / 2, H / 2 + 60);	/* the bar (y 373) and its numbers only */
+		present();	/* the bar's and its numbers' bands only */
 	}
 #ifndef STORE_UI_HOST		/* the host's keys are the script's, not for this */
 	while ((k = next_key(0)) > 0)
@@ -1322,10 +1365,11 @@ static void state_value(struct row *r, enum state s, const struct app *a, const 
 	case ST_UNREGISTERED:
 		snprintf(r->value, sizeof(r->value), "Found on this card");
 		break;
-	default:
-		snprintf(r->value, sizeof(r->value), "%s", a ? S_(a->summary) : "");
+	default:		/* not installed: nothing on the right */
 		break;
 	}
+	if (a && !r->sub[0])
+		snprintf(r->sub, sizeof(r->sub), "%s", S_(a->summary));
 }
 
 static struct row *app_row(struct app *a)
@@ -1379,17 +1423,39 @@ static int count_updates(void)
 	return u;
 }
 
+/* name added to a row's second line, as a list: "Flappy, Marble" */
+static void sub_add(struct row *r, const char *name)
+{
+	size_t l = strlen(r->sub);
+
+	if (l + 8 < sizeof(r->sub))
+		snprintf(r->sub + l, sizeof(r->sub) - l, "%s%s", l ? ", " : "", S_(name));
+}
+
+/* A type's second line on Discover: its categories that have apps */
+static void type_sub(struct row *r, const struct ctype *t, struct app **v, int n)
+{
+	for (int k = 0; k < t->n; k++)
+		for (int i = 0; i < n; i++)
+			if (v[i]->type && !strcmp(v[i]->type, t->id) && v[i]->category &&
+			    !strcmp(v[i]->category, t->c[k].id)) {
+				sub_add(r, t->c[k].name);
+				break;
+			}
+}
+
 static void build_discover(void)
 {
 	int n, ups = count_updates(), shown = 0;
 	struct app **v = visible_apps(&n);
 	struct row *r;
 
-	L.eyebrow = "APP STORE";
-	snprintf(L.title, sizeof(L.title), "Discover");
-	add(R_ACTION, "Search", &r_keyboard, A_SEARCH);
+	snprintf(L.title, sizeof(L.title), "App store");
+	r = add(R_ACTION, "Search", &r_keyboard, A_SEARCH);
+	snprintf(r->sub, sizeof(r->sub), "A name, a tag or a command");
 	if (ups) {
 		r = add(R_ACTION, "Updates", &r_refresh, A_MYAPPS);
+		snprintf(r->sub, sizeof(r->sub), "Update all in My apps");
 		snprintf(r->value, sizeof(r->value), "%d waiting", ups);
 		r->value_c = WB_COLOR_YELLOW;
 	}
@@ -1404,6 +1470,7 @@ static void build_discover(void)
 		r = add(R_ACTION, CT[t].name, icon_named(CT[t].icon), A_TYPE);
 		snprintf(r->arg, sizeof(r->arg), "%s", CT[t].id);
 		snprintf(r->value, sizeof(r->value), "%d", c);
+		type_sub(r, &CT[t], v, n);
 	}
 	for (int i = 0; i < n_indexes; i++) {
 		char f[512], *w[16];
@@ -1428,8 +1495,10 @@ static void build_discover(void)
 			app_row(v[i]);
 	}
 	add(R_GROUP, "YOUR BADGE", 0, A_NONE);
-	add(R_ACTION, "My apps", &r_store, A_MYAPPS);
-	add(R_ACTION, "Store settings", &r_chip, A_SETTINGS);
+	r = add(R_ACTION, "My apps", &r_store, A_MYAPPS);
+	snprintf(r->sub, sizeof(r->sub), "Installed, updates, repairs");
+	r = add(R_ACTION, "Store settings", &r_chip, A_SETTINGS);
+	snprintf(r->sub, sizeof(r->sub), "Sources, cache, storage");
 }
 
 static void build_type(const char *type)
@@ -1438,7 +1507,6 @@ static void build_type(const char *type)
 	int n;
 	struct app **v = visible_apps(&n);
 
-	L.eyebrow = "APP STORE";
 	snprintf(L.title, sizeof(L.title), "%s", t ? t->name : type);
 	{			/* first, every app of the type in one list ("*") */
 		int c = 0;
@@ -1450,6 +1518,7 @@ static void build_type(const char *type)
 			r = add(R_ACTION, "All", &r_folder, A_CAT);
 			snprintf(r->arg, sizeof(r->arg), "*");
 			snprintf(r->value, sizeof(r->value), "%d", c);
+			snprintf(r->sub, sizeof(r->sub), "Every one in one list");
 		}
 	}
 	for (int k = 0; t && k <= t->n; k++) {
@@ -1472,6 +1541,17 @@ static void build_type(const char *type)
 			A_CAT);
 		snprintf(r->arg, sizeof(r->arg), "%s", k < t->n ? t->c[k].id : "");
 		snprintf(r->value, sizeof(r->value), "%d", c);
+		/* the second line: the apps in it */
+		for (int i = 0; i < n; i++) {
+			int known = 0;
+
+			if (!v[i]->type || strcmp(v[i]->type, type))
+				continue;
+			for (int q = 0; q < t->n; q++)
+				known |= v[i]->category && !strcmp(v[i]->category, t->c[q].id);
+			if (k < t->n ? v[i]->category && !strcmp(v[i]->category, t->c[k].id) : !known)
+				sub_add(r, v[i]->name);
+		}
 	}
 	if (!L.n)
 		add(R_INFO, "Nothing here yet", 0, A_NONE);
@@ -1483,7 +1563,6 @@ static void build_cat(const char *type, const char *catid, int sort)
 	int n, m = 0;
 	struct app **v = visible_apps(&n), *sel[512];
 
-	L.eyebrow = t ? t->name : "APP STORE";
 	if (!strcmp(catid, "*")) {		/* "All apps", "All games" */
 		snprintf(L.title, sizeof(L.title), "All %s", t ? t->name : type);
 		for (char *p = L.title + 4; *p; p++)
@@ -1514,7 +1593,6 @@ static void build_search(void)
 	char q[48], *w[8];
 	int nw;
 
-	L.eyebrow = "APP STORE";
 	snprintf(L.title, sizeof(L.title), "Search");
 	L.head_h = 8 + 56 + 8;
 	if (!query[0])
@@ -1588,7 +1666,6 @@ static void build_myapps(void)
 	static const char *const groups[] = { "UPDATES", "NOT ON THIS CARD", "NEEDS REPAIR" };
 	struct row *r;
 
-	L.eyebrow = "APP STORE";
 	snprintf(L.title, sizeof(L.title), "My apps");
 	for (int g = 0; g < 3; g++) {
 		int shown = 0;
@@ -1618,6 +1695,7 @@ static void build_myapps(void)
 		r = add(R_ACTION, found[i], &r_sdcard, A_APP);
 		conf_name(found[i], r->label, sizeof(r->label));
 		snprintf(r->arg, sizeof(r->arg), "%s", found[i]);
+		snprintf(r->sub, sizeof(r->sub), "badge/apps/%s", found[i]);
 		snprintf(r->value, sizeof(r->value), "Adopt or delete");
 	}
 	{
@@ -1634,6 +1712,8 @@ static void build_myapps(void)
 				add(R_GROUP, "INSTALLED", 0, A_NONE);
 			r = add(R_ACTION, rg.name[0] ? rg.name : ids[i], app_icon(a), A_APP);
 			snprintf(r->arg, sizeof(r->arg), "%s", ids[i]);
+			if (a)
+				snprintf(r->sub, sizeof(r->sub), "%s", S_(a->summary));
 			snprintf(r->value, sizeof(r->value), "%s%s", rg.version,
 				 s == ST_WITHDRAWN ? DOT_S "withdrawn" : !strcmp(rg.location, "flash") ? DOT_S "flash" : "");
 			if (s == ST_WITHDRAWN)
@@ -1688,7 +1768,6 @@ static void build_settings(void)
 	char p[512];
 	struct stat st;
 
-	L.eyebrow = "APP STORE";
 	snprintf(L.title, sizeof(L.title), "Store settings");
 	add(R_GROUP, "SOURCES", 0, A_NONE);
 	for (int i = 0; i < n_sources; i++) {
@@ -1699,6 +1778,7 @@ static void build_settings(void)
 				apps = IX[k].n;
 		r = add(R_ACTION, S[i].id, &r_globe, A_SOURCE);
 		snprintf(r->arg, sizeof(r->arg), "%s", S[i].id);
+		snprintf(r->sub, sizeof(r->sub), "%s", S[i].url);
 		if (!S[i].enabled)
 			snprintf(r->value, sizeof(r->value), "Off");
 		else if (apps >= 0)
@@ -1710,8 +1790,9 @@ static void build_settings(void)
 	snprintf(p, sizeof(p), "%s/%s/index.json", P.cache_dir, S[0].id);
 	if (!stat(p, &st)) {
 		struct tm tm;
+		time_t t = ui_time(st.st_mtime);
 
-		localtime_r(&st.st_mtime, &tm);
+		localtime_r(&t, &tm);
 		snprintf(r->value, sizeof(r->value), "Fetched %02d:%02d", tm.tm_hour, tm.tm_min);
 	}
 	add(R_GROUP, "STORAGE", 0, A_NONE);
@@ -1730,7 +1811,6 @@ static void build_source(const char *id)
 	struct source *s = source_find(id);
 	struct row *r;
 
-	L.eyebrow = "SOURCES";
 	snprintf(L.title, sizeof(L.title), "%s", id);
 	if (!s)
 		return;
@@ -1755,7 +1835,6 @@ static void build_storage(void)
 	char ids[64][33];
 	int n = reg_list(ids, 64);
 
-	L.eyebrow = "APP STORE";
 	snprintf(L.title, sizeof(L.title), "Storage per app");
 	add(R_GROUP, "APP" DOT_S "ITS DATA", 0, A_NONE);
 	for (int i = 0; i < n; i++) {
@@ -1789,6 +1868,7 @@ static void app_page_free(void)
 	picture_free(&AP.pic);
 	picture_free(&AP.thumb);
 	memset(&AP, 0, sizeof(AP));
+	pic_gen++;
 }
 
 static void app_page_load(const char *id)
@@ -1822,8 +1902,6 @@ static void app_page_load(const char *id)
 		conf_value(id, "CATEGORY", "", c, sizeof(c));
 		AP.files_only = !strcmp(c, "none");
 	}
-	for (int i = 0; AP.name[i] && i < (int)sizeof(AP.eyebrow) - 1; i++)
-		AP.eyebrow[i] = (char)(AP.name[i] >= 'a' && AP.name[i] <= 'z' ? AP.name[i] - 32 : AP.name[i]);
 	if (AP.a && !AP.a->withdrawn) {
 		busy("APP STORE", "Loading\xe2\x80\xa6");
 		if (details_get(AP.a, &AP.data, &len, err, sizeof(err)))
@@ -1848,7 +1926,7 @@ static void app_page_load(const char *id)
 		if (!asset_get(AP.a->src, AP.a->icon, path, sizeof(path), err, sizeof(err)) &&
 		    qoi_decode(path, &AP.icon) == 0 && (AP.icon.w > 96 || AP.icon.h > 96))
 			picture_free(&AP.icon);
-	}
+	}	pic_gen++;
 }
 
 static const char *jstr(int obj, const char *key, char *out, size_t n)
@@ -1887,7 +1965,6 @@ static void build_app(void)
 	int cmds = AP.have_j ? json_get(&AP.j, 0, "commands") : -1;
 	int vers = AP.have_j ? json_get(&AP.j, 0, "versions") : -1;
 
-	L.eyebrow = a ? (a->type && !strcmp(a->type, "game") ? "GAMES" : "APPS") : "MY APPS";
 	snprintf(L.title, sizeof(L.title), "%s", a ? a->name : AP.name);
 	L.head_h = AP.thumb.rgb ? THUMB + 24 : 96 + 20 + (AP.summary[0] ? 2 * 26 : 0);
 	if (a)
@@ -1981,8 +2058,7 @@ static void build_licenses(void)
 	struct row *r;
 	char n[64], v[32];
 
-	L.eyebrow = "LICENCES";
-	snprintf(L.title, sizeof(L.title), "%s", AP.name);
+	snprintf(L.title, sizeof(L.title), "Licences");
 	add(R_GROUP, "THE APP", 0, A_NONE);
 	r = add(R_ACTION, AP.a ? AP.a->name : AP.id, &r_doc, A_LICENSE);
 	jstr(0, "license", r->value, sizeof(r->value));
@@ -2015,8 +2091,7 @@ static void build_versions(void)
 	int vs = json_get(&AP.j, 0, "versions");
 	char b[32];
 
-	L.eyebrow = "VERSIONS";
-	snprintf(L.title, sizeof(L.title), "%s", AP.name);
+	snprintf(L.title, sizeof(L.title), "Versions");
 	for (int i = json_len(&AP.j, vs) - 1; i >= 0 && json_is_arr(&AP.j, vs); i--) {
 		int o = json_item(&AP.j, vs, i);
 		struct row *r = add(R_ACTION, jstr(o, "version", b, sizeof(b)), &r_count, A_VERSION);
@@ -2125,6 +2200,7 @@ static void shot_load(void)
 	char rel[256], path[512], err[300];
 
 	picture_free(&AP.pic);
+	pic_gen++;
 	notice[0] = 0;
 	if (json_str(&AP.j, json_item(&AP.j, s, AP.shot), rel, sizeof(rel)))
 		return;
@@ -2135,9 +2211,26 @@ static void shot_load(void)
 		picture_free(&AP.pic);
 		say_notice(1, "The screenshot is damaged");
 	}
+	pic_gen++;
 }
 
 /* ---- navigation ---------------------------------------------------------- */
+
+/* The eyebrow: "APP" on the first screen, else the screen this one opens
+ * from ("APP STORE ›", "HELLO ›") */
+static void crumb(void)
+{
+	const char *t = depth > 1 ? stack[depth - 2].title : "";
+	int j = 0;
+
+	if (!t[0]) {
+		snprintf(L.eyebrow, sizeof(L.eyebrow), "APP");
+		return;
+	}
+	for (; *t && j < (int)sizeof(L.eyebrow) - 5; t++)
+		L.eyebrow[j++] = (char)(*t >= 'a' && *t <= 'z' ? *t - 32 : *t);
+	cat(L.eyebrow + j, " \xe2\x80\xba");
+}
 
 static void rebuild(void)
 {
@@ -2159,8 +2252,14 @@ static void rebuild(void)
 	case V_STORAGE: build_storage(); break;
 	case V_LICENSES: build_licenses(); break;
 	case V_VERSIONS: build_versions(); break;
-	case V_TEXT: case V_SHOTS: L.eyebrow = !strcmp(f->arg, "log") ? "APP STORE" : AP.eyebrow; return;
+	case V_TEXT: case V_SHOTS:
+		snprintf(L.title, sizeof(L.title), "%s", f->v == V_TEXT ? text_title : "Screenshots");
+		break;
 	}
+	snprintf(f->title, sizeof(f->title), "%s", L.title);
+	crumb();
+	if (f->v == V_TEXT || f->v == V_SHOTS)
+		return;
 	f->focus = keep;
 	if (f->focus >= L.n || f->focus < 0 || !focusable(&L.rows[f->focus])) {
 		f->focus = -1;
@@ -2291,7 +2390,7 @@ static int text_input(const char *eb, const char *title, const char *hint, char 
 		char c;
 
 		present();
-		k = next_key(60000);
+		k = wait_key();
 		if (k < 0 || k == KEY_ESC) {
 			O.kind = OV_NONE;
 			return -1;
@@ -2589,7 +2688,7 @@ static void overlay_keys(enum ov kind)
 		int k;
 
 		present();
-		k = next_key(60000);
+		k = wait_key();
 		if (k < 0 || k == KEY_ESC || (kind == OV_HELP && k == KEY_SYM_HELP))
 			break;
 		if (kind == OV_MENU && (k == KEY_UP || k == KEY_DOWN)) {
@@ -2634,6 +2733,7 @@ static void key(int k)
 	if (f->v == V_SHOTS) {
 		if (k == KEY_ESC) {
 			picture_free(&AP.pic);
+			pic_gen++;
 			pop();
 		} else if ((k == KEY_RIGHT || k == KEY_DOWN) && AP.shot + 1 < AP.n_shots) {
 			AP.shot++;
@@ -2740,9 +2840,11 @@ int ui_main(int argc, char **argv)
 
 		present();
 		do {
-			k = next_key(1000);
+			k = next_key(250);
 			t = now_ms();
-			if (t - last_status >= 5000) {
+			if (!k && wb_scene_turned()) {
+				present();
+			} else if (t - last_status >= 5000) {
 				last_status = t;
 				if (status_read() && !k)
 					present();

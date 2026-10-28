@@ -17,12 +17,10 @@ import test_client as tc
 UI = os.path.join(tc.CLIENT, "store-ui-host")
 
 
-@pytest.fixture
-def env(tmp_path):
-    if not os.path.exists(UI):
-        pytest.skip("no store-ui-host: make -C client ui-host")
+def make_env(path):
+    """A local source with hello (an icon, two screenshots) and tiny."""
     Image = pytest.importorskip("PIL.Image")
-    e = tc.Env(str(tmp_path))
+    e = tc.Env(str(path))
     tc.write_app(e.repo, "hello", tc.HELLO.format(version="1.0.0", build=1), tc.hello_files("1.0.0"))
     tc.write_app(e.repo, "tiny", tc.TINY, {"tiny": "#!/bin/sh\necho tiny\n", "LICENSES/tiny.txt": "MIT\n"})
     d = os.path.join(e.repo, "apps", "hello")
@@ -32,12 +30,21 @@ def env(tmp_path):
         Image.new("RGB", (720, 720), c).save(os.path.join(d, "screenshots", "%d.png" % n))
     e.publish()
     e.serve()
+    return e
+
+
+@pytest.fixture
+def env(tmp_path):
+    if not os.path.exists(UI):
+        pytest.skip("no store-ui-host: make -C client ui-host")
+    e = make_env(tmp_path)
     yield e
     e.stop()
 
 
-def ui(e, keys, *args):
-    """Run the screens with keys (one action per line); the PPMs it wrote."""
+def ui(e, keys, *args, extra=None):
+    """Run the screens with keys (one action per line); the PPMs it wrote.
+    extra: more environment (WB_FULL=1: every band drawn every frame)."""
     out = os.path.join(e.tmp, "shots")
     os.makedirs(out, exist_ok=True)
     lines = [("shot %s/%s.ppm" % (out, k[5:])) if k.startswith("shot ") else k for k in keys]
@@ -47,7 +54,7 @@ def ui(e, keys, *args):
     env = dict(os.environ, HOME=e.home, STORE_SD=e.sd, STORE_FLASH_APPS=e.flash, STORE_TMP=e.tmpdir,
                STORE_SYS_SOURCES=os.path.join(e.etc, "sources.d"),
                STORE_RELEASE=os.path.join(e.etc, "whyos-release"), STORE_UI_SCRIPT=script,
-               ASAN_OPTIONS="detect_leaks=0")
+               ASAN_OPTIONS="detect_leaks=0", **(extra or {}))
     r = subprocess.run([UI, *args], env=env, capture_output=True, text=True, timeout=300)
     print(r.stderr)
     assert r.returncode == 0, r.stdout + r.stderr
@@ -143,7 +150,8 @@ def test_my_apps_update_and_remove(env):
 
 
 def test_settings_and_licences(env):
-    ui(env, ["down"] * 6 + ["enter", "shot settings", "enter", "shot source", "esc",
+    ui(env, ["down"] * 6 + ["enter", "shot settings", "enter", "shot source",
+                            "down", "enter", "shot mirror", "esc", "esc",
                             "down", "down", "enter", "shot keep", "esc",
                             "up", "up", "up", "enter", "shot app"] + ["down"] * 6 +
        ["shot app-low", "up", "up", "enter", "shot licences", "enter", "shot licence", "esc", "esc",
@@ -181,3 +189,48 @@ def test_system_app_has_no_remove(env):
     ui(env, ["enter", "shot sys-app", "enter", "shot sys-description", "esc", "esc", "esc"], "--my-apps")
     assert os.path.isfile(env.reg("store"))
     assert os.path.isfile(os.path.join(env.flash, "store", "store"))
+
+
+def test_focus_moves_drawn_partly(tmp_path):
+    """The store draws only the bands that changed since the frame before
+    (libwb wb_bands): focus moves in lists and pop-ups, a toggle, a text
+    field, a scrolled page, an install's progress. The same keys with
+    WB_FULL=1 (every band drawn) give the same screens, byte for byte."""
+    if not os.path.exists(UI):
+        pytest.skip("no store-ui-host: make -C client ui-host")
+    keys = ["shot d0", "down", "shot d1", "down", "shot d2", "up", "shot d3",
+            "f6", "shot help", "f6", "shot d4",
+            "enter", "shot type", "down", "shot type2", "enter", "shot cat",
+            "f1", "shot menu", "down", "shot menu2", "up", "shot menu3", "esc", "shot cat2",
+            "esc", "esc", "shot d5",
+            "f5", "shot set", "enter", "shot source", "down", "shot source2", "enter", "shot input",
+            "type abc", "shot input2", "bs", "shot input3", "esc", "shot source3", "esc",
+            "down", "shot set2", "down", "shot set3", "enter", "shot keep-on", "enter", "shot keep-off",
+            "esc", "f4", "shot log", "down", "shot log2", "down", "shot log3", "up", "shot log4", "esc",
+            "shot d6", "up", "enter", "type hel", "shot search", "down", "shot search2",
+            "enter", "shot app", "down", "shot app2", "up", "shot app3", "enter", "shot installed",
+            "down", "shot inst2", "enter", "shot ask", "down", "shot ask2", "up", "shot ask3", "esc",
+            "shot inst3", "down", "down", "shot inst4", "enter", "shot pic1", "right", "shot pic2",
+            "left", "shot pic3", "esc"] + ["down"] * 6 + ["shot app-low", "esc", "esc", "esc", "esc"]
+    e = make_env(tmp_path)
+    try:
+        with open(os.path.join(e.tmpdir, "app-store.log"), "w") as f:
+            f.write("".join("store: line %d of the log\n" % i for i in range(60)))
+        # both runs start from the same badge, against the same source
+        shutil.copytree(e.root, str(tmp_path / "root-before"), symlinks=True)
+        runs = []
+        for extra in ({}, {"WB_FULL": "1"}):
+            if runs:
+                shutil.rmtree(e.root)
+                shutil.copytree(str(tmp_path / "root-before"), e.root, symlinks=True)
+            # the clock (status bar, "Fetched") the same in both runs
+            extra = dict(extra, STORE_UI_TIME="1793000000")
+            runs.append({k: open(p, "rb").read() for k, p in ui(e, keys, extra=extra).items()})
+    finally:
+        e.stop()
+    part, whole = runs
+    assert sorted(part) == sorted(whole)
+    assert [k for k in part if part[k] != whole[k]] == []
+    # the screens differ where the keys changed something
+    assert part["d1"] != part["d2"] and part["menu"] != part["menu2"] and part["keep-on"] != part["keep-off"]
+    assert part["ask"] != part["ask2"] and part["pic1"] != part["pic2"]

@@ -61,7 +61,7 @@ the store), so a fresh badge has a store without a computer.
 | Archive | ustar reader, streaming, with the checks of package.md §1.2 | ~300 lines |
 | JSON | jsmn | The index is parsed in one pass into a compact in-memory table |
 | Images | QOI decoder (`client/src/qoi.c`) | Icons and screenshots are converted by `tools/publish.py` (repository.md §5.3), fetched when a page opens and cached |
-| Drawing | The menu's drawing code and fonts (why2025-linux `overlay-src/wbdraw.h`, `home_assets.h`) and the design tokens of the badge's design system | Same look as the menu. Drawn in bands of 40 rows, as appterm does: no 1 MB frame buffer |
+| Drawing | libwb, the drawing library the menu and the apps share (why2025-linux `libwb/`: fonts, icons, the design tokens, the scene, glass, rows, dialogs) | Same look as the menu. Drawn in bands of 40 rows, as appterm does, and only the bands that changed since the frame before (libwb `wb_bands`): no 1 MB frame buffer, so pop-ups are glass without the blur |
 
 Memory budget: at most 1.5 MB of the user pool while the store runs
 (the menu is out of the way, as for any app). Downloads and unpacking
@@ -121,7 +121,19 @@ As built (2026-10-12, `client/src/ui.c`):
 - Settings has no refresh interval: the index is refreshed when older
   than an hour (`INDEX_MAX_AGE`), and with "Refresh now". A mirror is a
   new address for an existing source (`$HOME/.whyos/store/sources.d/<id>.conf`).
-- `STORE_UI_TIMING=1` writes the drawing time of each screen to stderr.
+- `STORE_UI_TIMING=1` writes a line per frame to stderr: its time, the
+  bands drawn, and the recording, scene, glass and writing-out times (µs).
+- The look follows the menu's (canvas "Menu's met frontpaneel", since
+  2026-10-27): the frontpanel's figures behind every screen, turned with
+  the badge; the eyebrow says where a screen lies ("APP" on the first,
+  "APP STORE ›", "HELLO ›"); Discover is titled "App store". Types,
+  categories and apps are glass rows as the menu's Settings rows: icon,
+  name, a second line (the categories, the apps in a category, an app's
+  summary, a source's address) and on the right a count or the app's
+  state (installed green, an update yellow). Questions, progress and the
+  sort menu are pop-ups with their keys inside; in bands they are glass
+  over the dimmed screen, not blurred. Texts (description, licence, log)
+  are on a glass card.
 
 ## 5. What the OS must provide
 

@@ -14,7 +14,7 @@ the badge (BFLT) and for the host (tests, CI).
 | `src/registry.c` | registry, card id, journal, pending cleanups |
 | `src/paths.c`, `src/sources.c` | where things live; sources and mirrors |
 | `src/json.c` | JSON reading (jsmn, `third_party/`) and writing |
-| `src/ui.c` | the screens (client.md §4), drawn with the menu's code from why2025-linux (`wbdraw.h`, `home_assets.h`) |
+| `src/ui.c` | the screens (client.md §4), drawn with why2025-linux's `libwb/` (`wb.h`, `wbstatus.h`) in the menu's style |
 | `src/qoi.c` | QOI decoder for icons and screenshots |
 | `roots.pem` | the CA roots it trusts, picked by `mkroots.py` from Mozilla's list |
 | `deps.sh` | builds the pinned mbedTLS for the host or the badge |
@@ -27,10 +27,13 @@ client/store-host check-package dist/v1/packages/gnuboy-1.0.0.wpk
 client/build.sh                 # the badge's build/store (needs ~/br-badge)
 ```
 
-The screens need why2025-linux next to this repo (`WHY2025_LINUX`, default
+The screens need why2025-linux (its `libwb/`) next to this repo (`WHY2025_LINUX`, default
 `../../why2025-linux`); without it `make test` skips them. The program is
 `apps/store/` in the store, installed in flash. On the badge,
-`STORE_UI_TIMING=1` writes how long each screen took to draw to stderr.
+`STORE_UI_TIMING=1` writes a line per frame to stderr: its time, the bands
+drawn, and libwb's recording, scene, glass and writing-out times (µs). The
+screens draw only the bands that changed (libwb `wb_bands`); `WB_FULL=1`
+draws every band, and `tests/test_ui.py` compares the two.
 
 For the tests and the host build, `HOME`, `STORE_SD`, `STORE_FLASH_APPS`,
 `STORE_TMP`, `STORE_SYS_SOURCES` and `STORE_RELEASE` move every path into a

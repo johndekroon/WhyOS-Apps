@@ -3,7 +3,7 @@
 #   make -C client ui-host     client/store-ui-host: the screens, keys from a
 #                              script, screens as PPM (tests/test_ui.py)
 #   make -C client test        the client's tests (tests/, pytest)
-# The badge build is build.sh. The screens draw with the menu's code from
+# The badge build is build.sh. The screens draw with libwb from
 # why2025-linux (WHY2025_LINUX, default ../../why2025-linux).
 DEPS    = .deps/host
 CC     ?= cc
@@ -12,7 +12,7 @@ CFLAGS ?= -O1 -g -Wall -Wextra -Werror -Wno-format-truncation -fsanitize=address
 SRCS    = $(filter-out src/ui.c,$(wildcard src/*.c))
 HDRS    = $(wildcard src/*.h) src/roots.inc
 WHY2025_LINUX ?= $(abspath ../../why2025-linux)
-MENU    = $(WHY2025_LINUX)/patches/buildroot/overlay-src
+MENU    = $(WHY2025_LINUX)/libwb
 
 host: store-host
 
@@ -22,7 +22,7 @@ store-host: $(SRCS) $(HDRS) $(DEPS)/lib/libmbedtls.a
 
 ui-host: store-ui-host
 
-store-ui-host: $(wildcard src/*.c) $(HDRS) $(DEPS)/lib/libmbedtls.a $(MENU)/wbdraw.h $(MENU)/keyrep.h $(MENU)/home_assets.h
+store-ui-host: $(wildcard src/*.c) $(HDRS) $(DEPS)/lib/libmbedtls.a $(MENU)/wbdraw.h $(MENU)/keyrep.h $(MENU)/wb_assets.h
 	$(CC) $(CFLAGS) -Wno-sign-compare -DSTORE_UI -DSTORE_UI_HOST -I$(DEPS)/include -Isrc -I$(MENU) \
 		-o $@ $(wildcard src/*.c) -L$(DEPS)/lib -lmbedtls -lmbedx509 -lmbedcrypto -lz
 
@@ -33,7 +33,7 @@ src/roots.inc: roots.pem
 $(DEPS)/lib/libmbedtls.a:
 	./deps.sh host
 
-# the screens' test only where the menu's drawing code is (not in CI)
+# the screens' test only where libwb is (not in CI)
 UI_HOST = $(if $(wildcard $(MENU)/wbdraw.h),store-ui-host)
 
 test: store-host $(UI_HOST)
