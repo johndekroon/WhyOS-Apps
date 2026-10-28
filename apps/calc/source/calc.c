@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 /*
- * calc — a calculator for the badge, drawn like the menu (wbdraw.h and the
- * design's fonts), as an app from the store (sdapps/README.md).
+ * calc — a calculator for the badge, drawn with libwb in the style of the
+ * canvas "Menu's met frontpaneel" (its board Calculator.dc.html), as an app
+ * from the store (sdapps/README.md).
  *
- * You type a sum on the keyboard and Enter (or =) works it out; the sums
- * stay above it as a paper tape. What it understands:
+ * You type a sum on the keyboard and Enter (or =) works it out. What it
+ * understands:
  *
  *   + - * / ^ (or **), brackets (a missing ")" at the end is added),
  *   n% (n/100), n! (factorial), "mod", 2pi or 3(4+5) as a product,
@@ -17,14 +18,20 @@
  * number result also shows in hexadecimal and binary. Up and Down bring
  * back earlier sums, Esc clears the line (on an empty line it closes).
  * The symbol keys follow the design (Docs/06-design-system.md 6.6): the
- * circle opens the log (the calculator keeps none: an empty screen), the
- * cloud its settings (the angle unit, a pop-up list), the diamond the
- * help; the left three do nothing here.
+ * circle opens the log (the sums so far), the cloud its settings (the
+ * angle unit, a pop-up list), the diamond the help; the left three do
+ * nothing here.
+ *
+ * The screen, over the frontpanel's figures: a display (the sum before
+ * with its result, the sum being typed, big its result) and under it the
+ * keys of a calculator, each with the keyboard's key that does the same;
+ * the key pressed last lights. They only show: the keyboard types.
  *
  * The panel is drawn one band of BAND_H rows at a time through wbdraw.h's
- * clipping, as appterm does, so there is no 1 MB frame buffer next to it.
- * Built with -DCALC_HOST, it takes keys from its first argument and writes
- * the screen as PPM to its second: the host test (calc/test_calc.py).
+ * clipping, and only the bands that changed, so there is no 1 MB frame
+ * buffer next to it (pop-ups are then glass, unblurred). Built with
+ * -DCALC_HOST, it takes keys from its first argument and writes the screen
+ * as PPM to its second: the host test (calc/test_calc.py).
  *
  * FLAT/NOMMU constraints (overlay-src/Makefile): no stdio.
  */
@@ -37,12 +44,11 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "home_assets.h"
-#include "home-assets/wb_tokens.h"
+#include "wb_tokens.h"
 
 #define W		WB_SCREEN_W
 #define H		WB_SCREEN_H
-#include "wbdraw.h"
+#include "wb.h"
 #include "lora_state.h"
 #include "wbstatus.h"
 #include "keyrep.h"
@@ -51,22 +57,29 @@
 #include <poll.h>
 #endif
 
-/* ---- layout ------------------------------------------------------------- */
+/* ---- layout (the board Calculator.dc.html) ----------------------------- */
 
-#define PANEL_X		16
-#define PANEL_W		(W - 2 * PANEL_X)
-#define PANEL_Y		118
-#define PANEL_H		500
-#define PAD		24
-#define RIGHT		(PANEL_X + PANEL_W - PAD)
-#define LEFT		(PANEL_X + PAD)
-#define TAPE_Y		(PANEL_Y + 16)		/* the tape: earlier sums */
-#define ENTRY_H		58
-#define LINE_Y		(PANEL_Y + 368)		/* the rule above the input */
-#define INPUT_Y		(LINE_Y + 14)		/* the sum being typed */
-#define PREVIEW_Y	(INPUT_Y + 52)		/* its result, or what is wrong */
-#define BASES_Y		(PREVIEW_Y + 34)	/* hexadecimal and binary */
-#define HELP_Y		(PANEL_Y + PANEL_H + 14)
+#define HEAD_X		54			/* the eyebrow, and the title under it */
+#define HEAD_Y		64
+#define TITLE_Y		(HEAD_Y + 18 + 4 + 2)
+#define CHIP_H		28			/* DEG or RAD, right of the title */
+#define CHIP_Y		(TITLE_Y + 18 - CHIP_H / 2)
+#define DSP_X		48			/* the display: the sum before, the */
+#define DSP_Y		128			/* sum being typed and its result */
+#define DSP_W		624
+#define DSP_H		168
+#define DSP_L		(DSP_X + 22)
+#define DSP_R		(DSP_X + DSP_W - 22)
+#define DSP_TEXT_W	580
+#define HIST_CY		(DSP_Y + 42)		/* centres of its three lines */
+#define LINE_CY		(DSP_Y + 72)
+#define RES_CY		(DSP_Y + DSP_H - 16 - 30)
+#define KEYS_Y		312			/* the keys: 4 across, 5 down */
+#define KEY_W		150
+#define KEY_H		62
+#define KEY_GAP		8
+#define KEY_GLOW	24			/* how far a key's glow reaches */
+#define LOG_ROW		52			/* a sum in the log */
 
 /* ---- keys (linux/input-event-codes.h) ----------------------------------- */
 
@@ -102,6 +115,7 @@ static struct {
 	int sc;				/* SC_CALC, SC_LOG, SC_SETTINGS */
 	int help;			/* the diamond's pop-up is open */
 	int pick, pick_focus;		/* the angle unit's pop-up is open */
+	int lit;			/* the key on the screen pressed last, + 1 */
 } C;
 
 enum { SC_CALC, SC_LOG, SC_SETTINGS };
@@ -632,51 +646,283 @@ static struct {
 	int clock_ok, wifi_up /* bars, -1 none: wbstatus.h */, lora;
 } U;
 
-/* s at most w px wide: its end, with "…" in front when cut */
-static const char *fit(const struct wb_font *f, const char *s, int w, int *cut)
+/*
+ * The keys on the screen, as the board lays them out. Each shows the key
+ * of the keyboard that does the same at its bottom right (the digits, the
+ * point, + and the brackets are their own); pressing one lights it.
+ */
+enum { K_DIGIT, K_OP, K_FN, K_EQ };
+
+static const struct { const char *label, *hint; int kind; } keys[20] = {
+	{ "C", "Esc", K_FN }, { "(", 0, K_OP }, { ")", 0, K_OP }, { "\xc3\xb7", "/", K_OP },
+	{ "7", 0, K_DIGIT }, { "8", 0, K_DIGIT }, { "9", 0, K_DIGIT }, { "\xc3\x97", "*", K_OP },
+	{ "4", 0, K_DIGIT }, { "5", 0, K_DIGIT }, { "6", 0, K_DIGIT }, { "\xe2\x88\x92", "-", K_OP },
+	{ "1", 0, K_DIGIT }, { "2", 0, K_DIGIT }, { "3", 0, K_DIGIT }, { "+", 0, K_OP },
+	{ "0", 0, K_DIGIT }, { ".", 0, K_DIGIT }, { "\xe2\x8c\xab", "Bksp", K_FN }, { "=", "Enter", K_EQ },
+};
+
+#define KEY_C		0
+#define KEY_ERASE	18
+#define KEY_IS		19
+
+/* The key on the screen for a character typed; -1 if it has none. */
+static int grid_key(char ch)
 {
-	*cut = 0;
-	while (*s && text_w(f, s, 0) > w) {
-		s++;
-		*cut = 1;
-	}
-	return s;
+	if (ch == '/')
+		return 3;
+	if (ch == '*')
+		return 7;
+	if (ch == '-')
+		return 11;
+	for (int i = 0; i < 20; i++)
+		if (keys[i].label[0] == ch && !keys[i].label[1])
+			return i;
+	return -1;
 }
 
-static void draw_tape(void)
+static int key_y(int i)
 {
-	int y = LINE_Y - 12;		/* bottom of the newest entry */
+	return KEYS_Y + i / 4 * (KEY_H + KEY_GAP);
+}
 
-	if (!C.n_hist) {
-		static const char *const ex[] = {
-			"12 * 7 + 3", "sqrt(2)", "15% * 80", "2pi * 4", "0xff + 1", "sin 30",
-		};
-		const struct wb_font *f = &f_ui20;
-		int ty = TAPE_Y + 8;
+/*
+ * Glass in a colour (the board's keys and display): the void at tint over
+ * what is drawn, a sheen of colour sheen from s0 at the top to s1 halfway
+ * and 0 at the bottom, a 1 px edge of edge_c at edge and a white highlight
+ * inside the top at hi. wbglass.h's glass() as its GLASS_TILE draws it, but
+ * with these as parameters: libwb's kinds are white only.
+ */
+struct calc_skin { uint8_t tint, s0, s1, edge, hi; uint32_t sheen, edge_c; };
 
-		text(f, LEFT, ty, "Type a sum and press Enter.", WB_COLOR_TEXT_MID, 0);
-		ty += 40;
-		eyebrow(LEFT, ty, "FOR EXAMPLE");
-		ty += 30;
-		for (unsigned i = 0; i < sizeof(ex) / sizeof(ex[0]); i++, ty += 30)
-			text(&f_mono18, LEFT, ty, ex[i], WB_COLOR_TEXT_HI, 0);
+static const struct calc_skin SK_DISPLAY = { 227, 18, 5, 66, 51, 0xFFFFFF, 0xFFFFFF };	/* 89 % */
+static const struct calc_skin SK_DIGIT = { 217, 18, 5, 66, 51, 0xFFFFFF, 0xFFFFFF };
+static const struct calc_skin SK_OP = { 217, 46, 15, 77, 46, WB_COLOR_CYAN, WB_COLOR_CYAN };
+static const struct calc_skin SK_FN = { 217, 46, 15, 77, 46, WB_COLOR_PINK, WB_COLOR_PINK };
+
+static void calc_glass(int x, int y, int w, int h, const struct calc_skin *s)
+{
+	static const uint8_t bayer[4][4] = {
+		{ 0, 8, 2, 10 }, { 12, 4, 14, 6 }, { 3, 11, 1, 9 }, { 15, 7, 13, 5 },
+	};
+	const int r = WB_SQUARE, mid = h / 2;
+
+	for (int j = 0; j < h; j++) {
+		int py = y + j, lo = j < r || j >= h - r ? r : 1;
+		unsigned sa, k16, m16[3], kr, mr[3], re = 0;
+		uint32_t rc = 0;
+		uint16_t *q = &fb[py * W];
+
+		if (py < fb_y0 || py >= fb_y1)
+			continue;
+		sa = j < mid ? s->s0 - (s->s0 - s->s1) * (unsigned)j / (unsigned)mid :
+		     s->s1 * (unsigned)(h - j) / (unsigned)(h - mid);
+		/* the void and the sheen over v, as v * k + m in 16.16 */
+		k16 = (unsigned)(((255u - s->tint) * (255 - sa) * 65536ull + 32512) / 65025);
+		for (int c = 0; c < 3; c++) {
+			unsigned t = (WB_COLOR_VOID >> (16 - 8 * c)) & 255, sv = (s->sheen >> (16 - 8 * c)) & 255;
+
+			m16[c] = (unsigned)(((t * s->tint * (255 - sa) + sv * sa * 255u) * 65536ull + 32512) / 65025);
+		}
+		/* the edge along the top and the bottom, the highlight under it */
+		if (j == 0 || j == h - 1) {
+			re = s->edge;
+			rc = s->edge_c;
+		} else if (j == 1) {
+			re = s->hi;
+			rc = 0xFFFFFF;
+		}
+		kr = (unsigned)((uint64_t)k16 * (255 - re) / 255);
+		for (int c = 0; c < 3; c++)
+			mr[c] = (unsigned)((uint64_t)m16[c] * (255 - re) / 255) +
+				((rc >> (16 - 8 * c)) & 255) * re * 257u;
+		glass_span_fb(q, x + lo, x + w - lo, bayer[py & 3], kr, mr);
+		/* the sides and the corners, a pixel at a time */
+		for (int i = 0; i < w; i++) {
+			int px = x + i, dth = bayer[py & 3][px & 3];
+			unsigned a, ai, ah, e, hl, rgb[3];
+
+			if (i == lo) {
+				i = w - lo - 1;
+				continue;
+			}
+			a = cover(rr_dist(px, py, x, y, w, h, r));
+			if (!a)
+				continue;
+			ai = cover(rr_dist(px, py, x + 1, y + 1, w - 2, h - 2, r - 1));
+			ah = cover(rr_dist(px, py, x + 1, y + 2, w - 2, h - 4, r - 1));
+			e = a > ai ? div255((a - ai) * s->edge) : 0;
+			hl = j < mid && ai > ah ? div255((ai - ah) * s->hi) : 0;
+			rgb565_split(q[px], &rgb[0], &rgb[1], &rgb[2]);
+			for (int c = 0; c < 3; c++) {
+				int sh = 16 - 8 * c;
+				unsigned v = (rgb[c] * k16 + m16[c] + 32768) >> 16;
+
+				v = over8(v > 255 ? 255 : v, s->edge_c, sh, e);
+				v = over8(v, 0xFFFFFF, sh, hl);
+				rgb[c] = div255(v * a + rgb[c] * (255 - a));
+			}
+			rgb[0] = (rgb[0] + dth / 2) >> 3;
+			rgb[1] = (rgb[1] + dth / 4) >> 2;
+			rgb[2] = (rgb[2] + dth / 2) >> 3;
+			q[px] = (uint16_t)((rgb[0] > 31 ? 31 : rgb[0]) << 11 | (rgb[1] > 63 ? 63 : rgb[1]) << 5 |
+					   (rgb[2] > 31 ? 31 : rgb[2]));
+		}
+	}
+}
+
+/* The = key's glow: 12 px at 30 %, pressed 22 px at 60 % (from wb_assets.h's
+ * 18 px at 40 %, as wbglass.h makes GLOW_FOCUS). */
+static uint8_t glow_is[sizeof(glow_row) * 12 / 18], glow_is_lit[sizeof(glow_row) * 22 / 18];
+static const struct glow GLOW_IS = { glow_is, sizeof(glow_is) };
+static const struct glow GLOW_IS_LIT = { glow_is_lit, sizeof(glow_is_lit) };
+
+static void calc_glow_init(void)
+{
+	for (unsigned i = 0; i < sizeof(glow_is); i++)
+		glow_is[i] = (uint8_t)(glow_row[i * 18 / 12] * 30 / 40);
+	for (unsigned i = 0; i < sizeof(glow_is_lit); i++)
+		glow_is_lit[i] = (uint8_t)(glow_row[i * 18 / 22] * 60 / 40 > 255 ? 255 :
+					   glow_row[i * 18 / 22] * 60 / 40);
+}
+
+/* c at a over b: the board's 60 % hints, over the key's own colour */
+static uint32_t mix(uint32_t c, uint32_t b, unsigned a)
+{
+	uint32_t o = 0;
+
+	for (int sh = 0; sh < 24; sh += 8)
+		o |= (uint32_t)div255(((c >> sh) & 255) * a + ((b >> sh) & 255) * (255 - a)) << sh;
+	return o;
+}
+
+/* The distance from (px, py) to the segment s (x0, y0, x1, y1), all in
+ * 1/16 px. */
+static int seg_d16(int px, int py, const int *s)
+{
+	long dx = s[2] - s[0], dy = s[3] - s[1], qx = px - s[0], qy = py - s[1];
+	long l2 = dx * dx + dy * dy, t = l2 ? qx * dx + qy * dy : 0, ex, ey;
+
+	t = t < 0 ? 0 : t > l2 ? l2 : t;
+	ex = qx - (l2 ? dx * t / l2 : 0);
+	ey = qy - (l2 ? dy * t / l2 : 0);
+	return isqrt((unsigned)(ex * ex + ey * ey));
+}
+
+/*
+ * ÷, ×, − (U+2212) and ⌫, which the fonts lack (their ⌫ is a "?" in a
+ * box): strokes as thick as font f's +, as wide, centred on cx and on the
+ * + of a line centred on cy. ⌫ is the design's erase key (Lucide
+ * "delete", square).
+ */
+static void calc_sym(const struct wb_font *f, const char *s, int cx, int cy, uint32_t c)
+{
+	const struct wb_glyph *g = glyph(f, '+');
+	const uint8_t *a = f->bits + g->off;
+	int i0 = g->w, i1 = -1, j0 = g->h, j1 = -1, L, t = 0, x16 = cx * 16, y16, n = 0, reach;
+	int seg[9][5];		/* x0, y0, x1, y1 from the centre, half the stroke */
+	unsigned char k = (unsigned char)s[1], k2 = (unsigned char)s[2];
+
+	for (int j = 0; j < g->h; j++)		/* the +'s ink */
+		for (int i = 0; i < g->w; i++)
+			if (a[j * g->w + i] > 64) {
+				i0 = i < i0 ? i : i0;
+				i1 = i > i1 ? i : i1;
+				j0 = j < j0 ? j : j0;
+				j1 = j > j1 ? j : j1;
+			}
+	if (i1 < 0)
 		return;
-	}
-	for (int i = C.n_hist - 1; i >= 0 && y - ENTRY_H >= TAPE_Y; i--, y -= ENTRY_H) {
-		const struct wb_font *fs = &f_mono16b, *fr = &f_ui22;
-		int cut, recalled = C.back && i == C.n_hist - C.back;
-		const char *s = fit(fs, C.hist[i].sum, PANEL_W - 2 * PAD - 20, &cut);
-		char res[48] = "= ";
-		int sw = text_w(fs, s, 0), x;
+	for (int i = 0; i < g->w; i++)		/* across its upright */
+		t += a[(j0 + (j1 - j0) / 5) * g->w + i];
+	t = t * 16 / 255;
+	L = (i1 - i0 + 1) * 8;
+	y16 = (text_top(f, cy) + g->y + j0) * 16 + (j1 - j0 + 1) * 8;
+#define SEG(a, b, c_, d, w2) do { int *q = seg[n++]; q[0] = a; q[1] = b; q[2] = c_; q[3] = d; q[4] = w2; } while (0)
+	if (k == 0x97) {			/* × */
+		int m = L * 7 / 10;
 
-		strcat(res, C.hist[i].res);
-		x = RIGHT - sw;
-		if (cut)
-			text(fs, x - text_w(fs, "\xe2\x80\xa6", 0), y - ENTRY_H + 6, "\xe2\x80\xa6",
-			     WB_COLOR_TEXT_LOW, 0);
-		text(fs, x, y - ENTRY_H + 6, s, recalled ? WB_COLOR_CYAN : WB_COLOR_TEXT_LOW, 0);
-		text(fr, RIGHT - text_w(fr, res, 0), y - ENTRY_H + 26, res, WB_COLOR_TEXT_HI, 0);
+		SEG(-m, -m, m, m, t / 2);
+		SEG(-m, m, m, -m, t / 2);
+	} else if (k == 0x88) {			/* − */
+		SEG(-L + t / 2, 0, L - t / 2, 0, t / 2);
+	} else if (k == 0xb7) {			/* ÷ */
+		SEG(-L + t / 2, 0, L - t / 2, 0, t / 2);
+		SEG(0, -L * 5 / 8, 0, -L * 5 / 8, t * 3 / 4);
+		SEG(0, L * 5 / 8, 0, L * 5 / 8, t * 3 / 4);
+	} else if (k == 0x8c && k2 == 0xab) {	/* ⌫, from a 24 grid: x 2..21, y 5..19 */
+		static const signed char p[7][4] = {
+			{ 2, 12, 9, 5 }, { 9, 5, 21, 5 }, { 21, 5, 21, 19 }, { 21, 19, 9, 19 },
+			{ 9, 19, 2, 12 }, { 12, 9, 18, 15 }, { 18, 9, 12, 15 },
+		};
+		int u = L * 2 * 17 / 10 / 19;	/* 1.7 times the + across */
+
+		for (int i = 0; i < 7; i++)
+			SEG((p[i][0] * 2 - 23) * u / 2, (p[i][1] - 12) * u, (p[i][2] * 2 - 23) * u / 2,
+			    (p[i][3] - 12) * u, t * 3 / 8);
 	}
+#undef SEG
+	reach = (L * 17 / 10 + t) / 16 + 2;
+	for (int py = y16 / 16 - reach; py <= y16 / 16 + reach; py++)
+		for (int px = cx - reach; px <= cx + reach; px++) {
+			int d = 1 << 20;
+
+			if (py < fb_y0 || py >= fb_y1)
+				continue;
+			for (int i = 0; i < n; i++) {
+				int e = seg_d16(px * 16 + 8 - x16, py * 16 + 8 - y16, seg[i]) - seg[i][4];
+
+				d = e < d ? e : d;
+			}
+			put(px, py, c, cover(d));
+		}
+}
+
+static void draw_key(int i)
+{
+	const struct wb_font *f = &f_ui28b, *fh = &f_mono13;
+	int x = DSP_X + i % 4 * (KEY_W + KEY_GAP), y = key_y(i), lit = C.lit == i + 1;
+	int kind = keys[i].kind;
+	uint32_t fg, under;
+
+	if (y - KEY_GLOW >= fb_y1 || y + KEY_H + KEY_GLOW <= fb_y0)
+		return;
+	if (kind == K_EQ) {
+		box_shaped(x, y, KEY_W, KEY_H, WB_SQUARE, WB_COLOR_CYAN, 255, WB_COLOR_CYAN, 1,
+			   lit ? &GLOW_IS_LIT : &GLOW_IS);
+		fg = WB_COLOR_VOID;
+		under = WB_COLOR_CYAN;
+	} else {
+		if (lit)
+			wb_card(x, y, KEY_W, KEY_H, WB_SQUARE, 1, &GLOW_FOCUS);
+		else
+			calc_glass(x, y, KEY_W, KEY_H, kind == K_OP ? &SK_OP : kind == K_FN ? &SK_FN : &SK_DIGIT);
+		fg = lit || kind == K_OP ? WB_COLOR_CYAN : kind == K_FN ? WB_COLOR_PINK : WB_COLOR_TEXT_HI;
+		under = WB_COLOR_VOID;
+	}
+	if ((unsigned char)keys[i].label[0] >= 0xc3)	/* not in the font */
+		calc_sym(f, keys[i].label, x + KEY_W / 2, y + KEY_H / 2, fg);
+	else
+		text(f, x + (KEY_W - text_w(f, keys[i].label, 0)) / 2, text_top(f, y + KEY_H / 2),
+		     keys[i].label, fg, 0);
+	if (keys[i].hint)
+		text(fh, x + KEY_W - 10 - text_w(fh, keys[i].hint, 0), y + KEY_H - 6 - fh->ascent - fh->descent,
+		     keys[i].hint, mix(fg, under, 153), 0);
+}
+
+/* s right-aligned at right, at most w px wide: its end, with "…" in front
+ * when cut */
+static void text_right(const struct wb_font *f, int right, int y, const char *s, uint32_t c, int w)
+{
+	int cut = 0, ew = text_w(f, "\xe2\x80\xa6", 0);
+
+	while (*s && text_w(f, s, 0) > w - (cut ? ew : 0)) {
+		s++;
+		cut = 1;
+	}
+	right -= text_w(f, s, 0);
+	text(f, right, y, s, c, 0);
+	if (cut)
+		text(f, right - ew, y, "\xe2\x80\xa6", c, 0);
 }
 
 /* The width of in[a..b) in font f. */
@@ -689,10 +935,11 @@ static int span_w(const struct wb_font *f, int a, int b)
 	return text_w(f, t, 0);
 }
 
-static void draw_input(void)
+/* The sum being typed, with its cursor, right-aligned on the display. */
+static void draw_line(void)
 {
-	const struct wb_font *f = &f_ui36b;
-	int max = PANEL_W - 2 * PAD - 30, a = 0, b = C.len, x, cx;
+	const struct wb_font *f = &f_ui22;
+	int max = DSP_TEXT_W - 30, a = 0, b = C.len, x, cx, top = text_top(f, LINE_CY);
 	char vis[IN_MAX + 1];
 
 	/* what fits: the end of the line, or from the cursor on */
@@ -702,24 +949,67 @@ static void draw_input(void)
 		b--;
 	memcpy(vis, C.in + a, (size_t)(b - a));
 	vis[b - a] = 0;
-	x = RIGHT - text_w(f, vis, 0);
+	x = DSP_R - text_w(f, vis, 0);
 	if (a > 0)
-		text(f, x - text_w(f, "\xe2\x80\xa6", 0), INPUT_Y, "\xe2\x80\xa6", WB_COLOR_TEXT_LOW, 0);
-	text(f, x, INPUT_Y, vis, C.err ? WB_COLOR_ERROR : WB_COLOR_TEXT_HI, 0);
+		text(f, x - text_w(f, "\xe2\x80\xa6", 0), top, "\xe2\x80\xa6", WB_COLOR_PLACEHOLDER, 0);
+	if (!C.len && !C.n_hist)	/* nothing yet: what to do */
+		text(f, DSP_R - 10 - text_w(f, "Type a sum", 0), top, "Type a sum", WB_COLOR_PLACEHOLDER, 0);
+	text(f, x, top, vis, C.err ? WB_COLOR_ERROR : WB_COLOR_TEXT_MID, 0);
 	cx = x + span_w(f, a, C.cur);
-	fill(cx, INPUT_Y + 2, 3, f->ascent + f->descent - 2, WB_COLOR_CYAN);
+	fill(cx, top + 2, 2, f->ascent + f->descent - 2, WB_COLOR_CYAN);
+}
 
-	if (C.err)
-		text(&f_ui20, RIGHT - text_w(&f_ui20, C.err, 0), PREVIEW_Y, C.err, WB_COLOR_ERROR, 0);
-	else if (C.preview[0]) {
-		char p[48] = "= ";
+/*
+ * The display, as the board's: in the top left a whole result in
+ * hexadecimal and binary; right-aligned the sum before (or the one Up
+ * brought back, in cyan) with its result, the sum being typed, and big
+ * its result ("…" while it is not a sum yet), what is wrong after Enter,
+ * or the last result.
+ */
+static void draw_display(void)
+{
+	const struct wb_font *fh = &f_mono14, *fr = &f_ui36b;
+	char buf[IN_MAX + 48];
+	const char *res;
+	uint32_t rc = WB_COLOR_TEXT_HI;
 
-		strcat(p, C.preview);
-		text(&f_ui22, RIGHT - text_w(&f_ui22, p, 0), PREVIEW_Y, p, WB_COLOR_TEXT_MID, 0);
-	}
+	if (DSP_Y >= fb_y1 || DSP_Y + DSP_H <= fb_y0)
+		return;
+	calc_glass(DSP_X, DSP_Y, DSP_W, DSP_H, &SK_DISPLAY);
 	if (C.bases[0])
-		text(&f_mono14, RIGHT - text_w(&f_mono14, C.bases, 0), BASES_Y, C.bases,
-		     WB_COLOR_TEXT_LOW, 0);
+		text(&f_mono13, DSP_L, DSP_Y + 14, wb_fit(&f_mono13, C.bases, DSP_TEXT_W, buf, sizeof(buf)),
+		     WB_COLOR_PLACEHOLDER, 0);
+	if (C.n_hist) {
+		int i = C.back ? C.n_hist - C.back : C.n_hist - 1;
+
+		strcpy(buf, C.hist[i].sum);
+		strcat(buf, " = ");
+		strcat(buf, C.hist[i].res);
+		text_right(fh, DSP_R, text_top(fh, HIST_CY), buf, C.back ? WB_COLOR_CYAN : WB_COLOR_PLACEHOLDER,
+			   DSP_TEXT_W);
+	}
+	draw_line();
+	if (C.err) {
+		text(&f_ui22, DSP_R - text_w(&f_ui22, C.err, 0), text_top(&f_ui22, RES_CY), C.err,
+		     WB_COLOR_ERROR, 0);
+		return;
+	}
+	if (C.len && C.preview[0]) {
+		strcpy(buf, "= ");
+		strcat(buf, C.preview);
+		res = buf;
+	} else if (C.len) {
+		res = "\xe2\x80\xa6";
+		rc = WB_COLOR_PLACEHOLDER;
+	} else if (C.have_ans) {
+		fmt_num(C.ans, buf);
+		res = buf;
+	} else {
+		res = "0";
+	}
+	if (text_w(fr, res, -5) > DSP_TEXT_W)
+		fr = &f_ui28b;
+	text(fr, DSP_R - text_w(fr, res, -5), text_top(fr, RES_CY), res, rc, -5);
 }
 
 /* status bar, as home's: WhyOS left; LoRa, Wi-Fi and the clock right */
@@ -733,28 +1023,76 @@ static void status_bar(void)
 	status_right(U.hhmm, U.clock_ok, U.wifi_up, U.lora);
 }
 
+/* The calculator: the header, the display, the keys, the hint bar. */
+static void draw_calc(void)
+{
+	static const struct hint hints[] = {
+		{ "0\xe2\x80\x93" "9 + - * /", "type", 0 }, { "Enter", "=", 0 }, { "Esc", "clear", 1 },
+	};
+	static const struct hint empty_hints[] = {
+		{ "0\xe2\x80\x93" "9 + - * /", "type", 0 }, { "Enter", "=", 0 }, { "Esc", "home", 1 },
+	};
+	const char *chip = C.rad ? "RAD" : "DEG";
+	int cw = text_w(&f_mono14, chip, 0) + 24, cx = DSP_X + DSP_W - cw;
+
+	status_bar();
+	eyebrow(HEAD_X, HEAD_Y, "APP");
+	text(&f_ui28b, HEAD_X, TITLE_Y, "Calculator", WB_COLOR_TEXT_HI, -10);
+	calc_glass(cx, CHIP_Y, cw, CHIP_H, &SK_OP);
+	text(&f_mono14, cx + 12, text_top(&f_mono14, CHIP_Y + CHIP_H / 2), chip, WB_COLOR_CYAN, 0);
+	draw_display();
+	for (int i = 0; i < 20; i++)
+		draw_key(i);
+	if (C.len || C.err)
+		hint_bar(hints, 3);
+	else
+		hint_bar(empty_hints, 3);
+}
+
+/* The circle key's screen: the sums so far, a row each, the newest at the
+ * bottom (as many as fit). */
+static void draw_log(void)
+{
+	static const struct hint hints[] = { { "Esc", "back", 1 } };
+	int x = WB_CONTENT_PAD, w = W - 2 * WB_CONTENT_PAD, top = WB_ROWS_TOP;
+	int n = (H - WB_HINT_BAR_H - 24 - top - 16) / LOG_ROW, first;
+
+	status_bar();
+	wb_header("CALCULATOR \xe2\x80\xba", "Log", 0);
+	if (!C.n_hist) {
+		text(&f_ui20, x + 6, top + 8, "No sums yet.", WB_COLOR_TEXT_MID, 0);
+		hint_bar(hints, 1);
+		return;
+	}
+	n = C.n_hist < n ? C.n_hist : n;
+	first = C.n_hist - n;
+	wb_card(x, top, w, n * LOG_ROW + 16, WB_SQUARE, 0, 0);
+	for (int i = first; i < C.n_hist; i++) {
+		char res[48] = "= ";
+		int cy = top + 8 + (i - first) * LOG_ROW + LOG_ROW / 2, rw;
+
+		strcat(res, C.hist[i].res);
+		rw = text_w(&f_ui22, res, 0);
+		if (i > first)
+			fill(x + 20, cy - LOG_ROW / 2, w - 40, 1, 0x26262F);
+		text(&f_ui22, x + w - 20 - rw, text_top(&f_ui22, cy), res, WB_COLOR_TEXT_HI, 0);
+		text_right(&f_mono16b, x + w - 20 - rw - 24, text_top(&f_mono16b, cy), C.hist[i].sum,
+			   WB_COLOR_PLACEHOLDER, w - 40 - rw - 24);
+	}
+	hint_bar(hints, 1);
+}
+
 static const char *const units[2] = { "Degrees", "Radians" };
 
 /* The cloud key's screen: the angle unit, chosen in a pop-up list. */
 static void draw_settings(void)
 {
 	static const struct hint hints[] = { { "Enter", "change", 0 }, { "Esc", "back", 1 } };
-	int top = WB_STATUS_BAR_H + 20, x = WB_CONTENT_PAD, w = W - 2 * WB_CONTENT_PAD, y, cy, rx;
 
-	fill(0, 0, W, H, WB_COLOR_VOID);
 	status_bar();
-	eyebrow(x, top, "CALCULATOR");
-	text(&f_ui36b, x, top + 18 + 6, "Settings", WB_COLOR_TEXT_HI, -11);
-	y = top + 18 + 6 + 44 + 24;
-	cy = y + 34;
-	box_focus(x, y, w, 68, WB_RADIUS_MD, &GLOW_ROW);
-	rx = x + w - 20 - 20;
-	icon(&r_chevron, rx, cy - 10, WB_COLOR_TEXT_LOW, 255);
-	rx -= 16 + text_w(&f_ui18, units[C.rad], 0);
-	text(&f_ui18, rx, text_top(&f_ui18, cy), units[C.rad], WB_COLOR_TEXT_HI, 0);
-	text(&f_ui22, x + 20, text_top(&f_ui22, cy), "Angle unit", WB_COLOR_TEXT_HI, 0);
-	text(&f_ui18, x + 20, y + 68 + 12, "For sin, cos, tan and their inverses. Tab switches it too.",
-	     WB_COLOR_TEXT_LOW, 0);
+	wb_header("CALCULATOR \xe2\x80\xba", "Settings", 0);
+	wb_row(WB_CONTENT_PAD, WB_ROWS_TOP, W - 2 * WB_CONTENT_PAD, WB_LIST_ROW_H, 0, "Angle unit",
+	       "For sin, cos, tan and their inverses. Tab switches it too.", units[C.rad], WB_ROW_OPEN, 0, 1);
 	hint_bar(hints, 2);
 }
 
@@ -768,7 +1106,7 @@ static void draw_help(void)
 		{ "Backspace", "Erase before the cursor" },
 		{ "Tab", "Degrees or radians" },
 		{ "Esc", "Clear the line; on an empty line, close" },
-		{ "#4", "Log (the calculator keeps none)" },
+		{ "#4", "Log: the sums so far" },
 		{ "#5", "Settings: the angle unit" },
 		{ "#6", "This help" },
 		{ "Logo", "Back to the menu" },
@@ -791,99 +1129,121 @@ static void draw_help(void)
 		help_popup("Settings", "The calculator's settings. They last until it closes.",
 			   set_keys, sizeof(set_keys) / sizeof(set_keys[0]));
 	else if (C.sc == SC_LOG)
-		help_popup("Log", "The calculator keeps no log: its sums are on the tape.",
+		help_popup("Log", "The sums worked out since the calculator opened, the newest at the bottom.",
 			   log_keys, sizeof(log_keys) / sizeof(log_keys[0]));
 	else
-		help_popup("Calculator", "Type a sum and press Enter; it goes on the tape above. "
-			   "Starting with + * / or ^ goes on from the last result.",
+		help_popup("Calculator", "Type a sum and press Enter. Also: ^ % ! mod pi e ans sqrt ln log "
+			   "sin cos tan. + * / or ^ first goes on from the last result.",
 			   calc_keys, sizeof(calc_keys) / sizeof(calc_keys[0]));
 }
 
-static void draw_band(int y0, int y1)
+static int scene_first;		/* the next band is a frame's first */
+
+/* The screen in rows fb_y0..fb_y1: the scene behind, then the rest. */
+static void draw_screen(void)
 {
-	static const struct hint hints[] = {
-		{ "Enter", "=", 0 }, { "\xe2\x86\x91\xe2\x86\x93", "earlier", 0 },
-		{ "Tab", "deg/rad", 0 }, { "Esc", "clear", 1 },
-	};
-	static const struct hint empty_hints[] = {
-		{ "Enter", "=", 0 }, { "\xe2\x86\x91\xe2\x86\x93", "earlier", 0 },
-		{ "Tab", "deg/rad", 0 }, { "Esc", "close", 1 },
-	};
 	static const struct hint pick_hints[] = { { "Enter", "choose", 0 }, { "Esc", "cancel", 1 } };
-	const char *chip = C.rad ? "RAD" : "DEG";
 
-	if (C.sc == SC_LOG) {
-		empty_screen("CALCULATOR", "Log", "No log yet.");
-		status_bar();
-	} else if (C.sc == SC_SETTINGS) {
+	if (scene_first) {
+		scene_first = 0;
+		wb_scene();
+	} else {
+		scene_draw();
+	}
+	if (C.sc == SC_LOG)
+		draw_log();
+	else if (C.sc == SC_SETTINGS)
 		draw_settings();
-		if (C.pick) {
-			struct menu_item it[2] = { { .label = "Degrees" }, { .label = "Radians" } };
-
-			menu_popup("CALCULATOR", "Angle unit", "2 options", it, 0, 2, C.pick_focus, C.rad,
-				   0, 0, pick_hints, 2);
-		}
-	}
-	if (C.sc != SC_CALC) {
-		if (C.help)
-			draw_help();
-		return;
-	}
-	fill(0, y0, W, y1 - y0, WB_COLOR_VOID);
-	status_bar();
-	eyebrow(PANEL_X + 8, 54, "APPS");
-	text(&f_ui28b, PANEL_X + 6, 72, "Calculator", WB_COLOR_TEXT_HI, -8);
-	{
-		int w = text_w(&f_mono14, chip, 0) + 24, x = W - PANEL_X - w;
-
-		box(x, 78, w, 28, 14, WB_COLOR_VOID, 255, WB_COLOR_CYAN, 1, 0);
-		text(&f_mono14, x + 12, text_top(&f_mono14, 92), chip, WB_COLOR_CYAN, 0);
-	}
-	box(PANEL_X, PANEL_Y, PANEL_W, PANEL_H, WB_RADIUS_MD, WB_COLOR_CONSOLE, 255,
-	    WB_COLOR_LINE, 1, 0);
-	if (y0 < LINE_Y)
-		draw_tape();
-	fill(PANEL_X + PAD, LINE_Y, PANEL_W - 2 * PAD, 1, WB_COLOR_LINE);
-	if (y1 > LINE_Y)
-		draw_input();
-	text(&f_mono13, LEFT, HELP_Y,
-	     "+ - * / ^ ( )  n%  n!  mod  pi e ans  sqrt ln log sin cos tan",
-	     WB_COLOR_TEXT_LOW, 0);
-	if (C.len || C.err)
-		hint_bar(hints, 4);
 	else
-		hint_bar(empty_hints, 4);
+		draw_calc();
+	/* drawn in bands, the pop-ups are glass, unblurred (wbglass.h) */
+	if (C.sc == SC_SETTINGS && C.pick) {
+		struct menu_item it[2] = { { .label = "Degrees" }, { .label = "Radians" } };
+
+		menu_popup("SETTINGS", "Angle unit", "2 options", it, 0, 2, C.pick_focus, C.rad,
+			   0, 0, pick_hints, 2);
+	}
 	if (C.help)
 		draw_help();
 }
 
 /* ---- output: the panel, or a PPM on the host ---------------------------- */
 
-#define BAND_H	40
+/* The screen is drawn a band of BAND_H rows at a time, only the bands that
+ * changed (dirty). */
+#define BAND_H		40
+#define NBANDS		(H / BAND_H)
+#define ALL_BANDS	((1u << NBANDS) - 1)
+
 static uint16_t band[W * BAND_H];
+static uint32_t dirty;		/* the bands to draw again, a bit each */
 #ifdef CALC_HOST
 static uint16_t screen[W * H];
 #else
 static int fb_fd = -1;
 #endif
 
-static void flush_band(int y0, int y1)
+static void out_rows(const uint16_t *rows, int y0, int y1)
 {
-	fb = band - (long)y0 * W;
-	fb_y0 = y0;
-	fb_y1 = y1;
-	draw_band(y0, y1);
 #ifdef CALC_HOST
-	memcpy(screen + y0 * W, band, (size_t)(y1 - y0) * W * 2);
+	memcpy(screen + y0 * W, rows, (size_t)(y1 - y0) * W * 2);
 #else
-	pwrite(fb_fd, band, (size_t)(y1 - y0) * W * 2, (off_t)y0 * W * 2);
+	pwrite(fb_fd, rows, (size_t)(y1 - y0) * W * 2, (off_t)y0 * W * 2);
 #endif
 }
 
-static void flush_rows(int y0, int y1)
+static void mark(int y0, int y1)
 {
-	for (int y = y0; y < y1; y += BAND_H)
-		flush_band(y, y + BAND_H < y1 ? y + BAND_H : y1);
+	for (int b = (y0 < 0 ? 0 : y0) / BAND_H; b < NBANDS && b * BAND_H < y1; b++)
+		dirty |= 1u << b;
+}
+
+/* a key on the screen, with its glow */
+static void mark_key(int lit)
+{
+	if (lit)
+		mark(key_y(lit - 1) - KEY_GLOW, key_y(lit - 1) + KEY_H + KEY_GLOW);
+}
+
+/* What key() returning r changed, to draw again; lit: C.lit before it.
+ * Typing draws the display, the hint bar (Esc's word: clear or close) and
+ * the keys that lit or went out; Enter, Tab and the like the DEG/RAD chip
+ * too. */
+static void changed(int r, int lit)
+{
+	if (r == 3) {
+		dirty = ALL_BANDS;
+	} else if (C.sc == SC_CALC && !C.help) {
+		mark(DSP_Y, DSP_Y + DSP_H);
+		mark(H - WB_HINT_BAR_H, H);
+		if (r == 0)
+			mark(CHIP_Y, CHIP_Y + CHIP_H);
+	}
+	if (lit != C.lit) {
+		mark_key(lit);
+		mark_key(C.lit);
+	}
+}
+
+static void flush(void)
+{
+	if (wb_scene_turned())		/* the panel turned the old picture */
+		dirty = ALL_BANDS;
+	if (!dirty)
+		return;
+	scene_first = 1;
+	for (int b = 0; b < NBANDS; b++) {
+		int y0 = b * BAND_H;
+
+		if (!(dirty & 1u << b))
+			continue;
+		fb = band - (long)y0 * W;
+		fb_y0 = y0;
+		fb_y1 = y0 + BAND_H;
+		draw_screen();
+		out_rows(band, y0, y0 + BAND_H);
+	}
+	dirty = 0;
 }
 
 /* ---- keys --------------------------------------------------------------- */
@@ -962,7 +1322,7 @@ static int other_key(int code)
 }
 
 /* One key; 0 to go on, 1 to close, 2 when only the line changed, 3 for the
- * whole screen. */
+ * whole screen. A key that is on the screen lights there (C.lit). */
 static int key(int code)
 {
 	char ch, s[4] = "";
@@ -970,13 +1330,16 @@ static int key(int code)
 
 	if (r >= 0)
 		return r;
+	C.lit = 0;
 	switch (code) {
 	case KEY_ENTER:
+		C.lit = KEY_IS + 1;
 		enter();
 		return 0;
 	case KEY_ESC:
 		if (!C.len && !C.err)
 			return 1;
+		C.lit = KEY_C + 1;
 		C.back = 0;
 		set_line("");
 		return 0;
@@ -985,6 +1348,7 @@ static int key(int code)
 		preview();
 		return 0;
 	case KEY_BACKSPACE:
+		C.lit = KEY_ERASE + 1;
 		erase_at(K.fn ? C.cur : C.cur - 1);
 		return 2;
 	case KEY_LEFT:
@@ -1001,6 +1365,7 @@ static int key(int code)
 		return 0;
 	}
 	if (code == KEY_EQUAL && !K.shift) {
+		C.lit = KEY_IS + 1;
 		enter();
 		return 0;
 	}
@@ -1011,6 +1376,7 @@ static int key(int code)
 		ch = '*';
 	if (!strchr("0123456789.+-*/^()%! ", ch) && !is_alpha(ch))
 		return 2;
+	C.lit = grid_key(ch) + 1;
 	/* an operator first continues from the last result ("-" first is a
 	 * negative number) */
 	if (!C.len && C.have_ans && strchr("+*/^%!", ch))
@@ -1050,6 +1416,10 @@ int main(int argc, char **argv)
 
 	memcpy(U.hhmm, "12:34", 6);
 	U.clock_ok = 1;
+	wb_init();
+	calc_glow_init();
+	dirty = ALL_BANDS;
+	flush();
 	for (; *k; k++) {
 		int code = -1;
 
@@ -1069,13 +1439,28 @@ int main(int argc, char **argv)
 			if (*k == ' ')
 				code = 57, K.shift = 0;
 		}
-		if (code >= 0 && key(code) == 1) {
-			write(1, "closed\n", 7);
-			break;
+		if (code >= 0) {
+			int lit = C.lit, r = key(code);
+
+			if (r == 1) {
+				write(1, "closed\n", 7);
+				break;
+			}
+			changed(r, lit);	/* drawn as the badge draws it */
+			flush();
 		}
 		K.shift = 0;
 	}
-	flush_rows(0, H);
+	{
+		/* what the badge drew key by key must be the screen drawn whole */
+		static uint16_t drawn[W * H];
+
+		memcpy(drawn, screen, sizeof(screen));
+		dirty = ALL_BANDS;
+		flush();
+		if (memcmp(drawn, screen, sizeof(screen)))
+			write(1, "stale\n", 6);
+	}
 	if (argc > 2)
 		save_ppm(argv[2]);
 	{
@@ -1116,6 +1501,7 @@ struct ev {				/* 32-bit kernel input_event */
 };
 
 static volatile sig_atomic_t stop_sig;
+static long last_status;		/* when the status bar was read */
 
 static void on_signal(int s)
 {
@@ -1175,17 +1561,27 @@ int main(void)
 	ev = open("/dev/input/event0", O_RDONLY | O_CLOEXEC);
 	if (fb_fd < 0 || ev < 0)
 		return 1;
+	wb_init();
+	calc_glow_init();
 	status_read();
-	flush_rows(0, H);
+	dirty = ALL_BANDS;
+	flush();
 	p.fd = ev;
 	p.events = POLLIN;
+	last_status = wb_now_us();
 	while (!stop_sig) {
 		struct ev evs[16];
-		int k = poll(&p, 1, 5000), got, tape = 0, line = 0, quit = 0, all = 0;
+		int k = poll(&p, 1, 250), got, quit = 0;
 
+		/* every 250 ms: has the badge turned (flush() looks); every 5 s
+		 * the status bar */
 		if (k <= 0) {
-			if (status_read())
-				flush_rows(0, WB_STATUS_BAR_H);
+			if (wb_now_us() - last_status >= 5000000) {
+				last_status = wb_now_us();
+				if (status_read())
+					mark(0, WB_STATUS_BAR_H);
+			}
+			flush();
 			continue;
 		}
 		got = (int)read(ev, evs, sizeof(evs)) / (int)sizeof(evs[0]);
@@ -1200,32 +1596,18 @@ int main(void)
 			else if (e.code == KEY_FN)
 				K.fn = down;
 			else if (key_acts(e.code, e.value)) {
+				int lit = C.lit;
+
 				r = key(e.code);
 				if (r == 1)
 					quit = 1;
-				else if (r == 2)
-					line = 1;
-				else if (r == 3)
-					all = 1;
 				else
-					tape = 1;
+					changed(r, lit);
 			}
 		}
 		if (quit)
 			break;
-		/* typing redraws the line only: a whole screen is ~14 bands */
-		if (all) {
-			flush_rows(0, H);
-			continue;
-		}
-		if (tape || line)	/* Esc's word: clear or close */
-			flush_rows(H - WB_HINT_BAR_H, H);
-		if (tape)
-			flush_rows(PANEL_Y, PANEL_Y + PANEL_H);
-		else if (line)
-			flush_rows(LINE_Y + 1, PANEL_Y + PANEL_H);
-		if (tape)
-			flush_rows(78, 78 + 28);	/* the DEG/RAD chip */
+		flush();
 	}
 	return 0;
 }

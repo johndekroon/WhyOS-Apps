@@ -11,6 +11,7 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 O = os.path.join(HERE, "..", "..", "patches", "buildroot", "overlay-src")
+LIBWB = os.path.join(HERE, "..", "..", "libwb")
 
 # HID usage -> (character, shifted character) on a US keyboard
 US = {0x28: ("\n", "\n"), 0x2b: ("\t", "\t"), 0x2c: (" ", " "), 0x29: ("\x1b", "\x1b")}
@@ -58,18 +59,18 @@ class App:
         self.dir = tempfile.mkdtemp()
         self.hid = os.path.join(self.dir, "hid")
 
-    def run(self, keys, computer=True, shot=None, nomouse=False):
-        env = dict(os.environ, APP_CONFIG=self.dir, SN_HID=self.hid, SN_COMPUTER="1" if computer else "0")
+    def run(self, keys, computer=True, shot=None, nomouse=False, env=None):
+        env = dict(os.environ, APP_CONFIG=self.dir, SN_HID=self.hid, SN_COMPUTER="1" if computer else "0",
+                   **(env or {}))
         env.pop("SN_NOMOUSE", None)
         if nomouse:
             env["SN_NOMOUSE"] = "1"
         if os.path.exists(self.hid):
             os.unlink(self.hid)
         ppm = os.path.join(self.shots, shot + ".ppm") if shot and self.shots else ""
-        out = subprocess.run([self.exe, keys, ppm], capture_output=True, text=True, env=env,
-                             check=True).stdout
-        st = {"snips": []}
-        for line in out.splitlines():
+        r = subprocess.run([self.exe, keys, ppm], capture_output=True, text=True, env=env, check=True)
+        st = {"snips": [], "stderr": r.stderr}
+        for line in r.stdout.splitlines():
             k, _, v = line.partition(" ")
             if k == "snip":
                 st["snips"].append(v)
@@ -102,12 +103,53 @@ def check(what, got, want):
         print("FAIL %s: want %r, got %r" % (what, want, got))
 
 
+# keys that change a little at a time: focus moves (the list scrolled),
+# the options pop-up and its focus, a choice pop-up in the settings, the
+# mouse screen and keep awake, the editor (characters typed, erased, the
+# fields), the help, a snippet typed (the bar after every character) and
+# the delete dialog
+PARTIAL_KEYS = ("\\d\\d\\d\\d\\d\\d\\d\\d\\d\\u\\u"
+                "\\1\\d\\d\\u\\e"
+                "\\5\\d\\n\\d\\n\\n\\u\\d\\e\\e"
+                "\\3xy\\b\\uz\\l\\b\\dq\\e"
+                "\\6\\e"
+                "\\n"
+                "\\1\\d\\d\\d\\d\\n\\d\\u\\e"
+                "\\u\\u\\u\\u\\u\\u\\u\\u\\u\\u\\n\\2\\2\\6\\e\\e")
+SNIPS = "".join("s%d\tline %d typed\n" % (i, i) for i in range(12))
+
+
+def partial(exe):
+    """Only the bands that changed drawn (libwb wb_frame, wb_bands): every
+    frame of PARTIAL_KEYS the same as drawn whole (WB_FULL=1), in the whole
+    picture and in bands; the typing bar's own copy the same as libwb's."""
+    def frames(extra):
+        a = App(exe, "")
+        a.file("snippets.txt", SNIPS)
+        pre = os.path.join(a.dir, "f")
+        s = a.run(PARTIAL_KEYS, env=dict(extra, SN_FRAMES=pre, HIDEOUS_UI_TIMING="1"))
+        fs = sorted(f for f in os.listdir(a.dir) if f.startswith("f") and f.endswith(".ppm"))
+        bands = [int(line.split(", ")[1].split()[0]) for line in s["stderr"].splitlines()
+                 if line.startswith("hideous: frame ") and "typing bar" not in line]
+        return [open(os.path.join(a.dir, f), "rb").read() for f in fs], bands, s
+
+    for mode, extra in (("whole", {}), ("bands", {"SN_BANDS": "1"})):
+        part, bands, s = frames(extra)
+        full, full_bands, _ = frames(dict(extra, WB_FULL="1"))
+        check("partial %s: frames" % mode, (len(part), s["screen"]), (len(full), "list"))
+        check("partial %s: the same as whole" % mode, [i for i in range(len(part)) if part[i] != full[i]], [])
+        check("partial %s: drawn partly" % mode, (min(bands) <= 4, max(full_bands)), (True, 18))
+    part, _, _ = frames({})
+    slow, _, _ = frames({"SN_NOFAST": "1"})
+    check("typing bar as libwb draws it", [i for i in range(len(part)) if part[i] != slow[i]], [])
+
+
 def main():
     shots = sys.argv[1] if len(sys.argv) > 1 else ""
     if shots:
         os.makedirs(shots, exist_ok=True)
     exe = os.path.join(tempfile.mkdtemp(), "hideous-host")
-    subprocess.run(["cc", "-O1", "-Wall", "-Wextra", "-Werror", "-DSN_HOST", "-I" + O, "-o", exe,
+    subprocess.run(["cc", "-O1", "-Wall", "-Wextra", "-Werror", "-DSN_HOST", "-I" + O, "-I" + LIBWB, "-o", exe,
                     os.path.join(HERE, "hideous.c")], check=True)
 
     # adding: the triangle, a name, Tab, a text with a new line and a tab
@@ -312,6 +354,8 @@ def main():
           ("mouse=2\n", "mouse", 24))
     s = d.run("\\n\\6")
     check("mouse help", s["screen"], "mouse help")
+
+    partial(exe)
 
     print("%d of %d failed" % (bad, checks))
     sys.exit(1 if bad else 0)

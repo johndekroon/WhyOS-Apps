@@ -4,8 +4,8 @@
 format = 1
 id = "write"
 name = "Write"
-version = "1.1.0"
-build = 2
+version = "1.2.0"
+build = 3
 summary = "Write notes and documents, edit text and code"
 description = """
 Write notes and documents on the badge, with headings, lists, bold,
@@ -27,7 +27,7 @@ license = "MIT AND LGPL-2.1-or-later AND OFL-1.1"
 license_file = "write.txt"
 homepage = "https://github.com/johndekroon/WhyOS-Apps"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/write"
-changelog = "Held keys repeat (Backspace, arrows, letters). A sentence starts with a capital in the rich view (Settings switches it off). In HTML and PHP, typing \"</\" finishes the closing tag."
+changelog = "The new WhyOS look: the frontpanel's figures behind the bars, flat bars, frosted pop-ups with their keys inside."
 
 type = "system"
 category = "other"

@@ -116,9 +116,9 @@ build_gnuboy() {
 		objs+=("$s/$f.c")
 	done
 	flat 65536
-	# pause.c (sdapps/pause) draws with the menu's wbdraw.h and fonts (overlay-src)
+	# pause.c (sdapps/pause) draws with libwb, the menu's drawing library
 	"$CC" "${CFLAGS[@]}" -O2 -DIS_LITTLE_ENDIAN -DIS_LINUX -I"$s" -I"$s/sys/nix" \
-		-I"$HERE/../patches/buildroot/overlay-src" "${objs[@]}" "${LDFLAT[@]}" -o "$d/gnuboy"
+		-I"$HERE/../patches/buildroot/overlay-src" -I"$HERE/../libwb" "${objs[@]}" "${LDFLAT[@]}" -o "$d/gnuboy"
 	zero_page "$d/gnuboy.gdb"
 	cp "$HERE/gnuboy/badge.rc" "$HERE/gnuboy/app.conf" "$d/"
 	ls -l "$d"
@@ -150,7 +150,7 @@ build_netsurf() {
 	# a failed allocation ends NetSurf at once (netsurf/oom.c)
 	"$CC" $LIBCFLAGS -c "$HERE/netsurf/oom.c" -o "$SRC/oom.o"
 	# Esc's pause screen (sdapps/pause), drawn with the menu's wbdraw.h
-	"$CC" $LIBCFLAGS -I"$HERE/../patches/buildroot/overlay-src" -c "$HERE/pause/pause.c" \
+	"$CC" $LIBCFLAGS -I"$HERE/../patches/buildroot/overlay-src" -I"$HERE/../libwb" -c "$HERE/pause/pause.c" \
 		-o "$SRC/pause.o"
 	# a small iconv in place of GNU libiconv (netsurf/iconv.c): first on
 	# the library path, so -liconv finds it
@@ -268,7 +268,7 @@ build_imgview() {
 	build_deps
 	mkdir -p "$d"
 	flat 65536
-	"$CC" "${CFLAGS[@]}" -Wall -I"$O" -I"$P/include" "$HERE/imgview/imgview.c" \
+	"$CC" "${CFLAGS[@]}" -Wall -I"$O" -I"$HERE/../libwb" -I"$P/include" "$HERE/imgview/imgview.c" \
 		-L"$P/lib" -ljpeg -lpng16 -lz -lm "${LDFLAT[@]}" -o "$d/imgview"
 	zero_page "$d/imgview.gdb"
 	rm -f "$d/imgview.gdb"
@@ -469,7 +469,7 @@ build_sensorpanel() {
 	local d=$DEST/sensorpanel
 	mkdir -p "$d"
 	flat 16384
-	"$CC" "${CFLAGS[@]}" -Wall "$HERE/sensorpanel/sensorpanel.c" "${LDFLAT[@]}" -o "$d/sensorpanel"
+	"$CC" "${CFLAGS[@]}" -Wall -I"$HERE/../libwb" "$HERE/sensorpanel/sensorpanel.c" "${LDFLAT[@]}" -o "$d/sensorpanel"
 	zero_page "$d/sensorpanel.gdb"
 	rm -f "$d/sensorpanel.gdb"
 	cp "$HERE/sensorpanel/app.conf" "$d/"
@@ -482,7 +482,7 @@ build_buspirate() {
 	local d=$DEST/buspirate O=$HERE/../patches/buildroot/overlay-src
 	mkdir -p "$d"
 	flat 16384
-	"$CC" "${CFLAGS[@]}" -Wall -DBP_APP -I"$O" "$O/home.c" "${LDFLAT[@]}" -o "$d/buspirate"
+	"$CC" "${CFLAGS[@]}" -Wall -DBP_APP -I"$O" -I"$HERE/../libwb" "$O/home.c" "${LDFLAT[@]}" -o "$d/buspirate"
 	zero_page "$d/buspirate.gdb"
 	rm -f "$d/buspirate.gdb"
 	cp "$HERE/buspirate/app.conf" "$d/"
@@ -495,7 +495,7 @@ build_calc() {
 	local d=$DEST/calc O=$HERE/../patches/buildroot/overlay-src
 	mkdir -p "$d"
 	flat 16384
-	"$CC" "${CFLAGS[@]}" -Wall -I"$O" "$HERE/calc/calc.c" "${LDFLAT[@]}" -lm -o "$d/calc"
+	"$CC" "${CFLAGS[@]}" -Wall -I"$O" -I"$HERE/../libwb" "$HERE/calc/calc.c" "${LDFLAT[@]}" -lm -o "$d/calc"
 	zero_page "$d/calc.gdb"
 	rm -f "$d/calc.gdb"
 	cp "$HERE/calc/app.conf" "$d/"
@@ -508,7 +508,7 @@ build_hideous() {
 	local d=$DEST/hideous O=$HERE/../patches/buildroot/overlay-src
 	mkdir -p "$d"
 	flat 16384
-	"$CC" "${CFLAGS[@]}" -Wall -I"$O" "$HERE/hideous/hideous.c" "${LDFLAT[@]}" -o "$d/hideous"
+	"$CC" "${CFLAGS[@]}" -Wall -I"$O" -I"$HERE/../libwb" "$HERE/hideous/hideous.c" "${LDFLAT[@]}" -o "$d/hideous"
 	zero_page "$d/hideous.gdb"
 	rm -f "$d/hideous.gdb"
 	cp "$HERE/hideous/app.conf" "$d/"
@@ -522,7 +522,7 @@ build_barbarious() {
 	local d=$DEST/barbarious O=$HERE/../patches/buildroot/overlay-src
 	mkdir -p "$d"
 	flat 32768
-	"$CC" "${CFLAGS[@]}" -Wall -DNDEBUG -I"$O" "$HERE/barbarious/barbarious.c" "$HERE/barbarious/symbol.c" \
+	"$CC" "${CFLAGS[@]}" -Wall -DNDEBUG -I"$O" -I"$HERE/../libwb" "$HERE/barbarious/barbarious.c" "$HERE/barbarious/symbol.c" \
 		"$O/qrcodegen/qrcodegen.c" "${LDFLAT[@]}" -o "$d/barbarious"
 	zero_page "$d/barbarious.gdb"
 	rm -f "$d/barbarious.gdb"
@@ -536,7 +536,7 @@ build_ohminous() {
 	local d=$DEST/ohminous O=$HERE/../patches/buildroot/overlay-src
 	mkdir -p "$d"
 	flat 32768
-	"$CC" "${CFLAGS[@]}" -Wall -I"$O" "$HERE/ohminous/ohminous.c" "$HERE/ohminous/hw.c" "$HERE/ohminous/bp.c" \
+	"$CC" "${CFLAGS[@]}" -Wall -I"$O" -I"$HERE/../libwb" "$HERE/ohminous/ohminous.c" "$HERE/ohminous/hw.c" "$HERE/ohminous/bp.c" \
 		"${LDFLAT[@]}" -o "$d/ohminous"
 	zero_page "$d/ohminous.gdb"
 	rm -f "$d/ohminous.gdb"
@@ -564,7 +564,7 @@ build_pdfview() {
 		AR="$T-ar" "${MUPDF_OPTS[@]}" XCFLAGS="$LIBCFLAGS $MUPDF_DEFS"
 	mkdir -p "$d"
 	flat 262144
-	"$CC" "${CFLAGS[@]}" -Wall -I"$O" -I"$s/include" "$HERE/pdfview/pdfview.c" \
+	"$CC" "${CFLAGS[@]}" -Wall -I"$O" -I"$HERE/../libwb" -I"$s/include" "$HERE/pdfview/pdfview.c" \
 		"$s/build/badge/libmupdf.a" "$s/build/badge/libmupdf-third.a" -lm "${LDFLAT[@]}" -o "$d/pdfview"
 	zero_page "$d/pdfview.gdb"
 	rm -f "$d/pdfview.gdb"

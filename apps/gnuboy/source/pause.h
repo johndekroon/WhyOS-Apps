@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: MIT */
 /*
  * The pause screen of a full-screen app (pause.c): gnuboy and NetSurf.
- * Without wbdraw.h, whose names (fb) clash with the apps' own.
+ * Without libwb (wb.h), whose names (fb) clash with the apps' own.
  */
 #pragma once
 #include <sys/types.h>
 
-struct pause_key { const char *keys, *what; };	/* as wbdraw.h's help_key */
+struct pause_key { const char *keys, *what; };	/* as libwb's help_key */
 
 struct pause_screen {
 	int fbfd, evfd;

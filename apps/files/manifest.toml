@@ -5,8 +5,8 @@
 format = 1
 id = "files"
 name = "Files"
-version = "1.0.0"
-build = 1
+version = "1.1.0"
+build = 2
 summary = "Browse every file on the badge, the SD card and USB drives"
 description = """
 Files shows every file on the badge as it is: the SD card, USB drives
@@ -22,7 +22,7 @@ license = "MIT AND LGPL-2.1-or-later AND OFL-1.1"
 license_file = "files.txt"
 homepage = "https://github.com/johndekroon/WhyOS-Apps"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/files"
-changelog = "Files is an app of its own now, so it updates from the store. The same screens and keys as before."
+changelog = "The new WhyOS look: the frontpanel's figures behind the screens, calm flat rows and bars, frosted pop-ups with their keys inside. Faster: a key redraws only what changed."
 
 type = "system"
 category = "other"

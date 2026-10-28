@@ -119,6 +119,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 2,
+   "changelog": "The new WhyOS look: the page fills the screen; flat bars, frosted pop-ups with their keys inside. A key redraws only what changed.",
+   "package": {
+    "installed_size": 3414038,
+    "sha256": "fab383401707573dcf7fa68dd235b5b9d1fe75159ced77417b383e6b9ac530fc",
+    "size": 2221311,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/pdfview-1.1.0.wpk"
+   },
+   "published": "2026-10-28T08:49:09Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/pdfview-1.1.0-source.tar.gz",
+   "version": "1.1.0"
+  },
+  {
    "build": 1,
    "changelog": "First version.",
    "package": {

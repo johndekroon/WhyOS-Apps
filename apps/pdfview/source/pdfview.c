@@ -24,6 +24,9 @@
  * Esc closes. The page each file was left at is kept in
  * APP_CONFIG/places, and the file opens there again.
  *
+ * PDFVIEW_UI_TIMING=1 in the environment: a line per frame on stderr
+ * (apprun's log) with the time it took.
+ *
  * Built with -DPDFVIEW_HOST it takes keys from its arguments and writes
  * the screen as PPM (the test in sdapps/pdfview/test).
  */
@@ -40,12 +43,12 @@
 
 #include <mupdf/fitz.h>
 
-#include "home_assets.h"
-#include "home-assets/wb_tokens.h"
+#include "wb_tokens.h"
 
 #define W		WB_SCREEN_W
 #define H		WB_SCREEN_H
-#include "wbdraw.h"
+#include "wb.h"
+#include "wbstatus.h"
 #include "keyrep.h"
 
 #ifndef PDFVIEW_HOST
@@ -94,6 +97,7 @@ static struct {
 /* the pixels of part of the page: (cx, cy) cw x ch at D.scale */
 static struct {
 	uint16_t *px;
+	unsigned gen;			/* one more each time px changes (recording a frame) */
 	int cx, cy, cw, ch, page;
 	float scale;
 } C = { .page = -1 };
@@ -148,6 +152,7 @@ static void drop_page(void)
 	D.list = 0;
 	free(C.px);
 	C.px = 0;
+	C.gen++;
 	C.page = -1;
 }
 
@@ -198,6 +203,7 @@ static int render(void)
 		return 0;
 	free(C.px);
 	C.px = 0;
+	C.gen++;
 	cw = D.pw;			/* the page as wide as it is, or only the view's width */
 	ch = D.ph < 2 * VIEW_H ? D.ph : 2 * VIEW_H;
 	if ((long)cw * ch * 2 > CACHE_MAX)
@@ -250,6 +256,7 @@ static int render(void)
 		C.px = 0;
 		rc = -1;
 	}
+	C.gen++;
 	if (rc == 0) {
 		C.cx = cx;
 		C.cy = cy;
@@ -376,11 +383,105 @@ static void place_save(void)
 
 /* ---- drawing ------------------------------------------------------------ */
 
+/*
+ * The canvas "Menu's met frontpaneel" (Docs/06-design-system.md): the page
+ * fills the screen, without the scene behind it; the title bar (the name,
+ * the page, the zoom) and the hint bar are glass over it, the options, Go
+ * to page and the help frosted pop-ups. The screens without a page (it
+ * cannot be read; the log, the settings) have the scene.
+ *
+ * Drawn in bands of 40 rows into band[]; with a pop-up open into a whole
+ * picture (whole[], 1 MB, only while it is open), as the pop-up's glass
+ * blurs what is under it. Without that memory its glass is not blurred.
+ * Each frame is recorded first and only the bands that changed are drawn
+ * (libwb's wb_bands and wb_frame): a key in a pop-up draws the pop-up's
+ * rows that changed. The page, which paint() copies into fb itself, is
+ * recorded by the cache's generation and where it lies.
+ */
 enum { SC_VIEW, SC_LOG, SC_SETTINGS };
 enum { POP_NONE, POP_HELP, POP_MENU, POP_GOTO };
 static int sc, pop, pf;
 static char go_text[8];
 static int busy;			/* "Drawing page ..." while it renders */
+static int on_scene;			/* the screen shows the scene: drawn again when the badge turns */
+
+static struct {				/* the status bar of the log and settings screens */
+	char hhmm[6];
+	int clock_ok, wifi, lora;
+} S;
+
+static void status_read(void)
+{
+#ifdef PDFVIEW_HOST
+	time_t t = 1798000000;		/* the tests compare screens: a clock that stands still */
+#else
+	time_t t = time(0);
+#endif
+	struct tm tm;
+
+	localtime_r(&t, &tm);
+	S.clock_ok = tm.tm_year >= 124;
+	S.hhmm[0] = (char)('0' + tm.tm_hour / 10);
+	S.hhmm[1] = (char)('0' + tm.tm_hour % 10);
+	S.hhmm[2] = ':';
+	S.hhmm[3] = (char)('0' + tm.tm_min / 10);
+	S.hhmm[4] = (char)('0' + tm.tm_min % 10);
+	S.hhmm[5] = 0;
+	S.wifi = wifi_bars();
+	S.lora = lora_on();
+}
+
+/* WhyOS left; LoRa, Wi-Fi and the clock right (as the menu's) */
+static void status_bar(void)
+{
+	const struct wb_font *n = &f_ui18b;
+	int cy = WB_STATUS_BAR_H / 2;
+
+	text(n, text(n, WB_CHROME_PAD, text_top(n, cy), "Why", WB_COLOR_TEXT_HI, -3),
+	     text_top(n, cy), "OS", WB_COLOR_CYAN, -3);
+	status_right(S.hhmm, S.clock_ok, S.wifi, S.lora);
+}
+
+/* The scene behind the screen (libwb keeps one rotation for a frame). */
+static void backdrop(void)
+{
+	wb_scene();
+}
+
+/*
+ * The title bar: glass over the top of the page, as the hint bar is at
+ * its bottom (the void at 85 % with a faint sheen), with its edge at the
+ * bottom. libwb's bar has its edge on its first row: the hint bar's.
+ */
+static void title_glass(void)
+{
+	static const uint8_t bayer[4][4] = {
+		{ 0, 8, 2, 10 }, { 12, 4, 14, 6 }, { 3, 11, 1, 9 }, { 15, 7, 13, 5 },
+	};
+	const unsigned ta = 217, edge = 56, h = WB_STATUS_BAR_H;
+
+	if (wb_rec) {		/* the same glass every frame, over what is under it */
+		static const int k[] = { 0x7469 };
+
+		wb_rec_rows(0, (int)h, k, sizeof(k));
+		return;
+	}
+	for (int y = fb_y0 > 0 ? fb_y0 : 0; y < fb_y1 && y < (int)h; y++) {
+		unsigned j = (unsigned)y, sa = j < h / 2 ? 10 - 5 * j / (h / 2) : 5 * (h - j) / (h - h / 2);
+		unsigned k16 = (unsigned)(((255u - ta) * (255 - sa) * 65536ull + 32512) / 65025), m16[3];
+
+		for (int c = 0; c < 3; c++) {
+			unsigned t = (WB_COLOR_VOID >> (16 - 8 * c)) & 255;
+
+			m16[c] = (unsigned)(((t * ta * (255 - sa) + 255u * sa * 255u) * 65536ull + 32512) / 65025);
+			if (j == h - 1)
+				m16[c] = (unsigned)((uint64_t)m16[c] * (255 - edge) / 255) + edge * 65536u;
+		}
+		if (j == h - 1)
+			k16 = (unsigned)((uint64_t)k16 * (255 - edge) / 255);
+		glass_span_fb(&fb[y * W], 0, W, bayer[y & 3], k16, m16);
+	}
+}
 
 static void draw_help(void)
 {
@@ -401,7 +502,9 @@ static void draw_help(void)
 
 static void draw_menu(void)
 {
-	static const struct hint hs[] = { { "Enter", "do", 0 }, { "Esc", "cancel", 1 } };
+	static const struct hint hs[] = {
+		{ "\xe2\x86\x91\xe2\x86\x93", "select", 0 }, { "Enter", "do", 0 }, { "Esc", "cancel", 1 },
+	};
 	struct menu_item it[2];
 	char count[24];
 
@@ -410,30 +513,77 @@ static void draw_menu(void)
 	snprintf(it[0].value, sizeof(it[0].value), "%d / %d", D.page + 1, D.pages);
 	it[1].label = D.whole ? "Page width" : "Whole page";
 	snprintf(count, sizeof(count), "%d pages", D.pages);
-	menu_popup("PDF VIEWER", D.name, count, it, 0, 2, pf, -1, 0, 0, hs, 2);
+	menu_popup("PDF VIEWER", D.name, count, it, 0, 2, pf, -2, 0, 0, hs, 3);
 }
 
-/* the page number typed in a field, as a pop-up */
+/* the page number typed in a field, as a dialog (the menu's input) */
 static void draw_goto(void)
 {
 	static const struct hint hs[] = { { "Enter", "go", 0 }, { "Esc", "cancel", 1 } };
-	int h = 32 + 18 + 6 + 36 + 24 + 52 + 32, y = WB_STATUS_BAR_H + (H - WB_STATUS_BAR_H - WB_HINT_BAR_H - h) / 2;
-	int x = POP_X + 32, w = POP_W - 64, tx;
+	int x = DLG_X + 32, w = DLG_W - 64, y, tx;
 	char sub[48];
 
-	pop_frame(y, h);
-	eyebrow(x, y + 32, "GO TO PAGE");
+	y = dialog("PDF VIEWER \xe2\x80\xba", "Go to page", 56, 0, 0, 0, 0, -1);
+	box_focus(x, y, w, 56, WB_RADIUS_MD, &GLOW_FOCUS);
+	tx = text(&f_mono18, x + 20, text_top(&f_mono18, y + 28), go_text, WB_COLOR_TEXT_HI, 0);
+	fill(tx + 1, y + 16, 2, 24, WB_COLOR_CYAN);
 	snprintf(sub, sizeof(sub), "1 to %d", D.pages);
-	text(&f_mono13, x + w - text_w(&f_mono13, sub, 0), y + 33, sub, WB_COLOR_TEXT_LOW, 0);
-	text(&f_ui28b, x, y + 32 + 18 + 6 + 2, "Page number", WB_COLOR_TEXT_HI, 0);
-	y += 32 + 18 + 6 + 36 + 24;
-	box_focus(x, y, w, 52, WB_RADIUS_MD, &GLOW_ROW);
-	tx = text(&f_mono18, x + 20, text_top(&f_mono18, y + 26), go_text, WB_COLOR_TEXT_HI, 0);
-	fill(tx + 2, y + 14, 2, 24, WB_COLOR_CYAN);
-	hint_bar(hs, 2);
+	text(&f_mono14, x + w - 20 - text_w(&f_mono14, sub, 0), text_top(&f_mono14, y + 28), sub,
+	     WB_COLOR_PLACEHOLDER, 0);
+	dlg_hints(hs, 2);
 }
 
-static void draw_band(int y0, int y1)
+/* The log or the settings, which a viewer does not have (6.6): the screen
+ * still opens, with one line saying so. */
+static void draw_empty(void)
+{
+	static const struct hint hints[] = { { "Esc", "back", 1 } };
+
+	backdrop();
+	status_bar();
+	wb_header("PDF VIEWER \xe2\x80\xba", sc == SC_LOG ? "Log" : "Settings", 0);
+	wb_row(WB_CONTENT_PAD, WB_ROWS_TOP, W - 2 * WB_CONTENT_PAD, WB_LIST_ROW_H, &r_info,
+	       sc == SC_LOG ? "No log yet" : "This app has no settings", 0, 0, WB_ROW_NONE, 0, 0);
+	hint_bar(hints, 1);
+}
+
+/* A file or page that cannot be shown: a card in the middle, over the scene. */
+static void draw_error(void)
+{
+	int x = WB_CONTENT_PAD, w = W - 2 * WB_CONTENT_PAD, h = 104, y = VIEW_Y + (VIEW_H - h) / 2;
+	int tx = x + 24 + 26 + 18;
+	char buf[128];
+
+	wb_card(x, y, w, h, WB_RADIUS_MD, 0, 0);
+	icon(&r_doc, x + 24, y + (h - 26) / 2, WB_COLOR_ERROR, 255);
+	text(&f_ui22, tx, text_top(&f_ui22, y + h / 2 - 14), D.pages ? "Cannot show this page" :
+	     "Cannot open this PDF", WB_COLOR_TEXT_HI, 0);
+	text(&f_ui18, tx, text_top(&f_ui18, y + h / 2 + 16),
+	     wb_fit(&f_ui18, D.err, x + w - 24 - tx, buf, sizeof(buf)), WB_COLOR_TEXT_MID, 0);
+}
+
+/* The page between the bars; a page longer than the view goes on under
+ * them, as far as the cache has it. Copied into fb's rows; while
+ * recording, only its rows and what decides them. */
+static void draw_page(void)
+{
+	int vw = D.pw < W ? D.pw : W, ox = (W - vw) / 2;
+	int oy = D.ph <= VIEW_H ? VIEW_Y + (VIEW_H - D.ph) / 2 : VIEW_Y - D.sy;
+	int r0 = oy + (C.cy > 0 ? C.cy : 0), r1 = oy + (C.cy + C.ch < D.ph ? C.cy + C.ch : D.ph);
+
+	if (wb_rec) {		/* rows r0..r1 show cache rows from C.cy on */
+		int k[] = { 0x7067, (int)C.gen, oy + C.cy, ox, vw, D.sx - C.cx, C.cw };
+
+		wb_rec_rows(r0, r1, k, sizeof(k));
+		return;
+	}
+	for (int y = fb_y0 > r0 ? fb_y0 : r0; y < fb_y1 && y < r1; y++)
+		memcpy(&fb[y * W + ox], &C.px[(size_t)(y - oy - C.cy) * C.cw + (D.sx - C.cx)], (size_t)vw * 2);
+}
+
+/* The screen, clipped to fb_y0..fb_y1: it only draws (libwb runs it once
+ * more to record the frame). */
+static void paint(void *unused)
 {
 	static const struct hint hints[] = {
 		{ "\xe2\x86\x91\xe2\x86\x93", "scroll", 0 }, { "\xe2\x86\x90 \xe2\x86\x92", "page", 0 },
@@ -443,50 +593,57 @@ static void draw_band(int y0, int y1)
 		{ "\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "move", 0 }, { "Enter", "back", 0 },
 		{ "#1", "options", 0 }, { "Esc", "close", 1 },
 	};
+	static const struct hint closing[] = { { "Esc", "close", 1 } };
 	char right[48], name[256];
+	int rw;
 
+	(void)unused;
 	if (sc != SC_VIEW) {
-		empty_screen("PDF VIEWER", sc == SC_LOG ? "Log" : "Settings",
-			     sc == SC_LOG ? "No log yet." : "This app has no settings.");
+		draw_empty();
 		if (pop == POP_HELP)
 			draw_help();
 		return;
 	}
-	fill(0, y0, W, y1 - y0, WB_COLOR_VOID);
-	if (busy || D.err[0] || !C.px) {
-		char m[80];
-
-		if (D.err[0])
-			snprintf(m, sizeof(m), "%s", D.err);
-		else
-			snprintf(m, sizeof(m), "Drawing page %d\xe2\x80\xa6", D.page + 1);
-		text(&f_ui22, (W - text_w(&f_ui22, m, 0)) / 2, VIEW_Y + VIEW_H / 2 - 12, m,
-		     D.err[0] ? WB_COLOR_ERROR : WB_COLOR_TEXT_MID, 0);
+	if (D.err[0] && !busy) {
+		backdrop();
+		draw_error();
 	} else {
-		int vw = D.pw < W ? D.pw : W, vh = D.ph < VIEW_H ? D.ph : VIEW_H;
-		int ox = (W - vw) / 2, oy = VIEW_Y + (VIEW_H - vh) / 2;
+		/* no scene: the bars are glass over the page all the same */
+		fill(0, 0, W, H, WB_COLOR_VOID);
+		scene_shown = 1;
+		gb_ok = 0;
+	}
+	if (busy || !C.px) {
+		if (!D.err[0] || busy) {
+			char m[80];
 
-		for (int y = y0 > oy ? y0 : oy; y < y1 && y < oy + vh; y++)
-			memcpy(&fb[y * W + ox], &C.px[(size_t)(y - oy + D.sy - C.cy) * C.cw + (D.sx - C.cx)],
-			       (size_t)vw * 2);
+			snprintf(m, sizeof(m), "Drawing page %d\xe2\x80\xa6", D.page + 1);
+			text(&f_ui22, (W - text_w(&f_ui22, m, 0)) / 2, text_top(&f_ui22, VIEW_Y + VIEW_H / 2), m,
+			     WB_COLOR_TEXT_MID, 0);
+		}
+	} else {
+		draw_page();
 		if (D.ph > VIEW_H) {	/* where on the page: a thin bar on the right */
 			int th = VIEW_H * VIEW_H / D.ph, ty = VIEW_Y + (VIEW_H - th) * D.sy / (D.ph - VIEW_H);
 
 			box(W - 7, ty, 4, th < 24 ? 24 : th, 2, WB_COLOR_TEXT_LOW, 160, 0, 0, 0);
 		}
 	}
-	/* the status bar: the file's name; the page */
-	fill(0, 0, W, WB_STATUS_BAR_H, WB_COLOR_VOID);
+	/* the title bar: the file's name; the page and the zoom */
+	title_glass();
 	if (D.pages)
 		snprintf(right, sizeof(right), "%d / %d%s", D.page + 1, D.pages, D.zoom ? "   2x" : "");
 	else
 		right[0] = 0;
+	rw = text_w(&f_mono14, right, 0);
 	text(&f_ui18, WB_CHROME_PAD, text_top(&f_ui18, WB_STATUS_BAR_H / 2),
-	     wb_fit(&f_ui18, D.name, W - 2 * WB_CHROME_PAD - 24 - text_w(&f_mono14, right, 0), name, sizeof(name)),
-	     WB_COLOR_TEXT_HI, 0);
-	text(&f_mono14, W - WB_CHROME_PAD - text_w(&f_mono14, right, 0), text_top(&f_mono14, WB_STATUS_BAR_H / 2),
-	     right, WB_COLOR_TEXT_MID, 0);
-	hint_bar(D.zoom ? zoomed : hints, D.zoom ? 4 : 5);
+	     wb_fit(&f_ui18, D.name, W - 2 * WB_CHROME_PAD - 24 - rw, name, sizeof(name)), WB_COLOR_TEXT_HI, 0);
+	text(&f_mono14, W - WB_CHROME_PAD - rw, text_top(&f_mono14, WB_STATUS_BAR_H / 2), right,
+	     WB_COLOR_TEXT_MID, 0);
+	if (!D.pages)
+		hint_bar(closing, 1);
+	else
+		hint_bar(D.zoom ? zoomed : hints, D.zoom ? 4 : 5);
 	if (pop == POP_HELP)
 		draw_help();
 	else if (pop == POP_MENU)
@@ -495,30 +652,87 @@ static void draw_band(int y0, int y1)
 		draw_goto();
 }
 
-static uint16_t band[W * 40];
+static uint16_t band[W * 40], *whole;
 #ifdef PDFVIEW_HOST
 static uint16_t screen[W * H];
+static FILE *frames;			/* frames=PATH: every frame drawn, for the tests */
 #else
 static int fb_fd = -1;
 #endif
 
+/* a band (or the whole picture) to the panel */
+static void out(const uint16_t *b, int y0, int y1)
+{
+#ifdef PDFVIEW_HOST
+	memcpy(screen + y0 * W, b, (size_t)(y1 - y0) * W * 2);
+#else
+	pwrite(fb_fd, b, (size_t)(y1 - y0) * W * 2, (off_t)y0 * W * 2);
+#endif
+}
+
+#ifdef PDFVIEW_HOST
+static void write_ppm(FILE *o)
+{
+	fprintf(o, "P6\n%d %d\n255\n", W, H);
+	for (int i = 0; i < W * H; i++) {
+		uint16_t p = screen[i];
+		unsigned char c[3] = { (unsigned char)((p >> 11) << 3), (unsigned char)(((p >> 5) & 63) << 2),
+				       (unsigned char)((p & 31) << 3) };
+
+		fwrite(c, 3, 1, o);
+	}
+}
+#endif
+
+/* PDFVIEW_UI_TIMING=1: a line per frame on stderr (apprun's log) */
+static void timing(long t0, int n, int whole_frame)
+{
+	static int on = -1;
+	char line[96];
+
+	if (on < 0)
+		on = getenv("PDFVIEW_UI_TIMING") != 0;
+	if (on) {
+		int len = snprintf(line, sizeof(line), "pdfview: frame %ld us (%s, %d bands), scene %ld, glass %ld\n",
+				   wb_now_us() - t0, whole_frame ? "whole" : "bands", n, tm_scene, tm_glass);
+
+		if (write(2, line, (size_t)len) < 0)
+			on = 0;
+	}
+	tm_scene = tm_glass = 0;
+}
+
+/*
+ * The screen, recorded and then drawn only where it changed: in bands, or
+ * with a pop-up open in the whole picture (1 MB while it is open), so the
+ * pop-up's panel blurs what is under it and keeps that blur while only
+ * the pop-up changes.
+ */
 static void redraw(void)
 {
-	for (int y = 0; y < H; y += 40) {
-		int y1 = y + 40 > H ? H : y + 40;
+	long t0 = wb_now_us();
+	int n;
 
-		/* fb points at row 0, which lies outside band: as an address only */
-		fb = (uint16_t *)((uintptr_t)band - (uintptr_t)y * W * sizeof(uint16_t));
-		fb_y0 = y;
-		fb_y1 = y1;
-		draw_band(y, y1);
-#ifdef PDFVIEW_HOST
-		memcpy(screen + y * W, band, (size_t)(y1 - y) * W * 2);
-#else
-		if (pwrite(fb_fd, band, (size_t)(y1 - y) * W * 2, (off_t)y * W * 2) < 0)
-			return;
-#endif
+	if (pop != POP_NONE && !whole) {	/* a pop-up: the whole picture, if there is room */
+		whole = malloc((size_t)W * H * 2);
+		if (whole)
+			wb_rec_invalidate();	/* nothing in it yet */
+	} else if (pop == POP_NONE && whole) {
+		free(whole);
+		whole = 0;
 	}
+	if (sc != SC_VIEW)
+		status_read();
+	on_scene = sc != SC_VIEW || (D.err[0] && !busy);
+	if (whole)
+		n = wb_frame(paint, 0, whole, 40, out);
+	else
+		n = wb_bands(paint, 0, band, 40, out);
+	timing(t0, n, whole != 0);
+#ifdef PDFVIEW_HOST
+	if (frames)
+		write_ppm(frames);
+#endif
 }
 
 /* Page i, from its top (or its bottom), drawn: "Drawing page" first. */
@@ -544,8 +758,10 @@ static void show(int i, int at_end)
 static void moved(void)
 {
 	clamp_view();
-	if (render() < 0)
+	if (render() < 0) {
 		C.px = 0;
+		C.gen++;
+	}
 	redraw();
 }
 
@@ -705,10 +921,12 @@ static void start(const char *path)
 
 #ifdef PDFVIEW_HOST
 /*
- * pdfview-host FILE OUT.ppm [KEYS]: the screen after KEYS (one character a
- * key: u d l r arrows, U D Fn+Up/Down, e Enter, x Esc, s Space, S
- * Shift+Space, m the square, h the diamond, b Backspace, 0-9 digits);
- * prints the page, the view and the error.
+ * pdfview-host FILE OUT.ppm [KEYS [FRAMES.ppm]]: the screen after KEYS (one
+ * character a key: u d l r arrows, U D Fn+Up/Down, e Enter, x Esc, s
+ * Space, S Shift+Space, m the square, h the diamond, g the circle, c the
+ * cloud, b Backspace, 0-9 digits); prints the page, the view and the
+ * error. With FRAMES.ppm every frame drawn is written there too (the
+ * tests compare them with WB_FULL=1's).
  */
 int main(int argc, char **argv)
 {
@@ -718,11 +936,15 @@ int main(int argc, char **argv)
 
 	if (argc < 3)
 		return 2;
+	if (argc > 4 && !(frames = fopen(argv[4], "wb")))
+		return 1;
+	wb_init();
 	start(argv[1]);
 	for (; *k && !closed; k++) {
-		static const char ch[] = "udlrUDexsSmhb";
+		static const char ch[] = "udlrUDexsSmhgcb";
 		static const int code[] = { KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_ENTER,
-					    KEY_ESC, KEY_SPACE, KEY_SPACE, KEY_SYM_MENU, KEY_SYM_HELP, KEY_BACKSPACE };
+					    KEY_ESC, KEY_SPACE, KEY_SPACE, KEY_SYM_MENU, KEY_SYM_HELP, KEY_SYM_LOG,
+					    KEY_SYM_SETTINGS, KEY_BACKSPACE };
 		const char *p = strchr(ch, *k);
 
 		K.fn = *k == 'U' || *k == 'D';
@@ -733,17 +955,12 @@ int main(int argc, char **argv)
 			closed = key(code[p - ch]);
 		K.fn = K.shift = 0;
 	}
+	if (frames)
+		fclose(frames);
 	if (D.pages)
 		place_save();
 	o = fopen(argv[2], "wb");
-	fprintf(o, "P6\n%d %d\n255\n", W, H);
-	for (int i = 0; i < W * H; i++) {
-		uint16_t p = screen[i];
-		unsigned char c[3] = { (unsigned char)((p >> 11) << 3), (unsigned char)(((p >> 5) & 63) << 2),
-				       (unsigned char)((p & 31) << 3) };
-
-		fwrite(c, 3, 1, o);
-	}
+	write_ppm(o);
 	fclose(o);
 	printf("page %d of %d\nsize %d %d\nview %d %d\nzoom %d\nwhole %d\npop %d\nclosed %d\ncache %d %d %d %d\n"
 	       "error %s\n", D.page + 1, D.pages, D.pw, D.ph, D.sx, D.sy, D.zoom, D.whole, pop, closed,
@@ -793,10 +1010,19 @@ int main(int argc, char **argv)
 	ev = open("/dev/input/event0", O_RDONLY | O_CLOEXEC);
 	if (fb_fd < 0 || ev < 0)
 		return 1;
+	wb_init();
 	start(argv[1]);
 	while (!stop) {
+		struct pollfd p = { .fd = ev, .events = POLLIN };
 		struct ev e;
 
+		/* with the scene shown, look four times a second whether the
+		 * badge turned: the scene is drawn turned with it */
+		if (on_scene && poll(&p, 1, 250) == 0) {
+			if (wb_scene_turned())
+				redraw();
+			continue;
+		}
 		if (read(ev, &e, sizeof(e)) != sizeof(e))
 			break;
 		if (e.type != 1)

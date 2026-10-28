@@ -104,6 +104,19 @@
  "type": "system",
  "versions": [
   {
+   "build": 3,
+   "changelog": "The new WhyOS look: the frontpanel's figures behind the bars, flat bars, frosted pop-ups with their keys inside.",
+   "package": {
+    "installed_size": 732277,
+    "sha256": "979b13c6db465e7087b2835724f5279e279c371bbe07040ef66e9c3ccbae0af7",
+    "size": 316552,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/write-1.2.0.wpk"
+   },
+   "published": "2026-10-28T08:49:10Z",
+   "source_archive": null,
+   "version": "1.2.0"
+  },
+  {
    "build": 2,
    "changelog": "Held keys repeat (Backspace, arrows, letters). A sentence starts with a capital in the rich view (Settings switches it off). In HTML and PHP, typing \"</\" finishes the closing tag.",
    "package": {

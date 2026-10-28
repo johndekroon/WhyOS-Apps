@@ -3,8 +3,9 @@
  * hideous (HIDeous) — texts kept on the badge ("snippets") that it types
  * on a computer, as a USB keyboard on the bottom port (J8; docs/USB.md,
  * "Device mode"), and the badge as that computer's mouse. Drawn like the
- * menu (wbdraw.h and the design's fonts), as an app from the store
- * (sdapps/README.md).
+ * menu, with libwb in the style of the canvas "Menu's met frontpaneel"
+ * (the frontpanel's figures behind glass cards, frosted pop-ups), as an app
+ * from the store (sdapps/README.md).
  *
  * A list of snippets, each a name and a text of up to TEXT_MAX bytes (new
  * lines and tabs included). Enter on one types it: every character becomes
@@ -47,7 +48,11 @@
  * pause, and Shift, Ctrl or Alt with a key puts that key in (key_token). The mouse screen reads
  * presses and releases (mouse_key), the rest only presses (key).
  *
- * The panel is drawn one band of BAND_H rows at a time, as calc does.
+ * The panel is drawn into a whole picture (1 MB, malloc'd at the start),
+ * so that pop-ups can blur what is under them; without room for it, one
+ * band of BAND_H rows at a time, as calc does, with plain pop-ups. Either
+ * way a frame is recorded first and only the bands that changed are drawn
+ * (libwb's wb_frame() and wb_bands(): present()).
  * Built with -DSN_HOST, it takes keys from its first argument, writes the
  * screen as PPM to its second and the keyboard reports as hex lines to
  * $SN_HID: the host test (hideous/test_hideous.py).
@@ -64,12 +69,11 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "home_assets.h"
-#include "home-assets/wb_tokens.h"
+#include "wb_tokens.h"
 
 #define W		WB_SCREEN_W
 #define H		WB_SCREEN_H
-#include "wbdraw.h"
+#include "wb.h"
 #include "lora_state.h"
 #include "wbstatus.h"
 #include "usbkbd.h"
@@ -839,11 +843,11 @@ static int char_taps(unsigned cp, struct tap *t)
 
 /* ---- layout ------------------------------------------------------------- */
 
-#define TOP		(WB_STATUS_BAR_H + 20)	/* the eyebrow */
+#define TOP		72			/* the eyebrow (wb_header) */
 #define TITLE_Y		(TOP + 18 + 6)
 #define BODY_Y		(TOP + 18 + 6 + 44)
 #define BOTTOM		(H - WB_HINT_BAR_H - 8)
-#define ROW_H		76
+#define ROW_H		WB_LIST_ROW_H		/* 68, as wb_row's */
 #define ROW_GAP		10
 #define X0		WB_CONTENT_PAD
 #define XW		(W - 2 * WB_CONTENT_PAD)
@@ -861,6 +865,18 @@ static int char_taps(unsigned cp, struct tap *t)
 #define TEXT_W		(XW - 2 * TEXT_PAD - 16)	/* room for the ↓ of a new line */
 #define COUNT_Y		(TEXT_Y + TEXT_H + 10)
 #define TF		(&f_mono18)
+
+/* the typing pop-up's progress bar and the count under it */
+#define TYP_H		(8 + 14 + 24)
+
+/*
+ * The whole picture (1 MB), when there was room for it: pop-ups are
+ * frosted glass then, which blurs what lies around them. Without it the
+ * panel is drawn a band at a time and pop-ups are plain.
+ */
+static uint16_t *whole;
+static uint16_t typing_bg[DLG_W * TYP_H];	/* the typing pop-up under its bar */
+static int typing_y = -1;			/* where that is; -1 not kept */
 
 /* ---- the status bar ----------------------------------------------------- */
 
@@ -880,73 +896,91 @@ static void status_bar(void)
 	status_right(U.hhmm, U.clock_ok, U.wifi_up, U.lora);
 }
 
+/* The frontpanel's figures (libwb's wb_scene(), which reads the rotation
+ * while a frame is recorded and keeps it while it is drawn), the status
+ * bar, the eyebrow ("APP", or where the screen lies) and the title. */
 static void header(const char *eb, const char *title)
 {
-	char buf[96];
-
-	fill(0, 0, W, H, WB_COLOR_VOID);
+	wb_scene();
 	status_bar();
-	eyebrow(X0, TOP, eb);
-	text(&f_ui36b, X0, TITLE_Y, wb_fit(&f_ui36b, title, XW - 220, buf, sizeof(buf)),
-	     WB_COLOR_TEXT_HI, -11);
+	wb_header(eb, title, 0);
 }
 
 /* The computer on J8, as a chip right of the title. */
 static void computer_chip(void)
 {
 	const char *s = C.computer ? "COMPUTER" : "NO COMPUTER";
-	uint32_t c = C.computer ? WB_COLOR_OK : WB_COLOR_TEXT_LOW;
 	int w = text_w(&f_mono14, s, 0) + 24, x = W - X0 - w, y = TITLE_Y + 8;
 
-	box(x, y, w, 28, 14, WB_COLOR_VOID, 255, C.computer ? WB_COLOR_OK : WB_COLOR_LINE, 1, 0);
-	text(&f_mono14, x + 12, text_top(&f_mono14, y + 14), s, c, 0);
+	box(x, y, w, 28, 4, WB_COLOR_VOID, 217, 0, 0, 0);
+	if (C.computer)
+		box(x, y, w, 28, 4, 0, 0, WB_COLOR_OK, 1, 0);
+	else
+		edge_rect(x, y, w, 28, 0xFFFFFF, 66);
+	text(&f_mono14, x + 12, text_top(&f_mono14, y + 14), s, C.computer ? WB_COLOR_OK : WB_COLOR_TEXT_MID, 0);
+}
+
+/* The notice under the title ("Saved", "Typed 12 characters"). */
+static void notice(void)
+{
+	static const uint32_t note_c[3] = { WB_COLOR_OK, WB_COLOR_WARN, WB_COLOR_ERROR };
+	char buf[128];
+
+	if (C.notice[0])
+		text(&f_ui18, X0 + 6, WB_ROWS_TOP - 8, wb_fit(&f_ui18, C.notice, XW - 6, buf, sizeof(buf)),
+		     note_c[C.note], 0);
 }
 
 /* ---- the list ----------------------------------------------------------- */
 
 static int list_top(void)
 {
-	return BODY_Y + (C.notice[0] ? 8 + 24 : 0) + 24;
+	return WB_ROWS_TOP + (C.notice[0] ? 32 : 0);
+}
+
+/*
+ * A row of the list, laid out as wb_row's (68 px): the icon (cyan on the
+ * focus), the label, and under it a line in mono (what the snippet types);
+ * a chevron where Enter opens a screen.
+ */
+static void list_row(int y, const struct wb_icon *ic, const char *label, const char *sub, uint32_t sub_c,
+		     int open, int on)
+{
+	int x = X0, top = y + ROW_H / 2, lx = x + 20 + 26 + 16, rx = x + XW - 18;
+	uint32_t ic_c = on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID;
+	char buf[128];
+
+	wb_card(x, y, XW, ROW_H, WB_RADIUS_MD, on, &GLOW_FOCUS);
+	icon(ic, x + 20, top - ic->h / 2, ic_c, 255);
+	if (open) {
+		icon(&r_chevron, rx - 20, top - 10, ic_c, 255);
+		rx -= 20 + 16;
+	}
+	text(&f_ui22, lx, text_top(&f_ui22, top - 11), wb_fit(&f_ui22, label, rx - lx, buf, sizeof(buf)),
+	     WB_COLOR_TEXT_HI, 0);
+	text(&f_mono14, lx, text_top(&f_mono14, top + 15), wb_fit(&f_mono14, sub, rx - lx, buf, sizeof(buf)),
+	     sub_c, 0);
 }
 
 static void draw_row(int i, int y, int on)
 {
-	char buf[128], line[160];
-	int x = X0, lx = x + 20 + 26 + 16, rx = x + XW - 20;
+	char name[128], line[160];
 
-	if (on)
-		box_focus(x, y, XW, ROW_H, WB_RADIUS_MD, &GLOW_ROW);
-	else
-		box_plain(x, y, XW, ROW_H, WB_RADIUS_MD, WB_COLOR_SURFACE1);
-	icon(&r_text, x + 20, y + ROW_H / 2 - 13, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 255);
-	label_of(i, line, sizeof(line));
-	text(&f_ui22, lx, y + 12, wb_fit(&f_ui22, line, rx - lx, buf, sizeof(buf)), WB_COLOR_TEXT_HI, 0);
+	label_of(i, name, sizeof(name));
 	if (S[i].name[0]) {
 		one_line(line, sizeof(line), S[i].text);
 	} else {
 		line[0] = 0;
 		cat_count(line, cp_count(S[i].text), "character");
 	}
-	text(&f_mono14, lx, y + 46, wb_fit(&f_mono14, line, rx - lx, buf, sizeof(buf)),
-	     WB_COLOR_TEXT_LOW, 0);
+	list_row(y, &r_text, name, line, WB_COLOR_TEXT_MID, 0, on);
 }
 
-/* The list's first row: the mouse screen. */
+/* The list's first row: the mouse screen. Keep awake on is pink (active). */
 static void draw_mouse_row(int y, int on)
 {
-	int x = X0, lx = x + 20 + 26 + 16;
-
-	if (on)
-		box_focus(x, y, XW, ROW_H, WB_RADIUS_MD, &GLOW_ROW);
-	else
-		box_plain(x, y, XW, ROW_H, WB_RADIUS_MD, WB_COLOR_SURFACE1);
-	icon(&r_usb, x + 20, y + ROW_H / 2 - 13, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 255);
-	icon(&r_chevron, x + XW - 20 - 20, y + ROW_H / 2 - 10, WB_COLOR_TEXT_LOW, 255);
-	text(&f_ui22, lx, y + 12, "Mouse", WB_COLOR_TEXT_HI, 0);
-	if (M.awake)
-		text(&f_mono14, lx, y + 46, "Keep awake is on", WB_COLOR_OK, 0);
-	else
-		text(&f_mono14, lx, y + 46, "Move the pointer with the arrows", WB_COLOR_TEXT_LOW, 0);
+	list_row(y, &r_usb, "Mouse", M.awake ? "Keep awake is on" : "Move the pointer with the arrows",
+		 M.awake ? WB_COLOR_PINK : WB_COLOR_TEXT_MID, 1, on);
 }
 
 static void list_hints(void)
@@ -969,33 +1003,31 @@ static void list_hints(void)
 
 static void draw_list(void)
 {
-	static const uint32_t note_c[3] = { WB_COLOR_OK, WB_COLOR_WARN, WB_COLOR_ERROR };
+	static const char about[] = "Save texts you type often: an address, a long command, "
+				    "a greeting. Enter on one types it on the computer.";
 	int ys[SN_MAX + 1], hs[SN_MAX + 1], top = list_top(), scroll, cut, y = 0;
-	char buf[128];
 
-	header("APPS", "HIDeous");
+	header("APP", "HIDeous");
 	computer_chip();
-	if (C.notice[0])
-		text(&f_ui18, X0, BODY_Y + 8, wb_fit(&f_ui18, C.notice, XW, buf, sizeof(buf)),
-		     note_c[C.note], 0);
-	if (!n_snip) {
-		int ty = top + ROW_H + 32;
+	notice();
+	if (!n_snip) {	/* the mouse, and how to start on a card under it */
+		int tx = X0 + 24, tw = XW - 48, lines = text_wrap(&f_ui20, 0, 0, tw, 28, about, 0, 4, 0);
+		int ty = top + ROW_H + ROW_GAP;
 
 		draw_mouse_row(top, C.focus == 0);
-		text(&f_ui22, X0, ty, "No snippets yet.", WB_COLOR_TEXT_HI, 0);
-		ty += 44;
-		ty += 28 * text_wrap(&f_ui20, X0, ty, XW, 28,
-				     "Save texts you type often: an address, a long command, "
-				     "a greeting. Enter on one types it on the computer.",
-				     WB_COLOR_TEXT_MID, 4, 1);
+		wb_card(X0, ty, XW, 24 + 30 + 14 + lines * 28 + 22 + 18 + 14 + 3 * 30 + 16, WB_RADIUS_MD, 0, 0);
 		ty += 24;
-		eyebrow(X0, ty, "TO START");
+		text(&f_ui22, tx, ty, "No snippets yet.", WB_COLOR_TEXT_HI, 0);
+		ty += 30 + 14;
+		ty += 28 * text_wrap(&f_ui20, tx, ty, tw, 28, about, WB_COLOR_TEXT_MID, 4, 1);
+		ty += 22;
+		eyebrow(tx, ty, "TO START");
+		ty += 18 + 14;
+		text(&f_ui20, tx, ty, "1. Connect the computer to the bottom USB-C port.", WB_COLOR_TEXT_MID, 0);
 		ty += 30;
-		text(&f_ui20, X0, ty, "1. Connect the computer to the bottom USB-C port.", WB_COLOR_TEXT_MID, 0);
+		text(&f_ui20, tx, ty, "2. Press the triangle key to add a snippet.", WB_COLOR_TEXT_MID, 0);
 		ty += 30;
-		text(&f_ui20, X0, ty, "2. Press the triangle key to add a snippet.", WB_COLOR_TEXT_MID, 0);
-		ty += 30;
-		text(&f_ui20, X0, ty, "3. Click where the text goes, then Enter here.", WB_COLOR_TEXT_MID, 0);
+		text(&f_ui20, tx, ty, "3. Click where the text goes, then Enter here.", WB_COLOR_TEXT_MID, 0);
 		list_hints();
 		return;
 	}
@@ -1157,10 +1189,7 @@ static void draw_name(void)
 	int fy = NAME_Y, fx = X0, max = XW - 40, from = 0, cx, on = C.field == 0;
 	char t[NM_MAX + 1];
 
-	if (on)
-		box_focus(fx, fy, XW, NAME_H, WB_RADIUS_MD, &GLOW_ROW);
-	else
-		box_plain(fx, fy, XW, NAME_H, WB_RADIUS_MD, WB_COLOR_SURFACE1);
+	wb_card(fx, fy, XW, NAME_H, WB_RADIUS_MD, on, &GLOW_FOCUS);
 	/* drop characters off the front until the cursor shows */
 	for (;;) {
 		memcpy(t, C.name + from, (size_t)(C.name_cur - from));
@@ -1172,7 +1201,7 @@ static void draw_name(void)
 	}
 	if (!C.name[0] && !on)
 		text(&f_ui18, fx + 20, text_top(&f_ui18, fy + 28), "Optional: shown in the list",
-		     WB_COLOR_TEXT_LOW, 0);
+		     WB_COLOR_PLACEHOLDER, 0);
 	text(TF, fx + 20, text_top(TF, fy + 28), C.name + from, WB_COLOR_TEXT_HI, 0);
 	if (on)
 		fill(fx + 20 + cx + 1, fy + 16, 2, 24, WB_COLOR_CYAN);
@@ -1183,10 +1212,7 @@ static void draw_text_field(void)
 	int on = C.field == 1, n = cp_count(C.text);
 	char t[48];
 
-	if (on)
-		box_focus(X0, TEXT_Y, XW, TEXT_H, WB_RADIUS_MD, &GLOW_ROW);
-	else
-		box_plain(X0, TEXT_Y, XW, TEXT_H, WB_RADIUS_MD, WB_COLOR_SURFACE1);
+	wb_card(X0, TEXT_Y, XW, TEXT_H, WB_RADIUS_MD, on, &GLOW_FOCUS);
 	layout();
 	for (int l = C.text_top; l < lay_n && l < C.text_top + VIS_LINES; l++) {
 		int x = X0 + TEXT_PAD, y = TEXT_Y + 16 + (l - C.text_top) * LINE_H;
@@ -1198,13 +1224,12 @@ static void draw_text_field(void)
 			if (on && i == C.text_cur)
 				fill(x, y + 2, 2, LINE_H - 4, WB_COLOR_CYAN);
 			if (C.text[i] == '\t')
-				text(TF, x, ty, "\xe2\x86\x92", WB_COLOR_TEXT_LOW, 0);
+				text(TF, x, ty, "\xe2\x86\x92", WB_COLOR_PLACEHOLDER, 0);
 			else if (C.text[i] == '\n')
-				text(TF, x + 2, ty, "\xe2\x86\x93", WB_COLOR_TEXT_LOW, 0);
+				text(TF, x + 2, ty, "\xe2\x86\x93", WB_COLOR_PLACEHOLDER, 0);
 			else if (is_key(cp_at(C.text, i))) {
 				key_label(cp_at(C.text, i), t);
-				box(x + 1, y + 6, cp_w(C.text, i, j) - 2, LINE_H - 12, 4, 0, 0,
-				    WB_COLOR_LINE, 1, 0);
+				edge_rect(x + 1, y + 5, cp_w(C.text, i, j) - 2, LINE_H - 10, 0xFFFFFF, 66);
 				text(TF, x + 4, ty, t, WB_COLOR_TEXT_MID, 0);
 			}
 			else {
@@ -1219,14 +1244,14 @@ static void draw_text_field(void)
 			fill(x, y + 2, 2, LINE_H - 4, WB_COLOR_CYAN);
 	}
 	if (!C.text[0] && !on)
-		text(&f_ui18, X0 + TEXT_PAD, TEXT_Y + 16 + 4, "What the badge types", WB_COLOR_TEXT_LOW, 0);
+		text(&f_ui18, X0 + TEXT_PAD, TEXT_Y + 16 + 4, "What the badge types", WB_COLOR_PLACEHOLDER, 0);
 	if (C.err)
-		text(&f_ui18, X0, COUNT_Y, C.err, WB_COLOR_ERROR, 0);
+		text(&f_ui18, X0 + 6, COUNT_Y, C.err, WB_COLOR_ERROR, 0);
 	else if (on)
-		text(&f_ui16, X0, COUNT_Y, "Shift+Enter: a new line.  Tab: a tab.", WB_COLOR_TEXT_LOW, 0);
+		text(&f_ui16, X0 + 6, COUNT_Y, "Shift+Enter: a new line.  Tab: a tab.", WB_COLOR_PLACEHOLDER, 0);
 	t[0] = 0;
 	cat(cat_int(cat(cat_count(t, n, "character"), ", "), (int)strlen(C.text)), " of 1000 bytes");
-	text(&f_mono13, X0 + XW - text_w(&f_mono13, t, 0), COUNT_Y + 2, t, WB_COLOR_TEXT_LOW, 0);
+	text(&f_mono13, X0 + XW - text_w(&f_mono13, t, 0), COUNT_Y + 2, t, WB_COLOR_TEXT_MID, 0);
 }
 
 static void draw_edit(void)
@@ -1234,9 +1259,9 @@ static void draw_edit(void)
 	static const struct hint hints[] = { { "Enter", "save", 0 }, { "#1", "key", 0 }, { "#2", "wait", 0 },
 					     { "Esc", "cancel", 1 } };
 
-	header("HIDEOUS", C.edit < 0 ? "New snippet" : "Edit snippet");
-	text(&f_mono13, X0, NAME_LY, "NAME", WB_COLOR_TEXT_LOW, 21);
-	text(&f_mono13, X0, TEXT_LY, "TEXT", WB_COLOR_TEXT_LOW, 21);
+	header("HIDEOUS \xe2\x80\xba", C.edit < 0 ? "New snippet" : "Edit snippet");
+	text(&f_mono13, X0 + 6, NAME_LY, "NAME", C.field == 0 ? WB_COLOR_CYAN : WB_COLOR_PLACEHOLDER, 21);
+	text(&f_mono13, X0 + 6, TEXT_LY, "TEXT", C.field == 1 ? WB_COLOR_CYAN : WB_COLOR_PLACEHOLDER, 21);
 	draw_name();
 	draw_text_field();
 	hint_bar(hints, 4);
@@ -1246,7 +1271,6 @@ static void draw_edit(void)
 
 static void draw_mouse(void)
 {
-	static const uint32_t note_c[3] = { WB_COLOR_OK, WB_COLOR_WARN, WB_COLOR_ERROR };
 	static const struct help_key legend[] = {
 		{ "\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "Move: a tap is one pixel, hold for faster" },
 		{ "Enter", "Left button: hold it to drag" },
@@ -1261,12 +1285,10 @@ static void draw_mouse(void)
 	int y = list_top(), kw = 0, n = sizeof(legend) / sizeof(legend[0]), ph = 24 + n * 40 + 8;
 	char buf[128], t[96];
 
-	header("HIDEOUS", "Mouse");
+	header("HIDEOUS \xe2\x80\xba", "Mouse");
 	computer_chip();
-	if (C.notice[0])
-		text(&f_ui18, X0, BODY_Y + 8, wb_fit(&f_ui18, C.notice, XW, buf, sizeof(buf)),
-		     note_c[C.note], 0);
-	box_plain(X0, y, XW, ph, WB_RADIUS_MD, WB_COLOR_SURFACE1);
+	notice();
+	wb_card(X0, y, XW, ph, WB_RADIUS_MD, 0, 0);
 	for (int i = 0; i < n; i++)
 		if (keycap_w(legend[i].keys) + 18 > kw)
 			kw = keycap_w(legend[i].keys) + 18;
@@ -1276,28 +1298,21 @@ static void draw_mouse(void)
 		keycap(X0 + 20, cy, legend[i].keys);
 		text(&f_ui18, X0 + 20 + kw + 16, text_top(&f_ui18, cy), legend[i].what, WB_COLOR_TEXT_HI, 0);
 	}
-	if (M.buttons & MS_LEFT) {
+	if (M.buttons & MS_LEFT) {	/* held: pink, the design's active */
 		const char *s = "LEFT BUTTON DOWN";
 		int w = text_w(&f_mono14, s, 0) + 24, x = X0 + XW - 20 - w;
 
-		box(x, y + 16, w, 28, 14, WB_COLOR_PINK, 36, WB_COLOR_PINK, 1, 0);
+		box(x, y + 16, w, 28, 4, WB_COLOR_PINK, 36, WB_COLOR_PINK, 1, 0);
 		text(&f_mono14, x + 12, text_top(&f_mono14, y + 30), s, WB_COLOR_PINK, 0);
 	}
 	y += ph + 16;
-	box_plain(X0, y, XW, 68, WB_RADIUS_MD, WB_COLOR_SURFACE1);
-	text(&f_ui22, X0 + 20, text_top(&f_ui22, y + 34), "Keep awake", WB_COLOR_TEXT_HI, 0);
-	{
-		const char *v = M.awake ? "On" : "Off";
-
-		text(&f_ui18, X0 + XW - 20 - text_w(&f_ui18, v, 0), text_top(&f_ui18, y + 34), v,
-		     M.awake ? WB_COLOR_OK : WB_COLOR_TEXT_MID, 0);
-	}
+	wb_row(X0, y, XW, ROW_H, &r_moon, "Keep awake", 0, 0, WB_ROW_SWITCH, M.awake, 0);
 	t[0] = 0;
 	if (M.awake)
 		cat(cat_count(cat(t, "A pixel and back every 30 s while the app is open: "), M.nudges, "time"), " so far.");
 	else
 		cat(t, "So the computer does not sleep or show you away.");
-	text(&f_ui18, X0, y + 68 + 12, wb_fit(&f_ui18, t, XW, buf, sizeof(buf)), WB_COLOR_TEXT_LOW, 0);
+	text(&f_ui18, X0 + 6, y + ROW_H + 12, wb_fit(&f_ui18, t, XW - 6, buf, sizeof(buf)), WB_COLOR_TEXT_MID, 0);
 	hint_bar(hints, 4);
 }
 
@@ -1306,17 +1321,24 @@ static void draw_mouse(void)
 static void draw_log(void)
 {
 	static const struct hint hints[] = { { "Esc", "back", 1 } };
-	int y = BODY_Y + 24;
+	int y = WB_ROWS_TOP, n = C.n_log;
 	char buf[128];
 
-	if (!C.n_log) {
-		empty_screen("HIDEOUS", "Log", "No log yet. What is typed shows here until the app closes.");
-		status_bar();
+	header("HIDEOUS \xe2\x80\xba", "Log");
+	if (!n) {
+		wb_card(X0, y, XW, ROW_H, WB_RADIUS_MD, 0, 0);
+		text(&f_ui20, X0 + 20, text_top(&f_ui20, y + ROW_H / 2),
+		     wb_fit(&f_ui20, "No log yet. What is typed shows here until the app closes.", XW - 40, buf,
+			    sizeof(buf)), WB_COLOR_TEXT_MID, 0);
+		hint_bar(hints, 1);
 		return;
 	}
-	header("HIDEOUS", "Log");
-	for (int i = C.n_log - 1; i >= 0 && y + 30 < BOTTOM; i--, y += 30)
-		text(&f_mono14, X0, y, wb_fit(&f_mono14, C.log[i], XW, buf, sizeof(buf)),
+	if (n > (BOTTOM - y - 28) / 30)
+		n = (BOTTOM - y - 28) / 30;
+	wb_card(X0, y, XW, 14 + n * 30 + 14, WB_RADIUS_MD, 0, 0);
+	y += 14;
+	for (int i = C.n_log - 1; i >= C.n_log - n; i--, y += 30)
+		text(&f_mono14, X0 + 20, text_top(&f_mono14, y + 15), wb_fit(&f_mono14, C.log[i], XW - 40, buf, sizeof(buf)),
 		     i == C.n_log - 1 ? WB_COLOR_TEXT_HI : WB_COLOR_TEXT_MID, 0);
 	hint_bar(hints, 1);
 }
@@ -1325,27 +1347,20 @@ static void draw_settings(void)
 {
 	static const struct hint hints[] = { { "Enter", "change", 0 }, { "Esc", "back", 1 } };
 	static const char *const labels[3] = { "Computer's layout", "Typing speed", "Mouse speed" };
+	static const struct wb_icon *const ics[3] = { &r_keyboard, &r_bolt, &r_usb };
 	static const char *const notes[3] = {
 		"The keyboard layout the computer uses: otherwise symbols come out wrong.",
 		"Slow is for remote desktops and virtual machines that drop keys.",
 		"How fast the pointer goes when an arrow is held down.",
 	};
-	int y = BODY_Y + 24;
+	int y = WB_ROWS_TOP;
 
-	header("HIDEOUS", "Settings");
-	for (int i = 0; i < 3; i++, y += 68 + 12 + 24 + 20) {
+	header("HIDEOUS \xe2\x80\xba", "Settings");
+	for (int i = 0; i < 3; i++, y += ROW_H + 12 + 24 + 20) {
 		const char *v = i == 2 ? mspeed_names[C.mspeed] : i ? speed_names[C.slow] : lay_names[C.layout];
-		int cy = y + 34, rx = X0 + XW - 20 - 20;
 
-		if (C.set_focus == i)
-			box_focus(X0, y, XW, 68, WB_RADIUS_MD, &GLOW_ROW);
-		else
-			box_plain(X0, y, XW, 68, WB_RADIUS_MD, WB_COLOR_SURFACE1);
-		icon(&r_chevron, rx, cy - 10, WB_COLOR_TEXT_LOW, 255);
-		rx -= 16 + text_w(&f_ui18, v, 0);
-		text(&f_ui18, rx, text_top(&f_ui18, cy), v, C.set_focus == i ? WB_COLOR_TEXT_HI : WB_COLOR_TEXT_MID, 0);
-		text(&f_ui22, X0 + 20, text_top(&f_ui22, cy), labels[i], WB_COLOR_TEXT_HI, 0);
-		text(&f_ui18, X0, y + 68 + 12, notes[i], WB_COLOR_TEXT_LOW, 0);
+		wb_row(X0, y, XW, ROW_H, ics[i], labels[i], 0, v, WB_ROW_OPEN, 0, C.set_focus == i);
+		text(&f_ui16, X0 + 6, y + ROW_H + 12, notes[i], WB_COLOR_TEXT_MID, 0);
 	}
 	hint_bar(hints, 2);
 }
@@ -1431,19 +1446,38 @@ static void draw_keypop(void)
 	if (C.kmods)
 		cat(key_label(KEYS_BASE + ((unsigned)C.kmods << 8), title), "+\xe2\x80\xa6");
 	else
-		cat(title, "Choose, or press a key");
-	menu_popup("INSERT KEY", title, 0, it, 0, PICK_ALONE + 1, C.pf, -1, 0, 0, hs, 2);
+		cat(title, "Insert key");
+	menu_popup(C.edit < 0 ? "NEW SNIPPET" : "EDIT SNIPPET", title, "or press a key", it, 0, PICK_ALONE + 1,
+		   C.pf, -2, 0, 0, hs, 2);
+}
+
+/* The typing pop-up's bar and count, at y in its body. */
+static void draw_progress(int y)
+{
+	int x = DLG_X + 32, w = DLG_W - 64;
+	char t[48];
+
+	box(x, y, w, 8, 4, 0xFFFFFF, 46, 0, 0, 0);
+	if (C.total && C.typed)
+		box(x, y, w * C.typed / C.total < 8 ? 8 : w * C.typed / C.total, 8, 4, WB_COLOR_CYAN, 255, 0, 0, 0);
+	t[0] = 0;
+	cat(cat_int(cat(cat_int(t, C.typed), " of "), C.total), " characters");
+	text(&f_ui18, x, y + 8 + 14, t, WB_COLOR_TEXT_MID, 0);
 }
 
 static void draw_pop(void)
 {
 	static const struct hint pick[] = { { "Enter", "choose", 0 }, { "Esc", "cancel", 1 } };
 	static const struct hint menu_h[] = { { "Enter", "do", 0 }, { "Esc", "cancel", 1 } };
+	static const struct hint ask[] = { { "\xe2\x86\x91\xe2\x86\x93", "select", 0 }, { "Enter", "confirm", 0 },
+					   { "Esc", "cancel", 1 } };
 	static const struct hint stop[] = { { "Esc", "stop", 1 } };
 	static const char *const mlabel[] = { "Type on the computer", "Edit", "Move up", "Move down", "Delete",
 					      "Middle click", "Double click", "Keep awake" };
+	static const char *const keep_del[2] = { "Keep it", "Delete" };
+	static const struct wb_icon *const keep_del_ic[2] = { &r_check, &r_trash };
 	struct menu_item it[6];
-	char name[128];
+	char name[128], buf[96];
 
 	memset(it, 0, sizeof(it));
 	switch (C.pop) {
@@ -1464,16 +1498,18 @@ static void draw_pop(void)
 			if (C.menu[i] == M_AWAKE)
 				memcpy(it[i].value, M.awake ? "On" : "Off", 4);
 		}
-		menu_popup(C.pop == POP_MENU ? "SNIPPET" : "MOUSE", C.pop == POP_MENU ? name : "Mouse", 0, it,
-			   0, C.n_menu, C.pf, -1, 0, 0, menu_h, 2);
+		menu_popup("HIDEOUS", C.pop == POP_MENU ? name : "Mouse", 0, it, 0, C.n_menu, C.pf, -2, 0, 0,
+			   menu_h, 2);
 		break;
-	case POP_DELETE:
+	case POP_DELETE: {	/* a question: the dialog, the destructive choice red */
+		int y;
+
 		label_of(SEL, name, sizeof(name));
-		it[0].label = "Keep it";
-		it[1].label = "Delete";
-		it[1].danger = it[1].sep = 1;
-		menu_popup("DELETE THIS SNIPPET?", name, 0, it, 0, 2, C.pf, -1, 0, 0, menu_h, 2);
+		y = dialog("HIDEOUS", "Delete this snippet?", 28, keep_del, keep_del_ic, 2, C.pf, 1);
+		text(&f_ui20, DLG_X + 32, y, wb_fit(&f_ui20, name, DLG_W - 64, buf, sizeof(buf)), WB_COLOR_TEXT_MID, 0);
+		dlg_hints(ask, 3);
 		break;
+	}
 	case POP_LAYOUT:
 		for (int i = 0; i < N_LAY; i++) {
 			it[i].label = lay_names[i];
@@ -1494,32 +1530,28 @@ static void draw_pop(void)
 		menu_popup("SETTINGS", "Mouse speed", "3 options", it, 0, 3, C.pf, C.mspeed, 0, 0, pick, 2);
 		break;
 	case POP_TYPING: {
-		int h = 32 + 18 + 6 + 36 + 24 + 12 + 20 + 26 + 32, y = WB_STATUS_BAR_H +
-			(H - WB_STATUS_BAR_H - WB_HINT_BAR_H - h) / 2, x = POP_X + 32, w = POP_W - 64;
-		char t[48];
+		int y = dialog("TYPING ON THE COMPUTER", C.typing, TYP_H, 0, 0, 0, 0, -1);
 
-		pop_frame(y, h);
-		eyebrow(x, y + 32, "TYPING ON THE COMPUTER");
-		text(&f_ui28b, x, y + 32 + 18 + 6 + 2, wb_fit(&f_ui28b, C.typing, w, name, sizeof(name)),
-		     WB_COLOR_TEXT_HI, 0);
-		y += 32 + 18 + 6 + 36 + 24;
-		box(x, y, w, 12, 6, WB_COLOR_LINE, 255, 0, 0, 0);
-		if (C.total && C.typed)
-			box(x, y, w * C.typed / C.total < 12 ? 12 : w * C.typed / C.total, 12, 6,
-			    WB_COLOR_CYAN, 255, 0, 0, 0);
-		t[0] = 0;
-		cat(cat_int(cat(cat_int(t, C.typed), " of "), C.total), " characters");
-		text(&f_ui18, x, y + 12 + 20, t, WB_COLOR_TEXT_MID, 0);
-		hint_bar(stop, 1);
+		/* keep the panel under the bar, for typing_progress(): when
+		 * the frame is drawn whole (type_snip() asks for that), not
+		 * while it is recorded */
+		if (!wb_rec && whole && fb == whole && fb_y0 == 0 && fb_y1 == H) {
+			for (int j = 0; j < TYP_H; j++)
+				memcpy(typing_bg + j * DLG_W, whole + (y + j) * W + DLG_X, DLG_W * 2);
+			typing_y = y;
+		}
+		draw_progress(y);
+		dlg_hints(stop, 1);
 		break;
 	}
 	}
 }
 
-static void draw_band(int y0, int y1)
+/* The screen, and the pop-up over it. It only draws: present() runs it
+ * once more than the bands it draws (the first time to record it). */
+static void paint(void *unused)
 {
-	(void)y0;
-	(void)y1;
+	(void)unused;
 	switch (C.sc) {
 	case SC_LIST:
 		draw_list();
@@ -1537,6 +1569,8 @@ static void draw_band(int y0, int y1)
 		draw_mouse();
 		break;
 	}
+	/* a pop-up is frosted when the frame is whole, else (drawn a band
+	 * at a time) libwb draws it as darker unblurred glass */
 	draw_pop();
 }
 
@@ -1549,24 +1583,108 @@ static uint16_t screen[W * H];
 #else
 static int fb_fd = -1;
 #endif
+static long tm_out;		/* us spent writing to the panel, this frame */
 
-static void flush_band(int y0, int y1)
+/* rows y0..y1 of the picture in p (whole, or the band) to the panel */
+static void put_rows(const uint16_t *p, int y0, int y1)
 {
-	fb = band - (long)y0 * W;
-	fb_y0 = y0;
-	fb_y1 = y1;
-	draw_band(y0, y1);
+	long t = wb_now_us();
+
 #ifdef SN_HOST
-	memcpy(screen + y0 * W, band, (size_t)(y1 - y0) * W * 2);
+	if (p != screen + y0 * W)
+		memcpy(screen + y0 * W, p, (size_t)(y1 - y0) * W * 2);
 #else
-	pwrite(fb_fd, band, (size_t)(y1 - y0) * W * 2, (off_t)y0 * W * 2);
+	pwrite(fb_fd, p, (size_t)(y1 - y0) * W * 2, (off_t)y0 * W * 2);
 #endif
+	tm_out += wb_now_us() - t;
 }
 
-static void flush_rows(int y0, int y1)
+/*
+ * HIDEOUS_UI_TIMING=1: a line per frame on stderr (the app's log): how it
+ * was drawn, the bands drawn, and the time in us, of which libwb's scene
+ * and glass and the writing out.
+ */
+static void timing(long t0, const char *how, int bands)
 {
-	for (int y = y0; y < y1; y += BAND_H)
-		flush_band(y, y + BAND_H < y1 ? y + BAND_H : y1);
+	static int on = -1;
+	char line[160];
+
+	if (on < 0)
+		on = getenv("HIDEOUS_UI_TIMING") != 0;
+	if (on) {
+		line[0] = 0;
+		cat(cat_int(cat(cat_int(cat(cat_int(cat(cat_int(cat(cat_int(cat(cat(cat(line,
+			"hideous: frame "), how), ", "), bands), " bands, "), (int)(wb_now_us() - t0)),
+			" us, scene "), (int)tm_scene), ", glass "), (int)tm_glass), ", out "), (int)tm_out), "\n");
+		if (write(2, line, strlen(line)) < 0)
+			on = 0;
+	}
+	tm_scene = tm_glass = tm_out = 0;
+}
+
+/*
+ * The screen to the panel: recorded, then only the bands that changed
+ * since the last frame drawn (libwb): into the whole picture when there
+ * is one (a pop-up's blur kept while only its focus moves), else a band
+ * at a time. A focus that moves draws its two rows and the hint bar; a
+ * character typed in the editor the text's lines that changed.
+ */
+static void present(void)
+{
+	long t0 = wb_now_us();
+	int n;
+
+	if (C.pop != POP_TYPING)
+		typing_y = -1;
+	if (whole)
+		n = wb_frame(paint, 0, whole, BAND_H, put_rows);
+	else
+		n = wb_bands(paint, 0, band, BAND_H, put_rows);
+	timing(t0, whole ? "whole" : "bands", n);
+}
+
+/* Rows y0..y1 went to the panel without libwb: the next frame draws
+ * their bands again (wb_rec_invalidate() for these rows only). */
+static void hideous_rec_forget(int y0, int y1)
+{
+	for (int s = y0 / WB_STRIP; s <= (y1 - 1) / WB_STRIP && s < WB_STRIPS; s++)
+		wb_rec_last[s] ^= 0x9e3779b9u;
+}
+
+/*
+ * While typing: only the progress bar and its count again, over the
+ * frosted panel as the frame drawn whole left it (typing_bg): a copy, a
+ * box, a line of text and TYP_H rows written. libwb would record the
+ * frame and draw the two bands under the bar (the scene, the screen's
+ * glass, the dim and the pop-up's), several times that, taken from the
+ * typing every 150 ms. All of it when the panel was not kept.
+ */
+static void typing_progress(void)
+{
+	long t0 = wb_now_us();
+#ifdef SN_HOST
+	static int slow = -1;
+
+	if (slow < 0)	/* the test: the same through libwb */
+		slow = getenv("SN_NOFAST") != 0;
+	if (slow)
+		typing_y = -1;
+#endif
+	if (typing_y < 0 || !whole || wb_scene_turned()) {
+		present();
+		return;
+	}
+	for (int j = 0; j < TYP_H; j++)
+		memcpy(whole + (typing_y + j) * W + DLG_X, typing_bg + j * DLG_W, DLG_W * 2);
+	fb = whole;
+	fb_y0 = typing_y;
+	fb_y1 = typing_y + TYP_H;
+	draw_progress(typing_y);
+	fb_y0 = 0;
+	fb_y1 = H;
+	put_rows(whole + typing_y * W, typing_y, typing_y + TYP_H);
+	hideous_rec_forget(typing_y, typing_y + TYP_H);
+	timing(t0, "typing bar", 0);
 }
 
 /* ---- the keyboard on the computer --------------------------------------- */
@@ -1856,9 +1974,18 @@ static void open_mouse(void)
 }
 
 /* While typing: Esc stops it, and the progress shows. 1 to stop. */
+#ifdef SN_HOST
+static const char *frames;	/* SN_FRAMES: every frame to a file (host_shot) */
+static void host_shot(void);
+#endif
+
 static int typing_check(void)
 {
 #ifdef SN_HOST
+	if (frames) {	/* the bar after every character */
+		typing_progress();
+		host_shot();
+	}
 	return 0;
 #else
 	static struct timespec last;
@@ -1873,7 +2000,7 @@ static int typing_check(void)
 		return 1;
 	clock_gettime(CLOCK_MONOTONIC, &now);
 	if ((now.tv_sec - last.tv_sec) * 1000 + (now.tv_nsec - last.tv_nsec) / 1000000 >= 150) {
-		flush_rows(WB_STATUS_BAR_H, H);
+		typing_progress();
 		last = now;
 	}
 	return 0;
@@ -1905,7 +2032,8 @@ static void type_snip(int i)
 	C.typed = 0;
 	held_key = 0;
 	C.pop = POP_TYPING;
-	flush_rows(WB_STATUS_BAR_H, H);
+	wb_rec_invalidate();	/* drawn whole: typing_progress() keeps the panel */
+	present();
 	while (*s) {
 		struct tap tp[2];
 		unsigned cp = next_cp(&s);
@@ -2454,6 +2582,17 @@ static void save_ppm(const char *path)
 	close(fd);
 }
 
+/* the screen as it is now to SN_FRAMES followed by 000.ppm, 001.ppm ... */
+static void host_shot(void)
+{
+	static int n;
+	char path[300] = "", num[4] = { (char)('0' + n / 100 % 10), (char)('0' + n / 10 % 10), (char)('0' + n % 10), 0 };
+
+	n++;
+	if (strlen(frames) < sizeof(path) - 8)
+		save_ppm((cat(cat(cat(path, frames), num), ".ppm"), path));
+}
+
 /*
  * hideous-host KEYS [OUT.ppm], with APP_CONFIG, SN_COMPUTER=1 (a computer
  * on J8) and SN_HID (where the reports go, as hex). KEYS is typed; \n
@@ -2464,7 +2603,11 @@ static void save_ppm(const char *path)
  * pressed, held a tick (or the second) and let go. Prints the screen, the
  * notice, the editor's fields, the mouse's state and the snippets. The
  * mouse's reports go to $SN_HID too, as 8 hex digits a line; without a
- * mouse in the image: SN_NOMOUSE.
+ * mouse in the image: SN_NOMOUSE. SN_BANDS draws a band at a time, as
+ * the badge does without room for the whole picture. SN_FRAMES=PREFIX
+ * draws a frame after every key, as the badge does, and writes each to
+ * PREFIX000.ppm on (while typing: the bar after every character too;
+ * SN_NOFAST draws that through libwb instead of typing_progress' copy).
  */
 int main(int argc, char **argv)
 {
@@ -2475,6 +2618,9 @@ int main(int argc, char **argv)
 	load();
 	load_settings();
 	C.computer = computer_read();
+	wb_init();
+	whole = getenv("SN_BANDS") ? 0 : screen;	/* SN_BANDS: as without room for the whole */
+	frames = getenv("SN_FRAMES");
 	if (hid)
 		hid_fd = open(hid, O_WRONLY | O_CREAT | O_APPEND, 0644);
 	memcpy(U.hhmm, "12:34", 6);
@@ -2528,8 +2674,12 @@ int main(int argc, char **argv)
 			break;
 		}
 		K.shift = K.fn = K.ctrl = K.alt = 0;
+		if (frames) {
+			present();
+			host_shot();
+		}
 	}
-	flush_rows(0, H);
+	present();
 	if (argc > 2 && argv[2][0])
 		save_ppm(argv[2]);
 	out[0] = 0;
@@ -2575,6 +2725,16 @@ static void on_signal(int s)
 	stop_sig = s;
 }
 
+/* continued after a stop (the menu's console or screenshot): the panel may
+ * show something else meanwhile, so the next frame is drawn whole */
+static volatile sig_atomic_t cont_sig;
+
+static void on_cont(int s)
+{
+	(void)s;
+	cont_sig = 1;
+}
+
 /* the status bar; 1 if it changed */
 static int status_read(void)
 {
@@ -2609,6 +2769,8 @@ int main(void)
 	sigaction(SIGTERM, &sa, 0);
 	sigaction(SIGHUP, &sa, 0);
 	sigaction(SIGINT, &sa, 0);
+	sa.sa_handler = on_cont;
+	sigaction(SIGCONT, &sa, 0);
 	fb_fd = open("/dev/fb0", O_RDWR | O_CLOEXEC);
 	ev_fd = open("/dev/input/event0", O_RDONLY | O_CLOEXEC);
 	if (fb_fd < 0 || ev_fd < 0)
@@ -2617,19 +2779,31 @@ int main(void)
 	load();
 	load_settings();
 	C.computer = computer_read();
+	wb_init();
+	whole = malloc((size_t)W * H * sizeof(*whole));	/* 0: bands, and plain pop-ups */
+	wb_rec_invalidate();	/* nothing in it yet: the first frame whole */
 	status_read();
-	flush_rows(0, H);
+	present();
 	p.fd = ev_fd;
 	p.events = POLLIN;
 	while (!stop_sig) {
 		struct ev evs[16];
 		int wait = mouse_tick(), k, got, draw = 0, quit = 0;
 
-		k = poll(&p, 1, wait < 0 || wait > 1000 ? 1000 : wait);
+		/* four times a second at least: has the badge turned? */
+		k = poll(&p, 1, wait < 0 || wait > 250 ? 250 : wait);
 		mouse_tick();
+		if (cont_sig) {
+			cont_sig = 0;
+			wb_rec_invalidate();
+			present();
+		}
+		/* each draws only what changed (present) */
+		if (wb_scene_turned())
+			present();
 		if (M.dirty && (C.sc == SC_MOUSE || C.sc == SC_LIST) && !C.pop) {
 			M.dirty = 0;
-			flush_rows(WB_STATUS_BAR_H, H);
+			present();
 		}
 		if (now_ms() - checked >= 1000) {
 			int pc = C.computer;
@@ -2637,9 +2811,9 @@ int main(void)
 			checked = now_ms();
 			C.computer = computer_read();
 			if (pc != C.computer && (C.sc == SC_LIST || C.sc == SC_MOUSE) && !C.pop)
-				flush_rows(TITLE_Y, TITLE_Y + 44);
+				present();
 			if (++ticks % 5 == 0 && status_read())
-				flush_rows(0, WB_STATUS_BAR_H);
+				present();
 		}
 		if (k <= 0)
 			continue;
@@ -2672,13 +2846,10 @@ int main(void)
 		}
 		if (quit)
 			break;
-		/* typing redraws the field only: a whole screen is ~18 bands */
-		if (draw == 3)
-			flush_rows(0, H);
-		else if (draw == 2 && C.field)
-			flush_rows(TEXT_Y - 20, COUNT_Y + 24);
-		else if (draw == 2)
-			flush_rows(NAME_Y - 20, NAME_Y + NAME_H + 20);
+		/* 2: the editor's field changed, 3: anything; either way only
+		 * the bands that changed are drawn */
+		if (draw >= 2)
+			present();
 	}
 	mouse_release();
 	return 0;

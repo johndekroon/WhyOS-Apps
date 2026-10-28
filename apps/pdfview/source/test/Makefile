@@ -3,6 +3,7 @@
 # for the host with the badge's options (MUPDF_OPTS in ../../build.sh),
 # and its mutool makes the test PDFs.
 OVERLAY = ../../../patches/buildroot/overlay-src
+LIBWB = ../../../libwb
 MUPDF_SRC ?= $(HOME)/sdapps/src/mupdf-1.28.5-source
 MUPDF_OPTS = HAVE_X11=no HAVE_GLUT=no HAVE_CURL=no html=no xps=no svg=no extract=no mujs=no \
 	brotli=no tofu=yes tofu_cjk=yes XCFLAGS="-DFZ_ENABLE_ICC=0 -DFZ_ENABLE_JPX=0 \
@@ -17,8 +18,8 @@ test: pdfview-host
 $(M)/libmupdf.a:
 	$(MAKE) -s -C $(MUPDF_SRC) libs tools build=release OUT=$(CURDIR)/$(M) $(MUPDF_OPTS)
 
-pdfview-host: ../pdfview.c $(M)/libmupdf.a
-	$(CC) $(CFLAGS) -DPDFVIEW_HOST -I$(OVERLAY) -I$(MUPDF_SRC)/include -o $@ ../pdfview.c \
+pdfview-host: ../pdfview.c $(wildcard $(LIBWB)/*.h) $(M)/libmupdf.a
+	$(CC) $(CFLAGS) -DPDFVIEW_HOST -I$(OVERLAY) -I$(LIBWB) -I$(MUPDF_SRC)/include -o $@ ../pdfview.c \
 		$(M)/libmupdf.a $(M)/libmupdf-third.a -lm
 
 clean:

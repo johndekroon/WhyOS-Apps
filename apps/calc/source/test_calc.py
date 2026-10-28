@@ -1,15 +1,34 @@
 #!/usr/bin/env python3
 """The calculator on the host: sums typed, results checked (calc.c, CALC_HOST).
 
-    python3 sdapps/calc/test_calc.py
+    python3 sdapps/calc/test_calc.py [--shots DIR]
+
+--shots also draws its screens as PNG into DIR, to look at.
 """
 import os
+import struct
 import subprocess
 import sys
 import tempfile
+import zlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 O = os.path.join(HERE, "..", "..", "patches", "buildroot", "overlay-src")
+WB = os.path.join(HERE, "..", "..", "libwb")
+
+# screens to look at: name, keys typed
+SHOTS = [
+    ("start", ""),
+    ("typing", "12*7+3"),
+    ("after-enter", "9.81*72\\n128*3+16"),
+    ("operator", "2^10\\n+1-"),
+    ("error", "10/0\\n"),
+    ("recall", "1+2\\n3*4\\n\\u\\u"),
+    ("help", "12\\6"),
+    ("log", "1+2\\n3*4\\n0xff\\n\\4"),
+    ("settings", "\\5"),
+    ("unit-pick", "\\5\\n"),
+]
 
 # keys typed -> the tape it leaves ("sum = result" lines), or the error
 CASES = [
@@ -48,8 +67,9 @@ def run(exe, keys):
 
 def main():
     exe = os.path.join(tempfile.mkdtemp(), "calc-host")
-    subprocess.run(["cc", "-O1", "-Wall", "-Wextra", "-Werror", "-DCALC_HOST", "-I" + O, "-o", exe,
-                    os.path.join(HERE, "calc.c"), "-lm"], check=True)
+    subprocess.run(["cc", "-O1", "-Wall", "-Wextra", "-Werror", "-Wno-unused-function", "-DCALC_HOST",
+                    "-DWB_HOST", "-I" + O, "-I" + WB, "-o", exe, os.path.join(HERE, "calc.c"), "-lm"],
+                   check=True)
     bad = 0
     for keys, want in CASES:
         err, tape, lines = run(exe, keys)
@@ -83,8 +103,43 @@ def main():
     if "line 12" not in lines:
         bad += 1
         print("FAIL: closing the help cleared the line")
-    print("%d of %d failed" % (bad, len(CASES) + 2 + len(keys)))
+    # the bands drawn again after each key give the screen drawn whole
+    for _, k in SHOTS + [("", "12\\b\\b(1+2)/3\\n\\t\\l\\r\\e\\e")]:
+        _, _, lines = run(exe, k)
+        if "stale" in lines:
+            bad += 1
+            print("FAIL %r: drawn key by key, the screen differs from one drawn whole" % k)
+    print("%d of %d failed" % (bad, len(CASES) + 2 + len(keys) + len(SHOTS) + 1))
+    if "--shots" in sys.argv:
+        shots(exe, sys.argv[sys.argv.index("--shots") + 1])
     sys.exit(1 if bad else 0)
+
+
+def ppm_to_png(ppm, png):
+    """A P6 PPM as a PNG (no Pillow needed)."""
+    with open(ppm, "rb") as f:
+        data = f.read()
+    head = data.split(b"\n", 3)
+    w, h = map(int, head[1].split())
+    px = head[3]
+    raw = b"".join(b"\0" + px[y * w * 3:(y + 1) * w * 3] for y in range(h))
+
+    def chunk(kind, body):
+        return struct.pack(">I", len(body)) + kind + body + struct.pack(">I", zlib.crc32(kind + body))
+
+    with open(png, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0)) +
+                chunk(b"IDAT", zlib.compress(raw, 6)) + chunk(b"IEND", b""))
+
+
+def shots(exe, out):
+    os.makedirs(out, exist_ok=True)
+    for name, keys in SHOTS:
+        ppm = os.path.join(out, name + ".ppm")
+        subprocess.run([exe, keys, ppm], capture_output=True, check=True)
+        ppm_to_png(ppm, os.path.join(out, name + ".png"))
+        os.remove(ppm)
+        print("drew", os.path.join(out, name + ".png"))
 
 
 if __name__ == "__main__":

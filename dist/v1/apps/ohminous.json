@@ -72,6 +72,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 2,
+   "changelog": "The new WhyOS look: the frontpanel's figures behind the screens, calm flat rows and bars, frosted pop-ups with their keys inside. Faster: a key redraws only what changed.",
+   "package": {
+    "installed_size": 545999,
+    "sha256": "875a691200aefc40105fb305014313b1dc32c9dd699f2752ccc100277e5cd279",
+    "size": 232534,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/ohminous-1.1.0.wpk"
+   },
+   "published": "2026-10-28T08:49:08Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/ohminous-1.1.0-source.tar.gz",
+   "version": "1.1.0"
+  },
+  {
    "build": 1,
    "changelog": "First version. It replaces the Bus Pirate app and adds the badge's own header pins.",
    "package": {

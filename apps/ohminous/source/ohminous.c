@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: MIT
 /*
  * ohminous (OHMinous) — an electronics workbench on the badge, after the
- * design canvas "OHMinous" (2026-10-25). It replaces the Bus Pirate app
- * (the menu built with -DBP_APP), whose Bus Pirate code it took over
- * (bp.c), and adds the badge's own header pins (hw.c).
+ * design canvas "OHMinous" (2026-10-25), in the style of the canvas "Menu's
+ * met frontpaneel" (2026-10-27, libwb): the frontpanel's figures behind
+ * every screen, the eyebrow and title of the menu's lists, cards, rows and
+ * the hint bar of glass with square corners, the focus cyan, pop-ups
+ * frosted with their keys inside. The logic analyzer's traces and the
+ * terminals' lines stay on black. It replaces the Bus Pirate app (the menu
+ * built with -DBP_APP), whose Bus Pirate code it took over (bp.c), and adds
+ * the badge's own header pins (hw.c).
  *
  * Six tools on the start screen: Pins, Logic, Buses, LEDs, Power and
  * Serial. Each has two sources, switched with Tab: the badge's J3 and J7
@@ -33,6 +38,10 @@
  * APP_CONFIG/settings. Pins it made outputs go back to inputs when it
  * closes (a setting).
  *
+ * It draws in bands of 40 rows, a 1 MB whole buffer only while a pop-up is
+ * up; libwb records each frame and draws only the bands that changed
+ * (redraw). OHM_UI_TIMING=1 logs a line a frame on stderr.
+ *
  * Built with -DOHM_HOST the hardware is simulated (hw.c, bp.c) and keys
  * come from the first argument, the screen goes to the second as PPM (the
  * test, test_ohminous.py). On the badge a test sends key codes to
@@ -51,12 +60,11 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "home_assets.h"
-#include "home-assets/wb_tokens.h"
+#include "wb_tokens.h"
 
 #define W		WB_SCREEN_W
 #define H		WB_SCREEN_H
-#include "wbdraw.h"
+#include "wb.h"
 #include "lora_state.h"
 #include "wbstatus.h"
 #include "keyrep.h"
@@ -249,6 +257,7 @@ static struct {
 	unsigned rate;
 	int rate_i[2], size_i[2], trig[2], falling;
 	int pos, zoom;			/* first sample shown; samples a pixel: 2^zoom (minus: pixels a sample) */
+	int gen;			/* counts captures: what buf holds, for the recording */
 	char status[96];
 	int status_bad;
 } LA = { .rate_i = { 1, 2 }, .size_i = { 0, 1 }, .trig = { -1, -1 } };
@@ -552,11 +561,14 @@ static int bp_ready(void)
 
 #define X0		WB_CONTENT_PAD
 #define XW		(W - 2 * WB_CONTENT_PAD)
-#define TOP		(WB_STATUS_BAR_H + 8)		/* a tool's eyebrow */
-#define BODY		(TOP + 18 + 2 + 37)		/* under its title */
+#define BODY		148				/* under the header (Files) */
 #define BOTTOM		(H - WB_HINT_BAR_H)
 
+#define EB_APP		"OHMINOUS \xe2\x80\xba"		/* the eyebrows: where a screen lies */
+#define EB_BUSES	"BUSES \xe2\x80\xba"
+
 #define PINK_EDGE	0x99405F			/* pink at 60 % on surface */
+#define EDGE_A		66				/* glass's 1 px edge: white at 26 % */
 
 static struct { char hhmm[6]; int clock_ok, wifi, lora; } U;
 
@@ -570,12 +582,23 @@ static void status_bar(void)
 	status_right(U.hhmm, U.clock_ok, U.wifi, U.lora);
 }
 
+/* every screen: the frontpanel's figures (wb_scene: libwb reads the
+ * rotation once a frame, while recording it, and keeps it for the bands),
+ * the status bar, the eyebrow (where the screen lies: "APP" on the start
+ * screen, else the parent's name and a chevron) and the title */
 static void header(const char *eb, const char *title)
 {
-	fill(0, 0, W, H, WB_COLOR_VOID);
+	wb_scene();
 	status_bar();
-	eyebrow(X0, TOP, eb);
-	text(&f_ui36b, X0, TOP + 20, title, WB_COLOR_TEXT_HI, -11);
+	wb_header(eb, title, 0);
+}
+
+/* a panel of data (the traces, a terminal's lines): the console's black,
+ * opaque so nothing of the scene shows through, with glass's faint edge */
+static void console_box(int x, int y, int w, int h)
+{
+	fill(x, y, w, h, WB_COLOR_CONSOLE);
+	edge_rect(x, y, w, h, 0xFFFFFF, EDGE_A);
 }
 
 /* a message over the screen while something takes a while ("Connecting...") */
@@ -592,7 +615,7 @@ static void draw_message(const char *eb, const char *line)
 
 static void draw_over(void)
 {
-	int h = 32 + 18 + 6 + 36 + 32, y = WB_STATUS_BAR_H + (BOTTOM - WB_STATUS_BAR_H - h) / 2;
+	int h = 32 + 18 + 6 + 36 + 32, y = (H - h) / 2;
 
 	pop_frame(y, h);
 	eyebrow(POP_X + 32, y + 32, over_eb);
@@ -609,51 +632,61 @@ static int bp_tag(int x, int cy)
 	return x + w;
 }
 
-/* a switch, w x h, on in pink */
-static void switch_at(int x, int y, int w, int h, int on)
+/* a pin's level as a switch: the canvas's (wb_switch) with HIGH in pink */
+static void level_switch(int x, int cy, int on)
 {
-	int k = h - 6;
+	int y = cy - 15;
 
-	box(x, y, w, h, h / 2, on ? WB_COLOR_PINK : WB_COLOR_LINE, 255, 0, 0, 0);
-	box(on ? x + w - 3 - k : x + 3, y + 3, k, k, k / 2, WB_COLOR_VOID, 255, 0, 0, 0);
+	if (on) {
+		box(x, y, 52, 30, 4, WB_COLOR_PINK, 255, 0, 0, 0);
+	} else {
+		box(x, y, 52, 30, 4, 0xFFFFFF, 26, 0, 0, 0);
+		edge_rect(x, y, 52, 30, 0xFFFFFF, 71);
+	}
+	box(on ? x + 26 : x + 4, y + 4, 22, 22, 4, on ? WB_COLOR_VOID : WB_COLOR_TEXT_MID, 255, 0, 0, 0);
 }
 
-/* a setting as a chip: "Rate 1 MHz" */
+/* a setting as a chip of glass: "Rate 1 MHz" */
 static int chip(int x, int y, const char *k, const char *v)
 {
 	int w = text_w(&f_ui16, k, 0) + 6 + text_w(&f_mono16b, v, 0) + 24;
 
-	box(x, y, w, 32, WB_RADIUS_SM, WB_COLOR_SURFACE1, 255, WB_COLOR_LINE, 1, 0);
-	x = text(&f_ui16, x + 12, text_top(&f_ui16, y + 17), k, WB_COLOR_TEXT_LOW, 0);
+	wb_card(x, y, w, 32, WB_RADIUS_SM, 0, 0);
+	x = text(&f_ui16, x + 12, text_top(&f_ui16, y + 17), k, WB_COLOR_TEXT_MID, 0);
 	text(&f_mono16b, x + 6, text_top(&f_mono16b, y + 16), v, WB_COLOR_TEXT_HI, 0);
 	return x + 6 + text_w(&f_mono16b, v, 0) + 12 + 8;
 }
 
-/* a status on the right: a dot and a word */
-/* a dashed outline: what is not there */
+/* a dashed outline: what is not there. Over the scene, the void at half
+ * strength inside, so its words read. */
 static void dashed(int x, int y, int w, int h)
 {
-	for (int d = 14; d < w - 14; d += 8) {
-		fill(x + d, y, 4, 1, WB_COLOR_LINE);
-		fill(x + d, y + h - 1, 4, 1, WB_COLOR_LINE);
-	}
-	for (int d = 14; d < h - 14; d += 8) {
-		fill(x, y + d, 1, 4, WB_COLOR_LINE);
-		fill(x + w - 1, y + d, 1, 4, WB_COLOR_LINE);
-	}
+	box(x, y, w, h, 0, WB_COLOR_VOID, 140, 0, 0, 0);
+	for (int d = 14; d < w - 14; d += 8)
+		for (int i = 0; i < 4; i++) {
+			put(x + d + i, y, 0xFFFFFF, EDGE_A);
+			put(x + d + i, y + h - 1, 0xFFFFFF, EDGE_A);
+		}
+	for (int d = 14; d < h - 14; d += 8)
+		for (int i = 0; i < 4; i++) {
+			put(x, y + d + i, 0xFFFFFF, EDGE_A);
+			put(x + w - 1, y + d + i, 0xFFFFFF, EDGE_A);
+		}
 }
 
+/* a status on the right: a dot and a word */
 static void status_dot(int y, const char *s, uint32_t c)
 {
 	int x = X0 + XW - text_w(&f_ui16, s, 0);
 
-	box(x - 16, y + 12, 8, 8, 4, c, 255, 0, 0, 0);
+	box(x - 16, y + 12, 8, 8, 2, c, 255, 0, 0, 0);
 	text(&f_ui16, x, text_top(&f_ui16, y + 16), s, WB_COLOR_TEXT_MID, 0);
 }
 
 /*
  * The hint bar with the source switch: the hints, then Tab and Badge |
- * Bus Pirate, then the right-hand hint. src -1: no switch.
+ * Bus Pirate, then the right-hand hint. src -1: no switch. Glass over the
+ * scene, as hint_bar's.
  */
 static void hint_bar_src(const struct hint *hs, int n, int src)
 {
@@ -669,8 +702,7 @@ static void hint_bar_src(const struct hint *hs, int n, int src)
 		need -= n;
 		gap--;
 	}
-	fill(0, y0, W, WB_HINT_BAR_H, WB_COLOR_SURFACE1);
-	fill(0, y0, W, 1, WB_COLOR_LINE);
+	hint_glass(y0);
 	for (int i = 0; i < n; i++) {
 		int hx = hs[i].right ? W - WB_CHROME_PAD - hint_w(&hs[i]) : x, ex = keycap(hx, cy, hs[i].keys);
 
@@ -686,15 +718,15 @@ static void hint_bar_src(const struct hint *hs, int n, int src)
 		sx = x;
 		for (int i = 0; i < 2; i++)
 			sx += text_w(f, seg[i], 0) + 20 + 2;
-		box(x, cy - 15, sx - x + 4, 30, WB_RADIUS_SM, 0, 0, WB_COLOR_LINE, 1, 0);
+		edge_rect(x, cy - 15, sx - x + 4, 30, 0xFFFFFF, EDGE_A);
 		x += 3;
 		for (int i = 0; i < 2; i++) {
 			int w = text_w(f, seg[i], 0) + 20;
-			uint32_t c = i == src ? WB_COLOR_TEXT_HI : i == SRC_BP && !B.present ? WB_COLOR_TEXT_LOW :
+			uint32_t c = i == src ? WB_COLOR_CYAN : i == SRC_BP && !B.present ? WB_COLOR_TEXT_LOW :
 				     WB_COLOR_TEXT_MID;
 
-			if (i == src)
-				box(x, cy - 12, w, 24, 6, WB_COLOR_SURFACE2, 255, 0, 0, 0);
+			if (i == src)	/* the present source: cyan, as a choice's box */
+				box(x, cy - 12, w, 24, 4, WB_COLOR_CYAN, 46, 0, 0, 0);
 			text(f, x + 10, text_top(f, cy), seg[i], c, 0);
 			x += w + 2;
 		}
@@ -748,35 +780,46 @@ static const char *hm_role(int mode, int j, int n)
 	return "";
 }
 
-static void draw_header_map(int x0, int y0, int mode, int focus_pin)
+/*
+ * J3 and J7 as they sit on the badge, on a card of glass MAP_H high from
+ * y0 (the whole width): a caption, the pads with their names reading
+ * upwards and their numbers, which header each is, and the legend.
+ */
+#define MAP_H		192
+#define MAP_PITCH	30			/* pad to pad */
+#define MAP_NAME	50			/* room for a name, upwards: STROBE */
+
+static void draw_header_map(int y0, int mode, int focus_pin)
 {
 	static const struct { const char *name; int kind; } legend[5] = {
 		{ "Free", PK_GPIO }, { "In use here", PK_USED }, { "Power", PK_POWER }, { "GND", PK_GND },
 		{ "System", PK_SYS },
 	};
-	int front = !O.back_view, x = x0, cy;
+	int front = !O.back_view, x0 = X0 + 18, x = x0, cy;
 	const char *cap = front ? "SEEN FROM THE SCREEN SIDE" : "SEEN FROM THE BACK (SILK SIDE)";
 
-	text(&f_mono13, x0, y0, cap, WB_COLOR_TEXT_LOW, 16);
+	wb_card(X0, y0, XW, MAP_H, WB_RADIUS_MD, 0, 0);
+	y0 += 8;
+	text(&f_mono13, x0, y0, cap, WB_COLOR_PLACEHOLDER, 16);
 	{
-		int rx = x0 + XW - text_w(&f_mono13, "TOP EDGE", 16);
+		int rx = X0 + XW - 18 - text_w(&f_mono13, "TOP EDGE", 16);
 
-		text(&f_mono13, rx, y0, "TOP EDGE", WB_COLOR_TEXT_LOW, 16);
-		icon(&s_up, rx - 20, y0 + 1, WB_COLOR_TEXT_LOW, 255);
+		text(&f_mono13, rx, y0, "TOP EDGE", WB_COLOR_PLACEHOLDER, 16);
+		icon(&s_up, rx - 20, y0 + 1, WB_COLOR_PLACEHOLDER, 255);
 	}
-	cy = y0 + 18 + 6;
+	cy = y0 + 22;
 	for (int side = 0; side < 2; side++) {
 		int jn = (side == 0) == front ? 3 : 7, cnt = jn == 3 ? 8 : 10;
 		const struct hpin *P = jn == 3 ? j3 : j7;
 		int gx = x;
 
-		fill(gx, cy, cnt * 32, 2, WB_COLOR_LINE);
+		fill(gx, cy, cnt * MAP_PITCH - 6, 2, WB_COLOR_LINE);
 		for (int k = 0; k < cnt; k++) {
 			int idx = front ? cnt - 1 - k : k, n = idx + 1;
 			const struct hpin *p = &P[idx];
 			const char *role = hm_role(mode, jn, n);
 			int kind = role[0] ? PK_USED : p->kind, foc = p->pin >= 0 && p->pin == focus_pin;
-			int px = gx + k * 32 + 4, py = cy + 6 + 18;
+			int px = gx + k * MAP_PITCH, py = cy + 6 + 18;
 			uint32_t ink = foc ? WB_COLOR_CYAN : kind == PK_USED ? WB_COLOR_PINK : kind == PK_GND ?
 				       WB_COLOR_TEXT_MID : kind == PK_SYS ? WB_COLOR_TEXT_LOW : WB_COLOR_TEXT_HI;
 			char num[4];
@@ -784,19 +827,19 @@ static void draw_header_map(int x0, int y0, int mode, int focus_pin)
 			if (role[0])
 				text(&f_mono13, px + 12 - text_w(&f_mono13, role, 0) / 2, cy + 6, role, WB_COLOR_PINK, 0);
 			if (foc)
-				box(px - 5, py - 5, 34, 34, 10, 0, 0, WB_COLOR_CYAN, 2, &GLOW_ROW);
+				box(px - 4, py - 4, 32, 32, 4, 0, 0, WB_COLOR_CYAN, 2, &GLOW_FOCUS);
 			switch (kind) {
 			case PK_GPIO:
-				box(px, py, 24, 24, 6, WB_COLOR_OK, 36, WB_COLOR_OK, 2, 0);
+				box(px, py, 24, 24, 4, WB_COLOR_OK, 36, WB_COLOR_OK, 2, 0);
 				break;
 			case PK_USED:
-				box(px, py, 24, 24, 6, WB_COLOR_PINK, 255, WB_COLOR_PINK, 2, 0);
+				box(px, py, 24, 24, 4, WB_COLOR_PINK, 255, WB_COLOR_PINK, 2, 0);
 				break;
 			case PK_POWER:
-				box(px, py, 24, 24, 6, WB_COLOR_TEXT_HI, 255, WB_COLOR_TEXT_HI, 2, 0);
+				box(px, py, 24, 24, 4, WB_COLOR_TEXT_HI, 255, WB_COLOR_TEXT_HI, 2, 0);
 				break;
 			case PK_GND:
-				box(px, py, 24, 24, 6, WB_COLOR_LINE, 255, WB_COLOR_TEXT_LOW, 2, 0);
+				box(px, py, 24, 24, 4, WB_COLOR_LINE, 255, WB_COLOR_TEXT_LOW, 2, 0);
 				break;
 			default:	/* dashed: a line of dots round the pad */
 				for (int d = 0; d < 24; d += 4) {
@@ -806,23 +849,23 @@ static void draw_header_map(int x0, int y0, int mode, int focus_pin)
 					fill(px + 22, py + d, 2, 2, WB_COLOR_TEXT_LOW);
 				}
 			}
-			text_up(&f_mono13, px + 4, py + 24 + 6 + 64, p->pin >= 0 && O.names[p->pin][0] ?
+			text_up(&f_mono13, px + 4, py + 24 + 6 + MAP_NAME, p->pin >= 0 && O.names[p->pin][0] ?
 				O.names[p->pin] : p->label, ink);
 			snprintf(num, sizeof(num), "%d", n);
-			text(&f_mono13, px + 12 - text_w(&f_mono13, num, 0) / 2, py + 24 + 6 + 64 + 1, num,
-			     WB_COLOR_TEXT_LOW, 0);
+			text(&f_mono13, px + 12 - text_w(&f_mono13, num, 0) / 2, py + 24 + 6 + MAP_NAME + 1, num,
+			     WB_COLOR_PLACEHOLDER, 0);
 		}
 		{
 			char g[24];
 
 			snprintf(g, sizeof(g), "J%d \xc2\xb7 pin 1 at %s", jn, front ? "right" : "left");
-			text(&f_mono13, gx + 4, cy + 6 + 18 + 24 + 6 + 64 + 18 + 2, g, WB_COLOR_TEXT_MID, 0);
+			text(&f_mono13, gx, cy + 6 + 18 + 24 + 6 + MAP_NAME + 18, g, WB_COLOR_TEXT_MID, 0);
 		}
-		x = gx + cnt * 32 + 48;
+		x = gx + cnt * MAP_PITCH - 6 + 48;
 	}
 	x = x0;
 	for (int i = 0; i < 5; i++) {
-		int ly = y0 + 200 - 16;
+		int ly = y0 + 164;
 
 		switch (legend[i].kind) {
 		case PK_GPIO:
@@ -894,27 +937,23 @@ static void tile_status(int i, char *o, int n)
 static void draw_start(void)
 {
 	static const struct hint hints[] = { { "Enter", "open", 0 }, { "Esc", "close", 1 } };
-	int tw = (XW - 40) / 3, th = 152, y = WB_STATUS_BAR_H + (BOTTOM - WB_STATUS_BAR_H - 495) / 2;
+	int tw = (XW - 40) / 3, th = 152, y = WB_ROWS_TOP;
 	int pw = (XW - 16) / 2;
 	char st[40];
 
-	fill(0, 0, W, H, WB_COLOR_VOID);
+	wb_scene();
 	status_bar();
-	eyebrow(X0, y, "ELECTRONICS WORKBENCH");
-	text(&f_ui36b, X0, y + 22, "OHMinous", WB_COLOR_TEXT_HI, -11);
-	y += 63 + 24;
+	wb_header("APP", "OHMinous", "Electronics workbench");
 	/* the two sources */
 	for (int i = 0; i < 2; i++) {
 		int x = X0 + i * (pw + 16), cy = y + 30, bp = i == 1, on = !bp || B.present;
-		const char *sub = !bp ? "J3 + J7 header" : B.present ? (B.open ? "Connected" : "Connected") :
-				  "Plug into bottom port";
+		const char *sub = !bp ? "J3 + J7 header" : B.present ? "Connected" : "Plug into bottom port";
 		char s2[40];
 
-		if (bp && !B.present) {	/* dashed: nothing there */
+		if (bp && !B.present)	/* dashed: nothing there */
 			dashed(x, y, pw, 60);
-		} else {
-			box_plain(x, y, pw, 60, WB_RADIUS_MD, WB_COLOR_SURFACE1);
-		}
+		else
+			wb_card(x, y, pw, 60, WB_RADIUS_MD, 0, 0);
 		icon(bp ? &o_plug : &o_badge, x + 16, cy - 13, bp ? (on ? WB_COLOR_PINK : WB_COLOR_TEXT_LOW) :
 		     WB_COLOR_TEXT_MID, 255);
 		text(&f_ui18m, x + 16 + 26 + 12, cy - 21, bp ? "Bus Pirate 6" : "Badge", on ? WB_COLOR_TEXT_HI :
@@ -923,22 +962,19 @@ static void draw_start(void)
 			snprintf(s2, sizeof(s2), "Connected \xc2\xb7 %s", B.mode);
 		else
 			snprintf(s2, sizeof(s2), "%s", sub);
-		text(&f_mono14, x + 16 + 26 + 12, cy + 2, s2, on ? WB_COLOR_TEXT_MID : WB_COLOR_TEXT_LOW, 0);
+		text(&f_mono14, x + 16 + 26 + 12, cy + 2, s2, on ? WB_COLOR_TEXT_MID : WB_COLOR_PLACEHOLDER, 0);
 		if (on)
-			box(x + pw - 16 - 10, cy - 5, 10, 10, 5, bp ? WB_COLOR_PINK : WB_COLOR_OK, 255, 0, 0, 0);
+			box(x + pw - 16 - 10, cy - 5, 10, 10, 2, bp ? WB_COLOR_PINK : WB_COLOR_OK, 255, 0, 0, 0);
 	}
 	y += 60 + 24;
 	for (int i = 0; i < N_TOOLS; i++) {
 		int x = X0 + (i % 3) * (tw + 20), ty = y + (i / 3) * (th + 20), on = i == O.tile;
 
-		if (on)
-			box_focus(x, ty, tw, th, WB_RADIUS_LG, &GLOW_TILE);
-		else
-			box_plain(x, ty, tw, th, WB_RADIUS_LG, WB_COLOR_SURFACE1);
+		wb_card(x, ty, tw, th, WB_RADIUS_LG, on, &GLOW_FOCUS);
 		icon(tile_icons[i], x + 18, ty + 18, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 255);
 		if (B.present)
 			bp_tag(x + tw - 18 - text_w(&f_mono13, "BP", 0) - 14, ty + 18 + 10);
-		text(&f_ui22, x + 18, ty + th - 16 - 20 - 30, tool_names[i], WB_COLOR_TEXT_HI, 0);
+		text(&f_ui22, x + 18, ty + th - 16 - 20 - 30, tool_names[i], on ? WB_COLOR_CYAN : WB_COLOR_TEXT_HI, 0);
 		tile_status(i, st, sizeof(st));
 		text(&f_mono14, x + 18, ty + th - 16 - 19, st, WB_COLOR_TEXT_MID, 0);
 	}
@@ -947,29 +983,29 @@ static void draw_start(void)
 
 /* ---- Pins ---------------------------------------------------------------------- */
 
+#define PIN_H		46			/* a pin's row */
+#define PIN_STEP	50
+
 static void pin_row(int y, int on, const char *name, const char *where, const char *mode, int out, int level,
 		    const char *val)
 {
-	int x = X0, cy = y + 24;
+	int x = X0, cy = y + PIN_H / 2;
 
-	if (on)
-		box_focus(x, y, XW, 48, WB_RADIUS_MD, &GLOW_ROW);
-	else
-		box_plain(x, y, XW, 48, WB_RADIUS_MD, WB_COLOR_SURFACE1);
-	text(&f_ui20, x + 18, y + 3, name, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_HI, 0);
-	text(&f_mono13, x + 18, y + 28, where, WB_COLOR_TEXT_LOW, 0);
-	text(&f_ui18, x + 18 + 150 + 16, text_top(&f_ui18, cy), mode, WB_COLOR_TEXT_MID, 0);
+	wb_card(x, y, XW, PIN_H, WB_RADIUS_MD, on, &GLOW_FOCUS);
+	text(&f_ui20, x + 18, y + 2, name, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_HI, 0);
+	text(&f_mono13, x + 18, y + 26, where, WB_COLOR_TEXT_MID, 0);
+	text(&f_ui18, x + 18 + 150 + 16, text_top(&f_ui18, cy), mode, on ? WB_COLOR_TEXT_HI : WB_COLOR_TEXT_MID, 0);
 	if (out) {
-		switch_at(x + XW - 18 - 52, cy - 15, 52, 30, level);
+		level_switch(x + XW - 18 - 52, cy, level);
 	} else {
 		const char *s = val ? val : level ? "HIGH" : "LOW";
 		int tx = x + XW - 18 - text_w(&f_mono16b, s, 0);
 
 		text(&f_mono16b, tx, text_top(&f_mono16b, cy), s, level ? WB_COLOR_PINK : WB_COLOR_TEXT_MID, 0);
 		if (level)
-			box(tx - 18, cy - 5, 10, 10, 5, WB_COLOR_PINK, 255, 0, 0, 0);
+			box(tx - 18, cy - 5, 10, 10, 2, WB_COLOR_PINK, 255, 0, 0, 0);
 		else
-			box(tx - 18, cy - 5, 10, 10, 5, 0, 0, WB_COLOR_TEXT_LOW, 2, 0);
+			box(tx - 18, cy - 5, 10, 10, 2, 0, 0, WB_COLOR_TEXT_MID, 2, 0);
 	}
 }
 
@@ -980,15 +1016,15 @@ static void draw_pins(void)
 	static const struct hint hints[] = { { "#2", "toggle", 0 }, { "Enter", "mode", 0 }, { "Esc", "back", 1 } };
 	int y;
 
-	header("OHMINOUS", "Pins");
+	header(EB_APP, "Pins");
 	if (O.src[T_PINS] == SRC_BP) {
 		if (!B.open) {
 			draw_missing();
 			hint_bar_src(hints + 2, 1, SRC_BP);
 			return;
 		}
-		y = BODY + 14;
-		for (int i = 0; i < BP_PINS; i++, y += 54) {
+		y = BODY;
+		for (int i = 0; i < BP_PINS; i++, y += PIN_STEP + 6) {
 			char name[8], mode[40], where[24];
 
 			snprintf(name, sizeof(name), "IO%d", i);
@@ -998,9 +1034,9 @@ static void draw_pins(void)
 				bp_dv_of(B.pin_v[i]) >= 15, bp_dir[i] ? 0 : B.pin_v[i][0] ? B.pin_v[i] : "\xe2\x80\xa6");
 		}
 	} else {
-		draw_header_map(X0, BODY + 14, HM_PINS, O.focus);
-		y = BODY + 14 + 200 + 14;
-		for (int i = 0; i < HW_PINS; i++, y += 54) {
+		draw_header_map(BODY, HM_PINS, O.focus);
+		y = BODY + MAP_H + 8;
+		for (int i = 0; i < HW_PINS; i++, y += PIN_STEP) {
 			const char *mode = hw_pins[i].busy ? "In use by the UART" : hw_mode_names[hw_pins[i].mode];
 
 			pin_row(y, O.focus == i, pin_label(i), hw_pins[i].where, mode, hw_pins[i].mode == PM_OUT,
@@ -1017,10 +1053,10 @@ static void draw_logic(void)
 	static const struct hint hints[] = { { "#1", "options", 0 }, { "#2", "capture", 0 }, { "#3", "save", 0 },
 					     { "Esc", "back", 1 } };
 	int src = O.src[T_LOGIC], ch = src == SRC_BP ? BP_PINS : HW_LA_CH, lh = src == SRC_BP ? 48 : 76;
-	int px = X0 - 16, pw = XW + 32, y = BODY + 12, x, py, ph, wx, lanes_y;
+	int px = X0, pw = XW, y = BODY, x, py, ph, wx, lanes_y;
 	char v[24];
 
-	header("OHMINOUS", "Logic analyzer");
+	header(EB_APP, "Logic analyzer");
 	if (src == SRC_BP && !B.open) {
 		draw_missing();
 		hint_bar_src(hints + 3, 1, SRC_BP);
@@ -1038,8 +1074,8 @@ static void draw_logic(void)
 		status_dot(y, LA.status, LA.status_bad ? WB_COLOR_ERROR : WB_COLOR_OK);
 	py = y + 32 + 12;
 	ph = BOTTOM - 12 - py;
-	box(px, py, pw, ph, WB_RADIUS_MD, WB_COLOR_CONSOLE, 255, WB_COLOR_LINE, 1, 0);
-	wx = px + 88;
+	console_box(px, py, pw, ph);	/* the traces on black: no scene behind them */
+	wx = px + 80;
 	lanes_y = py + 8;
 	for (int c = 0; c < ch; c++) {
 		int ly = lanes_y + c * lh, top = ly + 10, bot = ly + lh - 10, prev = -1;
@@ -1051,8 +1087,19 @@ static void draw_logic(void)
 		snprintf(name, sizeof(name), "IO%d", c);
 		text(&f_mono16b, px + 14, ly + lh / 2 - 17, src == SRC_BADGE ? pin_label(c) : name, WB_COLOR_TEXT_HI, 0);
 		text(&f_mono13, px + 14, ly + lh / 2 + 2, src == SRC_BP ? (sub[0] && strcmp(sub, "-") ? sub : "") :
-		     sub, WB_COLOR_TEXT_LOW, 0);
+		     sub, WB_COLOR_PLACEHOLDER, 0);
 		if (!LA.n || LA.src != src)
+			continue;
+		/* the trace: recorded as what decides it (the capture, where it
+		 * is scrolled to, the zoom), not as its hundreds of fills; drawn
+		 * only in the bands it lies in */
+		if (wb_rec) {
+			int k[] = { 0x4c41, LA.gen, LA.n, LA.pos, LA.zoom, c, wx, top, bot };
+
+			wb_rec_rows(top, bot + 2, k, sizeof(k));
+			continue;
+		}
+		if (bot + 2 <= fb_y0 || top >= fb_y1)
 			continue;
 		for (int q = 0; q < LA_W; q++) {
 			int s0 = LA.pos + (LA.zoom >= 0 ? q << LA.zoom : q >> -LA.zoom);
@@ -1089,17 +1136,17 @@ static void draw_logic(void)
 
 			dur(v, LA.rate ? s * 1000000000LL / LA.rate : 0);
 			tx -= k == 0 ? 0 : k == 4 ? text_w(&f_mono13, v, 0) : text_w(&f_mono13, v, 0) / 2;
-			text(&f_mono13, tx, py + ph - 20, v, WB_COLOR_TEXT_LOW, 0);
+			text(&f_mono13, tx, py + ph - 20, v, WB_COLOR_PLACEHOLDER, 0);
 		}
 		if (LA.trig[src] >= 0 && LA.pos == 0) {
 			for (int d = py + 1; d < py + ph - 26; d += 8)
 				fill(wx, d, 2, 5, WB_COLOR_PINK);
-			box(wx - 8, py + 4, 18, 18, 4, WB_COLOR_PINK, 255, 0, 0, 0);
+			box(wx - 8, py + 4, 18, 18, 2, WB_COLOR_PINK, 255, 0, 0, 0);
 			text(&f_mono13, wx - 3, py + 6, "T", WB_COLOR_VOID, 0);
 		}
 	} else {
 		text(&f_ui18, wx + 16, text_top(&f_ui18, lanes_y + ch * lh / 2), src == SRC_BP && !B.sump ?
-		     "Set the Bus Pirate's binmode to SUMP" : "No capture yet: the triangle captures", WB_COLOR_TEXT_LOW, 0);
+		     "Set the Bus Pirate's binmode to SUMP" : "No capture yet: the triangle captures", WB_COLOR_TEXT_MID, 0);
 	}
 	hint_bar_src(hints, 4, src);
 }
@@ -1121,24 +1168,22 @@ static int bus_on_badge(int b)
 static void draw_buses(void)
 {
 	static const struct hint hints[] = { { "Enter", "open", 0 }, { "Esc", "back", 1 } };
-	int y = BODY + 20;
+	int y = WB_ROWS_TOP;
 
-	header("OHMINOUS", "Buses");
+	header(EB_APP, "Buses");
 	for (int i = 0; i < N_BUSES; i++, y += 76 + 10) {
 		int on = i == O.bus, missing = !bus_on_badge(i) && !B.present, x = X0, cy = y + 38, rx;
 		char meta[48];
 
-		if (on)
-			box_focus(x, y, XW, 76, WB_RADIUS_MD, &GLOW_ROW);
-		else if (missing)
+		if (missing && !on)
 			dashed(x, y, XW, 76);
 		else
-			box_plain(x, y, XW, 76, WB_RADIUS_MD, WB_COLOR_SURFACE1);
+			wb_card(x, y, XW, 76, WB_RADIUS_MD, on, &GLOW_FOCUS);
 		icon(bus_icons[i], x + 20, cy - 15, on ? WB_COLOR_CYAN : missing ? WB_COLOR_TEXT_LOW : WB_COLOR_TEXT_MID, 255);
 		text(&f_ui22, x + 20 + 30 + 16, y + 10, bus_names[i], on ? WB_COLOR_CYAN : missing ? WB_COLOR_TEXT_MID :
 		     WB_COLOR_TEXT_HI, 0);
 		text(&f_ui16, x + 20 + 30 + 16, y + 42, bus_what[i], WB_COLOR_TEXT_MID, 0);
-		icon(&r_chevron, x + XW - 20 - 20, cy - 10, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_LOW, 255);
+		icon(&r_chevron, x + XW - 20 - 20, cy - 10, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 255);
 		rx = x + XW - 20 - 20 - 16;
 		if (missing)
 			snprintf(meta, sizeof(meta), "Needs Bus Pirate");
@@ -1146,7 +1191,7 @@ static void draw_buses(void)
 			snprintf(meta, sizeof(meta), "%s \xc2\xb7 BP", bus_meta[i]);
 		else
 			snprintf(meta, sizeof(meta), "%s", bus_meta[i]);
-		text(&f_mono13, rx - text_w(&f_mono13, meta, 0), y + 44, meta, missing ? WB_COLOR_TEXT_LOW :
+		text(&f_mono13, rx - text_w(&f_mono13, meta, 0), y + 44, meta, missing ? WB_COLOR_PLACEHOLDER :
 		     WB_COLOR_TEXT_MID, 0);
 		{
 			int ix = rx;
@@ -1158,7 +1203,7 @@ static void draw_buses(void)
 		}
 	}
 	text_wrap(&f_ui16, X0, y + 10, XW, 22, "Other Bus Pirate modes (2-wire, 3-wire, infrared) are in its terminal, "
-		  "under Serial.", WB_COLOR_TEXT_LOW, 2, 1);
+		  "under Serial.", WB_COLOR_TEXT_MID, 2, 1);
 	hint_bar(hints, 2);
 }
 
@@ -1166,10 +1211,10 @@ static void draw_i2c(void)
 {
 	static const struct hint hints[] = { { "#1", "options", 0 }, { "#2", "scan", 0 }, { "Enter", "registers", 0 },
 					     { "Esc", "back", 1 } };
-	int src = O.src[T_BUSES], y = BODY + 14, gy, cw = (XW - 28 - 36 - 15 * 3) / 16;
+	int src = O.src[T_BUSES], y = BODY, gy, cw = (XW - 28 - 36 - 15 * 3) / 16;
 	char v[48];
 
-	header("OHMINOUS", "I\xc2\xb2" "C scan");
+	header(EB_BUSES, "I\xc2\xb2" "C scan");
 	if (src == SRC_BP && !B.open) {
 		draw_missing();
 		hint_bar_src(hints + 3, 1, SRC_BP);
@@ -1185,20 +1230,20 @@ static void draw_i2c(void)
 	}
 	if (I2C.scanned && I2C.src == src) {
 		snprintf(v, sizeof(v), "%d found", I2C.n);
-		status_dot(y, v, I2C.n ? WB_COLOR_OK : WB_COLOR_TEXT_LOW);
+		status_dot(y, v, I2C.n ? WB_COLOR_OK : WB_COLOR_TEXT_MID);
 	}
-	gy = y + 32 + 14;
-	box(X0, gy, XW, 12 + 16 + 4 + 8 * 25 + 12, WB_RADIUS_MD, WB_COLOR_CONSOLE, 255, WB_COLOR_LINE, 1, 0);
+	gy = y + 32 + 12;
+	wb_card(X0, gy, XW, 12 + 16 + 4 + 8 * 25 + 12, WB_RADIUS_MD, 0, 0);
 	for (int c = 0; c < 16; c++) {
 		char h[2] = { "0123456789ABCDEF"[c], 0 };
 
-		text(&f_mono13, X0 + 14 + 36 + c * (cw + 3) + cw / 2 - 4, gy + 12, h, WB_COLOR_TEXT_LOW, 0);
+		text(&f_mono13, X0 + 14 + 36 + c * (cw + 3) + cw / 2 - 4, gy + 12, h, WB_COLOR_PLACEHOLDER, 0);
 	}
 	for (int r = 0; r < 8; r++) {
 		int ry = gy + 12 + 16 + 4 + r * 25;
 
 		snprintf(v, sizeof(v), "%02X", r * 16);
-		text(&f_mono13, X0 + 14, ry + 3, v, WB_COLOR_TEXT_LOW, 0);
+		text(&f_mono13, X0 + 14, ry + 3, v, WB_COLOR_PLACEHOLDER, 0);
 		for (int c = 0; c < 16; c++) {
 			int a = r * 16 + c, cx = X0 + 14 + 36 + c * (cw + 3);
 
@@ -1211,24 +1256,22 @@ static void draw_i2c(void)
 			}
 		}
 	}
-	y = gy + 12 + 16 + 4 + 8 * 25 + 12 + 14;
+	y = gy + 12 + 16 + 4 + 8 * 25 + 12 + 12;
 	if (!I2C.scanned || I2C.src != src) {
-		text(&f_ui18, X0 + 4, y + 8, "The triangle scans the bus.", WB_COLOR_TEXT_LOW, 0);
+		text(&f_ui18, X0 + 4, y + 8, "The triangle scans the bus.", WB_COLOR_TEXT_MID, 0);
 	} else if (!I2C.n) {
-		text(&f_ui18, X0 + 4, y + 8, "Nothing answered. Check the wiring and the pull-ups.", WB_COLOR_TEXT_LOW, 0);
+		text(&f_ui18, X0 + 4, y + 8, "Nothing answered. Check the wiring and the pull-ups.", WB_COLOR_TEXT_MID, 0);
 	} else {
 		int first = I2C.focus > 2 ? I2C.focus - 2 : 0;
 
 		for (int k = first; k < I2C.n && y + 52 <= BOTTOM - 4; k++, y += 60) {
 			int a = i2c_found_nth(k), on = k == I2C.focus;
 
-			if (on)
-				box_focus(X0, y, XW, 52, WB_RADIUS_MD, &GLOW_ROW);
-			else
-				box_plain(X0, y, XW, 52, WB_RADIUS_MD, WB_COLOR_SURFACE1);
+			wb_card(X0, y, XW, 52, WB_RADIUS_MD, on, &GLOW_FOCUS);
 			snprintf(v, sizeof(v), "0x%02X", a);
 			text(&f_mono18, X0 + 18, text_top(&f_mono18, y + 26), v, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 0);
-			text(&f_ui18, X0 + 18 + 70 + 16, text_top(&f_ui18, y + 26), i2c_hint(a), WB_COLOR_TEXT_MID, 0);
+			text(&f_ui18, X0 + 18 + 70 + 16, text_top(&f_ui18, y + 26), i2c_hint(a), on ? WB_COLOR_TEXT_HI :
+			     WB_COLOR_TEXT_MID, 0);
 			icon(&r_chevron, X0 + XW - 18 - 20, y + 16, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 255);
 		}
 	}
@@ -1239,22 +1282,22 @@ static void draw_regs(void)
 {
 	static const struct hint hints[] = { { "#2", "read again", 0 }, { "#1", "write", 0 }, { "Esc", "back", 1 } };
 	char t[64];
-	int y = BODY + 14;
+	int y = BODY;
 
 	snprintf(t, sizeof(t), "0x%02X", I2C.addr);
-	header("I\xc2\xb2" "C", t);
-	text(&f_ui18, X0, y, i2c_hint(I2C.addr), WB_COLOR_TEXT_MID, 0);
+	header(EB_BUSES " I\xc2\xb2" "C", t);
+	text(&f_ui18, X0 + 6, y, i2c_hint(I2C.addr), WB_COLOR_TEXT_MID, 0);
 	y += 34;
-	box(X0, y, XW, 16 * 24 + 40, WB_RADIUS_MD, WB_COLOR_CONSOLE, 255, WB_COLOR_LINE, 1, 0);
+	wb_card(X0, y, XW, 16 * 24 + 40, WB_RADIUS_MD, 0, 0);
 	for (int c = 0; c < 16; c++) {
 		snprintf(t, sizeof(t), "%X", c);
-		text(&f_mono13, X0 + 14 + 40 + c * 34 + 8, y + 10, t, WB_COLOR_TEXT_LOW, 0);
+		text(&f_mono13, X0 + 14 + 40 + c * 34 + 8, y + 10, t, WB_COLOR_PLACEHOLDER, 0);
 	}
 	for (int r = 0; r < 16; r++) {
 		int ry = y + 30 + r * 24;
 
 		snprintf(t, sizeof(t), "%02X", r * 16);
-		text(&f_mono13, X0 + 14, ry, t, WB_COLOR_TEXT_LOW, 0);
+		text(&f_mono13, X0 + 14, ry, t, WB_COLOR_PLACEHOLDER, 0);
 		for (int c = 0; c < 16 && I2C.regs_ok; c++) {
 			snprintf(t, sizeof(t), "%02X", I2C.regs[r * 16 + c]);
 			text(&f_mono14, X0 + 14 + 40 + c * 34, ry, t, I2C.regs[r * 16 + c] ? WB_COLOR_TEXT_HI :
@@ -1272,12 +1315,12 @@ static void draw_term(void)
 {
 	static const struct hint hints[] = { { "#1", "options", 0 }, { "Enter", "send", 0 }, { "Esc", "clear", 1 } };
 	static const struct hint back[] = { { "#1", "options", 0 }, { "Enter", "send", 0 }, { "Esc", "back", 1 } };
-	int y = BODY + 12, py, ph, ly, tool = TM.kind == TM_USB || TM.kind == TM_BP ? T_SERIAL : T_BUSES;
+	int y = BODY, py, ph, ly, tool = TM.kind == TM_USB || TM.kind == TM_BP ? T_SERIAL : T_BUSES;
 	char v[48];
 	const char *title = TM.kind == TM_UART ? "UART" : TM.kind == TM_USB ? "Serial" : TM.kind == TM_SPI ? "SPI" :
 			    TM.kind == TM_1WIRE ? "1-Wire" : "Bus Pirate";
 
-	header(TM.kind == TM_USB || TM.kind == TM_BP ? "OHMINOUS" : "BUSES", title);
+	header(TM.kind == TM_USB || TM.kind == TM_BP ? EB_APP : EB_BUSES, title);
 	if (O.src[tool] == SRC_BP && !B.open) {
 		draw_missing();
 		hint_bar_src(back + 2, 1, SRC_BP);
@@ -1286,8 +1329,8 @@ static void draw_term(void)
 	if (TM.kind == TM_UART) {
 		int x;
 
-		draw_header_map(X0, y, HM_UART, -1);
-		y += 200 + 12;
+		draw_header_map(y, HM_UART, -1);
+		y += MAP_H + 12;
 		x = chip(X0, y, "TX", "IO3");
 		x = chip(x, y, "RX", "IO4");
 		snprintf(v, sizeof(v), "%u 8N1", uart_bauds[O.uart_baud]);
@@ -1312,7 +1355,7 @@ static void draw_term(void)
 	}
 	py = y;
 	ph = BOTTOM - 12 - py;
-	box(X0, py, XW, ph, WB_RADIUS_MD, WB_COLOR_CONSOLE, 255, WB_COLOR_LINE, 1, 0);
+	console_box(X0, py, XW, ph);	/* the lines on black: no scene behind them */
 	fill(X0 + 1, py + ph - 44, XW - 2, 1, WB_COLOR_LINE);
 	/* the lines, newest at the bottom */
 	ly = py + ph - 44 - 10 - 21;
@@ -1328,7 +1371,7 @@ static void draw_term(void)
 	}
 	if (!TM.n && !TM.part[0])
 		text(&f_ui16, X0 + 16, py + 12, TM.kind == TM_USB && TM.usb_fd < 0 && !getenv("OHM_USB") ?
-		     "No USB serial adapter on the bottom port" : "Type below; Enter sends the line.", WB_COLOR_TEXT_LOW, 0);
+		     "No USB serial adapter on the bottom port" : "Type below; Enter sends the line.", WB_COLOR_PLACEHOLDER, 0);
 	{
 		int iy = py + ph - 22, x = text(&f_mono14, X0 + 16, text_top(&f_mono14, iy), "\xe2\x80\xba",
 						WB_COLOR_PINK, 0) + 10;
@@ -1356,18 +1399,13 @@ static int bp_colour(void)
 	return 1;
 }
 
-static void led_row(int y, int on, const char *label, const char *value, int sw, int swon)
+/* a row as the menu's (wb_row): right is WB_ROW_OPEN where Enter opens a
+ * choice, WB_ROW_SWITCH for on and off */
+#define LED_STEP	78
+
+static void led_row(int y, int on, const char *label, const char *value, int right, int swon)
 {
-	if (on)
-		box_focus(X0, y, XW, 60, WB_RADIUS_MD, &GLOW_ROW);
-	else
-		box_plain(X0, y, XW, 60, WB_RADIUS_MD, WB_COLOR_SURFACE1);
-	text(&f_ui22, X0 + 20, text_top(&f_ui22, y + 30), label, WB_COLOR_TEXT_HI, 0);
-	if (sw)
-		switch_at(X0 + XW - 20 - 56, y + 14, 56, 32, swon);
-	else if (value)
-		text(&f_mono16b, X0 + XW - 20 - text_w(&f_mono16b, value, 0), text_top(&f_mono16b, y + 30), value,
-		     on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 0);
+	wb_row(X0, y, XW, WB_LIST_ROW_H, 0, label, 0, value, right, swon, on);
 }
 
 static int led_rows(void)
@@ -1379,36 +1417,36 @@ static void draw_leds(void)
 {
 	static const struct hint hints[] = { { "#2", "on / off", 0 }, { "\xe2\x86\x90 \xe2\x86\x92", "adjust", 0 },
 					     { "Esc", "back", 1 } };
-	int y = BODY + 18;
+	int y = WB_ROWS_TOP;
 	char v[32];
 
-	header("OHMINOUS", "LEDs");
+	header(EB_APP, "LEDs");
 	if (O.src[T_LEDS] == SRC_BP) {
 		if (!B.open) {
 			draw_missing();
 			hint_bar_src(hints + 2, 1, SRC_BP);
 			return;
 		}
-		led_row(y, O.focus == 0, "Type", bp_led_types[B.led_type], 0, 0);
-		led_row(y += 68, O.focus == 1, "Colour", colour_names[bp_colour()], 0, 0);
+		led_row(y, O.focus == 0, "Type", bp_led_types[B.led_type], WB_ROW_OPEN, 0);
+		led_row(y += LED_STEP, O.focus == 1, "Colour", colour_names[bp_colour()], WB_ROW_OPEN, 0);
 		snprintf(v, sizeof(v), "%d %%", B.led_pct);
-		led_row(y += 68, O.focus == 2, "Brightness", v, 0, 0);
+		led_row(y += LED_STEP, O.focus == 2, "Brightness", v, WB_ROW_NONE, 0);
 		snprintf(v, sizeof(v), "%d", B.led_n);
-		led_row(y += 68, O.focus == 3, "LEDs on the strip", B.led_type == LT_ONBOARD ? "1" : v, 0, 0);
-		led_row(y += 68, O.focus == 4, "Lit", 0, 1, B.led_set >= 0);
-		y += 68 + 10;
+		led_row(y += LED_STEP, O.focus == 3, "LEDs on the strip", B.led_type == LT_ONBOARD ? "1" : v,
+			WB_ROW_OPEN, 0);
+		led_row(y += LED_STEP, O.focus == 4, "Lit", 0, WB_ROW_SWITCH, B.led_set >= 0);
+		y += LED_STEP + 4;
 		text_wrap(&f_ui16, X0, y, XW, 22, B.led_type == LT_ONBOARD ? "The Bus Pirate's own LED." :
 			  "Data on IO0 (APA102: clock on IO1). The strip runs on Vout: the supply goes on at 5 V if "
-			  "nothing is on it.", WB_COLOR_TEXT_LOW, 3, 1);
+			  "nothing is on it.", WB_COLOR_TEXT_MID, 3, 1);
 	} else {
-		led_row(y, O.focus == 0, "Colour", colour_names[BL.colour], 0, 0);
+		led_row(y, O.focus == 0, "Colour", colour_names[BL.colour], WB_ROW_OPEN, 0);
 		snprintf(v, sizeof(v), "%d %%", BL.pct);
-		led_row(y += 68, O.focus == 1, "Brightness", v, 0, 0);
-		led_row(y += 68, O.focus == 2, "Lit", 0, 1, BL.on);
-		y += 68 + 10;
-		snprintf(v, sizeof(v), "%d", hw_leds());
+		led_row(y += LED_STEP, O.focus == 1, "Brightness", v, WB_ROW_NONE, 0);
+		led_row(y += LED_STEP, O.focus == 2, "Lit", 0, WB_ROW_SWITCH, BL.on);
+		y += LED_STEP + 4;
 		text_wrap(&f_ui16, X0, y, XW, 22, "A WS2812 chain on J7 pin 4 (LED), from +3V3 or +5V and GND: the four "
-			  "LEDs of WhyOS's LED driver (kernel patch 0032).", WB_COLOR_TEXT_LOW, 3, 1);
+			  "LEDs of WhyOS's LED driver (kernel patch 0032).", WB_COLOR_TEXT_MID, 3, 1);
 	}
 	hint_bar_src(hints, 3, O.src[T_LEDS]);
 }
@@ -1452,19 +1490,19 @@ static void slider(int x, int y, int w, int pct, int on)
 {
 	int kx = x + w * pct / 100;
 
-	box(x, y, w, 8, 4, WB_COLOR_LINE, 255, 0, 0, 0);
-	box(x, y, kx - x + 4, 8, 4, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 255, 0, 0, 0);
-	box(kx - 12, y - 8, 24, 24, 12, WB_COLOR_TEXT_HI, 255, on ? WB_COLOR_CYAN : WB_COLOR_LINE, 3, on ? &GLOW_ROW : 0);
+	box(x, y, w, 8, 2, 0xFFFFFF, 36, 0, 0, 0);
+	box(x, y, kx - x + 4, 8, 2, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 255, 0, 0, 0);
+	box(kx - 12, y - 8, 24, 24, 4, WB_COLOR_TEXT_HI, 255, on ? WB_COLOR_CYAN : WB_COLOR_LINE, 3, on ? &GLOW_FOCUS : 0);
 }
 
 static void draw_power(void)
 {
 	static const struct hint hints[] = { { "#2", "supply", 0 }, { "\xe2\x86\x90 \xe2\x86\x92", "adjust", 0 },
 					     { "Esc", "back", 1 } };
-	int y = BODY + 16;
+	int y = BODY;
 	char v[24];
 
-	header("OHMINOUS", "Power");
+	header(EB_APP, "Power");
 	if (O.src[T_POWER] == SRC_BADGE) {
 		static const struct { const char *name, *where, *note; } rails[3] = {
 			{ "+5V", "J3 pin 1", "Fixed, not switchable, not measured" },
@@ -1472,15 +1510,13 @@ static void draw_power(void)
 			{ "GND", "J3 pin 8 \xc2\xb7 J7 pins 3, 10", "Common ground" },
 		};
 
-		text(&f_mono13, X0, y, "HEADER RAILS", WB_COLOR_TEXT_LOW, 21);
+		y += 6;
+		text(&f_mono13, X0 + 6, y, "HEADER RAILS", WB_COLOR_PLACEHOLDER, 21);
 		y += 17 + 10;
 		for (int i = 0; i < 3; i++, y += 78) {
 			int on = O.focus == i;
 
-			if (on)
-				box_focus(X0, y, XW, 68, WB_RADIUS_MD, &GLOW_ROW);
-			else
-				box_plain(X0, y, XW, 68, WB_RADIUS_MD, WB_COLOR_SURFACE1);
+			wb_card(X0, y, XW, 68, WB_RADIUS_MD, on, &GLOW_FOCUS);
 			text(&f_mono18, X0 + 20, text_top(&f_mono18, y + 34), rails[i].name, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_HI, 0);
 			text(&f_ui20, X0 + 20 + 92 + 16, y + 8, rails[i].where, WB_COLOR_TEXT_HI, 0);
 			text(&f_ui16, X0 + 20 + 92 + 16, y + 38, rails[i].note, WB_COLOR_TEXT_MID, 0);
@@ -1501,8 +1537,8 @@ static void draw_power(void)
 		return;
 	}
 	/* the readout */
-	box(X0, y, XW, 92, WB_RADIUS_MD, WB_COLOR_CONSOLE, 255, WB_COLOR_LINE, 1, 0);
-	text(&f_mono13, X0 + 22, y + 16, "VOUT", WB_COLOR_TEXT_LOW, 21);
+	wb_card(X0, y, XW, 92, WB_RADIUS_MD, 0, 0);
+	text(&f_mono13, X0 + 22, y + 16, "VOUT", WB_COLOR_PLACEHOLDER, 21);
 	snprintf(v, sizeof(v), "%.*s", (int)strcspn(B.vout, "V"), B.vout[0] ? B.vout : "0.0");
 	{
 		int x = text(&f_ui36b, X0 + 22, y + 36, v, WB_COLOR_TEXT_HI, -11);
@@ -1510,28 +1546,25 @@ static void draw_power(void)
 		text(&f_ui22, x + 6, y + 46, "V", WB_COLOR_TEXT_MID, 0);
 	}
 	fill(X0 + 22 + 170, y + 16, 1, 60, WB_COLOR_LINE);
-	text(&f_mono13, X0 + 22 + 194, y + 16, "CURRENT", WB_COLOR_TEXT_LOW, 21);
+	text(&f_mono13, X0 + 22 + 194, y + 16, "CURRENT", WB_COLOR_PLACEHOLDER, 21);
 	snprintf(v, sizeof(v), "%.*s", (int)strcspn(B.iout, "m"), B.psu ? B.iout : "0");
 	{
 		int x = text(&f_ui36b, X0 + 22 + 194, y + 36, v, WB_COLOR_TEXT_HI, -11);
 
 		text(&f_ui22, x + 6, y + 46, "mA", WB_COLOR_TEXT_MID, 0);
 	}
-	box(X0 + XW - 22 - text_w(&f_ui16, "every 1 s", 0) - 14, y + 22, 8, 8, 4, WB_COLOR_OK, 255, 0, 0, 0);
+	box(X0 + XW - 22 - text_w(&f_ui16, "every 1 s", 0) - 14, y + 22, 8, 8, 2, WB_COLOR_OK, 255, 0, 0, 0);
 	text(&f_ui16, X0 + XW - 22 - text_w(&f_ui16, "every 1 s", 0), y + 16, "every 1 s", WB_COLOR_TEXT_MID, 0);
 	y += 92 + 10;
 	/* supply, voltage, current limit, pull-ups */
 	for (int i = 0; i < 4; i++) {
 		int on = O.focus == i, h = i == 1 || i == 2 ? 84 : 60;
 
-		if (on)
-			box_focus(X0, y, XW, h, WB_RADIUS_MD, &GLOW_ROW);
-		else
-			box_plain(X0, y, XW, h, WB_RADIUS_MD, WB_COLOR_SURFACE1);
+		wb_card(X0, y, XW, h, WB_RADIUS_MD, on, &GLOW_FOCUS);
 		if (i == 0 || i == 3) {
 			icon(i ? &p_pullup : &p_power, X0 + 20, y + 18, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 255);
 			text(&f_ui22, X0 + 20 + 24 + 16, text_top(&f_ui22, y + 30), i ? "Pull-ups" : "Supply", WB_COLOR_TEXT_HI, 0);
-			switch_at(X0 + XW - 20 - 56, y + 14, 56, 32, i ? B.pullups : B.psu);
+			wb_switch(X0 + XW - 18 - 52, y + 30, i ? B.pullups : B.psu);
 		} else {
 			if (i == 1)
 				snprintf(v, sizeof(v), "%d.%02d V", B.dv / 10, B.dv % 10 * 10);
@@ -1542,9 +1575,6 @@ static void draw_power(void)
 			text(&f_ui22, X0 + 20, y + 12, i == 1 ? "Voltage" : "Current limit", WB_COLOR_TEXT_HI, 0);
 			text(&f_mono18, X0 + XW - 20 - text_w(&f_mono18, v, 0), y + 14, v, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 0);
 			slider(X0 + 24, y + 56, XW - 48, i == 1 ? (B.dv - 8) * 100 / 42 : B.ma * 100 / 500, on);
-			if (i == 1 && on) {
-				text(&f_mono13, X0 + 20, y + 70, "", WB_COLOR_TEXT_LOW, 0);
-			}
 		}
 		y += h + 10;
 	}
@@ -1558,22 +1588,25 @@ static void draw_power(void)
 static void draw_log(void)
 {
 	static const struct hint hints[] = { { "Esc", "back", 1 } };
-	int y = BODY + 18;
+	int y = BODY + 16;
 	char b[110];
 
+	header(EB_APP, "Log");
 	if (!O.n_log) {
-		empty_screen("OHMINOUS", "Log", "Nothing sent or read yet. What the tools do shows here.");
-		status_bar();
+		text(&f_ui20, X0 + 6, WB_ROWS_TOP, "Nothing sent or read yet. What the tools do shows here.",
+		     WB_COLOR_TEXT_MID, 0);
+		hint_bar(hints, 1);
 		return;
 	}
-	header("OHMINOUS", "Log");
-	for (int i = O.n_log - 1; i >= 0 && y + 28 < BOTTOM; i--, y += 28)
-		text(&f_mono14, X0, y, wb_fit(&f_mono14, O.log[i], XW, b, sizeof(b)),
+	wb_card(X0, BODY, XW, BOTTOM - 12 - BODY, WB_RADIUS_MD, 0, 0);
+	for (int i = O.n_log - 1; i >= 0 && y + 28 < BOTTOM - 12; i--, y += 28)
+		text(&f_mono14, X0 + 18, y, wb_fit(&f_mono14, O.log[i], XW - 36, b, sizeof(b)),
 		     i == O.n_log - 1 ? WB_COLOR_TEXT_HI : WB_COLOR_TEXT_MID, 0);
 	hint_bar(hints, 1);
 }
 
 #define N_SET		5
+#define SET_STEP	78
 
 static void draw_settings(void)
 {
@@ -1588,22 +1621,11 @@ static void draw_settings(void)
 		"For a USB serial adapter on the bottom port (Serial).",
 		"Your names for IO0 to IO4 and STROBE, shown on every tool.",
 	};
-	int y = BODY + 16;
+	int y = WB_ROWS_TOP;
 	char v[32];
 
-	header("OHMINOUS", "Settings");
-	for (int i = 0; i < N_SET; i++, y += 76) {
-		int on = O.focus == i, cy = y + 34;
-
-		if (on)
-			box_focus(X0, y, XW, 68, WB_RADIUS_MD, &GLOW_ROW);
-		else
-			box_plain(X0, y, XW, 68, WB_RADIUS_MD, WB_COLOR_SURFACE1);
-		text(&f_ui20, X0 + 20, text_top(&f_ui20, cy), labels[i], WB_COLOR_TEXT_HI, 0);
-		if (i == 1) {
-			switch_at(X0 + XW - 20 - 48, cy - 14, 48, 28, O.safe);
-			continue;
-		}
+	header(EB_APP, "Settings");
+	for (int i = 0; i < N_SET; i++, y += SET_STEP) {
 		if (i == 0)
 			snprintf(v, sizeof(v), "%s", O.back_view ? "The back" : "The screen side");
 		else if (i == 2)
@@ -1612,11 +1634,10 @@ static void draw_settings(void)
 			snprintf(v, sizeof(v), "%u baud", usb_bauds[O.usb_baud]);
 		else
 			v[0] = 0;
-		icon(&r_chevron, X0 + XW - 20 - 20, cy - 10, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_LOW, 255);
-		text(&f_mono14, X0 + XW - 20 - 20 - 14 - text_w(&f_mono14, v, 0), text_top(&f_mono14, cy), v,
-		     on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 0);
+		wb_row(X0, y, XW, WB_LIST_ROW_H, 0, labels[i], 0, v, i == 1 ? WB_ROW_SWITCH : WB_ROW_OPEN, O.safe,
+		       O.focus == i);
 	}
-	text_wrap(&f_ui16, X0, y + 4, XW, 22, notes[O.focus], WB_COLOR_TEXT_LOW, 2, 1);
+	text_wrap(&f_ui16, X0 + 6, y + 4, XW - 6, 22, notes[O.focus], WB_COLOR_TEXT_MID, 2, 1);
 	hint_bar(hints, 3);
 }
 
@@ -1625,8 +1646,7 @@ static int help_cap(int x, int cy, const char *keys)
 {
 	int sym = one_sym(keys), w = (sym ? 12 : text_w(&f_mono14, keys, 0)) + 18;
 
-	box(x, cy - 12, w, 25, 6, WB_COLOR_SURFACE1, 255, WB_COLOR_LINE, 1, 0);
-	fill(x + 6, cy + 11, w - 12, 1, WB_COLOR_LINE);
+	box(x, cy - 12, w, 25, 4, WB_COLOR_SURFACE2, 255, WB_COLOR_LINE, 1, 0);
 	if (sym)
 		icon(keycap_syms[sym - 1], x + 9, cy - 6, key_colors[sym - 1], 255);
 	else
@@ -1648,17 +1668,19 @@ static void draw_help(void)
 		{ "\xe2\x86\x91\xe2\x86\x93", "Choose a row; Logic: zoom" }, { "Esc", "Back to the start" },
 	};
 	const struct help_key *k = O.sc == SC_START ? start_keys : tool_keys;
-	int n = O.sc == SC_START ? 6 : 7, px = 56, pw = W - 112, x = px + 30, tw = pw - 60;
+	int n = O.sc == SC_START ? 6 : 7, x = POP_X + 32, tw = POP_W - 64;
 	const char *about = O.sc == SC_START ?
 		"Drive the pins on the badge's J3 and J7 headers. Plug a Bus Pirate 6 into the bottom port and each "
 		"tool gets a Bus Pirate tab: 8 pins, a programmable supply, faster capture and more buses." :
 		"Every tool works on the badge's own header pins, and with a Bus Pirate 6 on the bottom port.";
 	int lines = text_wrap(&f_ui18, 0, 0, tw, 25, about, 0, 4, 0);
-	int h = 26 + 18 + 6 + 36 + 6 + lines * 25 + 16 + (O.sc == SC_START ? 46 + 16 : 0) + 17 + 8 + n * HELP_ROW + 26;
-	int y = WB_STATUS_BAR_H + (BOTTOM - WB_STATUS_BAR_H - h) / 2;
+	int h = 26 + 18 + 6 + 36 + 6 + lines * 25 + 16 + (O.sc == SC_START ? 46 + 16 : 0) + 17 + 8 + n * HELP_ROW +
+		24 + 48;
+	int y = (H - h) / 2;
 
-	dim(WB_COLOR_CONSOLE, 184);
-	box(px, y, pw, h, WB_RADIUS_LG, WB_COLOR_SURFACE2, 255, WB_COLOR_LINE, 1, 0);
+	/* frosted, as the menu's pop-ups, with its key at the bottom */
+	pop_frame(y, h);
+	panel_hints(x, tw, y + h - 48 - 10, hs, 1);
 	y += 26;
 	icon(&kc_diamond, x, y + 1, WB_COLOR_KEY_DIAMOND, 255);
 	eyebrow(x + 20, y, "HELP");
@@ -1669,22 +1691,27 @@ static void draw_help(void)
 	if (O.sc == SC_START) {
 		int bw = (tw - 12) / 2;
 
-		box_plain(x, y, bw, 46, WB_RADIUS_MD, WB_COLOR_SURFACE1);
+		box(x, y, bw, 46, 4, 0xFFFFFF, 15, 0, 0, 0);
+		edge_rect(x, y, bw, 46, 0xFFFFFF, 46);
 		icon(&o_badge20, x + 12, y + 13, WB_COLOR_TEXT_MID, 255);
 		text(&f_ui16, x + 12 + 22 + 10, text_top(&f_ui16, y + 23), "Badge tab: always there", WB_COLOR_TEXT_HI, 0);
-		box_plain(x + bw + 12, y, bw, 46, WB_RADIUS_MD, WB_COLOR_SURFACE1);
+		box(x + bw + 12, y, bw, 46, 4, 0xFFFFFF, 15, 0, 0, 0);
+		edge_rect(x + bw + 12, y, bw, 46, 0xFFFFFF, 46);
 		text(&f_ui16, bp_tag(x + bw + 12 + 12, y + 23) + 10, text_top(&f_ui16, y + 23), "Bus Pirate adds options",
 		     WB_COLOR_TEXT_HI, 0);
 		y += 46 + 16;
 	}
-	text(&f_mono13, x, y, "KEYS ON THIS SCREEN", WB_COLOR_TEXT_LOW, 21);
+	text(&f_mono13, x, y, "KEYS ON THIS SCREEN", WB_COLOR_PLACEHOLDER, 21);
 	y += 17 + 8;
 	for (int i = 0; i < n; i++, y += HELP_ROW) {
-		fill(x, y, tw, 1, WB_COLOR_LINE);
+		char b[80];
+
+		if (i)
+			fill(x, y, tw, 1, 0x26262F);
 		help_cap(x, y + HELP_ROW / 2, k[i].keys);
-		text(&f_ui18, x + 88, text_top(&f_ui18, y + HELP_ROW / 2), k[i].what, WB_COLOR_TEXT_HI, 0);
+		text(&f_ui18, x + 88, text_top(&f_ui18, y + HELP_ROW / 2), wb_fit(&f_ui18, k[i].what, tw - 88, b, sizeof(b)),
+		     WB_COLOR_TEXT_HI, 0);
 	}
-	hint_bar(hs, 1);
 }
 
 /* the pick list (options, choices): items and the current one */
@@ -1717,17 +1744,14 @@ static struct menu_item *pick_add(int reset, const char *label)
 static void draw_input(void)
 {
 	static const struct hint hs[] = { { "Enter", "done", 0 }, { "Esc", "cancel", 1 } };
-	int h = 32 + 18 + 6 + 36 + 24 + 52 + 32, y = WB_STATUS_BAR_H + (BOTTOM - WB_STATUS_BAR_H - h) / 2, x = POP_X + 32,
-	    w = POP_W - 64, tx;
+	int x = DLG_X + 32, w = DLG_W - 64, y, tx;
 
-	pop_frame(y, h);
-	eyebrow(x, y + 32, "OHMINOUS");
-	text(&f_ui28b, x, y + 32 + 18 + 6 + 2, O.in_title, WB_COLOR_TEXT_HI, 0);
-	y += 32 + 18 + 6 + 36 + 24;
-	box_focus(x, y, w, 52, WB_RADIUS_MD, &GLOW_ROW);
-	tx = text(&f_mono18, x + 20, text_top(&f_mono18, y + 26), O.in_text, WB_COLOR_TEXT_HI, 0);
-	fill(tx + 2, y + 14, 2, 24, WB_COLOR_CYAN);
-	hint_bar(hs, 2);
+	/* the menu's text dialog: the field in the dialog, the keys under it */
+	y = dialog("OHMINOUS", O.in_title, 56, 0, 0, 0, 0, -1);
+	box_focus(x, y, w, 56, WB_RADIUS_MD, &GLOW_FOCUS);
+	tx = text(&f_mono18, x + 20, text_top(&f_mono18, y + 28), O.in_text, WB_COLOR_TEXT_HI, 0);
+	fill(tx + 1, y + 16, 2, 24, WB_COLOR_CYAN);
+	dlg_hints(hs, 2);
 }
 
 static void draw_pop(void)
@@ -1742,8 +1766,14 @@ static void draw_pop(void)
 		draw_input();
 }
 
-static void draw_band(void)
+/*
+ * The screen, whole: libwb clips it to the band in fb_y0..fb_y1. It runs
+ * once more a frame than the bands drawn (the recording, redraw), so it
+ * only draws: no state changes, no reading the hardware.
+ */
+static void paint(void *unused)
 {
+	(void)unused;
 	switch (O.sc) {
 	case SC_PINS:
 		draw_pins();
@@ -1782,8 +1812,10 @@ static void draw_band(void)
 		int w = text_w(&f_ui16, O.notice, 0) + 32;
 
 		w = w > XW ? XW : w;
-		box(W / 2 - w / 2, BOTTOM - 46, w, 36, WB_RADIUS_MD, WB_COLOR_SURFACE2, 255,
-		    O.notice_bad ? WB_COLOR_ERROR : WB_COLOR_LINE, 1, 0);
+		/* glass, edged in red when something went wrong */
+		wb_card(W / 2 - w / 2, BOTTOM - 46, w, 36, WB_RADIUS_MD, 0, 0);
+		if (O.notice_bad)
+			edge_rect(W / 2 - w / 2, BOTTOM - 46, w, 36, WB_COLOR_ERROR, 255);
 		{
 			char b[128];
 
@@ -1791,6 +1823,9 @@ static void draw_band(void)
 			     wb_fit(&f_ui16, O.notice, w - 32, b, sizeof(b)), O.notice_bad ? WB_COLOR_ERROR : WB_COLOR_TEXT_HI, 0);
 		}
 	}
+	/* A frosted pop-up blurs what is under it, which needs the whole
+	 * picture (redraw); in a band, libwb draws it as darker unblurred
+	 * glass. */
 	draw_pop();
 	if (over_msg)
 		draw_over();
@@ -1805,25 +1840,71 @@ static uint16_t screen[W * H];
 #else
 static int fb_fd = -1;
 #endif
+static long tm_out;		/* us writing out this frame (OHM_UI_TIMING) */
 
-static void flush_band(int y0, int y1)
+/* rows y0..y1 of the frame, in b, to the panel */
+static void panel_out(const uint16_t *b, int y0, int y1)
 {
-	fb = (uint16_t *)((uintptr_t)band - (uintptr_t)y0 * W * sizeof(uint16_t));
-	fb_y0 = y0;
-	fb_y1 = y1;
-	draw_band();
+	long t = wb_now_us();
+
 #ifdef OHM_HOST
-	memcpy(screen + y0 * W, band, (size_t)(y1 - y0) * W * 2);
+	memcpy(screen + y0 * W, b, (size_t)(y1 - y0) * W * 2);
 #else
-	if (pwrite(fb_fd, band, (size_t)(y1 - y0) * W * 2, (off_t)y0 * W * 2) < 0)
+	if (pwrite(fb_fd, b, (size_t)(y1 - y0) * W * 2, (off_t)y0 * W * 2) < 0)
 		return;
 #endif
+	tm_out += wb_now_us() - t;
 }
+
+/* OHM_UI_TIMING=1: a line a frame on stderr (the app's log): the time, the
+ * bands drawn, libwb's time in the scene and in glass, and writing out */
+static void timing(long t0, int whole_frame, int bands)
+{
+	static int on = -1;
+	char line[112];
+
+	if (on < 0)
+		on = getenv("OHM_UI_TIMING") != 0;
+	if (on) {
+		int n = snprintf(line, sizeof(line), "ohminous: frame %ld us (%s, %d bands), scene %ld, glass %ld, out %ld\n",
+				 wb_now_us() - t0, whole_frame ? "whole" : "bands", bands, tm_scene, tm_glass, tm_out);
+
+		if (write(2, line, (size_t)n) < 0)
+			on = 0;
+	}
+	tm_scene = tm_glass = tm_out = 0;
+}
+
+/*
+ * The screen in bands of 40 rows (57 KB); with a pop-up or a message up,
+ * in a whole buffer (1 MB, taken while it is up), as a frosted pop-up blurs
+ * the picture under it, rows above and below the band too. Either way the
+ * frame is recorded first and only the bands that changed since the last
+ * one are drawn and written out (libwb wb_bands, wb_frame): a focus that
+ * moves draws its two rows, a pin whose level changed its row, a pop-up's
+ * focus the pop-up's rows (its blur kept).
+ */
+static uint16_t *whole;
 
 static void redraw(void)
 {
-	for (int y = 0; y < H; y += BAND_H)
-		flush_band(y, y + BAND_H < H ? y + BAND_H : H);
+	long t0 = wb_now_us();
+	int n;
+
+	if (O.pop || over_msg) {
+		if (!whole && (whole = malloc((size_t)W * H * 2)))
+			wb_rec_invalidate();	/* nothing in it yet */
+	} else if (whole) {
+		free(whole);
+		whole = 0;
+	}
+	if (whole) {
+		n = wb_frame(paint, 0, whole, BAND_H, panel_out);
+		timing(t0, 1, n);
+		return;
+	}
+	n = wb_bands(paint, 0, band, BAND_H, panel_out);
+	timing(t0, 0, n);
 }
 
 /* ---- keys ------------------------------------------------------------------------------- */
@@ -1842,6 +1923,7 @@ static void la_capture(void)
 	LA.status_bad = 0;
 	LA.src = src;
 	LA.n = 0;
+	LA.gen++;
 	redraw();
 	if (src == SRC_BP) {
 		got = bp_capture(LA.buf, n, rate, LA.trig[1], LA.falling, la_cancel);
@@ -2241,7 +2323,7 @@ static void pins_key(int code)
 		pick_add(1, "Name");
 		pick_add(0, "Name back to the default");
 		pick_add(0, "Every pin an input")->sep = 1;
-		pick_open(PK_PIN_OPTS, "PINS", pin_label(i), -1);
+		pick_open(PK_PIN_OPTS, "PINS", pin_label(i), -2);
 	}
 }
 
@@ -2273,7 +2355,7 @@ static void logic_key(int code)
 		strcpy(pick_it[2].value, LA.falling ? "falling" : "rising");
 		pick_add(0, "Samples");
 		snprintf(pick_it[3].value, sizeof(pick_it[3].value), "%dk", la_sizes[LA.size_i[src]] / 1024);
-		pick_open(PK_LA_OPTS, "LOGIC ANALYZER", "Capture", -1);
+		pick_open(PK_LA_OPTS, "LOGIC ANALYZER", "Capture", -2);
 		break;
 	}
 	case KEY_LEFT:
@@ -2589,7 +2671,7 @@ static int key(int code)
 			O.sc = SC_REGS;
 		} else if (code == KEY_SYM_MENU) {
 			pick_add(1, "Write a register");
-			pick_open(PK_I2C_OPTS, "I\xc2\xb2" "C", "Options", -1);
+			pick_open(PK_I2C_OPTS, "I\xc2\xb2" "C", "Options", -2);
 		}
 		break;
 	case SC_REGS:
@@ -2676,18 +2758,31 @@ static void save_ppm(const char *path)
 	fclose(f);
 }
 
+/* the screen drawn as the badge draws it after a key, to DIR/NNN.ppm */
+static void shot(const char *dir, int n)
+{
+	char path[300];
+
+	redraw();
+	snprintf(path, sizeof(path), "%s/%03d.ppm", dir, n);
+	save_ppm(path);
+}
+
 /*
  * ohminous-host KEYS [OUT.ppm]: \n Enter, \e Esc, \t Tab, \b Backspace,
  * \u \d \l \r the arrows, \1..\6 the symbol keys, \s Shift for the next
- * key; other characters typed. OHM_BP=1 a Bus Pirate, OHM_I2C="3c 48" the
- * devices on J7, OHM_UART_RX what the UART receives, OHM_LEVELS="1 0 1"
- * what the inputs read. Prints where_text.
+ * key, \iN the input IOn flips (read as the badge's poll reads it); other
+ * characters typed. OHM_BP=1 a Bus Pirate, OHM_I2C="3c 48" the devices on
+ * J7, OHM_UART_RX what the UART receives, OHM_LEVELS="1 0 1" what the
+ * inputs read. OHM_FRAMES=DIR: the screen drawn after every key, as on the
+ * badge, each to DIR/NNN.ppm (the test compares them with WB_FULL=1's).
+ * Prints where_text.
  */
 int main(int argc, char **argv)
 {
-	const char *k = argc > 1 ? argv[1] : "", *e;
+	const char *k = argc > 1 ? argv[1] : "", *e, *frames = getenv("OHM_FRAMES");
 	static char out[16384];
-	int closed = 0;
+	int closed = 0, lv[HW_PINS] = { 0 }, nf = 0;
 
 	settings_load();
 	if ((e = getenv("OHM_I2C")))
@@ -2702,7 +2797,7 @@ int main(int argc, char **argv)
 		}
 	if ((e = getenv("OHM_LEVELS")))
 		for (int i = 0; i < HW_PINS && *e; i++, e += e[1] ? 2 : 1)
-			hw_sim_level(i, *e == '1');
+			hw_sim_level(i, lv[i] = *e == '1');
 	if ((e = getenv("OHM_UART_RX")))
 		hw_sim_uart(e);
 	memcpy(U.hhmm, "14:32", 6);
@@ -2712,6 +2807,8 @@ int main(int argc, char **argv)
 	if (hw_open() < 0)
 		notice(hw_err, 1);
 	bp_find();
+	if (frames)		/* the first frame, as the badge draws it */
+		shot(frames, nf++);
 	for (; *k && !closed; k++) {
 		int code = -1;
 
@@ -2719,7 +2816,13 @@ int main(int argc, char **argv)
 			K.shift = 1;
 			k += 2;
 		}
-		if (*k == '\\' && k[1] && k[1] != '\\') {
+		if (*k == '\\' && k[1] == 'i' && k[2] >= '0' && k[2] < '0' + HW_PINS) {
+			int i = k[2] - '0';
+
+			hw_sim_level(i, lv[i] ^= 1);
+			hw_read_all();
+			k += 2;
+		} else if (*k == '\\' && k[1] && k[1] != '\\') {
 			k++;
 			code = *k == 'n' ? KEY_ENTER : *k == 'e' ? KEY_ESC : *k == 't' ? KEY_TAB : *k == 'b' ? KEY_BACKSPACE :
 			       *k == 'u' ? KEY_UP : *k == 'd' ? KEY_DOWN : *k == 'l' ? KEY_LEFT : *k == 'r' ? KEY_RIGHT :
@@ -2739,6 +2842,8 @@ int main(int argc, char **argv)
 			closed = key(code);
 		term_poll();
 		K.shift = 0;
+		if (frames && !closed)
+			shot(frames, nf++);
 	}
 	redraw();
 	if (argc > 2 && argv[2][0])
@@ -2891,6 +2996,9 @@ int main(void)
 		k = poll(p, (nfds_t)np, 200);
 		now = now_ms();
 		if (term_poll())
+			draw = 1;
+		/* the scene turns with the badge */
+		if (wb_scene_turned())
 			draw = 1;
 		/* the Bus Pirate comes and goes; its readings every second */
 		if (now - last_bp >= 2000 && !B.open) {

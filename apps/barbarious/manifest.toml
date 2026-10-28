@@ -2,8 +2,8 @@
 format = 1
 id = "barbarious"
 name = "BARbarious"
-version = "1.0.0"
-build = 1
+version = "1.1.0"
+build = 2
 summary = "BARbarious shows your texts as barcodes and QR codes for a scanner to read."
 description = """
 Keep the codes you show often, such as a Wi-Fi login, a ticket, a
@@ -46,7 +46,7 @@ license = "MIT AND BSD-3-Clause AND OFL-1.1 AND LGPL-2.1-or-later"
 license_file = "barbarious.txt"
 homepage = "https://github.com/johndekroon/WhyOS-Apps"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/barbarious/source"
-changelog = "First version."
+changelog = "The new WhyOS look: the frontpanel's figures behind the screens, calm flat rows and bars, frosted pop-ups with their keys inside. Faster: a key redraws only what changed."
 
 type = "app"
 category = "utilities"

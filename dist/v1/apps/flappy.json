@@ -71,6 +71,19 @@
  "type": "game",
  "versions": [
   {
+   "build": 2,
+   "changelog": "The new WhyOS look: flat cards and hint bar, frosted pop-ups with their keys inside; a key in a pop-up redraws only what changed.",
+   "package": {
+    "installed_size": 303015,
+    "sha256": "ac69004fde000541644e3365797d77681f52ec83c76aa9c47c79792d20985174",
+    "size": 127518,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flappy-1.1.0.wpk"
+   },
+   "published": "2026-10-28T08:49:05Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/flappy-1.1.0-source.tar.gz",
+   "version": "1.1.0"
+  },
+  {
    "build": 1,
    "changelog": "First version.",
    "package": {

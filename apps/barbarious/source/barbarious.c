@@ -2,8 +2,11 @@
 /*
  * barbarious (BARbarious) — texts as barcodes and QR Codes on the screen,
  * control characters included, for a scanner to read off it: HIDeous'
- * twin the other way round (sdapps/README.md). Drawn like the menu
- * (wbdraw.h), after the design canvas "BARbarious" (2026-10-25).
+ * twin the other way round (sdapps/README.md). Laid out after the design
+ * canvas "BARbarious" (2026-10-25), drawn like the menu with libwb in the
+ * style of the canvas "Menu's met frontpaneel" (the frontpanel's figures
+ * behind glass cards, frosted pop-ups); a code itself stays black on
+ * white, for a scanner.
  *
  * A list of codes, each a name, a barcode type and a text of up to
  * TEXT_MAX units: bytes, control characters included, and FNC1
@@ -26,7 +29,11 @@
  * puts in a TAB, Shift+Enter a CR (a setting), Ctrl and a letter ^A..^Z,
  * and the square any control character or FNC1 (Insert).
  *
- * The panel is drawn one band of BAND_H rows at a time, as HIDeous does.
+ * The panel is drawn into a whole picture (1 MB, malloc'd at the start),
+ * so that pop-ups can blur what is under them; without room for it, one
+ * band of BAND_H rows at a time, with plain pop-ups. Either way a frame is
+ * recorded first and only the bands that changed are drawn (libwb's
+ * wb_frame() and wb_bands(): present()).
  * Built with -DBB_HOST it takes keys from its first argument and writes
  * the screen as PPM to its second; "--sym" writes one symbol
  * (test_barbarious.py). On the badge a test may send key codes to
@@ -44,12 +51,11 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "home_assets.h"
-#include "home-assets/wb_tokens.h"
+#include "wb_tokens.h"
 
 #define W		WB_SCREEN_W
 #define H		WB_SCREEN_H
-#include "wbdraw.h"
+#include "wb.h"
 #include "lora_state.h"
 #include "wbstatus.h"
 #include "keyrep.h"
@@ -704,16 +710,16 @@ static void go(int sc)
 
 /* ---- layout ------------------------------------------------------------- */
 
-#define LTOP		(WB_STATUS_BAR_H + 20)	/* the list's eyebrow */
-#define TOP		(WB_STATUS_BAR_H + 16)	/* the other screens' */
+#define TOP		72			/* the eyebrow (wb_header) */
+#define BODY_Y		WB_ROWS_TOP		/* under the title */
 #define X0		WB_CONTENT_PAD
 #define XW		(W - 2 * WB_CONTENT_PAD)
 #define HX		(X0 + 6)		/* the header, a little in */
 #define BOTTOM		(H - WB_HINT_BAR_H - 8)
-#define ROW_H		76
-#define ROW_GAP		8
+#define ROW_H		WB_LIST_ROW_H		/* 68, as wb_row's */
+#define ROW_GAP		10
 #define RW		(XW - 16)		/* the list's rows: its scroll bar right of them */
-#define LIST_Y		(LTOP + 68 + 22)
+#define LIST_Y		BODY_Y
 
 #define CHIP_PAD	6			/* inside a chip, either side */
 #define CHIP_GAP	3			/* outside */
@@ -732,7 +738,7 @@ static void go(int sc)
 #define TF_H		(2 * 10 + TF_LINES * LINE_H)
 
 /* the editor */
-#define E_NAME_LY	(TOP + 68 + 16)
+#define E_NAME_LY	BODY_Y
 #define E_NAME_Y	(E_NAME_LY + 19 + 6)
 #define E_NAME_H	52
 #define E_TEXT_LY	(E_NAME_Y + E_NAME_H + 16)
@@ -743,27 +749,26 @@ static void go(int sc)
 #define E_PREV_Y	(E_TYPE_Y + E_TYPE_H + 16)
 #define E_PREV_H	64
 
-/* the show screen */
-#define SQ_Y		(TOP + 68 + 16)		/* a square code's area */
+/* the show screen; Tools/usb/hil/test_hil_barbarious.py reads the code
+ * from these places */
+#define SQ_Y		148			/* a square code's area */
 #define SQ		407
-#define WIDE_Y		(TOP + 68 + 22)		/* a wide code's box */
+#define WIDE_Y		154			/* a wide code's box */
 #define BAR_H		200
 #define PDF_H		300			/* PDF417's most height */
 
 /* Quick code */
-#define Q_TEXT_Y	(TOP + 68 + 16)
+#define Q_TEXT_Y	BODY_Y
 #define Q_HELP_Y	(Q_TEXT_Y + TF_H + 8)
 #define Q_AREA_Y	(Q_HELP_Y + 19 + 16)
 #define Q_AREA_H	(H - WB_HINT_BAR_H - 16 - 25 - Q_AREA_Y)
 
-/* the type and insert pop-ups, as the design has them */
-#define PX		64
-#define PW		(W - 2 * PX)
-#define PY		64
-#define PH		(H - 96 - PY)
-#define PIN		28			/* in from the pop-up's sides */
-#define P_ROW		52
-#define P_GAP		6
+/*
+ * The whole picture (1 MB), when there was room for it: pop-ups are
+ * frosted glass then, which blurs what lies around them. Without it the
+ * panel is drawn a band at a time and pop-ups are plain.
+ */
+static uint16_t *whole;
 
 /* ---- the status bar ----------------------------------------------------- */
 
@@ -783,19 +788,15 @@ static void status_bar(void)
 	status_right(U.hhmm, U.clock_ok, U.wifi_up, U.lora);
 }
 
-/* The eyebrow, the title, and a word right of the title ("6 codes"). */
-static void header(int top, const char *eb, const char *title, const char *right)
+/* The frontpanel's figures (libwb's wb_scene(), which reads the rotation
+ * while a frame is recorded and keeps it while it is drawn), the status
+ * bar, the eyebrow ("APP", or where the screen lies), the title, and a
+ * word right of the title ("6 codes"). */
+static void header(const char *eb, const char *title, const char *right)
 {
-	char buf[96];
-	int rw = right ? text_w(&f_mono14, right, 0) : 0;
-
-	fill(0, 0, W, H, WB_COLOR_VOID);
+	wb_scene();
 	status_bar();
-	eyebrow(HX, top, eb);
-	text(&f_ui36b, HX, top + 24, wb_fit(&f_ui36b, title, X0 + XW - HX - rw - 24, buf, sizeof(buf)),
-	     WB_COLOR_TEXT_HI, -11);
-	if (right)
-		text(&f_mono14, X0 + XW - rw, text_top(&f_mono14, top + 24 + 23), right, WB_COLOR_TEXT_MID, 0);
+	wb_header(eb, title, right);
 }
 
 /* a chevron pointing right, or (flip) left */
@@ -804,6 +805,12 @@ static void chevron(int x, int y, uint32_t c, int flip)
 	const struct wb_icon *ic = &r_chevron;
 	int j0 = fb_y0 - y > 0 ? fb_y0 - y : 0, j1 = fb_y1 - y < ic->h ? fb_y1 - y : ic->h;
 
+	if (wb_rec) {		/* recorded as one call, as libwb's icon() */
+		int k[] = { 0xbb01, x, (int)c, flip };
+
+		wb_rec_rows(y, y + ic->h, k, sizeof(k));
+		return;
+	}
 	for (int j = j0; j < j1; j++)
 		for (int i = 0; i < ic->w; i++)
 			put(x + i, y + j, c, ic->a[j * ic->w + (flip ? ic->w - 1 - i : i)]);
@@ -941,10 +948,7 @@ static void field_scroll(struct field *fd)
 
 static void draw_field(const struct field *fd, int y, int on, const char *placeholder)
 {
-	if (on)
-		box_focus(X0, y, XW, TF_H, WB_RADIUS_MD, &GLOW_ROW);
-	else
-		box_plain(X0, y, XW, TF_H, WB_RADIUS_MD, WB_COLOR_SURFACE1);
+	wb_card(X0, y, XW, TF_H, WB_RADIUS_MD, on, &GLOW_FOCUS);
 	layout(fd);
 	for (int l = fd->top; l < lay_n && l < fd->top + TF_LINES; l++) {
 		int x = X0 + TF_PAD, ly = y + 10 + (l - fd->top) * LINE_H, cy = ly + LINE_H / 2;
@@ -959,7 +963,7 @@ static void draw_field(const struct field *fd, int y, int on, const char *placeh
 			fill(x + 1, ly + 1, 2, LINE_H - 2, WB_COLOR_CYAN);
 	}
 	if (!fd->n && !on)
-		text(&f_ui18, X0 + TF_PAD, text_top(&f_ui18, y + 10 + LINE_H / 2), placeholder, WB_COLOR_TEXT_LOW, 0);
+		text(&f_ui18, X0 + TF_PAD, text_top(&f_ui18, y + 10 + LINE_H / 2), placeholder, WB_COLOR_PLACEHOLDER, 0);
 }
 
 /* "Tab types TAB, Shift+Enter CR, Ctrl+letter ^A to ^Z. More with ■." */
@@ -974,7 +978,7 @@ static void field_help(int y)
 		return;
 	}
 	cat(cat(t, se[C.shift_enter]), ", Ctrl+letter ^A to ^Z. More with ");
-	x = text(&f_ui16, HX, y, t, WB_COLOR_TEXT_LOW, 0);
+	x = text(&f_ui16, HX, y, t, WB_COLOR_PLACEHOLDER, 0);
 	icon(&kc_square, x + 2, y + 4, WB_COLOR_KEY_SQUARE, 255);
 	text(&f_ui16, x + 2 + 12 + 2, y, ".", WB_COLOR_TEXT_LOW, 0);
 }
@@ -1149,11 +1153,33 @@ static int quiet_of(const struct sym *s)
 	return s->quiet > C.quiet ? s->quiet : C.quiet;
 }
 
+/*
+ * Recording a frame (libwb's wb_rec): a symbol drawn at x in rows y0..y1
+ * as one call, its modules and how it is drawn (tag and a, b: px and the
+ * bars' height, or the box), instead of a fill() for every run. 1 when
+ * recorded: then draw nothing.
+ */
+static int rec_sym(const struct sym *s, int tag, int x, int y0, int y1, int a, int b)
+{
+	if (!wb_rec)
+		return 0;
+	{
+		int k[] = { tag, x, a, b, s->type, s->w, s->h, s->row_h };
+
+		wb_rec_rows(y0, y1, k, sizeof(k));
+		wb_rec_rows(y0, y1, s->bits, (size_t)(s->w * s->h + 7) / 8);
+	}
+	return 1;
+}
+
 /* the modules from (x, y), px each; a 1D code bar_h high */
 static void draw_modules(const struct sym *s, int x, int y, int px, int bar_h)
 {
 	int rh = px * s->row_h, r0, r1;
 
+	if (rec_sym(s, 0xbb02, x, y, y + (s->h == 1 && s->row_h == 1 && !sym_is_2d(s->type) ? bar_h : s->h * rh),
+		    px, bar_h))
+		return;
 	if (s->h == 1 && s->row_h == 1 && !sym_is_2d(s->type)) {
 		for (int m = 0; m < s->w; ) {
 			int e = m;
@@ -1186,6 +1212,8 @@ static void draw_scaled(const struct sym *s, int x, int y, int bw, int bh)
 {
 	int rows = s->h * s->row_h;
 
+	if (rec_sym(s, 0xbb03, x, y, y + bh, bw, bh))
+		return;
 	for (int j = 0; j < bh; j++) {
 		int my = sym_is_2d(s->type) || s->type == T_PDF417 ? j * rows / bh / s->row_h : 0;
 
@@ -1250,9 +1278,9 @@ static void sym_info(const struct sym *s, int px, char *out)
 /* the error in a box where the code would be */
 static void draw_sym_error(int x, int y, int w, int h, const char *err)
 {
-	box_plain(x, y, w, h, WB_RADIUS_MD, WB_COLOR_SURFACE1);
+	wb_card(x, y, w, h, WB_RADIUS_MD, 0, 0);
 	text_wrap(&f_ui20, x + 24, y + h / 2 - 28, w - 48, 28, err, WB_COLOR_ERROR, 1, 1);
-	text(&f_ui16, x + 24, y + h / 2 + 8, "Another type: the triangle key.", WB_COLOR_TEXT_LOW, 0);
+	text(&f_ui16, x + 24, y + h / 2 + 8, "Another type: the triangle key.", WB_COLOR_TEXT_MID, 0);
 }
 
 /*
@@ -1287,7 +1315,7 @@ static void draw_ctl_note(const struct sym *s, const unsigned short *t, int n, i
 	else if (s->type == T_PDF417)
 		cat(msg, " PDF417 holds them as bytes.");
 	lines = text_wrap(&f_ui18, 0, 0, XW - 36 - 60, 24, msg, 0, 3, 0);
-	box_plain(X0, y, XW, 28 + lines * 24, WB_RADIUS_MD, WB_COLOR_SURFACE1);
+	wb_card(X0, y, XW, 28 + lines * 24, WB_RADIUS_MD, 0, 0);
 	draw_unit(first, X0 + 18 - CHIP_GAP, y + 14 + 12, &f_mono13, &f_mono13, WB_COLOR_YELLOW, 18, CHIP_YELLOW);
 	text_wrap(&f_ui18, X0 + 18 + 60, y + 14, XW - 36 - 60, 24, msg, WB_COLOR_TEXT_MID, 3, 1);
 }
@@ -1384,25 +1412,24 @@ static const struct wb_icon *type_icon(int type)
 
 static int list_top(void)
 {
-	return LIST_Y + (C.notice[0] ? 28 : 0);
+	return LIST_Y + (C.notice[0] ? 32 : 0);
 }
 
 /* row i: -1 Quick code, else code i */
 static void draw_row(int i, int y, int on)
 {
-	int x = X0, lx = x + 20 + 26 + 18, rx = x + RW - 20;
+	/* laid out as wb_row's: the label's middle 11 px over the row's, the
+	 * second line's 15 under it */
+	int x = X0, lx = x + 20 + 26 + 16, rx = x + RW - 18, ly = y + ROW_H / 2 - 11, sy = y + ROW_H / 2 + 15;
 	uint32_t ink = on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID;
 	char buf[128], name[96];
 
-	if (on)
-		box_focus(x, y, RW, ROW_H, WB_RADIUS_MD, &GLOW_ROW);
-	else
-		box_plain(x, y, RW, ROW_H, WB_RADIUS_MD, WB_COLOR_SURFACE1);
+	wb_card(x, y, RW, ROW_H, WB_RADIUS_MD, on, &GLOW_FOCUS);
 	if (i < 0) {
 		icon(&r_keyboard, x + 20, y + ROW_H / 2 - 13, ink, 255);
-		chevron(rx - 18, y + ROW_H / 2 - 10, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_LOW, 0);
-		text(&f_ui22, lx, y + 12, "Quick code", WB_COLOR_TEXT_HI, 0);
-		text(&f_mono14, lx, y + 46, "Type text, see the code. Not saved", WB_COLOR_TEXT_LOW, 0);
+		chevron(rx - 20, y + ROW_H / 2 - 10, ink, 0);
+		text(&f_ui22, lx, text_top(&f_ui22, ly), "Quick code", WB_COLOR_TEXT_HI, 0);
+		text(&f_mono14, lx, text_top(&f_mono14, sy), "Type text, see the code. Not saved", WB_COLOR_TEXT_MID, 0);
 		return;
 	}
 	icon(type_icon(S[i].type), x + 20, y + ROW_H / 2 - 13, ink, 255);
@@ -1415,16 +1442,16 @@ static void draw_row(int i, int y, int on)
 	}
 	if (S[i].name[0]) {
 		label_of(i, name, sizeof(name));
-		text(&f_ui22, lx, y + 12, wb_fit(&f_ui22, name, rx - lx, buf, sizeof(buf)), WB_COLOR_TEXT_HI, 0);
-		draw_units(S[i].t, S[i].n, lx, y + 46 + 9, rx - lx, &f_mono14, &f_mono13, WB_COLOR_TEXT_LOW, 17,
-			   CHIP_YELLOW);
+		text(&f_ui22, lx, text_top(&f_ui22, ly), wb_fit(&f_ui22, name, rx - lx, buf, sizeof(buf)),
+		     WB_COLOR_TEXT_HI, 0);
+		draw_units(S[i].t, S[i].n, lx, sy, rx - lx, &f_mono14, &f_mono13, WB_COLOR_TEXT_MID, 17, CHIP_YELLOW);
 		return;
 	}
 	/* no name: the text itself, and how long it is */
-	draw_units(S[i].t, S[i].n, lx, y + 12 + 14, rx - lx, &f_ui22, &f_mono13, WB_COLOR_TEXT_HI, 20, CHIP_YELLOW);
+	draw_units(S[i].t, S[i].n, lx, ly, rx - lx, &f_ui22, &f_mono13, WB_COLOR_TEXT_HI, 20, CHIP_YELLOW);
 	name[0] = 0;
 	cat_count(name, S[i].n, "character");
-	text(&f_mono14, lx, y + 46, name, WB_COLOR_TEXT_LOW, 0);
+	text(&f_mono14, lx, text_top(&f_mono14, sy), name, WB_COLOR_TEXT_MID, 0);
 }
 
 static void list_hints(void)
@@ -1448,31 +1475,33 @@ static void list_hints(void)
 static void draw_list(void)
 {
 	static const uint32_t note_c[3] = { WB_COLOR_OK, WB_COLOR_WARN, WB_COLOR_ERROR };
+	static const char about[] = "Keep the codes you show often: a Wi-Fi login, a ticket, a product "
+				    "number. Enter on one shows it for a scanner.";
 	int ys[CODE_MAX + 1], hs[CODE_MAX + 1], top = list_top(), scroll, cut, y = 0;
 	char buf[128], count[24] = "";
 
 	cat_count(count, n_code, "code");
-	header(LTOP, "APPS", "BARbarious", count);
+	header("APP", "BARbarious", count);
 	if (C.notice[0])
-		text(&f_ui18, HX, LIST_Y - 6, wb_fit(&f_ui18, C.notice, XW, buf, sizeof(buf)), note_c[C.note], 0);
-	if (!n_code) {
-		int ty = top + ROW_H + 32;
+		text(&f_ui18, HX, LIST_Y - 8, wb_fit(&f_ui18, C.notice, XW - 6, buf, sizeof(buf)), note_c[C.note], 0);
+	if (!n_code) {	/* Quick code, and how to start on a card under it */
+		int tx = X0 + 24, tw = RW - 48, lines = text_wrap(&f_ui20, 0, 0, tw, 28, about, 0, 4, 0);
+		int ty = top + ROW_H + ROW_GAP;
 
 		draw_row(-1, top, C.focus == 0);
-		text(&f_ui22, HX, ty, "No codes yet.", WB_COLOR_TEXT_HI, 0);
-		ty += 44;
-		ty += 28 * text_wrap(&f_ui20, HX, ty, XW - 6, 28,
-				     "Keep the codes you show often: a Wi-Fi login, a ticket, a product "
-				     "number. Enter on one shows it for a scanner.",
-				     WB_COLOR_TEXT_MID, 4, 1);
+		wb_card(X0, ty, RW, 24 + 30 + 14 + lines * 28 + 22 + 18 + 14 + 3 * 30 + 16, WB_RADIUS_MD, 0, 0);
 		ty += 24;
-		eyebrow(HX, ty, "TO START");
+		text(&f_ui22, tx, ty, "No codes yet.", WB_COLOR_TEXT_HI, 0);
+		ty += 30 + 14;
+		ty += 28 * text_wrap(&f_ui20, tx, ty, tw, 28, about, WB_COLOR_TEXT_MID, 4, 1);
+		ty += 22;
+		eyebrow(tx, ty, "TO START");
+		ty += 18 + 14;
+		text(&f_ui20, tx, ty, "1. Press the triangle key for a new code.", WB_COLOR_TEXT_MID, 0);
 		ty += 30;
-		text(&f_ui20, HX, ty, "1. Press the triangle key for a new code.", WB_COLOR_TEXT_MID, 0);
+		text(&f_ui20, tx, ty, "2. Type its text; pick the type with the triangle.", WB_COLOR_TEXT_MID, 0);
 		ty += 30;
-		text(&f_ui20, HX, ty, "2. Type its text; pick the type with the triangle.", WB_COLOR_TEXT_MID, 0);
-		ty += 30;
-		text(&f_ui20, HX, ty, "3. Enter saves it; Enter in the list shows it.", WB_COLOR_TEXT_MID, 0);
+		text(&f_ui20, tx, ty, "3. Enter saves it; Enter in the list shows it.", WB_COLOR_TEXT_MID, 0);
 		list_hints();
 		return;
 	}
@@ -1510,11 +1539,11 @@ static void draw_show(void)
 
 	cat_int(cat(cat_int(pos, C.shown + 1), " / "), n_code);
 	label_of(C.shown, name, sizeof(name));
-	header(TOP, "BARBARIOUS", name, pos);
+	header("BARBARIOUS \xe2\x80\xba", name, pos);
 	y = draw_code(c->t, c->n, c->type, SQ_Y, SQ, WIDE_Y, c->type == T_PDF417 ? PDF_H : BAR_H, C.under, &px, &s);
 	if (n_code > 1 && !is_wide(c->type)) {
-		chevron(X0, SQ_Y + SQ / 2 - 10, WB_COLOR_TEXT_LOW, 1);
-		chevron(X0 + XW - 20, SQ_Y + SQ / 2 - 10, WB_COLOR_TEXT_LOW, 0);
+		chevron(X0, SQ_Y + SQ / 2 - 10, WB_COLOR_TEXT_MID, 1);
+		chevron(X0 + XW - 20, SQ_Y + SQ / 2 - 10, WB_COLOR_TEXT_MID, 0);
 	}
 	if (s) {
 		sym_info(s, px, info);
@@ -1525,11 +1554,11 @@ static void draw_show(void)
 			draw_units(c->t, c->n, W / 2 - (w < mw ? w : mw) / 2, y + 10, mw, &f_mono16b, &f_mono13,
 				   WB_COLOR_TEXT_MID, 18, CHIP_YELLOW);
 			y += 20 + 6;
-			text(&f_ui16, W / 2 - text_w(&f_ui16, info, 0) / 2, y, info, WB_COLOR_TEXT_LOW, 0);
+			text(&f_ui16, W / 2 - text_w(&f_ui16, info, 0) / 2, y, info, WB_COLOR_TEXT_MID, 0);
 			y += 20;
 		} else {
 			y += 22;
-			text(&f_ui16, HX, y, info, WB_COLOR_TEXT_LOW, 0);
+			text(&f_ui16, HX, y, info, WB_COLOR_TEXT_MID, 0);
 			y += 20;
 		}
 		if (is_wide(c->type) && y + 10 + 52 < H - WB_HINT_BAR_H)
@@ -1548,17 +1577,17 @@ static void draw_quick(void)
 	char info[120];
 	int px, y;
 
-	header(TOP, "BARBARIOUS", "Quick code", sym_names[C.qtype]);
+	header("BARBARIOUS \xe2\x80\xba", "Quick code", sym_names[C.qtype]);
 	draw_field(&QT, Q_TEXT_Y, 1, "");
 	field_help(Q_HELP_Y);
 	if (!QT.n) {
-		text(&f_ui20, HX, Q_AREA_Y + 12, "The code shows here as you type.", WB_COLOR_TEXT_LOW, 0);
+		text(&f_ui20, HX, Q_AREA_Y + 12, "The code shows here as you type.", WB_COLOR_PLACEHOLDER, 0);
 	} else {
 		y = draw_code(QT.t, QT.n, C.qtype, Q_AREA_Y, Q_AREA_H, Q_AREA_Y, C.qtype == T_PDF417 ? Q_AREA_H : 140,
 			      0, &px, &s);
 		if (s) {
 			sym_info(s, px, info);
-			text(&f_ui16, W / 2 - text_w(&f_ui16, info, 0) / 2, y + 12, info, WB_COLOR_TEXT_LOW, 0);
+			text(&f_ui16, W / 2 - text_w(&f_ui16, info, 0) / 2, y + 12, info, WB_COLOR_TEXT_MID, 0);
 		}
 	}
 	hint_bar(hints, 4);
@@ -1606,7 +1635,7 @@ static void draw_preview(void)
 			cat(cat_int(t, px), px == 1 ? " px each: hard to scan" : " px each");
 		else
 			cat(t, "not one px each");
-		text(&f_ui16, x, text_top(&f_ui16, cy + 24), t, WB_COLOR_TEXT_LOW, 0);
+		text(&f_ui16, x, text_top(&f_ui16, cy + 24), t, WB_COLOR_TEXT_MID, 0);
 	}
 }
 
@@ -1617,13 +1646,10 @@ static void draw_edit(void)
 						  { "Esc", "cancel", 1 } };
 	char t[32] = "";
 
-	header(TOP, "EDIT", C.edit < 0 ? "New code" : (C.name[0] ? C.name : "Code"), 0);
+	header("BARBARIOUS \xe2\x80\xba", C.edit < 0 ? "New code" : (C.name[0] ? C.name : "Code"), 0);
 	/* the name */
-	text(&f_ui16, HX, E_NAME_LY, "Name", C.field == 0 ? WB_COLOR_CYAN : WB_COLOR_TEXT_LOW, 0);
-	if (C.field == 0)
-		box_focus(X0, E_NAME_Y, XW, E_NAME_H, WB_RADIUS_MD, &GLOW_ROW);
-	else
-		box_plain(X0, E_NAME_Y, XW, E_NAME_H, WB_RADIUS_MD, WB_COLOR_SURFACE1);
+	text(&f_ui16, HX, E_NAME_LY, "Name", C.field == 0 ? WB_COLOR_CYAN : WB_COLOR_PLACEHOLDER, 0);
+	wb_card(X0, E_NAME_Y, XW, E_NAME_H, WB_RADIUS_MD, C.field == 0, &GLOW_FOCUS);
 	{
 		int from = 0, cx, max = XW - 2 * TF_PAD - 4, cy = E_NAME_Y + E_NAME_H / 2;
 		char v[NM_MAX + 1];
@@ -1637,13 +1663,13 @@ static void draw_edit(void)
 			from++;
 		}
 		if (!C.name[0] && C.field != 0)
-			text(&f_ui18, X0 + TF_PAD, text_top(&f_ui18, cy), "Optional: shown in the list", WB_COLOR_TEXT_LOW, 0);
+			text(&f_ui18, X0 + TF_PAD, text_top(&f_ui18, cy), "Optional: shown in the list", WB_COLOR_PLACEHOLDER, 0);
 		text(&f_ui20, X0 + TF_PAD, text_top(&f_ui20, cy), C.name + from, WB_COLOR_TEXT_HI, 0);
 		if (C.field == 0)
 			fill(X0 + TF_PAD + cx + 1, cy - 13, 2, 26, WB_COLOR_CYAN);
 	}
 	/* the text */
-	text(&f_ui16, HX, E_TEXT_LY, "Text", C.field == 1 ? WB_COLOR_CYAN : WB_COLOR_TEXT_LOW, 0);
+	text(&f_ui16, HX, E_TEXT_LY, "Text", C.field == 1 ? WB_COLOR_CYAN : WB_COLOR_PLACEHOLDER, 0);
 	cat_count(t, ET.n, "character");
 	text(&f_mono14, X0 + XW - 6 - text_w(&f_mono14, t, 0), E_TEXT_LY + 2, t, WB_COLOR_TEXT_MID, 0);
 	draw_field(&ET, E_TEXT_Y, C.field == 1, "What the code holds");
@@ -1653,11 +1679,8 @@ static void draw_edit(void)
 		int cy = E_TYPE_Y + E_TYPE_H / 2, rx = X0 + XW - 18 - 20;
 		const char *v = sym_names[C.etype];
 
-		if (C.field == 2)
-			box_focus(X0, E_TYPE_Y, XW, E_TYPE_H, WB_RADIUS_MD, &GLOW_ROW);
-		else
-			box_plain(X0, E_TYPE_Y, XW, E_TYPE_H, WB_RADIUS_MD, WB_COLOR_SURFACE1);
-		chevron(rx, cy - 10, C.field == 2 ? WB_COLOR_CYAN : WB_COLOR_TEXT_LOW, 0);
+		wb_card(X0, E_TYPE_Y, XW, E_TYPE_H, WB_RADIUS_MD, C.field == 2, &GLOW_FOCUS);
+		chevron(rx, cy - 10, C.field == 2 ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 0);
 		rx -= 16 + text_w(&f_mono14, v, 0);
 		text(&f_mono14, rx, text_top(&f_mono14, cy), v, C.field == 2 ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 0);
 		text(&f_ui20, X0 + TF_PAD, text_top(&f_ui20, cy), "Type", WB_COLOR_TEXT_HI, 0);
@@ -1671,17 +1694,24 @@ static void draw_edit(void)
 static void draw_log(void)
 {
 	static const struct hint hints[] = { { "Esc", "back", 1 } };
-	int y = TOP + 68 + 24;
+	int y = BODY_Y, n = C.n_log;
 	char buf[128];
 
-	if (!C.n_log) {
-		empty_screen("BARBARIOUS", "Log", "No codes shown yet. They show here until the app closes.");
-		status_bar();
+	header("BARBARIOUS \xe2\x80\xba", "Log", 0);
+	if (!n) {
+		wb_card(X0, y, XW, ROW_H, WB_RADIUS_MD, 0, 0);
+		text(&f_ui20, X0 + 20, text_top(&f_ui20, y + ROW_H / 2),
+		     wb_fit(&f_ui20, "No codes shown yet. They show here until the app closes.", XW - 40, buf,
+			    sizeof(buf)), WB_COLOR_TEXT_MID, 0);
+		hint_bar(hints, 1);
 		return;
 	}
-	header(TOP, "BARBARIOUS", "Log", 0);
-	for (int i = C.n_log - 1; i >= 0 && y + 30 < BOTTOM; i--, y += 30)
-		text(&f_mono14, HX, y, wb_fit(&f_mono14, C.log[i], XW - 6, buf, sizeof(buf)),
+	if (n > (BOTTOM - y - 28) / 30)
+		n = (BOTTOM - y - 28) / 30;
+	wb_card(X0, y, XW, 14 + n * 30 + 14, WB_RADIUS_MD, 0, 0);
+	y += 14;
+	for (int i = C.n_log - 1; i >= C.n_log - n; i--, y += 30)
+		text(&f_mono14, X0 + 20, text_top(&f_mono14, y + 15), wb_fit(&f_mono14, C.log[i], XW - 40, buf, sizeof(buf)),
 		     i == C.n_log - 1 ? WB_COLOR_TEXT_HI : WB_COLOR_TEXT_MID, 0);
 	hint_bar(hints, 1);
 }
@@ -1691,7 +1721,7 @@ static const char *const se_names[3] = { "CR", "LF", "CR LF" };
 
 static int set_h(int i)
 {
-	return i == 2 ? 92 : 68;
+	return i == 2 ? 84 : ROW_H;
 }
 
 static void draw_settings(void)
@@ -1708,43 +1738,37 @@ static void draw_settings(void)
 		"The text in letters under a barcode.",
 		"A scanner reads a bright screen best. Back to normal when you leave the code.",
 	};
-	int y = TOP + 68 + 14;
+	int y = BODY_Y;
 
-	header(TOP, "BARBARIOUS", "Settings", 0);
+	header("BARBARIOUS \xe2\x80\xba", "Settings", 0);
 	for (int i = 0; i < N_SET; i++) {
-		int h = set_h(i), on = C.set_focus == i, cy = y + 34, rx = X0 + XW - 20;
-		uint32_t vc = on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID;
+		int h = set_h(i), on = C.set_focus == i;
 
-		if (on)
-			box_focus(X0, y, XW, h, WB_RADIUS_MD, &GLOW_ROW);
-		else
-			box_plain(X0, y, XW, h, WB_RADIUS_MD, WB_COLOR_SURFACE1);
-		if (i == 2)
-			cy = y + 30;
-		text(&f_ui20, X0 + 20, text_top(&f_ui20, cy), labels[i], WB_COLOR_TEXT_HI, 0);
 		if (i >= 4) {		/* a switch */
-			int v = i == 4 ? C.under : C.bright, sx = rx - 48, sy = cy - 14;
-
-			box(sx, sy, 48, 28, 14, v ? WB_COLOR_PINK : WB_COLOR_LINE, 255, 0, 0, 0);
-			box(v ? sx + 48 - 25 : sx + 3, sy + 3, 22, 22, 11, v ? WB_COLOR_VOID : WB_COLOR_TEXT_LOW, 255, 0, 0, 0);
-		} else if (i == 2) {	/* the quiet zone: a slider */
+			wb_row(X0, y, XW, h, 0, labels[i], 0, 0, WB_ROW_SWITCH, i == 4 ? C.under : C.bright, on);
+		} else if (i == 2) {	/* the quiet zone: a slider, as the menu's */
+			int cy = y + 30, rx = X0 + XW - 20, tx = X0 + 20, tw = XW - 40, ty = y + 60;
+			int kx = tx + tw * (C.quiet - 1) / 15;
+			uint32_t c = on ? WB_COLOR_CYAN : WB_COLOR_PLACEHOLDER;
 			char v[16] = "";
-			int tx = X0 + 20, tw = XW - 40, kx = tx + tw * (C.quiet - 1) / 15;
 
+			wb_card(X0, y, XW, h, WB_RADIUS_MD, on, &GLOW_FOCUS);
+			text(&f_ui22, X0 + 20, text_top(&f_ui22, cy), labels[i], WB_COLOR_TEXT_HI, 0);
 			cat(cat_int(v, C.quiet), C.quiet == 1 ? " module" : " modules");
-			text(&f_mono14, rx - text_w(&f_mono14, v, 0), text_top(&f_mono14, cy), v, vc, 0);
-			box(tx, y + 62, tw, 4, 2, WB_COLOR_LINE, 255, 0, 0, 0);
-			box(tx, y + 62, kx - tx + 2, 4, 2, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_LOW, 255, 0, 0, 0);
-			box(kx - 9, y + 55, 18, 18, 9, WB_COLOR_TEXT_HI, 255, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_LOW, 3, 0);
+			text(&f_mono14, rx - text_w(&f_mono14, v, 0), text_top(&f_mono14, cy), v,
+			     on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 0);
+			box(tx, ty - 4, tw, 8, 4, 0xFFFFFF, 46, 0, 0, 0);
+			if (kx > tx)
+				box(tx, ty - 4, kx - tx, 8, 4, c, 255, 0, 0, 0);
+			box(kx - 9, ty - 9, 18, 18, 4, WB_COLOR_TEXT_HI, 255, c, 3, 0);
 		} else {
 			const char *v = i == 0 ? sym_names[C.def_type] : i == 1 ? ecc_names[C.ecc] : se_names[C.shift_enter];
 
-			chevron(rx - 18, cy - 10, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_LOW, 0);
-			text(&f_mono14, rx - 18 - 16 - text_w(&f_mono14, v, 0), text_top(&f_mono14, cy), v, vc, 0);
+			wb_row(X0, y, XW, h, 0, labels[i], 0, v, WB_ROW_OPEN, 0, on);
 		}
-		y += h + 8;
+		y += h + 6;
 	}
-	text_wrap(&f_ui16, HX, y + 6, XW - 6, 22, notes[C.set_focus], WB_COLOR_TEXT_LOW, 2, 1);
+	text_wrap(&f_ui16, HX, y + 4, XW - 6, 20, notes[C.set_focus], WB_COLOR_TEXT_MID, 2, 1);
 	hint_bar(hints, 2);
 }
 
@@ -1765,35 +1789,37 @@ static int help_cap(int x, int cy, const char *keys)
 }
 
 /* The help (diamond key), as the design draws it: the screen's name, what
- * it is for, and its keys with a line between them. */
+ * it is for, and its keys with a line between them; a frosted pop-up with
+ * its own key at its bottom. */
 static void help_popup2(const char *title, const char *about, const struct help_key *k, int n)
 {
 	static const struct hint hints[] = { { "Esc", "close", 1 } };
-	int x = PX + 32, tw = PW - 64, lines = text_wrap(&f_ui18, 0, 0, tw, 25, about, 0, 3, 0);
-	int h = 26 + 18 + 6 + 36 + 6 + lines * 25 + 16 + 17 + 8 + n * HELP_ROW + 28;
-	int y = WB_STATUS_BAR_H + (H - WB_STATUS_BAR_H - WB_HINT_BAR_H - h) / 2;
+	int x = POP_X + 32, tw = POP_W - 64, lines = text_wrap(&f_ui18, 0, 0, tw, 25, about, 0, 3, 0);
+	int h = 26 + 18 + 6 + 36 + 6 + lines * 25 + 16 + 17 + 8 + n * HELP_ROW + 8 + 48 + 12;
+	int y = (H - h) / 2;
+	char buf[96];
 
-	dim(WB_COLOR_CONSOLE, 184);
-	box(PX, y, PW, h, WB_RADIUS_LG, WB_COLOR_SURFACE2, 255, WB_COLOR_LINE, 1, 0);
+	dim(WB_DIM);
+	wb_panel(POP_X, y, POP_W, h, WB_RADIUS_LG);
 	y += 26;
 	icon(&kc_diamond, x, y + 1, WB_COLOR_KEY_DIAMOND, 255);
 	eyebrow(x + 12 + 8, y, "HELP");
-	text(&f_ui28b, x, y + 18 + 6 + 2, title, WB_COLOR_TEXT_HI, 0);
+	text(&f_ui28b, x, y + 18 + 6 + 2, wb_fit(&f_ui28b, title, tw, buf, sizeof(buf)), WB_COLOR_TEXT_HI, 0);
 	y += 18 + 6 + 36 + 6;
 	text_wrap(&f_ui18, x, y, tw, 25, about, WB_COLOR_TEXT_MID, 3, 1);
 	y += lines * 25 + 16;
-	text(&f_mono13, x, y, "KEYS ON THIS SCREEN", WB_COLOR_TEXT_LOW, 21);
+	text(&f_mono13, x, y, "KEYS ON THIS SCREEN", WB_COLOR_PLACEHOLDER, 21);
 	y += 17 + 8;
 	for (int i = 0; i < n; i++, y += HELP_ROW) {
 		int cy = y + HELP_ROW / 2;
-		char buf[96];
 
-		fill(x, y, tw, 1, WB_COLOR_LINE);
+		if (i)
+			fill(x, y, tw, 1, 0x26262F);
 		help_cap(x, cy, k[i].keys);
 		text(&f_ui18, x + 80, text_top(&f_ui18, cy), wb_fit(&f_ui18, k[i].what, tw - 80, buf, sizeof(buf)),
 		     WB_COLOR_TEXT_HI, 0);
 	}
-	hint_bar(hints, 1);
+	panel_hints(x, tw, y + 8, hints, 1);
 }
 
 static void draw_help(void)
@@ -1877,51 +1903,37 @@ static void draw_help(void)
 	}
 }
 
-/* the type and insert pop-ups' frame and header: the key's icon, the
- * eyebrow, the title, a count right of it and a line under it; the y the
- * rows start at */
-static int pop_head(const struct wb_icon *ic, uint32_t ic_c, const char *eb, const char *title,
-		    const char *count, const char *sub, uint32_t sub_c)
-{
-	int x = PX + PIN, y = PY + 26;
-	char buf[96];
-
-	dim(WB_COLOR_CONSOLE, 184);
-	box(PX, PY, PW, PH, WB_RADIUS_LG, WB_COLOR_SURFACE2, 255, WB_COLOR_LINE, 1, 0);
-	icon(ic, x, y + 2, ic_c, 255);
-	eyebrow(x + 12 + 8, y, eb);
-	text(&f_ui28b, x, y + 18 + 6, wb_fit(&f_ui28b, title, PW - 2 * PIN - 120, buf, sizeof(buf)),
-	     WB_COLOR_TEXT_HI, 0);
-	text(&f_ui16, PX + PW - PIN - text_w(&f_ui16, count, 0), y + 18 + 6 + 12, count, WB_COLOR_TEXT_LOW, 0);
-	y += 18 + 6 + 36 + 6;
-	text(&f_ui16, x, y, sub, sub_c, 0);
-	return y + 19 + 16;
-}
-
 /*
- * The rows of a pop-up list, n of them from top down to the frame, the
- * last one cut off by it: a whole row first, and the focus second to last
- * of the whole rows once the list has to scroll. The scroll, in px.
+ * The type pop-up's frame, as menu_popup()'s (wbui.h): a frosted panel
+ * POP_X from the sides, the eyebrow (the screen it opens from, with a ›),
+ * the title with the count on its line, a line about the list where
+ * menu_popup() has its filter, room for rows of rows_h, and the keys at
+ * the bottom. The y the rows start at; *x0, *w their box.
  */
-static int pop_rows(int top, int n, int focus, int *ys, int *cut)
-{
-	int y = 0, avail = PY + PH - 1 - top, vis = (avail + P_GAP) / (P_ROW + P_GAP), first;
+#define BP_ROW		PK_ROW
+#define BP_GAP		PK_GAP
 
-	for (int i = 0; i < n; i++) {
-		ys[i] = y;
-		y += P_ROW + P_GAP;
-	}
-	first = focus - (vis - 2);
-	if (first > n - vis)
-		first = n - vis;
-	if (first < 0)
-		first = 0;
-	*cut = avail;
-	if (!n)
-		return 0;
-	if (y - P_GAP > avail)
-		scrollbar(PX + PW - 14, top, avail, y - P_GAP, avail, ys[first]);
-	return ys[first];
+static int pop_frame2(const char *eb_s, const char *title, const char *count, const char *sub,
+		      int rows_h, const struct hint *hs, int nh, int *x0, int *w)
+{
+	int h = 22 + 55 + 14 + 20 + 14 + rows_h + 14 + 1 + 10 + 23 + 16, y = (H - h) / 2, top;
+	char buf[96], eb[48];
+
+	*x0 = POP_X + 22;
+	*w = POP_W - 44;
+	dim(WB_DIM);
+	wb_panel(POP_X, y, POP_W, h, WB_RADIUS_LG);
+	strncpy(eb, eb_s, sizeof(eb) - 5);
+	eb[sizeof(eb) - 5] = 0;
+	strcat(eb, " \xe2\x80\xba");
+	text(&f_mono13, *x0, y + 22, eb, WB_COLOR_CYAN, 21);
+	text(&f_ui28b, *x0, y + 22 + 17 + 4, wb_fit(&f_ui28b, title, *w - 140, buf, sizeof(buf)), WB_COLOR_TEXT_HI, -4);
+	text(&f_mono14, *x0 + *w - text_w(&f_mono14, count, 0), y + 22 + 55 - 20, count, WB_COLOR_TEXT_MID, 0);
+	top = y + 22 + 55 + 14;
+	text(&f_ui16, *x0, top, sub, WB_COLOR_PLACEHOLDER, 0);
+	top += 20 + 14;
+	panel_hints(*x0, *w, top + rows_h + 14, hs, nh);
+	return top;
 }
 
 static void type_target(const unsigned short **t, int *n, int **type)
@@ -1945,7 +1957,8 @@ static void draw_type_pop(void)
 {
 	static const struct hint hs[] = { { "Enter", "choose", 0 }, { "Esc", "cancel", 1 } };
 	const unsigned short *t;
-	int n, *type, ys[N_TYPES], cut, scroll, top, x0 = PX + PIN, w = PW - 2 * PIN;
+	int n, *type, ys[N_TYPES], rh[N_TYPES], cut, scroll, top, x0, w;
+	int list_h = PK_VIS * (BP_ROW + BP_GAP) - BP_GAP;
 	char eb[NM_MAX + 8];
 
 	type_target(&t, &n, &type);
@@ -1957,87 +1970,84 @@ static void draw_type_pop(void)
 		label_of(C.menu_for, eb, NM_MAX);
 	for (char *p = eb; *p; p++)
 		*p = (char)(*p >= 'a' && *p <= 'z' ? *p - 32 : *p);
-	top = pop_head(&kc_triangle, WB_COLOR_KEY_TRIANGLE, eb, "Barcode type", "10 options",
-		       "Right: what this text needs from the type", WB_COLOR_TEXT_LOW);
-	scroll = pop_rows(top, N_TYPES, C.pf, ys, &cut);
-	clip_rows(top, top + cut);
+	top = pop_frame2(eb, "Barcode type", "10 options", "Right: what this text needs from the type", list_h, hs,
+			 2, &x0, &w);
 	for (int i = 0; i < N_TYPES; i++) {
-		int ry = top + ys[i] - scroll, cy = ry + P_ROW / 2, on = i == C.pf, x = x0 + 16;
-		uint32_t nc = C.need[i] == NEED_OK ? (on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID) :
+		ys[i] = i * (BP_ROW + BP_GAP);
+		rh[i] = BP_ROW;
+	}
+	scroll = list_scroll(ys, rh, N_TYPES, C.pf, C.pf, list_h, &cut);
+	clip_rows(top - 16, top + cut + 16);	/* room for the focus's glow */
+	for (int i = 0; i < N_TYPES; i++) {
+		int ry = top + ys[i] - scroll, cy = ry + BP_ROW / 2, on = i == C.pf, x = x0 + 14;
+		uint32_t nc = C.need[i] == NEED_OK ? (on ? WB_COLOR_TEXT_HI : WB_COLOR_TEXT_MID) :
 			      C.need[i] == NEED_WARN ? WB_COLOR_WARN : WB_COLOR_ERROR;
 		const char *note = C.need_note[i];
 
-		if (ry + P_ROW <= top || ry >= top + cut)
+		if (ry + BP_ROW <= top || ry >= top + cut)
 			continue;
 		if (on)
-			box_focus(x0, ry, w, P_ROW, WB_RADIUS_MD, &GLOW_ROW);
-		else
-			box_plain(x0, ry, w, P_ROW, WB_RADIUS_MD, WB_COLOR_SURFACE1);
-		if (i == *type)
-			tick(x + 2, cy, on ? WB_COLOR_CYAN : WB_COLOR_PINK);
-		x += 22 + 14;
+			box_shaped(x0, ry, w, BP_ROW, 10, WB_COLOR_CYAN, 56, WB_COLOR_CYAN, 2, &GLOW_POP);
+		if (i == *type) {	/* the present type's box, ticked */
+			box(x, cy - 12, 24, 24, 4, WB_COLOR_CYAN, 255, 0, 0, 0);
+			tick(x + 4, cy, WB_COLOR_VOID);
+		} else {
+			edge_rect(x, cy - 12, 24, 24, 0xFFFFFF, 56);
+			edge_rect(x + 1, cy - 11, 22, 22, 0xFFFFFF, 56);
+		}
+		x += 24 + 14;
 		x = text(&f_ui20, x, text_top(&f_ui20, cy), sym_names[i], WB_COLOR_TEXT_HI, 0);
-		text(&f_mono13, x + 10, text_top(&f_mono13, cy) + 2, sym_is_2d(i) ? "2D" : "1D", WB_COLOR_TEXT_LOW, 0);
-		text(&f_mono14, x0 + w - 16 - text_w(&f_mono14, note, 0), text_top(&f_mono14, cy), note, nc, 0);
+		text(&f_ui16, x + 12, text_top(&f_ui16, cy), sym_is_2d(i) ? "2D" : "1D", WB_COLOR_TEXT_MID, 0);
+		text(&f_mono14, x0 + w - 14 - text_w(&f_mono14, note, 0), text_top(&f_mono14, cy), note, nc, 0);
 	}
 	clip_end();
-	hint_bar(hs, 2);
+	scrollbar(x0 + w + 9, top, list_h, N_TYPES * (BP_ROW + BP_GAP) - BP_GAP, list_h, scroll);
 }
 
+/* The control characters and FNC1 to insert: libwb's pop-up list with
+ * its filter field; the caret and the code on the right. */
 static void draw_insert_pop(void)
 {
 	static const struct hint hs[] = { { "Enter", "insert", 0 }, { "A\xe2\x80\x93Z", "filter", 0 },
 					  { "Esc", "cancel", 1 } };
-	int ys[N_CTL], cut, scroll, top, x0 = PX + PIN, w = PW - 2 * PIN;
-	char count[24] = "", sub[48] = "";
+	static struct menu_item it[N_CTL];
+	char count[24] = "", eb[24];
 
-	cat_count(count, C.n_imap, "option");
-	if (C.filter[0])
-		cat(cat(sub, "Filter: "), C.filter);
-	top = pop_head(&kc_square, WB_COLOR_KEY_SQUARE, "INSERT", "Control character", count,
-		       C.filter[0] ? sub : "Type a name or ^ and a letter to filter",
-		       C.filter[0] ? WB_COLOR_CYAN : WB_COLOR_TEXT_LOW);
-	if (!C.n_imap)
-		text(&f_ui18, x0 + 4, top + 14, "Nothing matches", WB_COLOR_TEXT_LOW, 0);
-	scroll = pop_rows(top, C.n_imap, C.pf, ys, &cut);
-	clip_rows(top, top + cut);
-	for (int r = 0; r < C.n_imap; r++) {
-		int i = C.imap[r], ry = top + ys[r] - scroll, cy = ry + P_ROW / 2, on = r == C.pf, x = x0 + 16;
-		char caret[4], hx[4] = "", buf[64];
+	memset(it, 0, sizeof(it));
+	for (int i = 0; i < N_CTL; i++) {
+		char *v = it[i].value;
 
-		if (ry + P_ROW <= top || ry >= top + cut)
-			continue;
-		if (on)
-			box_focus(x0, ry, w, P_ROW, WB_RADIUS_MD, &GLOW_ROW);
-		else
-			box_plain(x0, ry, w, P_ROW, WB_RADIUS_MD, WB_COLOR_SURFACE1);
-		ctl_caret(i, caret);
-		text(&f_mono14, x, text_top(&f_mono14, cy), caret, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_LOW, 0);
-		text(&f_mono16b, x + 40 + 16, text_top(&f_mono16b, cy), ctl_name[i], WB_COLOR_TEXT_HI, 0);
+		it[i].label = ctl_name[i];
+		it[i].sub = ctl_desc[i];
+		ctl_caret(i, v);
 		if (i < 33) {
 			int u = ctl_unit(i);
 
-			hx[0] = hexd[u >> 4];
-			hx[1] = hexd[u & 15];
-			hx[2] = 0;
+			v[2] = ' ';
+			v[3] = ' ';
+			v[4] = hexd[u >> 4];
+			v[5] = hexd[u & 15];
+			v[6] = 0;
 		} else {
-			strcpy(hx, "GS1");
+			strcpy(v, "GS1");
 		}
-		text(&f_mono14, x0 + w - 16 - text_w(&f_mono14, hx, 0), text_top(&f_mono14, cy), hx,
-		     on ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 0);
-		text(&f_ui18, x + 40 + 16 + 64 + 16, text_top(&f_ui18, cy),
-		     wb_fit(&f_ui18, ctl_desc[i], w - 16 - 40 - 16 - 64 - 16 - 60, buf, sizeof(buf)), WB_COLOR_TEXT_MID, 0);
 	}
-	clip_end();
-	hint_bar(hs, 3);
+	cat_count(count, C.n_imap, "option");
+	strcpy(eb, C.sc == SC_QUICK ? "QUICK CODE" : C.edit < 0 ? "NEW CODE" : "EDIT CODE");
+	menu_popup(eb, "Control character", count, it, C.imap, C.n_imap, C.pf, -2, C.filter,
+		   "Type a name or ^ and a letter", hs, 3);
 }
 
 static void draw_pop(void)
 {
 	static const struct hint menu_h[] = { { "Enter", "do", 0 }, { "Esc", "cancel", 1 } };
+	static const struct hint ask[] = { { "\xe2\x86\x91\xe2\x86\x93", "select", 0 }, { "Enter", "confirm", 0 },
+					   { "Esc", "cancel", 1 } };
 	static const char *const mlabel[] = { "Show", "Edit", "Barcode type", "Move up", "Move down", "Delete" };
+	static const char *const keep_del[2] = { "Keep it", "Delete" };
+	static const struct wb_icon *const keep_del_ic[2] = { &r_check, &r_trash };
 	struct menu_item it[6];
-	char name[96];
+	char name[96], buf[96];
 
 	memset(it, 0, sizeof(it));
 	switch (C.pop) {
@@ -2056,20 +2066,25 @@ static void draw_pop(void)
 			it[i].label = mlabel[C.menu[i]];
 			it[i].danger = it[i].sep = C.menu[i] == M_DELETE;
 		}
-		menu_popup("CODE", name, 0, it, 0, C.n_menu, C.pf, -1, 0, 0, menu_h, 2);
+		menu_popup("BARBARIOUS", name, 0, it, 0, C.n_menu, C.pf, -2, 0, 0, menu_h, 2);
 		break;
-	case POP_DELETE:
+	case POP_DELETE: {	/* a question: the dialog, the destructive choice red */
+		int y;
+
 		label_of(C.menu_for, name, sizeof(name));
-		it[0].label = "Keep it";
-		it[1].label = "Delete";
-		it[1].danger = it[1].sep = 1;
-		menu_popup("DELETE THIS CODE?", name, 0, it, 0, 2, C.pf, -1, 0, 0, menu_h, 2);
+		y = dialog("BARBARIOUS", "Delete this code?", 28, keep_del, keep_del_ic, 2, C.pf, 1);
+		text(&f_ui20, DLG_X + 32, y, wb_fit(&f_ui20, name, DLG_W - 64, buf, sizeof(buf)), WB_COLOR_TEXT_MID, 0);
+		dlg_hints(ask, 3);
 		break;
+	}
 	}
 }
 
-static void draw_band(void)
+/* The screen, and the pop-up over it. It only draws: present() runs it
+ * once more than the bands it draws (the first time to record it). */
+static void paint(void *unused)
 {
+	(void)unused;
 	switch (C.sc) {
 	case SC_LIST:
 		draw_list();
@@ -2090,6 +2105,8 @@ static void draw_band(void)
 		draw_settings();
 		break;
 	}
+	/* a pop-up is frosted when the frame is whole, else (drawn a band
+	 * at a time) libwb draws it as darker unblurred glass */
 	draw_pop();
 }
 
@@ -2102,26 +2119,64 @@ static uint16_t screen[W * H];
 #else
 static int fb_fd = -1;
 #endif
+static long tm_out;		/* us spent writing to the panel, this frame */
 
-static void flush_band(int y0, int y1)
+/* rows y0..y1 of the picture in p (whole, or the band) to the panel */
+static void put_rows(const uint16_t *p, int y0, int y1)
 {
-	/* fb points at row 0, which may lie outside band: as an address only */
-	fb = (uint16_t *)((uintptr_t)band - (uintptr_t)y0 * W * sizeof(uint16_t));
-	fb_y0 = y0;
-	fb_y1 = y1;
-	draw_band();
+	long t = wb_now_us();
+
 #ifdef BB_HOST
-	memcpy(screen + y0 * W, band, (size_t)(y1 - y0) * W * 2);
+	if (p != screen + y0 * W)
+		memcpy(screen + y0 * W, p, (size_t)(y1 - y0) * W * 2);
 #else
-	if (pwrite(fb_fd, band, (size_t)(y1 - y0) * W * 2, (off_t)y0 * W * 2) < 0)
-		return;
+	ssize_t r = pwrite(fb_fd, p, (size_t)(y1 - y0) * W * 2, (off_t)y0 * W * 2);
+
+	(void)r;		/* nothing to do about a frame not written */
 #endif
+	tm_out += wb_now_us() - t;
 }
 
-static void flush_rows(int y0, int y1)
+/*
+ * BARBARIOUS_UI_TIMING=1: a line per frame on stderr (the app's log): how
+ * it was drawn, the bands drawn, and the time in us, of which libwb's
+ * scene and glass and the writing out.
+ */
+static void timing(long t0, const char *how, int bands)
 {
-	for (int y = y0; y < y1; y += BAND_H)
-		flush_band(y, y + BAND_H < y1 ? y + BAND_H : y1);
+	static int on = -1;
+	char line[160];
+
+	if (on < 0)
+		on = getenv("BARBARIOUS_UI_TIMING") != 0;
+	if (on) {
+		line[0] = 0;
+		cat(cat_int(cat(cat_int(cat(cat_int(cat(cat_int(cat(cat_int(cat(cat(cat(line,
+			"barbarious: frame "), how), ", "), bands), " bands, "), (int)(wb_now_us() - t0)),
+			" us, scene "), (int)tm_scene), ", glass "), (int)tm_glass), ", out "), (int)tm_out), "\n");
+		if (write(2, line, strlen(line)) < 0)
+			on = 0;
+	}
+	tm_scene = tm_glass = tm_out = 0;
+}
+
+/*
+ * The screen to the panel: recorded, then only the bands that changed
+ * since the last frame drawn (libwb): into the whole picture when there
+ * is one (a pop-up's blur kept while only its focus moves), else a band
+ * at a time. A focus that moves draws its two rows and the hint bar; a
+ * character typed the field's lines and the code, which changed.
+ */
+static void present(void)
+{
+	long t0 = wb_now_us();
+	int n;
+
+	if (whole)
+		n = wb_frame(paint, 0, whole, BAND_H, put_rows);
+	else
+		n = wb_bands(paint, 0, band, BAND_H, put_rows);
+	timing(t0, whole ? "whole" : "bands", n);
 }
 
 /* ---- keys --------------------------------------------------------------- */
@@ -2754,6 +2809,19 @@ static void save_ppm(const char *path)
 	close(fd);
 }
 
+/* the screen as it is now to BB_FRAMES followed by 000.ppm, 001.ppm ... */
+static const char *frames;
+
+static void host_shot(void)
+{
+	static int n;
+	char path[300] = "", num[4] = { (char)('0' + n / 100 % 10), (char)('0' + n / 10 % 10), (char)('0' + n % 10), 0 };
+
+	n++;
+	if (strlen(frames) < sizeof(path) - 8)
+		save_ppm((cat(cat(cat(path, frames), num), ".ppm"), path));
+}
+
 /* --sym TYPE HEX OUT.pgm [ECC]: one symbol, 4 px a module with its quiet
  * zone (a 1D code 80 px high); HEX is the text, "XX" for FNC1 */
 static int sym_out(int argc, char **argv)
@@ -2811,6 +2879,9 @@ static int sym_out(int argc, char **argv)
  * Enter, \N Shift+Enter, \e Esc, \t Tab, \b Backspace, \u \d \l \r the
  * arrows, \1..\6 the symbol keys, and \f Fn, \s Shift, \c Ctrl held for
  * the next key. Prints what is on screen (where_text) and the codes.
+ * BB_BANDS draws a band at a time, as the badge does without room for the
+ * whole picture. BB_FRAMES=PREFIX draws a frame after every key, as the
+ * badge does, and writes each to PREFIX000.ppm on.
  */
 int main(int argc, char **argv)
 {
@@ -2823,6 +2894,9 @@ int main(int argc, char **argv)
 	load();
 	load_settings();
 	C.qtype = C.def_type;
+	wb_init();
+	whole = getenv("BB_BANDS") ? 0 : screen;	/* BB_BANDS: as without room for the whole */
+	frames = getenv("BB_FRAMES");
 	memcpy(U.hhmm, "12:34", 6);
 	U.clock_ok = 1;
 	U.wifi_up = 3;
@@ -2857,8 +2931,12 @@ int main(int argc, char **argv)
 			break;
 		}
 		K.shift = K.fn = K.ctrl = 0;
+		if (frames) {
+			present();
+			host_shot();
+		}
 	}
-	flush_rows(0, H);
+	present();
 	if (argc > 2 && argv[2][0])
 		save_ppm(argv[2]);
 	where_text(out, (int)sizeof(out) - 8192);
@@ -2901,6 +2979,16 @@ static int fifo_used;
 static void on_signal(int s)
 {
 	stop_sig = s;
+}
+
+/* continued after a stop (the menu's console or screenshot): the panel may
+ * show something else meanwhile, so the next frame is drawn whole */
+static volatile sig_atomic_t cont_sig;
+
+static void on_cont(int s)
+{
+	(void)s;
+	cont_sig = 1;
 }
 
 /* the status bar; 1 if it changed */
@@ -2984,6 +3072,8 @@ int main(void)
 	sigaction(SIGTERM, &sa, 0);
 	sigaction(SIGHUP, &sa, 0);
 	sigaction(SIGINT, &sa, 0);
+	sa.sa_handler = on_cont;
+	sigaction(SIGCONT, &sa, 0);
 	fb_fd = open("/dev/fb0", O_RDWR | O_CLOEXEC);
 	ev_fd = open("/dev/input/event0", O_RDONLY | O_CLOEXEC);
 	if (fb_fd < 0 || ev_fd < 0)
@@ -2995,8 +3085,11 @@ int main(void)
 	load();
 	load_settings();
 	C.qtype = C.def_type;
+	wb_init();
+	whole = malloc((size_t)W * H * sizeof(*whole));	/* 0: bands, and plain pop-ups */
+	wb_rec_invalidate();	/* nothing in it yet: the first frame whole */
 	status_read();
-	flush_rows(0, H);
+	present();
 	p[0].fd = ev_fd;
 	p[0].events = POLLIN;
 	p[1].fd = fifo_fd;
@@ -3006,10 +3099,19 @@ int main(void)
 		int k, got, draw = 0, quit = 0;
 		long now;
 
-		k = poll(p, fifo_fd >= 0 ? 2 : 1, 1000);
+		/* four times a second: has the badge turned? */
+		k = poll(p, fifo_fd >= 0 ? 2 : 1, 250);
 		now = power_now();
-		if (++ticks % 5 == 0 && status_read())
-			flush_rows(0, WB_STATUS_BAR_H);
+		if (cont_sig) {
+			cont_sig = 0;
+			wb_rec_invalidate();
+			present();
+		}
+		/* each draws only what changed (present) */
+		if (wb_scene_turned())
+			present();
+		if (++ticks % 20 == 0 && status_read())
+			present();
 		/* a code on screen keeps it on, as a key would; not past KEEP_ON_S,
 		 * and never out of standby */
 		if ((C.sc == SC_SHOW || C.sc == SC_QUICK) && now - last_key < KEEP_ON_S && now - touched >= 20 &&
@@ -3049,10 +3151,10 @@ int main(void)
 		}
 		if (quit)
 			break;
-		if (draw == 3)
-			flush_rows(0, H);
-		else if (draw == 2)
-			flush_rows(TOP + 68, H - WB_HINT_BAR_H);
+		/* 2: from the title's foot down changed, 3: anything; either
+		 * way only the bands that changed are drawn */
+		if (draw >= 2)
+			present();
 		if (draw && fifo_used)
 			where_write();
 	}

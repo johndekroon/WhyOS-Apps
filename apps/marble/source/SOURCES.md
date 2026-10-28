@@ -4,7 +4,7 @@ Marble Orbit is our own program, written for the badge. This directory is
 its source (it is no longer part of why2025-linux, where it started in
 `sdapps/marble` at commit `ebdcc16`); the drawing code, fonts and design
 tokens are a copy of why2025-linux's drawing library `libwb/` (commit
-`450ce3f`):
+`c8cfa09`):
 
 | File | What |
 |---|---|
@@ -12,7 +12,7 @@ tokens are a copy of why2025-linux's drawing library `libwb/` (commit
 | `levels.h` | the 18 levels as text, with the tile legend |
 | `test_marble.py` | its host test: the levels checked, the game played by script, screens saved as PPM |
 | `app.conf` | the menu entry of a hand-installed copy (the store writes its own) |
-| `libwb/` | the drawing library (`wb.h` and its parts: tokens, fonts and icons, glass, the frontpanel's figures behind the title; its `README.md`), as built |
+| `libwb/` | the drawing library (`wb.h` and its parts: tokens, fonts and icons, glass, the frontpanel's figures behind the title; its `README.md`), as built; `gen/` the scripts that made its data, with the fonts' licences (the fonts themselves: why2025-linux `libwb/gen/fonts/`) |
 
 Build, with the badge's toolchain ([toolchain/](../../../toolchain/README.md)),
 in this directory (in a checkout of the repos `-I` may point at

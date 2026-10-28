@@ -15,8 +15,9 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 O = os.path.join(HERE, "..", "..", "patches", "buildroot", "overlay-src")
-if not os.path.isdir(O):        # a copy with the headers next to it (WhyOS-Apps)
-    O = HERE
+L = os.path.join(HERE, "..", "..", "libwb")
+if not os.path.isdir(L):        # a copy with libwb in its source (WhyOS-Apps)
+    O, L = HERE, os.path.join(HERE, "libwb")
 
 bad = checks = 0
 
@@ -51,6 +52,27 @@ class App:
             st[k] = v
         return st
 
+    def frames(self, keys, full, **env):
+        """The screen after every key (OHM_FRAMES), drawn as the badge draws
+        it: only the bands that changed, or with full every band
+        (WB_FULL=1); and how many bands each frame drew (OHM_UI_TIMING)."""
+        d = tempfile.mkdtemp()
+        env = dict(env, OHM_FRAMES=d, OHM_UI_TIMING="1")
+        if full:
+            env["WB_FULL"] = "1"
+        e = dict(os.environ, APP_CONFIG=tempfile.mkdtemp(), OHM_I2C="3c 48 57", OHM_LEVELS="1 0 1 0 0 0",
+                 OHM_UART_RX="boot: ready\nI (312) app: sensor ready\n", ASAN_OPTIONS="detect_leaks=0")
+        e.pop("OHM_BP", None)
+        e.pop("WB_FULL", None)
+        e.update(env)
+        r = subprocess.run([self.exe, keys], capture_output=True, text=True, env=e)
+        if r.returncode or "runtime error" in r.stderr or "Sanitizer" in r.stderr:
+            raise SystemExit("ohminous-host failed on %r:\n%s" % (keys, r.stderr))
+        shots = [open(os.path.join(d, f), "rb").read() for f in sorted(os.listdir(d))]
+        bands = [int(line.split("(")[1].split()[1]) for line in r.stderr.splitlines()
+                 if line.startswith("ohminous: frame")]
+        return shots, bands
+
     def file(self, name):
         p = os.path.join(self.dir, name)
         return open(p, "rb").read() if os.path.exists(p) else None
@@ -63,7 +85,7 @@ def main():
     exe = os.path.join(tempfile.mkdtemp(), "ohminous-host")
     subprocess.run(["cc", "-O1", "-g", "-Wall", "-Wextra", "-Wno-unused-function", "-Wno-format-truncation",
                     "-DOHM_HOST", "-fsanitize=address,undefined", "-fno-sanitize-recover=undefined",
-                    "-I" + O, "-I" + HERE, "-o", exe] + [os.path.join(HERE, f) for f in ("ohminous.c", "hw.c", "bp.c")],
+                    "-I" + O, "-I" + L, "-I" + HERE, "-o", exe] + [os.path.join(HERE, f) for f in ("ohminous.c", "hw.c", "bp.c")],
                    check=True)
     a = App(exe, shots)
 
@@ -168,6 +190,32 @@ def main():
     check("map from the back", s["screen"], "pins ")
     s = a.run("", OHM_NO_GPIO="1")
     check("no gpio", s["notice"].startswith("No GPIO here"), True)
+
+    # drawing only what changed (libwb wb_bands, wb_frame): the same keys
+    # drawn partly and with every band (WB_FULL=1) give the same screens
+    seqs = [
+        # start: the focus, the help; Pins: the focus, levels that change
+        # (\iN, as the badge's poll reads them), a mode, the options and a
+        # name typed in their pop-ups, the source switched and back
+        ("start, pins", "\\r\\d\\l\\6\\e\\u\\n\\d\\d\\i2\\i0\\n\\1\\d\\u\\e\\1\\nab\\bc\\n\\2\\t\\t\\e", {}),
+        # Logic: a capture, scrolled and zoomed, its options' focus moved
+        ("logic", "\\r\\n\\2\\u\\u\\r\\r\\l\\d\\1\\d\\d\\e\\e", {}),
+        # the UART terminal typed into and sent; the I2C scan's focus;
+        # the settings changed
+        ("uart, i2c, settings", "\\r\\r\\n\\d\\nab\\bc\\n\\e\\e\\u\\n\\2\\d\\d\\u\\e\\e\\5\\d\\r\\d\\d\\e", {}),
+        # LEDs and the Bus Pirate's supply, its sliders
+        ("leds, power", "\\d\\n\\2\\r\\d\\r\\d\\2\\e\\r\\n\\t\\2\\d\\r\\r\\d\\l\\6\\e", {"OHM_BP": "1"}),
+    ]
+    for name, keys, env in seqs:
+        part, nb = a.frames(keys, 0, **env)
+        whole, nf = a.frames(keys, 1, **env)
+        check(name + ": as many frames", (len(part) > 5, len(whole)), (True, len(part)))
+        same = [i for i in range(min(len(part), len(whole))) if part[i] != whole[i]]
+        check(name + ": drawn partly = drawn whole", same, [])
+        check(name + ": every band with WB_FULL", min(nf), 18)
+        partial = [n for n in nb[1:] if n < 18]
+        check(name + ": most keys draw part of the screen", len(partial) * 2 > len(nb) - 1, True)
+        print("%s: %d frames, bands drawn %s" % (name, len(part), " ".join(map(str, nb))))
 
     print("%d of %d failed" % (bad, checks))
     sys.exit(1 if bad else 0)

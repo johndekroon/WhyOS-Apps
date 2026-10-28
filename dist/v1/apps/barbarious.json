@@ -87,6 +87,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 2,
+   "changelog": "The new WhyOS look: the frontpanel's figures behind the screens, calm flat rows and bars, frosted pop-ups with their keys inside. Faster: a key redraws only what changed.",
+   "package": {
+    "installed_size": 435671,
+    "sha256": "4f8121767ca49b59dd7ada1913830d38e75544d1871ba548f730c90d0bf2054a",
+    "size": 204283,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/barbarious-1.1.0.wpk"
+   },
+   "published": "2026-10-28T08:49:04Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/barbarious-1.1.0-source.tar.gz",
+   "version": "1.1.0"
+  },
+  {
    "build": 1,
    "changelog": "First version.",
    "package": {

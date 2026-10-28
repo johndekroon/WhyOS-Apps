@@ -1,4 +1,4 @@
 # The prebuilt files/ archive (docs/repository.md §1.1), written by tools/import-sdapp.py
 path = "files.tar.gz"
-sha256 = "a111b8cd2e4e4749753a0f079bdb2266ca5b6dda6c030d8e8eb7e3771700d8ff"
-built_from = "why2025-linux sdapps/build.sh at 0161ded's sources, 2026-10-26 (the binary tested on the badge)"
+sha256 = "f92d2f8eacc96e26fe92ca3edb5dfeda19f834aa080343b01127e50742f2607b"
+built_from = "why2025-linux sdapps/build.sh at c8cfa09, 2026-10-28"

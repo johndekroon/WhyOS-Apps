@@ -98,6 +98,19 @@
  "type": "system",
  "versions": [
   {
+   "build": 16,
+   "changelog": "The new WhyOS look: the frontpanel's figures behind the screens, calm flat rows and bars, frosted pop-ups with their keys inside. Faster: a key redraws only what changed.",
+   "package": {
+    "installed_size": 1037260,
+    "sha256": "224c8b949e1a25f7ad6bd7be369df5e59a2b11754b51f06c07fc11ed13f56890",
+    "size": 543603,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.15.wpk"
+   },
+   "published": "2026-10-28T08:49:10Z",
+   "source_archive": null,
+   "version": "0.2.15"
+  },
+  {
    "build": 15,
    "changelog": "The store, Files and Write come with WhyOS and can no longer be removed.",
    "package": {

@@ -8,6 +8,22 @@
    "name": "uClibc-ng",
    "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
    "version": "1.0.57"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "jetbrains-mono.txt",
+   "license_url": "licenses/sensorpanel/jetbrains-mono.txt",
+   "name": "JetBrains Mono (font)",
+   "source": "https://github.com/JetBrains/JetBrainsMono",
+   "version": "2.211"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "space-grotesk.txt",
+   "license_url": "licenses/sensorpanel/space-grotesk.txt",
+   "name": "Space Grotesk (font)",
+   "source": "https://github.com/floriankarsten/space-grotesk",
+   "version": "2.000"
   }
  ],
  "category": "hardware",
@@ -50,6 +66,19 @@
  ],
  "type": "app",
  "versions": [
+  {
+   "build": 2,
+   "changelog": "The new WhyOS look: the frontpanel's figures behind the screens, calm flat rows and bars, frosted pop-ups with their keys inside. Faster: a key redraws only what changed.",
+   "package": {
+    "installed_size": 337907,
+    "sha256": "c2f899c8b81c710a03b1c538985cbc112466261430261958510c6f48ecab2959",
+    "size": 143100,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/sensorpanel-1.1.0.wpk"
+   },
+   "published": "2026-10-28T08:49:09Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/sensorpanel-1.1.0-source.tar.gz",
+   "version": "1.1.0"
+  },
   {
    "build": 1,
    "changelog": "First store release; it was in the OS image before.",

@@ -3,8 +3,8 @@
 format = 1
 id = "imgview"
 name = "Picture viewer"
-version = "1.1.1"
-build = 3
+version = "1.2.0"
+build = 4
 summary = "Shows JPEG and PNG pictures, opened from Files"
 description = """
 Shows photos and pictures on the panel: JPEG and PNG, fitted to the
@@ -18,7 +18,7 @@ author = "badge port"
 license = "MIT AND IJG AND libpng-2.0 AND Zlib AND OFL-1.1 AND LGPL-2.1-or-later"
 license_file = "imgview.txt"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/imgview/source"
-changelog = "A held arrow goes on to the next pictures, or pans a zoomed one; a held Enter zooms once."
+changelog = "The new WhyOS look: the picture fills the screen; flat bars, frosted pop-ups with their keys inside. A key redraws only what changed."
 
 type = "app"
 category = "media"

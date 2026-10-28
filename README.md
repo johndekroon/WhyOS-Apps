@@ -31,7 +31,7 @@ the first store in the image, Write, the text editor ([write/](write/README.md),
 | [apps/](apps/) | The apps: gnuboy, NetSurf, Links, nmap, imgview, DOOM, the sensor panel, OHMinous (which replaced the Bus Pirate app), NetHack, nano, the calculator, HIDeous, BARbarious, the PDF viewer, MicroPython, Flappy, Marble Orbit, Write, Files, and the store itself |
 | [client/](client/README.md) | The `store` program: CLI and UI, for the badge and the host |
 | [write/](write/README.md) | Write, the text editor: notes in rich text saved as markdown, code with highlighting; a system app in flash like the store (2026-10-25) |
-| [files/](files/README.md) | Files, the file browser the menu's Files tile starts; a system app in flash like the store (2026-10-25, until then part of the menu; not pushed yet) |
+| [files/](files/README.md) | Files, the file browser the menu's Files tile starts; a system app in flash like the store (2026-10-25, until then part of the menu) |
 | [toolchain/](toolchain/README.md) | How the apps' toolchain is built (part of their corresponding source) |
 | [tools/](tools/) | `validate.py` (check apps against the spec), `publish.py` (pack and write `dist/v1/`), `import-sdapp.py` (package an app built by why2025-linux), `serve.py`/`local-source.sh` (a test source) |
 

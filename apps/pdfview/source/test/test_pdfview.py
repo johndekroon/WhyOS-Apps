@@ -193,13 +193,43 @@ class Content(unittest.TestCase):
         r, _ = view("three.pdf", "x")
         self.assertEqual(r["closed"], "1")
 
+    def test_drawn_partly_equals_drawn_whole(self):
+        """The same keys drawn only where the screen changed (libwb's
+        recording) and drawn whole (WB_FULL=1): every frame the same."""
+        # scroll; the options and their focus; Go to page typed; whole
+        # page; zoom and move; the help; the log and settings; a screen
+        # down and up; the options closed; the previous page
+        keys = "ddmdudxme2b3emdeerlhxgcxsSmxl"
+        frames = {}
+        for full in (False, True):
+            path = os.path.join(HERE, "out", "frames-%s.ppm" % ("full" if full else "part"))
+            env = dict(os.environ, APP_CONFIG=tempfile.mkdtemp(), ASAN_OPTIONS="detect_leaks=0")
+            env.pop("WB_FULL", None)
+            if full:
+                env["WB_FULL"] = "1"
+            r = subprocess.run([EXE, os.path.join(PDFS, "three.pdf"), os.path.join(HERE, "out", "keys.ppm"),
+                                keys, path], capture_output=True, text=True, env=env)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            with open(path, "rb") as f:
+                frames[full] = f.read()
+        size = len(b"P6\n720 720\n255\n") + 720 * 720 * 3
+        self.assertEqual(len(frames[False]), len(frames[True]))
+        self.assertGreater(len(frames[False]) // size, len(keys))
+        for i in range(len(frames[False]) // size):
+            a, b = frames[False][i * size:(i + 1) * size], frames[True][i * size:(i + 1) * size]
+            self.assertTrue(a == b, "frame %d differs from the one drawn whole" % i)
+
 
 class Bad(unittest.TestCase):
     def test_locked(self):
         r, img = view("locked.pdf")
         self.assertEqual(r["error"], "This PDF is locked with a password")
-        red = sum(1 for x in range(100, 620) if img.getpixel((x, TOP + VIEW_H // 2))[0] > 200)
-        self.assertGreater(red, 0)                          # the message, in the error colour
+        mid = TOP + VIEW_H // 2
+        red = sum(1 for x in range(60, 120) if img.getpixel((x, mid))[0] > 200 > img.getpixel((x, mid))[2])
+        self.assertGreater(red, 0)                          # the card's icon, in the error colour
+        light = sum(1 for x in range(120, 620) for y in range(mid - 30, mid + 30)
+                    if min(img.getpixel((x, y))) > 150)
+        self.assertGreater(light, 100)                      # its title and the message
 
     def test_broken(self):
         r, _ = view("broken.pdf")

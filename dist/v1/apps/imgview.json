@@ -95,6 +95,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 4,
+   "changelog": "The new WhyOS look: the picture fills the screen; flat bars, frosted pop-ups with their keys inside. A key redraws only what changed.",
+   "package": {
+    "installed_size": 594053,
+    "sha256": "bb7c8c04b09ba5310febeaebbae00a42f8516a127b3d6bff6cda96593e746358",
+    "size": 307755,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/imgview-1.2.0.wpk"
+   },
+   "published": "2026-10-28T08:49:06Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/imgview-1.2.0-source.tar.gz",
+   "version": "1.2.0"
+  },
+  {
    "build": 3,
    "changelog": "A held arrow goes on to the next pictures, or pans a zoomed one; a held Enter zooms once.",
    "package": {

@@ -3,14 +3,14 @@
 Flappy is our own program, written for the badge. This directory is its
 source (it is not part of why2025-linux); the drawing code, fonts and
 design tokens are a copy of why2025-linux's drawing library `libwb/`
-(commit `450ce3f`):
+(commit `c8cfa09`):
 
 | File | What |
 |---|---|
 | `flappy.c` | the game: the world, the screen, the keys, the best score |
 | `test_flappy.py` | its host test: the game played by script, screens saved as PPM |
 | `app.conf` | the menu entry of a hand-installed copy (the store writes its own) |
-| `libwb/` | the drawing library (`wb.h` and its parts: tokens, fonts and icons, glass; its `README.md`), as built |
+| `libwb/` | the drawing library (`wb.h` and its parts: tokens, fonts and icons, glass; its `README.md`), as built; `gen/` the scripts that made its data, with the fonts' licences (the fonts themselves: why2025-linux `libwb/gen/fonts/`) |
 
 Build, with the badge's toolchain ([toolchain/](../../../toolchain/README.md)),
 in this directory (in a checkout of the repos `-I` may point at

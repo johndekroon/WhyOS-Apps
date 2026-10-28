@@ -3,8 +3,8 @@
 format = 1
 id = "sensorpanel"
 name = "Sensor panel"
-version = "1.0.0"
-build = 1
+version = "1.1.0"
+build = 2
 summary = "Live readings of the badge's environment and motion sensors"
 description = """
 Shows the BME680's temperature, humidity and pressure and the BMI270's
@@ -18,7 +18,7 @@ license = "GPL-2.0-only AND LGPL-2.1-or-later"
 license_file = "sensorpanel.txt"
 homepage = "https://github.com/mrbreaker/why2025-linux"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/sensorpanel/source"
-changelog = "First store release; it was in the OS image before."
+changelog = "The new WhyOS look: the frontpanel's figures behind the screens, calm flat rows and bars, frosted pop-ups with their keys inside. Faster: a key redraws only what changed."
 
 type = "app"
 category = "sensors"
@@ -42,3 +42,17 @@ version = "1.0.57"
 license = "LGPL-2.1-or-later"
 source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
 license_file = "uClibc-ng.txt"
+
+[[bundled]]
+name = "JetBrains Mono (font)"
+version = "2.211"
+license = "OFL-1.1"
+source = "https://github.com/JetBrains/JetBrainsMono"
+license_file = "jetbrains-mono.txt"
+
+[[bundled]]
+name = "Space Grotesk (font)"
+version = "2.000"
+license = "OFL-1.1"
+source = "https://github.com/floriankarsten/space-grotesk"
+license_file = "space-grotesk.txt"

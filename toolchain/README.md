@@ -11,7 +11,7 @@ commit `2be6d7c`.
 |---|---|
 | `why2025_defconfig` | The Buildroot configuration (`configs/why2025_defconfig` of why2025-linux) |
 | `uclibc/0001-linuxthreads-sigaction-vfork-safe.patch` | The badge's change to uClibc-ng (`patches/buildroot/global-patches/uclibc/`) |
-| `sdapps-build.sh` | The script that built the apps (`sdapps/build.sh`, copied again at commit `0161ded` on 2026-10-26, with HIDeous, BARbarious, the PDF viewer and OHMinous; the Bus Pirate app it replaced builds only by name); each app's `source/` has its own files |
+| `sdapps-build.sh` | The script that built the apps (`sdapps/build.sh`, copied again at commit `c8cfa09` on 2026-10-28, with HIDeous, BARbarious, the PDF viewer and OHMinous, and `-I libwb` for the apps that draw with why2025-linux's drawing library; the Bus Pirate app it replaced builds only by name); each app's `source/` has its own files |
 
 ## Components
 
@@ -31,7 +31,8 @@ commit `2be6d7c`.
    `@WHY2025_LINUX@` (kernel patches, overlay); the toolchain itself needs
    only the patch above.
 2. `make toolchain` gives `output/host/bin/riscv32-buildroot-linux-uclibc-*`.
-3. Put an app's `source/` files in `sdapps/<app>/` next to `sdapps-build.sh`,
-   set `BR_OUT` to the Buildroot output directory and run
+3. Put an app's `source/` files in `sdapps/<app>/` next to `sdapps-build.sh`
+   (its `libwb/`, when it has one, next to `sdapps/`, as in why2025-linux;
+   its `SOURCES.md` says where the other files go), set `BR_OUT` to the Buildroot output directory and run
    `sdapps-build.sh <app>`. The script fetches the upstream sources listed
    in each app's `SOURCES.md` and checks their SHA-256.

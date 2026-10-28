@@ -1,4 +1,4 @@
 # The prebuilt files/ archive (docs/repository.md §1.1), written by tools/import-sdapp.py
 path = "files.tar.gz"
-sha256 = "9a38252721e0fab085003c9ca204eb422e2a10130cbbda126298604b3835d751"
-built_from = "why2025-linux sdapps/build.sh at cdbc361, 2026-10-26"
+sha256 = "931da7fb487876a3c1afdaecdb66019ffb0f6d60579adfb7ec7263309381502d"
+built_from = "why2025-linux sdapps/build.sh at c8cfa09, 2026-10-28"

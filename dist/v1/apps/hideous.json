@@ -70,6 +70,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 3,
+   "changelog": "The new WhyOS look: the frontpanel's figures behind the screens, calm flat rows and bars, frosted pop-ups with their keys inside. Faster: a key redraws only what changed.",
+   "package": {
+    "installed_size": 401711,
+    "sha256": "423bed0621424f60b55c68f5402e75292c726b830cc7814b357bf328d5bd43ce",
+    "size": 180994,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/hideous-1.1.0.wpk"
+   },
+   "published": "2026-10-28T08:49:06Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/hideous-1.1.0-source.tar.gz",
+   "version": "1.1.0"
+  },
+  {
    "build": 2,
    "changelog": "In the editor, the triangle now puts in a pause. The square's list of keys no longer has one. Clearer description.",
    "package": {

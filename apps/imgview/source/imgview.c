@@ -19,10 +19,13 @@
  * as the design has them (Docs/06-design-system.md 6.6): the diamond the
  * help, the circle and cloud the log and settings, which a viewer does not
  * have (a screen that says so); the left three do nothing.
- * Drawn as the menu (wbdraw.h): status bar with the name, hint bar.
+ * Drawn with the menu's library (libwb): the picture fills the screen, a
+ * title bar (the name) and the hint bar are glass over it.
+ * IMGVIEW_UI_TIMING=1 in the environment: a line per frame on stderr
+ * (apprun's log) with the time it took.
  *
  * Built with -DIMGVIEW_HOST it decodes FILE into OUT.ppm on the host
- * instead (the test in sdapps/imgview/test).
+ * instead, after keys from its arguments (the test in sdapps/imgview/test).
  */
 #include <dirent.h>
 #include <errno.h>
@@ -39,12 +42,12 @@
 #include <jpeglib.h>
 #include <png.h>
 
-#include "home_assets.h"
-#include "home-assets/wb_tokens.h"
+#include "wb_tokens.h"
 
 #define W		WB_SCREEN_W
 #define H		WB_SCREEN_H
-#include "wbdraw.h"
+#include "wb.h"
+#include "wbstatus.h"
 #include "keyrep.h"
 
 #ifndef IMGVIEW_HOST
@@ -68,6 +71,7 @@
 
 static struct {
 	uint16_t *px;
+	unsigned gen;			/* one more each time px changes (recording a frame) */
 	int w, h;			/* as shown */
 	int src_w, src_h;		/* as in the file, upright */
 	int zoom, x, y;			/* zoom 2: the part shown starts at x, y */
@@ -417,6 +421,7 @@ static int load(const char *path)
 	free(F.acc);
 	F.acc = 0;
 	P.px = 0;
+	P.gen++;
 	P.w = P.h = P.src_w = P.src_h = 0;
 	P.x = P.y = 0;
 	P.err[0] = 0;
@@ -440,6 +445,7 @@ static int load(const char *path)
 		free(P.px);
 		P.px = 0;
 	}
+	P.gen++;
 	return rc;
 }
 
@@ -486,10 +492,103 @@ static void path_of(int i, char *out, size_t n)
 
 /* ---- drawing ------------------------------------------------------------ */
 
-static uint16_t band[W * 40];
+/*
+ * The canvas "Menu's met frontpaneel" (Docs/06-design-system.md): the
+ * picture fills the screen, without the scene behind it; the title bar
+ * (the name, where in the folder, the size) and the hint bar are glass
+ * over it, and the help is a frosted pop-up. The screens without a
+ * picture (it cannot be read; the log, the settings) have the scene.
+ *
+ * Drawn in bands of 40 rows into band[]; with a pop-up open into a whole
+ * picture (whole[], 1 MB, only while it is open), as the pop-up's glass
+ * blurs what is under it. Without that memory its glass is not blurred.
+ * Each frame is recorded first and only the bands that changed are drawn
+ * (libwb's wb_bands and wb_frame): the picture, which paint() copies into
+ * fb itself, is recorded by its generation and where it lies.
+ */
+static uint16_t band[W * 40], *whole;
 
 enum { SC_VIEW, SC_LOG, SC_SETTINGS };
 static int sc, help;
+static int on_scene;		/* the screen shows the scene: drawn again when the badge turns */
+
+static struct {			/* the status bar of the log and settings screens */
+	char hhmm[6];
+	int clock_ok, wifi, lora;
+} S;
+
+static void status_read(void)
+{
+#ifdef IMGVIEW_HOST
+	time_t t = 1798000000;		/* the tests compare screens: a clock that stands still */
+#else
+	time_t t = time(0);
+#endif
+	struct tm tm;
+
+	localtime_r(&t, &tm);
+	S.clock_ok = tm.tm_year >= 124;
+	S.hhmm[0] = (char)('0' + tm.tm_hour / 10);
+	S.hhmm[1] = (char)('0' + tm.tm_hour % 10);
+	S.hhmm[2] = ':';
+	S.hhmm[3] = (char)('0' + tm.tm_min / 10);
+	S.hhmm[4] = (char)('0' + tm.tm_min % 10);
+	S.hhmm[5] = 0;
+	S.wifi = wifi_bars();
+	S.lora = lora_on();
+}
+
+/* WhyOS left; LoRa, Wi-Fi and the clock right (as the menu's) */
+static void status_bar(void)
+{
+	const struct wb_font *n = &f_ui18b;
+	int cy = WB_STATUS_BAR_H / 2;
+
+	text(n, text(n, WB_CHROME_PAD, text_top(n, cy), "Why", WB_COLOR_TEXT_HI, -3),
+	     text_top(n, cy), "OS", WB_COLOR_CYAN, -3);
+	status_right(S.hhmm, S.clock_ok, S.wifi, S.lora);
+}
+
+/* The scene behind the screen (libwb keeps one rotation for a frame). */
+static void backdrop(void)
+{
+	wb_scene();
+}
+
+/*
+ * The title bar: glass over the top of the picture, as the hint bar is at
+ * its bottom (the void at 85 % with a faint sheen), with its edge at the
+ * bottom. libwb's bar has its edge on its first row: the hint bar's.
+ */
+static void title_glass(void)
+{
+	static const uint8_t bayer[4][4] = {
+		{ 0, 8, 2, 10 }, { 12, 4, 14, 6 }, { 3, 11, 1, 9 }, { 15, 7, 13, 5 },
+	};
+	const unsigned ta = 217, edge = 56, h = WB_STATUS_BAR_H;
+
+	if (wb_rec) {		/* the same glass every frame, over what is under it */
+		static const int k[] = { 0x7469 };
+
+		wb_rec_rows(0, (int)h, k, sizeof(k));
+		return;
+	}
+	for (int y = fb_y0 > 0 ? fb_y0 : 0; y < fb_y1 && y < (int)h; y++) {
+		unsigned j = (unsigned)y, sa = j < h / 2 ? 10 - 5 * j / (h / 2) : 5 * (h - j) / (h - h / 2);
+		unsigned k16 = (unsigned)(((255u - ta) * (255 - sa) * 65536ull + 32512) / 65025), m16[3];
+
+		for (int c = 0; c < 3; c++) {
+			unsigned t = (WB_COLOR_VOID >> (16 - 8 * c)) & 255;
+
+			m16[c] = (unsigned)(((t * ta * (255 - sa) + 255u * sa * 255u) * 65536ull + 32512) / 65025);
+			if (j == h - 1)
+				m16[c] = (unsigned)((uint64_t)m16[c] * (255 - edge) / 255) + edge * 65536u;
+		}
+		if (j == h - 1)
+			k16 = (unsigned)((uint64_t)k16 * (255 - edge) / 255);
+		glass_span_fb(&fb[y * W], 0, W, bayer[y & 3], k16, m16);
+	}
+}
 
 static void draw_help(void)
 {
@@ -506,7 +605,55 @@ static void draw_help(void)
 		   keys, sizeof(keys) / sizeof(keys[0]));
 }
 
-static void draw_band(int y0, int y1)
+/* The log or the settings, which a viewer does not have (6.6): the screen
+ * still opens, with one line saying so. */
+static void draw_empty(void)
+{
+	static const struct hint hints[] = { { "Esc", "back", 1 } };
+
+	backdrop();
+	status_bar();
+	wb_header("PICTURE VIEWER \xe2\x80\xba", sc == SC_LOG ? "Log" : "Settings", 0);
+	wb_row(WB_CONTENT_PAD, WB_ROWS_TOP, W - 2 * WB_CONTENT_PAD, WB_LIST_ROW_H, &r_info,
+	       sc == SC_LOG ? "No log yet" : "This app has no settings", 0, 0, WB_ROW_NONE, 0, 0);
+	hint_bar(hints, 1);
+}
+
+/* A picture that cannot be shown: a card in the middle, over the scene. */
+static void draw_error(void)
+{
+	int x = WB_CONTENT_PAD, w = W - 2 * WB_CONTENT_PAD, h = 104, y = VIEW_Y + (VIEW_H - h) / 2;
+	int tx = x + 24 + 26 + 18;
+	char buf[96];
+
+	wb_card(x, y, w, h, WB_RADIUS_MD, 0, 0);
+	icon(&r_image, x + 24, y + (h - 26) / 2, WB_COLOR_ERROR, 255);
+	text(&f_ui22, tx, text_top(&f_ui22, y + h / 2 - 14), "Cannot show this picture", WB_COLOR_TEXT_HI, 0);
+	text(&f_ui18, tx, text_top(&f_ui18, y + h / 2 + 16),
+	     wb_fit(&f_ui18, P.err, x + w - 24 - tx, buf, sizeof(buf)), WB_COLOR_TEXT_MID, 0);
+}
+
+/* The picture, fitted between the bars; zoomed, on under them. Copied
+ * into fb's rows; while recording, only its rows and what decides them. */
+static void draw_picture(void)
+{
+	int ox = P.w <= W ? (W - P.w) / 2 : -P.x;
+	int oy = P.h <= VIEW_H ? VIEW_Y + (VIEW_H - P.h) / 2 : VIEW_Y - P.y;
+	int sx = ox < 0 ? -ox : 0, dx = ox < 0 ? 0 : ox, n = P.w - sx < W - dx ? P.w - sx : W - dx;
+
+	if (wb_rec) {
+		int k[] = { 0x7078, (int)P.gen, oy, sx, dx, n };
+
+		wb_rec_rows(oy, oy + P.h, k, sizeof(k));
+		return;
+	}
+	for (int y = fb_y0 > oy ? fb_y0 : oy; y < fb_y1 && y < oy + P.h; y++)
+		memcpy(&fb[y * W + dx], &P.px[(size_t)(y - oy) * P.w + sx], (size_t)n * 2);
+}
+
+/* The screen, clipped to fb_y0..fb_y1: it only draws (libwb runs it once
+ * more to record the frame). */
+static void paint(void *unused)
 {
 	static const struct hint hints[] = {
 		{ "\xe2\x86\x90 \xe2\x86\x92", "previous / next", 0 }, { "Enter", "zoom", 0 },
@@ -517,42 +664,46 @@ static void draw_band(int y0, int y1)
 		{ "Esc", "close", 1 },
 	};
 	char right[64], name[96];
-	int ox, oy;
+	int rw;
 
+	(void)unused;
 	if (sc != SC_VIEW) {
-		empty_screen("PICTURE VIEWER", sc == SC_LOG ? "Log" : "Settings",
-			     sc == SC_LOG ? "No log yet." : "This app has no settings.");
+		draw_empty();
 		if (help)
 			draw_help();
 		return;
 	}
-	fill(0, y0, W, y1 - y0, WB_COLOR_VOID);
-	/* the picture */
-	if (P.px) {
-		int vw = P.w < W ? P.w : W, vh = P.h < VIEW_H ? P.h : VIEW_H;
-
-		ox = (W - vw) / 2;
-		oy = VIEW_Y + (VIEW_H - vh) / 2;
-		for (int y = y0 > oy ? y0 : oy; y < y1 && y < oy + vh; y++)
-			memcpy(&fb[y * W + ox], &P.px[(size_t)(y - oy + P.y) * P.w + P.x], (size_t)vw * 2);
+	if (P.err[0]) {
+		backdrop();
+		draw_error();
 	} else {
-		const char *m = P.err[0] ? P.err : "Loading\xe2\x80\xa6";
-
-		text(&f_ui22, (W - text_w(&f_ui22, m, 0)) / 2, VIEW_Y + VIEW_H / 2 - 12, m,
-		     P.err[0] ? WB_COLOR_ERROR : WB_COLOR_TEXT_MID, 0);
+		/* no scene: the bars are glass over the picture all the same */
+		fill(0, 0, W, H, WB_COLOR_VOID);
+		scene_shown = 1;
+		gb_ok = 0;
 	}
-	/* status bar: name; position and size */
+	if (P.px) {
+		draw_picture();
+	} else if (!P.err[0]) {
+		const char *m = "Loading\xe2\x80\xa6";
+
+		text(&f_ui22, (W - text_w(&f_ui22, m, 0)) / 2, text_top(&f_ui22, VIEW_Y + VIEW_H / 2), m,
+		     WB_COLOR_TEXT_MID, 0);
+	}
+	/* the title bar: the name; where in the folder, the size, the zoom */
+	title_glass();
 	snprintf(right, sizeof(right), "%d / %d", cur + 1, n_pics);
 	if (P.src_w)
 		snprintf(right + strlen(right), sizeof(right) - strlen(right), "   %d x %d",
 			 P.src_w, P.src_h);
-	snprintf(name, sizeof(name), "%s", n_pics ? pics[cur] : "");
-	while (strlen(name) > 4 && text_w(&f_ui18, name, 0) > W - 2 * WB_CHROME_PAD - 24 -
-	       text_w(&f_mono14, right, 0))
-		strcpy(name + strlen(name) - 4, "\xe2\x80\xa6");
-	text(&f_ui18, WB_CHROME_PAD, text_top(&f_ui18, WB_STATUS_BAR_H / 2), name, WB_COLOR_TEXT_HI, 0);
-	text(&f_mono14, W - WB_CHROME_PAD - text_w(&f_mono14, right, 0),
-	     text_top(&f_mono14, WB_STATUS_BAR_H / 2), right, WB_COLOR_TEXT_MID, 0);
+	if (P.zoom)
+		snprintf(right + strlen(right), sizeof(right) - strlen(right), "   2x");
+	rw = text_w(&f_mono14, right, 0);
+	text(&f_ui18, WB_CHROME_PAD, text_top(&f_ui18, WB_STATUS_BAR_H / 2),
+	     wb_fit(&f_ui18, n_pics ? pics[cur] : "", W - 2 * WB_CHROME_PAD - 24 - rw, name, sizeof(name)),
+	     WB_COLOR_TEXT_HI, 0);
+	text(&f_mono14, W - WB_CHROME_PAD - rw, text_top(&f_mono14, WB_STATUS_BAR_H / 2), right,
+	     WB_COLOR_TEXT_MID, 0);
 	hint_bar(P.zoom ? zoomed : hints, 3);
 	if (help)
 		draw_help();
@@ -564,21 +715,60 @@ static uint16_t screen[W * H];
 static int fb_fd = -1;
 #endif
 
+/* a band (or the whole picture) to the panel */
+static void out(const uint16_t *b, int y0, int y1)
+{
+#ifdef IMGVIEW_HOST
+	memcpy(screen + y0 * W, b, (size_t)(y1 - y0) * W * 2);
+#else
+	pwrite(fb_fd, b, (size_t)(y1 - y0) * W * 2, (off_t)y0 * W * 2);
+#endif
+}
+
+/* IMGVIEW_UI_TIMING=1: a line per frame on stderr (apprun's log) */
+static void timing(long t0, int n, int whole_frame)
+{
+	static int on = -1;
+	char line[96];
+
+	if (on < 0)
+		on = getenv("IMGVIEW_UI_TIMING") != 0;
+	if (on) {
+		int len = snprintf(line, sizeof(line), "imgview: frame %ld us (%s, %d bands), scene %ld, glass %ld\n",
+				   wb_now_us() - t0, whole_frame ? "whole" : "bands", n, tm_scene, tm_glass);
+
+		if (write(2, line, (size_t)len) < 0)
+			on = 0;
+	}
+	tm_scene = tm_glass = 0;
+}
+
+/*
+ * The screen, recorded and then drawn only where it changed: in bands, or
+ * with the help open in the whole picture (1 MB while it is open), so the
+ * help's panel blurs what is under it.
+ */
 static void redraw(void)
 {
-	for (int y = 0; y < H; y += 40) {
-		int y1 = y + 40 > H ? H : y + 40;
+	long t0 = wb_now_us();
+	int n;
 
-		fb = band - (long)y * W;
-		fb_y0 = y;
-		fb_y1 = y1;
-		draw_band(y, y1);
-#ifdef IMGVIEW_HOST
-		memcpy(screen + y * W, band, (size_t)(y1 - y) * W * 2);
-#else
-		pwrite(fb_fd, band, (size_t)(y1 - y) * W * 2, (off_t)y * W * 2);
-#endif
+	if (help && !whole) {	/* a pop-up: the whole picture, if there is room */
+		whole = malloc((size_t)W * H * 2);
+		if (whole)
+			wb_rec_invalidate();	/* nothing in it yet */
+	} else if (!help && whole) {
+		free(whole);
+		whole = 0;
 	}
+	if (sc != SC_VIEW)
+		status_read();
+	on_scene = sc != SC_VIEW || P.err[0];
+	if (whole)
+		n = wb_frame(paint, 0, whole, 40, out);
+	else
+		n = wb_bands(paint, 0, band, 40, out);
+	timing(t0, n, whole != 0);
 }
 
 static void show(int i)
@@ -588,6 +778,7 @@ static void show(int i)
 	cur = i;
 	free(P.px);
 	P.px = 0;
+	P.gen++;
 	P.err[0] = 0;
 	P.src_w = 0;
 	redraw();		/* "Loading..." while it decodes */
@@ -609,19 +800,51 @@ static void pan(int dx, int dy)
 	P.y = P.y + dy < 0 ? 0 : P.y + dy > my ? my : P.y + dy;
 }
 
-#ifdef IMGVIEW_HOST
-/* imgview-host FILE OUT.ppm [zoom]: the screen after showing FILE; prints
- * the picture's size as shown and in the file. */
-int main(int argc, char **argv)
+/* One key press (or repeat); 1 to close. */
+static int key(int code)
 {
-	FILE *o;
+	if (help) {		/* only an explanation: Esc or the diamond closes it */
+		if (code == KEY_ESC || code == KEY_SYM_HELP) {
+			help = 0;
+			redraw();
+		}
+		return 0;
+	}
+	if (code == KEY_SYM_HELP || code == KEY_SYM_LOG || code == KEY_SYM_SETTINGS) {
+		if (code == KEY_SYM_HELP)
+			help = 1;
+		else
+			sc = code == KEY_SYM_LOG ? SC_LOG : SC_SETTINGS;
+		redraw();
+		return 0;
+	}
+	if (sc != SC_VIEW) {	/* the log or settings screen: Esc back */
+		if (code == KEY_ESC) {
+			sc = SC_VIEW;
+			redraw();
+		}
+		return 0;
+	}
+	if (code == KEY_ESC)
+		return 1;
+	if (code == KEY_ENTER) {
+		P.zoom = !P.zoom;
+		show(cur);
+	} else if (P.zoom && P.px) {
+		int step = 120;
 
-	if (argc < 3)
-		return 2;
-	P.zoom = argc > 3;
-	scan(argv[1]);
-	show(cur);
-	o = fopen(argv[2], "wb");
+		pan(code == KEY_LEFT ? -step : code == KEY_RIGHT ? step : 0,
+		    code == KEY_UP ? -step : code == KEY_DOWN ? step : 0);
+		redraw();
+	} else if ((code == KEY_LEFT || code == KEY_RIGHT) && n_pics > 1) {
+		show((cur + (code == KEY_LEFT ? n_pics - 1 : 1)) % n_pics);
+	}
+	return 0;
+}
+
+#ifdef IMGVIEW_HOST
+static void write_ppm(FILE *o)
+{
 	fprintf(o, "P6\n%d %d\n255\n", W, H);
 	for (int i = 0; i < W * H; i++) {
 		uint16_t p = screen[i];
@@ -630,9 +853,59 @@ int main(int argc, char **argv)
 
 		fwrite(c, 3, 1, o);
 	}
+}
+
+/*
+ * imgview-host FILE OUT.ppm [zoom] [help] [log] [keys=KEYS]: the screen
+ * after showing FILE (zoomed in; with the help open; the log screen) and
+ * then KEYS (one character a key: u d l r arrows, e Enter, x Esc, h the
+ * diamond, g the circle, s the cloud); prints the picture's size as shown
+ * and in the file. With frames=PATH every frame drawn is appended to PATH
+ * as PPM (the tests compare them with WB_FULL=1's).
+ */
+int main(int argc, char **argv)
+{
+	const char *k = "", *frames = 0;
+	FILE *o, *fr = 0;
+	int closed = 0;
+
+	if (argc < 3)
+		return 2;
+	for (int i = 3; i < argc; i++) {
+		P.zoom |= !strcmp(argv[i], "zoom");
+		help |= !strcmp(argv[i], "help");
+		if (!strcmp(argv[i], "log"))
+			sc = SC_LOG;
+		if (!strncmp(argv[i], "keys=", 5))
+			k = argv[i] + 5;
+		if (!strncmp(argv[i], "frames=", 7))
+			frames = argv[i] + 7;
+	}
+	if (frames && !(fr = fopen(frames, "wb")))
+		return 1;
+	wb_init();
+	scan(argv[1]);
+	show(cur);
+	if (fr)
+		write_ppm(fr);
+	for (; *k && !closed; k++) {
+		static const char ch[] = "udlrexhgs";
+		static const int code[] = { KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_ENTER, KEY_ESC,
+					    KEY_SYM_HELP, KEY_SYM_LOG, KEY_SYM_SETTINGS };
+		const char *p = strchr(ch, *k);
+
+		if (p)
+			closed = key(code[p - ch]);
+		if (fr)
+			write_ppm(fr);
+	}
+	if (fr)
+		fclose(fr);
+	o = fopen(argv[2], "wb");
+	write_ppm(o);
 	fclose(o);
-	printf("shown %d %d\nsource %d %d\nindex %d of %d\nerror %s\n", P.w, P.h, P.src_w, P.src_h,
-	       cur + 1, n_pics, P.err);
+	printf("shown %d %d\nsource %d %d\nindex %d of %d\nclosed %d\nerror %s\n", P.w, P.h, P.src_w, P.src_h,
+	       cur + 1, n_pics, closed, P.err);
 	return 0;
 }
 #else
@@ -653,55 +926,30 @@ int main(int argc, char **argv)
 	ev = open("/dev/input/event0", O_RDONLY | O_CLOEXEC);
 	if (fb_fd < 0 || ev < 0)
 		return 1;
+	wb_init();
 	scan(argv[1]);
 	if (!n_pics)
 		return 1;
 	show(cur);
 	for (;;) {
+		struct pollfd p = { .fd = ev, .events = POLLIN };
 		struct ev e;
 
+		/* with the scene shown, look four times a second whether the
+		 * badge turned: the scene is drawn turned with it */
+		if (on_scene && poll(&p, 1, 250) == 0) {
+			if (wb_scene_turned())
+				redraw();
+			continue;
+		}
 		if (read(ev, &e, sizeof(e)) != sizeof(e))
 			break;
 		if (e.type != 1 || !key_acts(e.code, e.value))
 			continue;
 		if (e.value == 2 && key_stale(e.sec, e.usec))
 			continue;	/* fell behind a held arrow: skip what waited */
-		if (help) {		/* only an explanation: Esc or the diamond closes it */
-			if (e.code == KEY_ESC || e.code == KEY_SYM_HELP) {
-				help = 0;
-				redraw();
-			}
-			continue;
-		}
-		if (e.code == KEY_SYM_HELP || e.code == KEY_SYM_LOG || e.code == KEY_SYM_SETTINGS) {
-			if (e.code == KEY_SYM_HELP)
-				help = 1;
-			else
-				sc = e.code == KEY_SYM_LOG ? SC_LOG : SC_SETTINGS;
-			redraw();
-			continue;
-		}
-		if (sc != SC_VIEW) {	/* the log or settings screen: Esc back */
-			if (e.code == KEY_ESC) {
-				sc = SC_VIEW;
-				redraw();
-			}
-			continue;
-		}
-		if (e.code == KEY_ESC)
+		if (key(e.code))
 			break;
-		if (e.code == KEY_ENTER) {
-			P.zoom = !P.zoom;
-			show(cur);
-		} else if (P.zoom && P.px) {
-			int step = 120;
-
-			pan(e.code == KEY_LEFT ? -step : e.code == KEY_RIGHT ? step : 0,
-			    e.code == KEY_UP ? -step : e.code == KEY_DOWN ? step : 0);
-			redraw();
-		} else if ((e.code == KEY_LEFT || e.code == KEY_RIGHT) && n_pics > 1) {
-			show((cur + (e.code == KEY_LEFT ? n_pics - 1 : 1)) % n_pics);
-		}
 	}
 	return 0;
 }

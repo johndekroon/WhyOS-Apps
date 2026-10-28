@@ -168,6 +168,22 @@
    "name": "Badge port (surface, iconv, OOM handler, start)",
    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps",
    "version": "2be6d7c"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "jetbrains-mono.txt",
+   "license_url": "licenses/netsurf/jetbrains-mono.txt",
+   "name": "JetBrains Mono (font)",
+   "source": "https://github.com/JetBrains/JetBrainsMono",
+   "version": "2.211"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "space-grotesk.txt",
+   "license_url": "licenses/netsurf/space-grotesk.txt",
+   "name": "Space Grotesk (font)",
+   "source": "https://github.com/floriankarsten/space-grotesk",
+   "version": "2.000"
   }
  ],
  "category": "internet",
@@ -226,6 +242,19 @@
  "type": "app",
  "upstream_version": "3.11",
  "versions": [
+  {
+   "build": 3,
+   "changelog": "The pause screen in the new WhyOS look: a frosted pop-up with its keys inside.",
+   "package": {
+    "installed_size": 3483249,
+    "sha256": "24280ff1c42e243e35d6681c292010ffc868442dd0f19ab9ac00f830dbbce58b",
+    "size": 1685071,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/netsurf-1.2.0.wpk"
+   },
+   "published": "2026-10-28T08:49:08Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/netsurf-1.2.0-source.tar.gz",
+   "version": "1.2.0"
+  },
   {
    "build": 2,
    "changelog": "Esc opens a pause screen: resume, the keys, quit. ◆ shows the keys.",

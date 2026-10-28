@@ -8,6 +8,22 @@
    "name": "uClibc-ng",
    "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
    "version": "1.0.57"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "jetbrains-mono.txt",
+   "license_url": "licenses/gnuboy/jetbrains-mono.txt",
+   "name": "JetBrains Mono (font)",
+   "source": "https://github.com/JetBrains/JetBrainsMono",
+   "version": "2.211"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "space-grotesk.txt",
+   "license_url": "licenses/gnuboy/space-grotesk.txt",
+   "name": "Space Grotesk (font)",
+   "source": "https://github.com/floriankarsten/space-grotesk",
+   "version": "2.000"
   }
  ],
  "category": "emulators",
@@ -67,6 +83,19 @@
  "type": "game",
  "upstream_version": "git c367bb4",
  "versions": [
+  {
+   "build": 5,
+   "changelog": "The pause screen in the new WhyOS look: a frosted pop-up with its keys inside.",
+   "package": {
+    "installed_size": 414114,
+    "sha256": "5390267214521b2e259a1a1c7d2497beae0ac33120ce3e0640030c9b3a61cf12",
+    "size": 208982,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/gnuboy-1.3.0.wpk"
+   },
+   "published": "2026-10-28T08:49:06Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/gnuboy-1.3.0-source.tar.gz",
+   "version": "1.3.0"
+  },
   {
    "build": 4,
    "changelog": "Smoother: more pictures a second while the screen scrolls, and less memory while playing.",

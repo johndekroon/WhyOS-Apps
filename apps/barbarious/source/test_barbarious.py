@@ -16,8 +16,10 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 O = os.path.join(HERE, "..", "..", "patches", "buildroot", "overlay-src")
+LIBWB = os.path.join(HERE, "..", "..", "libwb")
 if not os.path.isdir(O):        # a copy with the headers next to it (WhyOS-Apps apps/barbarious/source)
     O = HERE
+    LIBWB = os.path.join(HERE, "libwb")
 
 try:
     import zxingcpp
@@ -38,13 +40,13 @@ class App:
         self.exe, self.shots = exe, shots
         self.dir = tempfile.mkdtemp()
 
-    def run(self, keys, shot=None):
-        env = dict(os.environ, APP_CONFIG=self.dir)
+    def run(self, keys, shot=None, env=None):
+        env = dict(os.environ, APP_CONFIG=self.dir, **(env or {}))
         ppm = os.path.join(self.shots or self.dir, (shot or "last") + ".ppm")
         r = subprocess.run([self.exe, keys, ppm], capture_output=True, text=True, env=env)
         if r.returncode or "runtime error" in r.stderr or "Sanitizer" in r.stderr:
             raise SystemExit("barbarious-host failed on %r:\n%s" % (keys, r.stderr))
-        st = {"codes": [], "ppm": ppm}
+        st = {"codes": [], "ppm": ppm, "stderr": r.stderr}
         lines = r.stdout.splitlines()
         st["screen"] = lines[0]
         for line in lines[1:]:
@@ -282,6 +284,47 @@ def shown(exe, shots):
         check("big %s" % TYPES[t], got and got[0], (big[:600] if t == 3 else big).encode())
 
 
+# keys that change a little at a time: focus moves (the list scrolled),
+# the options pop-up and its focus, codes shown one after the other (two
+# QR Codes of one size), the type pop-up, Quick code typed and its insert
+# pop-up filtered, the editor (its fields, the type changed: the
+# preview), the settings (a choice, the slider), the help and the delete
+# dialog
+PARTIAL_KEYS = ("\\d\\d\\d\\d\\d\\d\\d\\d\\u\\u"
+                "\\1\\d\\d\\u\\e"
+                "\\u\\u\\u\\u\\u\\n\\r\\r\\r\\l\\2\\d\\d\\u\\e\\e"
+                "\\u\\u\\u\\u\\u\\u\\nAB1\\b\\1c\\d\\e\\2\\d\\n\\e"
+                "\\d\\d\\3xy\\b\\u\\d\\d\\r\\r\\l\\e"
+                "\\5\\d\\r\\d\\r\\r\\l\\d\\d\\r\\e"
+                "\\6\\e"
+                "\\1\\d\\d\\d\\d\\d\\n\\d\\u\\e")
+CODES = ("Ticket A\tqr\tAAAA-1111\nTicket B\tqr\tBBBB-2222\nPallet\tdatamatrix\tPallet 42\n"
+         "Login\tcode128\tdemo\\[TAB]demo\\[CR]\nItem\tean13\t871234567890\nBoarding\taztec\tAZ 123\n"
+         "Box\tpdf417\tbox 7\nPart\tcode39\tWHY-0042\nTag\titf\t12345\nLib\tcodabar\t40156\n")
+
+
+def partial(exe):
+    """Only the bands that changed drawn (libwb wb_frame, wb_bands): every
+    frame of PARTIAL_KEYS the same as drawn whole (WB_FULL=1), in the whole
+    picture and in bands."""
+    def frames(extra):
+        a = App(exe, "")
+        a.file("codes.txt", CODES)
+        pre = os.path.join(a.dir, "f")
+        s = a.run(PARTIAL_KEYS, env=dict(extra, BB_FRAMES=pre, BARBARIOUS_UI_TIMING="1"))
+        fs = sorted(f for f in os.listdir(a.dir) if f.startswith("f") and f.endswith(".ppm"))
+        bands = [int(line.split(", ")[1].split()[0]) for line in s["stderr"].splitlines()
+                 if line.startswith("barbarious: frame ")]
+        return [open(os.path.join(a.dir, f), "rb").read() for f in fs], bands, s
+
+    for mode, extra in (("whole", {}), ("bands", {"BB_BANDS": "1"})):
+        part, bands, s = frames(extra)
+        full, full_bands, _ = frames(dict(extra, WB_FULL="1"))
+        check("partial %s: frames" % mode, (len(part), s["screen"]), (len(full), "list "))
+        check("partial %s: the same as whole" % mode, [i for i in range(len(part)) if part[i] != full[i]], [])
+        check("partial %s: drawn partly" % mode, (min(bands) <= 4, max(full_bands)), (True, 18))
+
+
 def symbols(exe):
     """--sym: lengths and bytes beyond what a screen shows."""
     if not zxingcpp:
@@ -342,12 +385,13 @@ def main():
     exe = os.path.join(tempfile.mkdtemp(), "barbarious-host")
     san = ["-fsanitize=address,undefined", "-fno-sanitize-recover=undefined"]
     subprocess.run(["cc", "-O1", "-g", "-Wall", "-Wextra", "-Werror", "-Wno-unused-function", "-DBB_HOST", *san,
-                    "-I" + O, "-I" + HERE, "-o", exe, os.path.join(HERE, "barbarious.c"),
+                    "-I" + O, "-I" + LIBWB, "-I" + HERE, "-o", exe, os.path.join(HERE, "barbarious.c"),
                     os.path.join(HERE, "symbol.c"), os.path.join(O, "qrcodegen", "qrcodegen.c")], check=True)
     os.environ["ASAN_OPTIONS"] = "detect_leaks=0"
     screens(exe, shots)
     shown(exe, shots)
     symbols(exe)
+    partial(exe)
     for s in skipped:
         print("skipped:", s)
     print("%d of %d failed" % (bad, checks))

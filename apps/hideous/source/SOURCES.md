@@ -1,8 +1,8 @@
 # Corresponding source: HIDeous
 
 HIDeous is our own program, written for the badge. The files are copied
-from why2025-linux `sdapps/hideous/` and `patches/buildroot/overlay-src/`
-at commit `a5fb157`:
+from why2025-linux `sdapps/hideous/`, `patches/buildroot/overlay-src/`
+and `libwb/` at commit `c8cfa09`:
 
 | File | What |
 |---|---|
@@ -10,10 +10,10 @@ at commit `a5fb157`:
 | `test_hideous.py` | its host test: snippets added, saved, typed and read back |
 | `app.conf` | the menu entry of the hand-installed app (the store writes its own) |
 | `usbkbd.h` | the badge's keys as USB boot-keyboard reports (shared with the menu's keyboard mode), and the mouse's buttons |
-| `wbdraw.h`, `home_assets.h`, `home-assets/wb_tokens.h` | the menu's drawing code, fonts and icons, and the design tokens (also in `apps/calc/source`) |
-| `wbstatus.h`, `lora_state.h` | the menu's status bar and the LoRa state it shows |
+| `libwb/` | why2025-linux's drawing library `libwb/` (`wb.h` and its parts: the design tokens, fonts and icons, the frontpanel's scene, glass, pop-ups, drawing only what changed; the status bar `wbstatus.h` with `lora_state.h`; `keyrep.h`, which held keys repeat), as built; `gen/` the scripts that made its data, with the fonts' licences (the fonts themselves: why2025-linux `libwb/gen/fonts/`) |
 
 Build: `sdapps-build.sh hideous` ([toolchain/](../../../toolchain/README.md)),
-with `hideous.c` and `app.conf` in `sdapps/hideous/` and the other files
-in `patches/buildroot/overlay-src/` of why2025-linux. On a Linux or macOS
-host, `python3 test_hideous.py` (next to those files) builds and tests it.
+with `hideous.c` and `app.conf` in `sdapps/hideous/`, `libwb/` next to
+`sdapps/` and `usbkbd.h` in `patches/buildroot/overlay-src/`, as in
+why2025-linux. On a Linux or macOS host, `python3 test_hideous.py` (in
+that layout) builds and tests it.
