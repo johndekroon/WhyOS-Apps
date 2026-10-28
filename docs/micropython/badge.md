@@ -232,13 +232,141 @@ f.close()
 The speeds with a name in this build are `B9600`, `B57600`, `B115200` and
 `B230400`.
 
-## LoRa and Bluetooth
+## LoRa: MeshCore messages and bots
 
-There is no Python library for these yet. The MeshCore app sends and
-receives LoRa messages; Settings has a Bluetooth beacon. Programs that talk
-to the radio themselves are possible but advanced: see why2025-linux
-`docs/LORA.md` before you transmit anything, because the LoRa radio can be
-damaged for good when it transmits without an antenna.
+The badge is a [MeshCore](https://meshcore.co.uk/) node: `meshcored`
+runs the LoRa radio, and the MeshCore app is one way to use it. Python is
+another. The `meshcore` module is built into MicroPython, so a script can
+read and send messages in channels and direct messages, see contacts and
+adverts, and make a bot that answers. It is
+[meshcore_py](https://github.com/meshcore-dev/meshcore_py), the library
+the MeshCore tools on a computer use, with one addition for the badge:
+`MeshCore.create_unix()`, which connects to the badge's own node.
+
+`meshcore` comes with MicroPython 1.29.0 build 2 and later. On 2026-10-28
+that version is built but not yet in the store; with an older one,
+`import meshcore` raises `ImportError`.
+
+**Before you start:**
+
+- Screw the antenna on. The LoRa radio can be damaged for good when it
+  transmits without one, and a bot transmits.
+- Switch LoRa on in Settings > Connection > LoRa. Without it there is no
+  node to connect to: `create_unix()` raises `OSError`.
+- Close the MeshCore app. The node serves one program at a time: when the
+  app opens, your script loses its connection, and the other way round.
+
+### Reading messages
+
+```python
+import asyncio
+from meshcore import MeshCore, EventType
+
+def show(event):
+    m = event.payload
+    if event.type == EventType.CHANNEL_MSG_RECV:
+        print("channel", m["channel_idx"], m["text"])   # text is "name: message"
+    else:
+        print("from", m["pubkey_prefix"], m["text"])
+
+async def main():
+    mc = await MeshCore.create_unix()
+    print("I am", mc.self_info["name"])
+    mc.subscribe(EventType.CHANNEL_MSG_RECV, show)
+    mc.subscribe(EventType.CONTACT_MSG_RECV, show)
+    await mc.start_auto_message_fetching()   # also fetches what waited
+    while True:
+        await asyncio.sleep(60)
+
+asyncio.run(main())
+```
+
+Messages that arrived while no program was connected wait in the node and
+come in when the script starts fetching. A callback can be a plain
+function or an `async def`.
+
+### Sending
+
+Inside `main()`, after `create_unix()`:
+
+```python
+    # on a channel: 0 is Public
+    await mc.commands.send_chan_msg(0, "hello from Python")
+
+    # a direct message, to a contact by name
+    await mc.ensure_contacts()
+    friend = mc.get_contact_by_name("Mend0x")
+    if friend:
+        r = await mc.commands.send_msg_with_retry(friend, "hi!")
+        print("delivered" if r else "no ack")
+```
+
+`send_msg_with_retry()` waits for the other node's acknowledgement and
+tries again (the last time by flooding the whole mesh); it returns `None`
+when no ack came. `send_msg()` sends once and does not wait.
+
+Every command returns an event: `r.type` says what came back
+(`EventType.OK`, `EventType.ERROR`, ...) and `r.payload` the details.
+`print(r)` shows both.
+
+### What else the library does
+
+| | |
+|---|---|
+| `mc.contacts`, `mc.get_contact_by_name()`, `mc.get_contact_by_key_prefix()` | The node's contacts (after `await mc.ensure_contacts()`) |
+| `mc.commands.send_advert(flood=True)` | Tell the mesh this node exists |
+| `mc.commands.get_channel(1)`, `mc.commands.set_channel(1, "#badgebots")` | Channels: a name with `#` is a hashtag channel, whose key follows from the name, so everyone who types it is in |
+| `mc.commands.set_name()`, `set_coords()`, `get_time()`, `get_self_telemetry()` | The node itself |
+| `EventType.ADVERTISEMENT`, `ACK`, `PATH_UPDATE`, `RX_LOG_DATA` | Adverts heard, acks, routes, every packet received |
+
+The whole API is in meshcore_py's
+[README](https://github.com/meshcore-dev/meshcore_py#readme). Bluetooth
+and serial connections (`create_ble()`, `create_serial()`) are not
+available on the badge; `create_tcp(host, port)` connects to a node
+elsewhere on the network.
+
+### A bot
+
+`/mnt/sd/badge/apps/micropython/examples/ping_bot.py` comes with
+MicroPython: it answers "ping" in a direct message, and "!ping" on a
+channel, with "pong" and how the message came in. Copy it to your scripts
+folder to make it your own. It shows three rules for bots:
+
+- **One command at a time.** The library tells the replies to commands
+  apart by their type only, so two commands at once can take each other's
+  reply. Put incoming messages in an `asyncio.Queue` and handle them one
+  after the other, as the example does.
+- **Wait a moment before answering on a channel.** A radio that is sending
+  hears nothing, and repeaters pass a channel message on right after it
+  arrives. The example waits 2 s; an answer sent at once was lost every
+  time in our tests.
+- **The node serves one program.** When the MeshCore app opens, the bot
+  gets `EventType.DISCONNECTED`. `MeshCore.create_unix(auto_reconnect=True)`
+  makes it connect again, which takes the node back from the app.
+
+Keep a bot quiet: it shares the airtime of everyone on the mesh, and in
+Europe a radio may only send a small part of the time.
+
+The examples in this section ran on 2026-10-28 against two MeshCore nodes
+on a simulated radio (reading, a channel message, a direct message with
+its ack, losing the node to another program and taking it back). On the
+badge itself the library has read the node's settings, contacts and
+channels; a bot talking to another badge over the air has not been tried.
+
+### Seeing what the library does
+
+```python
+import meshcore, logging
+logging.basicConfig(level=logging.DEBUG)
+```
+
+`import logging` works after `import meshcore` (the library brings a
+small `logging` of its own); `logging.DEBUG` shows every frame to and from
+the node.
+
+## Bluetooth
+
+There is no Python library for Bluetooth. Settings has a Bluetooth beacon.
 
 ## What Python cannot reach
 
