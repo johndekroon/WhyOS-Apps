@@ -166,6 +166,51 @@ y, mo, d, h, mi, s, wd, yd, dst = time.localtime()   # nine values, as in CPytho
 print("%02d:%02d" % (h, mi))
 ```
 
+### Calendars (.ics links)
+
+From MicroPython 1.29.0 build 2 on, the `ics` module reads calendars in
+iCalendar format: the "iCal" or "webcal" link that Google Calendar,
+Outlook, Nextcloud and event sites give. The next 90 days of a calendar:
+
+```python
+import ics, time
+
+URL = "https://calendar.google.com/calendar/ical/nl.dutch%23holiday%40group.v.calendar.google.com/public/basic.ics"
+
+now = time.time()
+cal = ics.get(URL, since=now)                 # since: leave out what is over
+print(cal.name, len(cal.events), "events")
+for e in cal.between(now, now + 90 * 86400):  # the next 90 days
+    y, mo, d, h, mi = time.localtime(e.start)[:5]
+    if e.all_day:
+        print("%02d-%02d       %s" % (d, mo, e.summary))
+    else:
+        print("%02d-%02d %02d:%02d %s" % (d, mo, h, mi, e.summary))
+```
+
+- `ics.get(url)` takes `http://`, `https://` and `webcal://` links;
+  `ics.load(path)` reads a file, `ics.parse(text)` a string.
+- `cal.between(start, end)` gives the events in that time, by start; an
+  event that repeats appears once for each time. `cal.events` has them
+  as in the file, without the repeats worked out.
+- Each event has `summary`, `location`, `description`, `start`, `end`,
+  `all_day`, `uid`, `status`, `url`, `rrule` and `recurrence_id`. Times
+  are seconds since 1970, like `time.time()`; `time.localtime()` shows
+  them in the badge's time zone. An all-day event starts at midnight.
+- **Repeats** (RRULE) work out daily, weekly, monthly and yearly rules
+  with their usual parts (every 2nd week, the last Friday of the month,
+  until a date, so many times), plus extra and skipped dates and single
+  times that were moved or cancelled. Rare rule parts (BYWEEKNO,
+  BYYEARDAY, hourly rules) give only the first time.
+- **Time zones** come from the calendar itself, which usually describes
+  the ones it uses, or else from the badge's list of 77 zones.
+- **Memory:** each event kept takes about half a KB. With `since=` the
+  events that are over are left out while reading; Google's Dutch
+  holidays (200 events) then keep 51 KB instead of 107 KB. A personal
+  calendar with years of history needs `since=`.
+- `ics` on PyPI is something else and does not run on MicroPython; `mip`
+  does not install from PyPI.
+
 ## Typing on a computer (USB keyboard and mouse)
 
 Connected to a computer by its **bottom** USB port (with the side port

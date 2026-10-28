@@ -85,6 +85,7 @@ and in some special methods) are listed in MicroPython's
 | `requests` | `get`, `post`, `put`, `delete`, `head`: HTTP and HTTPS ([badge.md](badge.md)) |
 | `meshcore` | MeshCore messages over LoRa, for bots ([badge.md](badge.md)); from MicroPython 1.29.0 build 2 |
 | `setting` | The badge's settings, such as the name ([programming.md](programming.md)); from MicroPython 1.29.0 build 2 |
+| `ics` | Calendars from an .ics link or file, repeats worked out ([badge.md](badge.md)); from MicroPython 1.29.0 build 2 |
 | `mip` | The package installer |
 | `argparse` | Command-line options for your scripts |
 | `deflate` | gzip and zlib compression and decompression (`DeflateIO`) |
