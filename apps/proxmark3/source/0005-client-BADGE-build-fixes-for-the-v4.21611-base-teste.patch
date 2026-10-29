@@ -1,0 +1,74 @@
+From e9251c33989f8362e0cde5365e0eb03eb91adff7 Mon Sep 17 00:00:00 2001
+From: John <john.de.kroon@cyberant.com>
+Date: Thu, 29 Oct 2026 01:27:36 +0100
+Subject: [PATCH 5/7] client: BADGE build fixes for the v4.21611 base, tested
+ on the badge
+
+Rebased the four BADGE commits onto da509461b (release v4.21611-636,
+CAPABILITIES_VERSION 7) so the client matches the RDV4's firmware. Two
+fixes for this base:
+
+- guidummy_badge.c: ShowPictureWindow/ShowBase64PictureWindow follow
+  v4.21611's proxgui.h (no title argument).
+- util.c: the BADGE build defaults g_printAndLog to PRINTANDLOG_PRINT
+  only (no session log file). On this NOMMU build the session-log setup
+  in fPrintAndLog() faults (the g_session base register reads as NULL
+  after the fopen there), so a plain `proxmark3 /dev/ttyACM0` without
+  --incognito segfaulted. A per-run log file in the small flash /root is
+  unwanted on the badge anyway; console output is unchanged. Root cause
+  of the NULL base register is not yet pinned down.
+
+Tested 2026-10-29 on the badge from /data/apps/proxmark3/ (flash), RDV4
+with v4.21611 firmware on J8, no --incognito: hw version/ping/status,
+hf search (MIFARE Classic 1K, UID 07 94 71 12, Gen 1a), lf search.
+Old master-based branch tip kept as tag badge-master-20261006.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+---
+ client/src/guidummy_badge.c | 6 ++----
+ client/src/util.c           | 7 +++++++
+ 2 files changed, 9 insertions(+), 4 deletions(-)
+
+diff --git a/client/src/guidummy_badge.c b/client/src/guidummy_badge.c
+index 23ed0887c..61ca1f54e 100644
+--- a/client/src/guidummy_badge.c
++++ b/client/src/guidummy_badge.c
+@@ -34,14 +34,12 @@ void ShowGraphWindow(void) {
+ void HideGraphWindow(void) {}
+ void RepaintGraphWindow(void) {}
+ 
+-void ShowPictureWindow(const char *title, uint8_t *data, int len) {
+-    (void)title;
++void ShowPictureWindow(uint8_t *data, int len) {
+     (void)data;
+     (void)len;
+     no_gui();
+ }
+-void ShowBase64PictureWindow(const char *title, char *b64) {
+-    (void)title;
++void ShowBase64PictureWindow(char *b64) {
+     (void)b64;
+     no_gui();
+ }
+diff --git a/client/src/util.c b/client/src/util.c
+index 2e7627892..bcf8538fb 100644
+--- a/client/src/util.c
++++ b/client/src/util.c
+@@ -38,7 +38,14 @@
+ // global client debug variable
+ uint8_t g_debugMode = 0;
+ // global client enable/disable printing/logging/grabbing variable
++#ifdef BADGE
++// No per-run session log file on the badge: it fills the small flash /root,
++// and the setup path in fPrintAndLog() faults on this NOMMU build (g_session
++// base register reads as NULL after the fopen there). Console output stays.
++uint8_t g_printAndLog = PRINTANDLOG_PRINT;
++#else
+ uint8_t g_printAndLog = PRINTANDLOG_PRINT | PRINTANDLOG_LOG;
++#endif
+ // global pointer to grabbed output
+ grabbed_output g_grabbed_output = {NULL, 0, 0};
+ // global client tell if a pending prompt is present
+-- 
+2.50.1 (Apple Git-155)
+

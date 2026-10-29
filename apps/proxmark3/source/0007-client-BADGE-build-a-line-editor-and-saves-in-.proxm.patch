@@ -1,0 +1,468 @@
+From 63eff71935d68b131522651ef2c9fb02892b9654 Mon Sep 17 00:00:00 2001
+From: John <john.de.kroon@cyberant.com>
+Date: Thu, 29 Oct 2026 10:40:02 +0100
+Subject: [PATCH 7/7] client: BADGE build, a line editor, and saves in
+ ~/.proxmark3/dumps
+
+The badge build has neither readline nor linenoise (linenoise-ng is C++,
+the badge toolchain has none), so the arrow keys showed as ^[[A. Under
+BADGE, pm3line.c now has a small line editor for a terminal on stdin:
+history with up and down (100 lines, loaded from and saved to the usual
+~/.proxmark3/history.txt), left, right, Home, End, Backspace, Delete,
+Ctrl+A/E/K/U, Ctrl+C drops the line, Ctrl+D on an empty line ends the
+client. Lines that wrap are redrawn over all their rows. A pipe on stdin
+is still read line by line.
+
+Everything the client saves (save, dump and trace paths) now defaults to
+~/.proxmark3/dumps, which it creates, together with ~/.proxmark3, so the
+first run can save its preferences. A saved path that is just $HOME, the
+default of earlier badge builds, gives way to the new default.
+
+Tested: the editor alone in a pty on the Mac, with the screen checked
+after every key in a terminal emulator (pyte; 40x12 and 73x25, at the top
+and the bottom of the screen, with a colour prompt; editing in the middle
+of a wrapped line, the row edges, history, Ctrl+C). The badge build in
+the QEMU simulation: -c runs one command, history survives a restart,
+old preferences with $HOME get the new paths and a set path (/tmp) stays,
+a fresh $HOME gets .proxmark3/dumps and saves its preferences.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ client/src/pm3line.c     | 300 +++++++++++++++++++++++++++++++++++++++
+ client/src/preferences.c |  41 +++++-
+ 2 files changed, 338 insertions(+), 3 deletions(-)
+
+diff --git a/client/src/pm3line.c b/client/src/pm3line.c
+index 5270a5fbe..a360e34f4 100644
+--- a/client/src/pm3line.c
++++ b/client/src/pm3line.c
+@@ -26,6 +26,11 @@
+ #include <readline/history.h>
+ #elif defined(HAVE_LINENOISE)
+ #include "linenoise.h"
++#elif defined(BADGE)
++#include <errno.h>
++#include <termios.h>
++#include <unistd.h>
++#include <sys/ioctl.h>
+ #endif
+ #include "pm3line_vocabulary.h"
+ #include "pm3_cmd.h"
+@@ -179,12 +184,285 @@ void pm3line_init(void) {
+ #endif // HAVE_READLINE
+ }
+ 
++#if !defined(HAVE_READLINE) && !defined(HAVE_LINENOISE) && defined(BADGE)
++// A small line editor for the WHY2025 badge build, which has neither
++// readline nor linenoise (linenoise-ng is C++, the badge toolchain has no
++// C++): history with up and down, the cursor with left, right, Home and
++// End, Backspace and Delete, Ctrl+A/E/U/K, Ctrl+C clears the line and
++// Ctrl+D on an empty line ends the client. Only on a terminal; a pipe on
++// stdin is read line by line as before.
++#define BL_HISTORY_MAX 100
++#define BL_LINE_MAX 1024
++
++static char *bl_history[BL_HISTORY_MAX];
++static int bl_history_len = 0;
++static int bl_rows = 0;        // row of the cursor below the prompt's row at the last redraw
++
++static void bl_history_add(const char *line) {
++    if (line[0] == '\0') {
++        return;
++    }
++    if (bl_history_len > 0 && strcmp(bl_history[bl_history_len - 1], line) == 0) {
++        return;
++    }
++    if (bl_history_len == BL_HISTORY_MAX) {
++        free(bl_history[0]);
++        memmove(bl_history, bl_history + 1, (BL_HISTORY_MAX - 1) * sizeof(char *));
++        bl_history_len--;
++    }
++    char *copy = str_dup(line);
++    if (copy != NULL) {
++        bl_history[bl_history_len++] = copy;
++    }
++}
++
++// columns the prompt takes: without colour codes and readline's markers
++static size_t bl_width(const char *s) {
++    size_t w = 0;
++    while (*s) {
++        if (*s == '\x1b') {
++            s++;
++            if (*s == '[') {
++                s++;
++                while (*s && !(*s >= '@' && *s <= '~')) {
++                    s++;
++                }
++            }
++            if (*s) {
++                s++;
++            }
++            continue;
++        }
++        if (*s != '\001' && *s != '\002') {
++            w++;
++        }
++        s++;
++    }
++    return w;
++}
++
++static size_t bl_columns(void) {
++    struct winsize ws;
++    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0) {
++        return ws.ws_col;
++    }
++    const char *c = getenv("COLUMNS");
++    if (c != NULL && atoi(c) > 0) {
++        return (size_t)atoi(c);
++    }
++    return 80;
++}
++
++// redraw prompt and line, which may wrap over several rows, and put the cursor at pos
++static void bl_refresh(const char *prompt, const char *buf, size_t len, size_t pos) {
++    size_t cols = bl_columns();
++    size_t plen = bl_width(prompt);
++    if (bl_rows > 0) {
++        printf("\x1b[%dA", bl_rows);
++    }
++    printf("\r%s%.*s\x1b[J", prompt, (int)len, buf);
++    size_t end = plen + len;
++    int row = (int)(end / cols);
++    if (end > 0 && end % cols == 0) {
++        if (pos == len) {
++            printf("\r\n");     // the terminal waits at the last column; go to the next row
++        } else {
++            row--;
++        }
++    }
++    size_t at = plen + pos;
++    int want = (int)(at / cols);
++    if (row > want) {
++        printf("\x1b[%dA", row - want);
++    }
++    printf("\r");
++    if (at % cols) {
++        printf("\x1b[%uC", (unsigned)(at % cols));
++    }
++    bl_rows = want;
++    fflush(stdout);
++}
++
++static int bl_getc(void) {
++    unsigned char c;
++    ssize_t n;
++    do {
++        n = read(STDIN_FILENO, &c, 1);
++    } while (n < 0 && errno == EINTR);
++    return n == 1 ? c : -1;
++}
++
++static char *bl_readline(const char *prompt) {
++    struct termios old, raw;
++    if (tcgetattr(STDIN_FILENO, &old) != 0) {
++        return NULL;
++    }
++    raw = old;
++    raw.c_iflag &= ~(ICRNL | IXON | INLCR | IGNCR);
++    raw.c_lflag &= ~(ICANON | ECHO | ISIG | IEXTEN);
++    raw.c_cc[VMIN] = 1;
++    raw.c_cc[VTIME] = 0;
++    tcsetattr(STDIN_FILENO, TCSANOW, &raw);
++
++    char buf[BL_LINE_MAX];
++    char saved[BL_LINE_MAX] = {0};      // the line being typed, while browsing the history
++    size_t len = 0, pos = 0;
++    int hist = bl_history_len;          // bl_history_len = the line being typed
++    char *result = NULL;
++    bool done = false;
++
++    buf[0] = '\0';
++    bl_rows = 0;
++    bl_refresh(prompt, buf, len, pos);
++
++    while (!done) {
++        int c = bl_getc();
++        if (c < 0) {
++            break;
++        }
++        switch (c) {
++            case '\r':
++            case '\n':
++                pos = len;      // the new line goes below the whole line, which may wrap
++                bl_refresh(prompt, buf, len, pos);
++                printf("\r\n");
++                buf[len] = '\0';
++                result = str_dup(buf);
++                done = true;
++                break;
++            case 3:     // Ctrl+C: drop the line
++                pos = len;
++                bl_refresh(prompt, buf, len, pos);
++                printf("^C\r\n");
++                len = pos = 0;
++                buf[0] = '\0';
++                hist = bl_history_len;
++                bl_rows = 0;
++                bl_refresh(prompt, buf, len, pos);
++                break;
++            case 4:     // Ctrl+D: end of input on an empty line, else delete
++                if (len == 0) {
++                    printf("\r\n");
++                    done = true;
++                } else if (pos < len) {
++                    memmove(buf + pos, buf + pos + 1, len - pos);
++                    len--;
++                }
++                break;
++            case 127:
++            case 8:     // Backspace
++                if (pos > 0) {
++                    memmove(buf + pos - 1, buf + pos, len - pos + 1);
++                    pos--;
++                    len--;
++                }
++                break;
++            case 1:     // Ctrl+A
++                pos = 0;
++                break;
++            case 5:     // Ctrl+E
++                pos = len;
++                break;
++            case 11:    // Ctrl+K
++                len = pos;
++                buf[len] = '\0';
++                break;
++            case 21:    // Ctrl+U
++                memmove(buf, buf + pos, len - pos + 1);
++                len -= pos;
++                pos = 0;
++                break;
++            case 27: {  // ESC [ x, ESC [ n ~, ESC O x
++                int c1 = bl_getc();
++                if (c1 != '[' && c1 != 'O') {
++                    break;
++                }
++                int c2 = bl_getc();
++                int num = 0;
++                while (c2 >= '0' && c2 <= '9') {
++                    num = num * 10 + (c2 - '0');
++                    c2 = bl_getc();
++                }
++                if (c2 == '~') {
++                    c2 = (num == 1 || num == 7) ? 'H' : (num == 4 || num == 8) ? 'F' : (num == 3) ? 'X' : 0;
++                }
++                switch (c2) {
++                    case 'A':   // up
++                    case 'B': { // down
++                        int to = hist + (c2 == 'A' ? -1 : 1);
++                        if (to < 0 || to > bl_history_len) {
++                            break;
++                        }
++                        if (hist == bl_history_len) {
++                            memcpy(saved, buf, len + 1);
++                        }
++                        hist = to;
++                        const char *src = (hist == bl_history_len) ? saved : bl_history[hist];
++                        len = strlen(src);
++                        if (len >= sizeof(buf)) {
++                            len = sizeof(buf) - 1;
++                        }
++                        memcpy(buf, src, len);
++                        buf[len] = '\0';
++                        pos = len;
++                        break;
++                    }
++                    case 'C':
++                        if (pos < len) {
++                            pos++;
++                        }
++                        break;
++                    case 'D':
++                        if (pos > 0) {
++                            pos--;
++                        }
++                        break;
++                    case 'H':
++                        pos = 0;
++                        break;
++                    case 'F':
++                        pos = len;
++                        break;
++                    case 'X':   // Delete
++                        if (pos < len) {
++                            memmove(buf + pos, buf + pos + 1, len - pos);
++                            len--;
++                        }
++                        break;
++                    default:
++                        break;
++                }
++                break;
++            }
++            default:
++                if (c >= 32 && len + 1 < sizeof(buf)) {
++                    memmove(buf + pos + 1, buf + pos, len - pos + 1);
++                    buf[pos++] = (char)c;
++                    len++;
++                }
++                break;
++        }
++        if (!done) {
++            bl_refresh(prompt, buf, len, pos);
++        }
++    }
++    tcsetattr(STDIN_FILENO, TCSANOW, &old);
++    fflush(stdout);
++    return result;
++}
++#endif // BADGE line editor
++
+ char *pm3line_read(const char *s) {
+ #if defined(HAVE_READLINE)
+     return readline(s);
+ #elif defined(HAVE_LINENOISE)
+     return linenoise(s);
+ #else
++#if defined(BADGE)
++    if (isatty(STDIN_FILENO)) {
++        return bl_readline(s);
++    }
++#endif
+     printf("%s", s);
+     char *answer = NULL;
+     size_t anslen = 0;
+@@ -225,6 +503,18 @@ int pm3line_load_history(const char *path) {
+     } else {
+         return PM3_ESOFT;
+     }
++#elif defined(BADGE)
++    FILE *f = fopen(path, "r");
++    if (f == NULL) {
++        return PM3_ESOFT;
++    }
++    char line[BL_LINE_MAX];
++    while (fgets(line, sizeof(line), f) != NULL) {
++        line[strcspn(line, "\r\n")] = '\0';
++        bl_history_add(line);
++    }
++    fclose(f);
++    return PM3_SUCCESS;
+ #else
+     (void) path;
+     return PM3_ENOTIMPL;
+@@ -241,6 +531,8 @@ void pm3line_add_history(const char *line) {
+ #elif defined(HAVE_LINENOISE)
+     // linenoiseHistoryAdd takes already care of duplicate entries
+     linenoiseHistoryAdd(line);
++#elif defined(BADGE)
++    bl_history_add(line);
+ #else
+     (void) line;
+ #endif
+@@ -252,6 +544,14 @@ void pm3line_flush_history(void) {
+         write_history(g_session.history_path);
+ #elif defined(HAVE_LINENOISE)
+         linenoiseHistorySave(g_session.history_path);
++#elif defined(BADGE)
++        FILE *f = fopen(g_session.history_path, "w");
++        if (f != NULL) {
++            for (int i = 0; i < bl_history_len; i++) {
++                fprintf(f, "%s\n", bl_history[i]);
++            }
++            fclose(f);
++        }
+ #endif // HAVE_READLINE
+         free(g_session.history_path);
+         g_session.history_path = NULL;
+diff --git a/client/src/preferences.c b/client/src/preferences.c
+index 1077b38d1..89181c40b 100644
+--- a/client/src/preferences.c
++++ b/client/src/preferences.c
+@@ -29,6 +29,9 @@
+ #include <string.h>
+ #include <ctype.h>
+ #include <dirent.h>
++#ifdef BADGE
++#include <sys/stat.h>   // mkdir
++#endif
+ #include "proxmark3.h"
+ #include "comms.h"
+ #include "emv/emvjson.h"
+@@ -126,6 +129,22 @@ int preferences_load(void) {
+     setDefaultMqttPort("");
+     setDefaultMqttTopic("");
+ 
++#ifdef BADGE
++    // On the badge everything the client saves (dumps, key files, traces)
++    // goes to ~/.proxmark3/dumps, made here; $HOME is /root in flash.
++    char badge_dumps[FILE_PATH_SIZE];
++    if (get_my_user_directory() != NULL) {
++        snprintf(badge_dumps, sizeof(badge_dumps), "%s%s", get_my_user_directory(), PM3_USER_DIRECTORY);
++        mkdir(badge_dumps, 0700);
++        strncat(badge_dumps, "dumps", sizeof(badge_dumps) - strlen(badge_dumps) - 1);
++        mkdir(badge_dumps, 0700);
++    } else {
++        strcpy(badge_dumps, ".");
++    }
++    setDefaultPath(spDefault, badge_dumps);
++    setDefaultPath(spDump, badge_dumps);
++    setDefaultPath(spTrace, badge_dumps);
++#else
+     // default save path
+     if (get_my_user_directory() != NULL) { // should return path to .proxmark3 folder
+         setDefaultPath(spDefault, get_my_user_directory());
+@@ -146,6 +165,7 @@ int preferences_load(void) {
+     } else {
+         setDefaultPath(spTrace, ".");
+     }
++#endif // BADGE
+ 
+     if (g_session.incognito) {
+         PrintAndLogEx(INFO, "No preferences file will be loaded");
+@@ -338,6 +358,21 @@ void preferences_save_callback(json_t *root) {
+     JsonSaveStr(root, "mqtt.topic", g_session.mqtt_topic);
+ }
+ 
++// A saved path; on the badge, the home directory itself (the default of
++// builds before ~/.proxmark3/dumps) keeps the new default instead.
++static void loadDefaultPath(savePaths_t pathIndex, const char *path) {
++#ifdef BADGE
++    const char *home = get_my_user_directory();
++    if (home != NULL) {
++        size_t n = strlen(home);
++        if (strncmp(path, home, n) == 0 && (path[n] == '\0' || strcmp(path + n, "/") == 0)) {
++            return;
++        }
++    }
++#endif
++    setDefaultPath(pathIndex, path);
++}
++
+ void preferences_load_callback(json_t *root) {
+     json_error_t up_error = {0};
+     int b1;
+@@ -362,15 +397,15 @@ void preferences_load_callback(json_t *root) {
+ 
+     // default save path
+     if (json_unpack_ex(root, &up_error, 0, "{s:s}", "file.default.savepath", &s1) == 0)
+-        setDefaultPath(spDefault, s1);
++        loadDefaultPath(spDefault, s1);
+ 
+     // default dump path
+     if (json_unpack_ex(root, &up_error, 0, "{s:s}", "file.default.dumppath", &s1) == 0)
+-        setDefaultPath(spDump, s1);
++        loadDefaultPath(spDump, s1);
+ 
+     // default trace path
+     if (json_unpack_ex(root, &up_error, 0, "{s:s}", "file.default.tracepath", &s1) == 0)
+-        setDefaultPath(spTrace, s1);
++        loadDefaultPath(spTrace, s1);
+ 
+     // window plot
+     if (json_unpack_ex(root, &up_error, 0, "{s:i}", "window.plot.xpos", &i1) == 0)
+-- 
+2.50.1 (Apple Git-155)
+

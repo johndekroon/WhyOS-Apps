@@ -1,0 +1,95 @@
+From 828b7a2b82047d5ef405b768c36cf5a6dc0b4121 Mon Sep 17 00:00:00 2001
+From: John <john.de.kroon@cyberant.com>
+Date: Wed, 28 Oct 2026 23:42:53 +0100
+Subject: [PATCH 4/7] client: BADGE=1, fixes found against a real RDV4 on the
+ badge
+
+Three bugs kept the badge build from talking to a Proxmark3 on J8:
+
+- uart_open() reported every port as claimed: the badge kernel has no
+  file locking, and its fcntl() stub fails F_SETLK with EACCES, the
+  errno for a conflicting lock. Skip the claim under BADGE.
+- Link with --no-relax: relaxation turned 181 calls into the first 2 KB
+  (__paritysi2, __lshrdi3, __atomic_*_8) into absolute jalr N(zero),
+  which jump to nothing once the bFLT is loaded elsewhere
+  (TestProxmark jumped to 0x100). Text grows 170 KB, image 4.15 MB.
+- uart_receive()'s UDP transit buffer (122 KB with 4064-byte frames)
+  sat in the frame on every call and overflowed the comm thread's
+  128 KB stack; on NOMMU that wrote into the memory below, and errno
+  lookup in the thread then faulted. Heap-allocate it under BADGE.
+
+Tested 2026-10-28 on the badge (WhyOS, RDV4 iceman firmware on J8,
+from /mnt/sd over the J1 console): proxmark3 /dev/ttyACM0 -c "hw version"
+opens the port, the comm thread runs and the RDV4 answers; the client
+then stops at the capabilities check (RDV4 sends v7, client expects 13),
+so no command beyond the handshake is tested yet. objdump: 0 jalr N(zero).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ client/Makefile              |  5 ++++-
+ client/src/uart/uart_posix.c | 16 ++++++++++++++++
+ 2 files changed, 20 insertions(+), 1 deletion(-)
+
+diff --git a/client/Makefile b/client/Makefile
+index 3f66b23c4..213cb416a 100644
+--- a/client/Makefile
++++ b/client/Makefile
+@@ -553,7 +553,10 @@ LDFLAGS += $(MYLDFLAGS)
+ ifeq ($(BADGE),1)
+     # bFLT loaded into RAM, with a 1 MB main stack (flthdr -s changes it later)
+     BADGE_STACK ?= 1048576
+-    LDFLAGS += -Wl,--gc-sections -Wl,-elf2flt="-r -s$(BADGE_STACK)"
++    # --no-relax: relaxation turns calls into the first 2 KB (libgcc's
++    # __paritysi2, libatomic) into absolute jalr N(zero), which jump to
++    # nothing once the bFLT is loaded elsewhere.
++    LDFLAGS += -Wl,--gc-sections -Wl,--no-relax -Wl,-elf2flt="-r -s$(BADGE_STACK)"
+ endif
+ 
+ PM3LDFLAGS = $(LDFLAGS)
+diff --git a/client/src/uart/uart_posix.c b/client/src/uart/uart_posix.c
+index 05c0952b5..24e3cb29c 100644
+--- a/client/src/uart/uart_posix.c
++++ b/client/src/uart/uart_posix.c
+@@ -372,6 +372,9 @@ serial_port uart_open(const char *pcPortName, uint32_t speed, bool slient) {
+         return INVALID_SERIAL_PORT;
+     }
+ 
++    // The WHY2025 badge's kernel has no file locking, and its fcntl() stub
++    // fails every F_SETLK with EACCES, the "claimed" errno: skip the claim.
++#ifndef BADGE
+     // Finally figured out a way to claim a serial port interface under unix
+     // We just try to set a (advisory) lock on the file descriptor
+     struct flock fl;
+@@ -387,6 +390,7 @@ serial_port uart_open(const char *pcPortName, uint32_t speed, bool slient) {
+         free(sp);
+         return CLAIMED_SERIAL_PORT;
+     }
++#endif
+ 
+     // Try to retrieve the old (current) terminal info struct
+     if (tcgetattr(sp->fd, &sp->tiOld) == -1) {
+@@ -554,9 +558,21 @@ int uart_receive(const serial_port sp, uint8_t *pbtRx, uint32_t pszMaxRxLen, uin
+                 }
+             } else {
+                 // use transit buffer
++#ifdef BADGE
++                // 122 KB: on the stack it overflows the badge's 128 KB
++                // thread stack (comms.c) on every uart_receive() call.
++                uint8_t *transitBuf = malloc(MAX(sizeof(PacketResponseNGRaw), sizeof(PacketResponseOLD)) * 30);
++                if (transitBuf == NULL) {
++                    return PM3_EMALLOC;
++                }
++#else
+                 uint8_t transitBuf[MAX(sizeof(PacketResponseNGRaw), sizeof(PacketResponseOLD)) * 30];
++#endif
+                 res = read(spu->fd, transitBuf, RingBuf_getAvailableSize(spu->udpBuffer));
+                 RingBuf_enqueueBatch(spu->udpBuffer, transitBuf, res);
++#ifdef BADGE
++                free(transitBuf);
++#endif
+             }
+             // Stop if the OS has some troubles reading the data
+             if (res < 0) {
+-- 
+2.50.1 (Apple Git-155)
+

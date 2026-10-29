@@ -1,0 +1,115 @@
+# Proxmark3 (Repos/proxmark3, branch badge): the RRG/Iceman client built
+# with BADGE=1, a command-line app in the menu's terminal window, and the
+# pm3 and proxmark3 commands in any shell.
+format = 1
+id = "proxmark3"
+name = "Proxmark3"
+version = "1.0.0"
+build = 1
+summary = "Proxmark3 client: read, write and sniff RFID and NFC cards from the badge"
+description = """
+The Proxmark3 client (RRG/Iceman) on the badge itself, for a Proxmark3
+on the bottom USB port: work with LF and HF cards from the badge's
+keyboard, without a laptop. Tested with a Proxmark3 RDV4.
+
+The Proxmark3 needs RRG/Iceman firmware of the same release as this
+client (v4.21611); flash it from a computer.
+
+This is a smaller build than the client on a computer, to fit in the
+badge's memory. Left out: Lua and Python scripts, and MIFARE Classic key
+recovery that runs in the client (nested, darkside, hardnested). Key
+checks that run on the Proxmark3 itself (hf mf chk, hf mf fchk) work,
+with the default key lists included. The arrow keys recall earlier
+commands and move the cursor; Tab does not complete.
+
+From the menu the client connects to the Proxmark3 by itself; quit
+leaves its output on screen until Enter. Dumps, key files and traces go
+to /root/.proxmark3/dumps, in the badge's flash. In a shell over SSH or
+the serial console, pm3 (or proxmark3) starts the same client."""
+author = "RRG/Iceman Proxmark3 contributors, badge build"
+license = "GPL-3.0-or-later AND Apache-2.0 AND MIT AND BSD-3-Clause AND LGPL-2.1-or-later"
+license_file = "proxmark3.txt"
+homepage = "https://github.com/RfidResearchGroup/proxmark3"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/proxmark3/source"
+upstream_version = "4.21611-636 (da509461b)"
+
+type = "app"
+category = "hardware"
+tags = ["rfid", "nfc", "proxmark", "mifare", "security"]
+permissions = ["usb", "files-all"]   # files-all: it saves in /root/.proxmark3
+install_location = "sd"
+
+[launch]
+exec = "pm3"
+info = "RFID and NFC cards"
+icon = "usb"
+terminal = true
+
+[[commands]]
+name = "pm3"
+exec = "pm3"
+
+[[commands]]
+name = "proxmark3"
+exec = "pm3"
+
+[requires]
+os_api = 1
+memory_kb = 10000         # ≈ 5 MB at the prompt, ≈ 9.8 MB during hf search (Docs/08-usb.md 8.5)
+features = ["usb-host", "sd-card", "keyboard"]   # sd-card: the app itself is on the card
+
+[[bundled]]
+name = "Mbed TLS (in the Proxmark3 client)"
+version = "2.26.0"
+license = "Apache-2.0"
+source = "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/common/mbedtls"
+license_file = "mbedtls.txt"
+
+[[bundled]]
+name = "Jansson (in the Proxmark3 client)"
+version = "Proxmark3 da509461b"
+license = "MIT"
+source = "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/client/deps/jansson"
+license_file = "jansson.txt"
+
+[[bundled]]
+name = "amiitool (in the Proxmark3 client)"
+version = "Proxmark3 da509461b"
+license = "MIT"
+source = "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/client/deps/amiitool"
+license_file = "amiitool.txt"
+
+[[bundled]]
+name = "id48 (in the Proxmark3 client)"
+version = "Proxmark3 da509461b"
+license = "MIT"
+source = "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/client/deps/id48"
+license_file = "id48.txt"
+
+[[bundled]]
+name = "whereami (in the Proxmark3 client)"
+version = "Proxmark3 da509461b"
+license = "MIT OR WTFPL"
+source = "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/client/deps/whereami"
+license_file = "whereami.txt"
+
+[[bundled]]
+name = "argtable3 (in the Proxmark3 client)"
+version = "Proxmark3 da509461b"
+license = "BSD-3-Clause"
+source = "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/client/deps/cliparser"
+license_file = "argtable3.txt"
+
+[[bundled]]
+name = "CRC RevEng (in the Proxmark3 client)"
+version = "Proxmark3 da509461b"
+license = "GPL-3.0-or-later"
+source = "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/client/deps/reveng"
+license_file = "reveng.txt"
+
+[[bundled]]
+name = "uClibc-ng"
+version = "1.0.57"
+license = "LGPL-2.1-or-later"
+source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
+license_file = "uClibc-ng.txt"

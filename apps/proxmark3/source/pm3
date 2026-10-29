@@ -1,0 +1,17 @@
+#!/bin/sh
+# Starts the Proxmark3 client, for the menu and the pm3 and proxmark3
+# commands. Without a port in the arguments it connects to the Proxmark3
+# on the bottom USB port (J8), when one is there. The client keeps what it
+# saves in ~/.proxmark3/dumps (/root, in flash).
+# Builtins only: on the NOMMU badge every extra process costs pool memory.
+dir=${APP_DIR:-${0%/*}}
+port=/dev/ttyACM0
+for a in "$@"; do
+	case $a in
+	-p|--port|--port=*|/dev/*|tcp:*|udp:*|bt:*|-h|--help) port= ;;
+	esac
+done
+if [ -n "$port" ] && [ -c "$port" ]; then
+	set -- -p "$port" "$@"
+fi
+exec "$dir/proxmark3" "$@"

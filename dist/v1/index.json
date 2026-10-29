@@ -676,6 +676,49 @@
    "updated": "2026-10-28"
   },
   {
+   "author": "RRG/Iceman Proxmark3 contributors, badge build",
+   "category": "hardware",
+   "commands": [
+    "pm3",
+    "proxmark3"
+   ],
+   "details_sha256": "140baecf7d78a69cb04f08ae4c7af398139da32c3e083d3b83995fecacfb4972",
+   "id": "proxmark3",
+   "install_location": "sd",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 2700709,
+     "sha256": "0263e053041e711ef99661618ed5cd1c0205cdb93c9a073684d53aa474e02d78",
+     "size": 1354018,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/proxmark3-1.0.0.wpk"
+    },
+    "version": "1.0.0"
+   },
+   "menu_icon": "usb",
+   "name": "Proxmark3",
+   "requires": {
+    "features": [
+     "usb-host",
+     "sd-card",
+     "keyboard"
+    ],
+    "memory_kb": 10000,
+    "os_api": 1
+   },
+   "summary": "Proxmark3 client: read, write and sniff RFID and NFC cards from the badge",
+   "tags": [
+    "rfid",
+    "nfc",
+    "proxmark",
+    "mifare",
+    "security"
+   ],
+   "terminal": true,
+   "type": "app",
+   "updated": "2026-10-29"
+  },
+  {
    "author": "why2025-linux contributors",
    "category": "hardware",
    "commands": [],
@@ -797,7 +840,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-10-28T20:59:35Z",
- "serial": 38,
+ "generated": "2026-10-29T10:15:57Z",
+ "serial": 39,
  "source": "whyos"
 }

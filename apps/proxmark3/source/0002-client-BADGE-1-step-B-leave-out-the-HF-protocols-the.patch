@@ -1,0 +1,447 @@
+From c9b9a1f45183bde067636d0c243bafe8468fec23 Mon Sep 17 00:00:00 2001
+From: John <john.de.kroon@cyberant.com>
+Date: Sun, 11 Oct 2026 14:45:29 +0200
+Subject: [PATCH 2/7] client: BADGE=1 step B, leave out the HF protocols the
+ badge does not need
+
+Without aliro, cipurse, cryptorf, epa, emrtd, felica, fido, fmcos, secc,
+fudan, gallagher, gst, ict, jooki, ksx6924, lto, ntag424, saflok, tesla,
+texkom, vas and xerox (also in hf search), the 530 KB smart card ATR table,
+the overlay graph buffer (Qt only) and the flasher animation. Also the
+LOWMEM fallback for even32() that crapto1.c lacked.
+
+Measured (riscv32 bFLT): text 1.73 MB, data 1.04 MB, bss 1.39 MB, 4.26 MB
+in all, from 40 MB for the full client.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+---
+ client/src/atrs.c           |  5 ++
+ client/src/atrs.h           |  2 +
+ client/src/cmdhf.c          | 94 +++++++++++++++++++++++++++++++++++++
+ client/src/cmdhfmf.c        |  7 +--
+ client/src/frame_progress.c | 18 +++++++
+ client/src/graph.c          |  4 ++
+ client/src/graph.h          |  2 +
+ common/crapto1/crapto1.c    |  3 ++
+ 8 files changed, 132 insertions(+), 3 deletions(-)
+
+diff --git a/client/src/atrs.c b/client/src/atrs.c
+index d401aad71..fc42c20aa 100644
+--- a/client/src/atrs.c
++++ b/client/src/atrs.c
+@@ -24,6 +24,10 @@
+ // get a ATR description based on the atr bytes
+ // returns description of the best match
+ const char *getAtrInfo(const char *atr_str) {
++#ifdef BADGE
++    (void)atr_str;
++    return "n/a";
++#else
+ 
+     size_t slen = strlen(atr_str);
+     int match = -1;
+@@ -66,6 +70,7 @@ const char *getAtrInfo(const char *atr_str) {
+         //No match, return default = last element of AtrTable
+         return AtrTable[ARRAYLEN(AtrTable) - 1].desc;
+     }
++#endif // BADGE
+ }
+ 
+ void atsToEmulatedAtr(uint8_t *ats, uint8_t *atr, int *atrLen) {
+diff --git a/client/src/atrs.h b/client/src/atrs.h
+index 22541f07f..0f475909a 100644
+--- a/client/src/atrs.h
++++ b/client/src/atrs.h
+@@ -34,6 +34,7 @@ const char *getAtrInfo(const char *atr_str);
+ void atsToEmulatedAtr(uint8_t *ats, uint8_t *atr, int *atrLen);
+ void atqbToEmulatedAtr(uint8_t *atqb, uint8_t cid, uint8_t *atr, int *atrLen);
+ 
++#ifndef BADGE   // 530 KB of smart card ATRs: not on the badge
+ // atr_t array is expected to be NULL terminated
+ const static atr_t AtrTable[] = {
+     { "3BDF18FFC080B1FE751F033078464646462026204963656D616E1D", "Cardhelper by 0xFFFF and Iceman" },
+@@ -5130,5 +5131,6 @@ const static atr_t AtrTable[] = {
+     { "3FFF9500FF918171FF470054494745523030332052657632353064", "Tivu' Sat (Italy) CAM card www.tivu.tv" },
+     {NULL, "n/a"}
+ };
++#endif // BADGE
+ 
+ #endif
+diff --git a/client/src/cmdhf.c b/client/src/cmdhf.c
+index dc1aff1e7..6805f3833 100644
+--- a/client/src/cmdhf.c
++++ b/client/src/cmdhf.c
+@@ -25,40 +25,84 @@
+ #include "cmdhf14a.h"       // ISO14443-A
+ #include "cmdhf14b.h"       // ISO14443-B
+ #include "cmdhf15.h"        // ISO15693
++#ifndef BADGE
+ #include "cmdhfaliro.h"     // ALIRO digital keys
++#endif
+ #include "cmdhfcalypso.h"   // Calypso transport cards
++#ifndef BADGE
+ #include "cmdhfcipurse.h"   // CIPURSE transport cards
++#endif
++#ifndef BADGE
+ #include "cmdhfcryptorf.h"  // CryptoRF
++#endif
++#ifndef BADGE
+ #include "cmdhfepa.h"       // German Identification Card
++#endif
++#ifndef BADGE
+ #include "cmdhfemrtd.h"     // eMRTD
++#endif
++#ifndef BADGE
+ #include "cmdhffelica.h"    // ISO18092 / FeliCa
++#endif
++#ifndef BADGE
+ #include "cmdhffido.h"      // FIDO authenticators
++#endif
++#ifndef BADGE
+ #include "cmdhffmcos.h"     // FMCOS CPU cards
++#endif
++#ifndef BADGE
+ #include "cmdhfsecc.h"      // iClass SE Config Card
++#endif
++#ifndef BADGE
+ #include "cmdhffudan.h"     // Fudan cards
++#endif
++#ifndef BADGE
+ #include "cmdhfgallagher.h" // Gallagher DESFire cards
++#endif
++#ifndef BADGE
+ #include "cmdhfgst.h"       // Google Smart Tap
++#endif
+ #include "cmdhficlass.h"    // ICLASS
++#ifndef BADGE
+ #include "cmdhfict.h"       // ICT MFC / DESfire cards
++#endif
++#ifndef BADGE
+ #include "cmdhfjooki.h"     // MFU based Jooki
++#endif
++#ifndef BADGE
+ #include "cmdhfksx6924.h"   // KS X 6924
++#endif
+ #include "cmdhflegic.h"     // LEGIC
++#ifndef BADGE
+ #include "cmdhflto.h"       // LTO-CM
++#endif
+ #include "cmdhfmf.h"        // CLASSIC
+ #include "cmdhfmfp.h"       // Mifare Plus
+ #include "cmdhfmfu.h"       // ULTRALIGHT/NTAG etc
+ #include "cmdhfmfdes.h"     // DESFIRE
++#ifndef BADGE
+ #include "cmdhfntag424.h"   // NTAG 424 DNA
++#endif
++#ifndef BADGE
+ #include "cmdhfsaflok.h"    // Saflok
++#endif
+ #include "cmdhfseos.h"      // SEOS
+ #include "cmdhfst25ta.h"    // ST25TA
++#ifndef BADGE
+ #include "cmdhftesla.h"     // Tesla
++#endif
++#ifndef BADGE
+ #include "cmdhftexkom.h"    // Texkom
++#endif
+ #include "cmdhfthinfilm.h"  // Thinfilm
+ #include "cmdhftopaz.h"     // TOPAZ
++#ifndef BADGE
+ #include "cmdhfvas.h"       // Value added services
++#endif
+ #include "cmdhfwaveshare.h" // Waveshare
++#ifndef BADGE
+ #include "cmdhfxerox.h"     // Xerox
++#endif
+ #include "cmdtrace.h"       // trace list
+ #include "ui.h"
+ #include "proxgui.h"
+@@ -111,6 +155,7 @@ int CmdHFSearch(const char *Cmd) {
+         }
+     }
+ 
++#ifndef BADGE
+     PROMPT_CLEARLINE;
+     PrintAndLogEx(INPLACE, " Searching for LTO-CM tag...");
+     if (IfPm3Iso14443a()) {
+@@ -120,6 +165,7 @@ int CmdHFSearch(const char *Cmd) {
+             res = PM3_SUCCESS;
+         }
+     }
++#endif
+ 
+     PROMPT_CLEARLINE;
+     PrintAndLogEx(INPLACE, " Searching for ISO14443-A tag...");
+@@ -160,6 +206,7 @@ int CmdHFSearch(const char *Cmd) {
+         }
+     }
+ 
++#ifndef BADGE
+     // texkom
+     PROMPT_CLEARLINE;
+     PrintAndLogEx(INPLACE, " Searching for TEXKOM tag...");
+@@ -168,7 +215,9 @@ int CmdHFSearch(const char *Cmd) {
+         success[PROTO_TEXKOM] = true;
+         res = PM3_SUCCESS;
+     }
++#endif
+ 
++#ifndef BADGE
+     // xerox
+     PROMPT_CLEARLINE;
+     PrintAndLogEx(INPLACE, " Searching for Fuji/Xerox tag...");
+@@ -179,6 +228,7 @@ int CmdHFSearch(const char *Cmd) {
+             res = PM3_SUCCESS;
+         }
+     }
++#endif
+ 
+     // 14b is the longest test
+     PROMPT_CLEARLINE;
+@@ -215,6 +265,7 @@ int CmdHFSearch(const char *Cmd) {
+ 
+     // OBS!  This triggers a swap to FPGA_BITSTREAM_HF_FELICA == 1.5sec delay
+ 
++#ifndef BADGE
+     PROMPT_CLEARLINE;
+     PrintAndLogEx(INPLACE, " Searching for FeliCa tag...");
+     if (IfPm3Felica()) {
+@@ -228,6 +279,7 @@ int CmdHFSearch(const char *Cmd) {
+             res = PM3_SUCCESS;
+         }
+     }
++#endif
+ 
+     /*
+     PROMPT_CLEARLINE;
+@@ -585,42 +637,84 @@ static command_t CommandTable[] = {
+     {"14a",         CmdHF14A,         AlwaysAvailable, "{ ISO14443A RFIDs...                  }"},
+     {"14b",         CmdHF14B,         AlwaysAvailable, "{ ISO14443B RFIDs...                  }"},
+     {"15",          CmdHF15,          AlwaysAvailable, "{ ISO15693 RFIDs...                   }"},
++#ifndef BADGE
+     {"aliro",       CmdHFAliro,       AlwaysAvailable, "{ ALIRO digital access credentials... }"},
++#endif
+     {"calypso",     CmdHFCalypso,     AlwaysAvailable, "{ Calypso transport cards...          }"},
+ //    {"cryptorf",    CmdHFCryptoRF,    AlwaysAvailable, "{ CryptoRF RFIDs...                   }"},
++#ifndef BADGE
+     {"cipurse",     CmdHFCipurse,     AlwaysAvailable, "{ Cipurse transport Cards...          }"},
++#endif
++#ifndef BADGE
+     {"epa",         CmdHFEPA,         AlwaysAvailable, "{ German Identification Card...       }"},
++#endif
++#ifndef BADGE
+     {"emrtd",       CmdHFeMRTD,       AlwaysAvailable, "{ Machine Readable Travel Document... }"},
++#endif
++#ifndef BADGE
+     {"felica",      CmdHFFelica,      AlwaysAvailable, "{ ISO18092 / FeliCa RFIDs...          }"},
++#endif
++#ifndef BADGE
+     {"fido",        CmdHFFido,        AlwaysAvailable, "{ FIDO and FIDO2 authenticators...    }"},
++#endif
++#ifndef BADGE
+     {"fmcos",       CmdHFFmcos,       AlwaysAvailable, "{ FMCOS CPU cards...                  }"},
++#endif
++#ifndef BADGE
+     {"fudan",       CmdHFFudan,       AlwaysAvailable, "{ Fudan RFIDs...                      }"},
++#endif
++#ifndef BADGE
+     {"gallagher",   CmdHFGallagher,   AlwaysAvailable, "{ Gallagher DESFire RFIDs...          }"},
++#endif
++#ifndef BADGE
+     {"gst",         CmdHFGST,         AlwaysAvailable, "{ Google Smart Tap passes...          }"},
++#endif
++#ifndef BADGE
+     {"secc",        CmdHFHIDConfig,   AlwaysAvailable, "{ iClass SE Config Card Emulator...   }"},
++#endif
+     {"iclass",      CmdHFiClass,      AlwaysAvailable, "{ ICLASS RFIDs...                     }"},
++#ifndef BADGE
+     {"ict",         CmdHFICT,         AlwaysAvailable, "{ ICT MFC/DESfire RFIDs...            }"},
++#endif
++#ifndef BADGE
+     {"jooki",       CmdHF_Jooki,      AlwaysAvailable, "{ Jooki RFIDs...                      }"},
++#endif
++#ifndef BADGE
+     {"ksx6924",     CmdHFKSX6924,     AlwaysAvailable, "{ KS X 6924 (T-Money, Snapper+) RFIDs }"},
++#endif
+     {"legic",       CmdHFLegic,       AlwaysAvailable, "{ LEGIC RFIDs...                      }"},
++#ifndef BADGE
+     {"lto",         CmdHFLTO,         AlwaysAvailable, "{ LTO Cartridge Memory RFIDs...       }"},
++#endif
+     {"mf",          CmdHFMF,          AlwaysAvailable, "{ MIFARE RFIDs...                     }"},
+     {"mfp",         CmdHFMFP,         AlwaysAvailable, "{ MIFARE Plus RFIDs...                }"},
+     {"mfu",         CmdHFMFUltra,     AlwaysAvailable, "{ MIFARE Ultralight RFIDs...          }"},
+     {"mfdes",       CmdHFMFDes,       AlwaysAvailable, "{ MIFARE Desfire RFIDs...             }"},
++#ifndef BADGE
+     {"ntag424",     CmdHF_ntag424,    AlwaysAvailable, "{ NXP NTAG 4242 DNA RFIDs...          }"},
++#endif
++#ifndef BADGE
+     {"saflok",      CmdHFSaflok,      AlwaysAvailable, "{ Saflok MFC RFIDs...                 }"},
++#endif
+     {"seos",        CmdHFSeos,        AlwaysAvailable, "{ SEOS RFIDs...                       }"},
+     {"st25ta",      CmdHFST25TA,      AlwaysAvailable, "{ ST25TA RFIDs...                     }"},
++#ifndef BADGE
+     {"tesla",       CmdHFTESLA,       AlwaysAvailable, "{ TESLA Cards...                      }"},
++#endif
++#ifndef BADGE
+     {"texkom",      CmdHFTexkom,      AlwaysAvailable, "{ Texkom RFIDs...                     }"},
++#endif
+     {"thinfilm",    CmdHFThinfilm,    AlwaysAvailable, "{ Thinfilm RFIDs...                   }"},
+     {"topaz",       CmdHFTopaz,       AlwaysAvailable, "{ TOPAZ (NFC Type 1) RFIDs...         }"},
++#ifndef BADGE
+     {"vas",         CmdHFVAS,         AlwaysAvailable, "{ Apple Value Added Service...        }"},
++#endif
+ #ifdef HAVE_GD
+     {"waveshare",   CmdHFWaveshare,   AlwaysAvailable, "{ Waveshare NFC ePaper...             }"},
+ #endif
++#ifndef BADGE
+     {"xerox",       CmdHFXerox,       AlwaysAvailable, "{ Fuji/Xerox cartridge RFIDs...       }"},
++#endif
+     {"-----------", CmdHelp,          AlwaysAvailable, "--------------------- " _CYAN_("General") " ---------------------"},
+     {"help",        CmdHelp,          AlwaysAvailable, "This help"},
+     {"list",        CmdHFList,        AlwaysAvailable, "List protocol data in trace buffer"},
+diff --git a/client/src/cmdhfmf.c b/client/src/cmdhfmf.c
+index e9ea97eb9..f68d4a9b8 100644
+--- a/client/src/cmdhfmf.c
++++ b/client/src/cmdhfmf.c
+@@ -51,9 +51,7 @@
+ #include "fpga.h"
+ #include "mifare/mifarehost.h"
+ #include "crypto/originality.h"
+-#ifndef BADGE
+-#include "cmdhfmfsen.h"     // Mifare Classic Static Nonce
+-#endif
++#include "cmdhfmfsen.h"     // Mifare Classic Static Nonce (declarations only in the BADGE build)
+ #include "cmdmad.h"
+ 
+ // Defines for Saflok parsing
+@@ -73,11 +71,14 @@ typedef struct {
+ 
+ static int CmdHelp(const char *Cmd);
+ 
++#ifndef BADGE   // autopwn helpers, from cmdhfmfsen.c
+ static int HFMFAutoPwnSEN(sector_t *e_sector, size_t sector_cnt) {
+     DropField();
+     return HFMFSENRecover(false, false, false, false, 0, 0x1, true, e_sector, sector_cnt);
+ }
+ 
++#endif // BADGE
++
+ // Static array for Saflok key levels
+ static const SaflokKeyLevel saflok_key_levels[] = {
+     {1, "Guest Key"},
+diff --git a/client/src/frame_progress.c b/client/src/frame_progress.c
+index d6b4b99eb..23aba3fed 100644
+--- a/client/src/frame_progress.c
++++ b/client/src/frame_progress.c
+@@ -115,6 +115,7 @@ void hadouken_on_sigwinch(int s) {
+  * Compute the inner fill width for the progress bar from the current terminal
+  * width, clamped to [BAR_MIN, BAR_MAX].
+  */
++#ifndef BADGE   // the animation and its 220 KB of frame buffers
+ static int bar_inner_width(void) {
+     int w = terminal_width() - BAR_OVERHEAD;
+     if (w < BAR_MIN) {
+@@ -350,6 +351,8 @@ static void *anim_thread(void *arg) {
+     return NULL;
+ }
+ 
++#endif // BADGE
++
+ /*
+  * Start the animation thread.
+  *   fps        – frames per second (e.g. 30.0)
+@@ -363,10 +366,15 @@ void hadouken_start(double fps, int glyph_mode, int wave_mode) {
+     g_progress   = 0;
+     g_running    = 1;
+ 
++#ifdef BADGE
++    fputs("[=] flashing...   0%", stdout);
++    fflush(stdout);
++#else
+     // hide cursor, clear screen
+     fputs(_CURSOR_HIDE_ _CLEAR_, stdout);
+     fflush(stdout);
+     pthread_create(&g_thread, NULL, anim_thread, NULL);
++#endif
+ }
+ 
+ /*
+@@ -383,6 +391,10 @@ void hadouken_set_progress(int pct) {
+         pct = 100;
+     }
+     g_progress = pct;
++#ifdef BADGE
++    fprintf(stdout, "\r[=] flashing... %3d%%", pct);
++    fflush(stdout);
++#endif
+ }
+ 
+ /*
+@@ -390,6 +402,12 @@ void hadouken_set_progress(int pct) {
+  * progress bar and restore it so subsequent printf/puts output is visible.
+  */
+ void hadouken_stop(void) {
++#ifdef BADGE
++    g_running = 0;
++    fputs("\n", stdout);
++    fflush(stdout);
++    return;
++#endif
+     /* Wait 2 frame durations so the thread renders at least one more frame
+      * with the final g_progress value (e.g. 100%) before we signal exit.
+      * Without this, the thread may be mid-sleep and exit before painting 100%. */
+diff --git a/client/src/graph.c b/client/src/graph.c
+index 80c1e4dc0..fa836fe00 100644
+--- a/client/src/graph.c
++++ b/client/src/graph.c
+@@ -28,7 +28,9 @@
+ 
+ int32_t g_GraphBuffer[MAX_GRAPH_TRACE_LEN];
+ int32_t g_OperationBuffer[MAX_GRAPH_TRACE_LEN];
++#ifndef BADGE   // only the Qt plot window reads the overlay buffer
+ int32_t g_OverlayBuffer[MAX_GRAPH_TRACE_LEN];
++#endif
+ bool    g_useOverlays = false;
+ size_t  g_GraphTraceLen;
+ buffer_savestate_t g_saveState_gb;
+@@ -78,7 +80,9 @@ size_t ClearGraph(bool redraw) {
+ 
+     memset(g_GraphBuffer, 0x00, g_GraphTraceLen);
+     memset(g_OperationBuffer, 0x00, g_GraphTraceLen);
++#ifndef BADGE
+     memset(g_OverlayBuffer, 0x00, g_GraphTraceLen);
++#endif
+ 
+     g_GraphTraceLen = 0;
+     g_GraphStart = 0;
+diff --git a/client/src/graph.h b/client/src/graph.h
+index 9cac5e618..939858527 100644
+--- a/client/src/graph.h
++++ b/client/src/graph.h
+@@ -82,7 +82,9 @@ size_t restore_buffer8(buffer_savestate_t saveState, uint8_t *dest);
+ 
+ extern int32_t g_GraphBuffer[MAX_GRAPH_TRACE_LEN];
+ extern int32_t g_OperationBuffer[MAX_GRAPH_TRACE_LEN];
++#ifndef BADGE
+ extern int32_t g_OverlayBuffer[MAX_GRAPH_TRACE_LEN];
++#endif
+ extern bool    g_useOverlays;
+ extern size_t  g_GraphTraceLen;
+ 
+diff --git a/common/crapto1/crapto1.c b/common/crapto1/crapto1.c
+index 0847f20c3..02bb780bd 100644
+--- a/common/crapto1/crapto1.c
++++ b/common/crapto1/crapto1.c
+@@ -55,6 +55,9 @@ __declspec(allocate(".CRT$XCG")) PF f[] = { init_lut };
+ 
+ #define filter(x) (filterlut[(x) & 0xfffff])
+ #define even32(x) (uc_evenparity32_lut[(x)])
++#else
++// LOWMEM: no lookup tables (filter() comes from crapto1.h)
++#define even32(x) (evenparity32(x))
+ #endif
+ 
+ /** update_contribution helper,
+-- 
+2.50.1 (Apple Git-155)
+

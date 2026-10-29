@@ -1,0 +1,563 @@
+From 1a963eb8917d46b73d2bf42a040ee8cd33634b07 Mon Sep 17 00:00:00 2001
+From: john <john.de.kroon@cyberant.com>
+Date: Sun, 11 Oct 2026 14:39:01 +0200
+Subject: [PATCH 1/7] client: BADGE=1 build for the WHY2025 badge (step A)
+
+A slim client for the badge's NOMMU Linux (RV32, uClibc-ng, static bFLT,
+no C++), gated behind one Make variable so a plain build is unchanged:
+-DLOWMEM (no 18 MB crapto1 tables), 128K-sample graph buffers, smaller
+demod and rx buffers, -Os without unwind tables, pthread spinlock shim,
+GUI stubs as C, 128 KB stacks for the uart threads, and no Lua, hardnested,
+static-nonce attack, MQTT, USART or PIV. Client-side Mifare key recovery
+(darkside, nested, hardnested, autopwn, supercard) needs 18-128 MB of heap
+and is left out of the command table.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+---
+ Makefile.defs                    | 16 +++++++++
+ client/Makefile                  | 49 +++++++++++++++++++++++---
+ client/src/cmddata.h             |  4 +++
+ client/src/cmdhfmf.c             | 18 ++++++++++
+ client/src/cmdhw.c               |  6 ++++
+ client/src/cmdmain.c             |  8 +++++
+ client/src/comms.c               | 24 +++++++++++--
+ client/src/comms.h               |  3 ++
+ client/src/graph.h               |  9 +++++
+ client/src/guidummy_badge.c      | 60 ++++++++++++++++++++++++++++++++
+ client/src/proxmark3.c           |  2 ++
+ client/src/pthread_spin_uclibc.c | 57 ++++++++++++++++++++++++++++++
+ 12 files changed, 249 insertions(+), 7 deletions(-)
+ create mode 100644 client/src/guidummy_badge.c
+ create mode 100644 client/src/pthread_spin_uclibc.c
+
+diff --git a/Makefile.defs b/Makefile.defs
+index 8cfcce10e..b18a45189 100644
+--- a/Makefile.defs
++++ b/Makefile.defs
+@@ -167,6 +167,22 @@ else
+   DEFCFLAGS += -Wstrict-prototypes
+ endif
+ 
++# BADGE=1: the WHY2025 badge (RV32 NOMMU Linux, uClibc-ng, static bFLT, no
++# C++). Implies the skips below; client/Makefile adds the flags. See
++# client/src/pthread_spin_uclibc.c and guidummy_badge.c.
++ifeq ($(BADGE),1)
++  NOHARDENING ?= 1
++  NOERROR ?= 1
++  SKIPQT ?= 1
++  SKIPBT ?= 1
++  SKIPPYTHON ?= 1
++  SKIPGD ?= 1
++  SKIPREADLINE ?= 1
++  SKIPLINENOISE ?= 1
++  SKIPREVENGTEST ?= 1
++  cpu_arch ?= generic
++endif
++
+ ifneq ($(NOHARDENING),1)
+   # Manual equivalents of -fhardened to avoid g++: warning: linker hardening options not enabled by ‘-fhardened’ because other link options were specified on the command line
+   DEFCFLAGS += \
+diff --git a/client/Makefile b/client/Makefile
+index 13bb06ff7..b0707f47b 100644
+--- a/client/Makefile
++++ b/client/Makefile
+@@ -26,6 +26,11 @@ ifeq ($(PLTNAME),)
+ endif
+ include ../Makefile.defs
+ 
++ifeq ($(BADGE),1)
++    # no C++ compiler on the badge toolchain: link with the C compiler
++    CXX = $(CC)
++endif
++
+ ifeq ($(PLATFORM),PM3ICOPYX)
+   INCLUDES += -DICOPYX
+ endif
+@@ -275,11 +280,11 @@ ifndef IS_DARWIN
+     LDLIBS += -Wl,--as-needed -latomic -Wl,--no-as-needed
+ endif
+ 
+-## BZIP2
++## BZIP2 and LZ4: only hardnested uses them, which the badge build leaves out
++ifneq ($(BADGE),1)
+ LDLIBS += -lbz2
+-
+-## LZ4
+ LDLIBS += -llz4
++endif
+ 
+ ## ZLIB
+ ZLIBINCLUDES = $(shell $(PKG_CONFIG_ENV) pkg-config --cflags zlib 2>/dev/null)
+@@ -462,10 +467,20 @@ endif
+ #######################################################################################################
+ # clang doesn't like this params
+ #MYCFLAGS += --param max-completely-peeled-insns=1000 --param max-completely-peel-times=10000
+-MYCFLAGS += -O3
++ifeq ($(BADGE),1)
++    MYCFLAGS += -Os
++else
++    MYCFLAGS += -O3
++endif
+ 
+ CFLAGS ?= $(DEFCFLAGS)
+ CFLAGS += $(MYDEFS) $(MYCFLAGS) $(MYINCLUDES)
++ifeq ($(BADGE),1)
++    # size first; -fPIC is required for bFLT on RISC-V (NOHARDENING drops it);
++    # LOWMEM drops the 18 MB crapto1 lookup tables; BADGE gates the source changes
++    CFLAGS += -Os -fno-asynchronous-unwind-tables -fno-unwind-tables \
++              -ffunction-sections -fdata-sections -fPIC -DLOWMEM -DBADGE
++endif
+ 
+ # We cannot just use CFLAGS+=... because it has impact on sub-makes if CFLAGS is defined in env:
+ PM3CFLAGS = $(CFLAGS)
+@@ -539,6 +554,11 @@ PM3CXXFLAGS += -DHAVE_SNPRINTF
+ 
+ LDFLAGS ?= $(DEFLDFLAGS)
+ LDFLAGS += $(MYLDFLAGS)
++ifeq ($(BADGE),1)
++    # bFLT loaded into RAM, with a 1 MB main stack (flthdr -s changes it later)
++    BADGE_STACK ?= 1048576
++    LDFLAGS += -Wl,--gc-sections -Wl,-elf2flt="-r -s$(BADGE_STACK)"
++endif
+ 
+ PM3LDFLAGS = $(LDFLAGS)
+ ifdef IS_IOS
+@@ -949,6 +969,27 @@ else
+     CXXSRCS = guidummy.cpp
+ endif
+ 
++ifeq ($(BADGE),1)
++    # the GUI stubs as C, and the pthread spinlocks uClibc-ng lacks
++    CXXSRCS =
++    SRCS += guidummy_badge.c pthread_spin_uclibc.c
++    # Left out: Lua scripting, hardnested, the FM11RF08S static nonce attack,
++    # MQTT, USART, PIV. Their commands are #ifndef BADGE in the command tables.
++    BADGE_EXCLUDE_SRCS = \
++        cmdhfmfhard.c \
++        cmdhfmfsen.c \
++        cmdmqtt.c \
++        cmdusart.c \
++        cmdpiv.c \
++        scripting.c \
++        cmdscript.c \
++        pm3_binlib.c \
++        pm3_bitlib.c \
++        lua_bitlib.c
++    SRCS := $(filter-out $(BADGE_EXCLUDE_SRCS),$(SRCS))
++    STATICLIBS := $(filter-out $(HARDNESTEDLIB) $(MQTTLIB) $(LUALIB),$(STATICLIBS))
++endif
++
+ # OS X & iOS
+ ifdef IS_DARWIN
+     OBJCSRCS = util_darwin.m
+diff --git a/client/src/cmddata.h b/client/src/cmddata.h
+index 5f70516ff..09d3671cd 100644
+--- a/client/src/cmddata.h
++++ b/client/src/cmddata.h
+@@ -91,7 +91,11 @@ int directionalThreshold(const int *in, int *out, size_t len, int8_t up, int8_t
+ int centerThreshold(const int *in, int *out, size_t len, int8_t up, int8_t down);
+ int AskEdgeDetect(const int *in, int *out, int len, int threshold);
+ 
++#ifdef BADGE
++#define MAX_DEMOD_BUF_LEN (1024*8)   // little RAM; also sized on the stack in cmdlffdxb.c
++#else
+ #define MAX_DEMOD_BUF_LEN (1024*128)
++#endif
+ extern uint8_t g_DemodBuffer[MAX_DEMOD_BUF_LEN];
+ extern size_t g_DemodBufferLen;
+ 
+diff --git a/client/src/cmdhfmf.c b/client/src/cmdhfmf.c
+index 6707ad17d..e9ea97eb9 100644
+--- a/client/src/cmdhfmf.c
++++ b/client/src/cmdhfmf.c
+@@ -27,12 +27,16 @@
+ #include "cmdtrace.h"
+ #include "mifare/mifaredefault.h"  // mifare default key array
+ #include "cliparser.h"             // argtable
++#ifndef BADGE
+ #include "hardnested_bf_core.h"    // SetSIMDInstr
++#endif
+ #include "mifare/mad.h"
+ #include "nfc/ndef.h"
+ #include "protocols.h"
+ #include "util_posix.h"            // msclock
++#ifndef BADGE
+ #include "cmdhfmfhard.h"
++#endif
+ #include "crapto1/crapto1.h"       // prng_successor
+ #include "cmdhf14a.h"              // exchange APDU
+ #include "crypto/libpcrypto.h"
+@@ -47,7 +51,9 @@
+ #include "fpga.h"
+ #include "mifare/mifarehost.h"
+ #include "crypto/originality.h"
++#ifndef BADGE
+ #include "cmdhfmfsen.h"     // Mifare Classic Static Nonce
++#endif
+ #include "cmdmad.h"
+ 
+ // Defines for Saflok parsing
+@@ -1233,6 +1239,7 @@ static int CmdHF14AMfAcl(const char *Cmd) {
+     return PM3_SUCCESS;
+ }
+ 
++#ifndef BADGE   // hf mf darkside: lfsr_common_prefix needs 128 MB of heap
+ static int CmdHF14AMfDarkside(const char *Cmd) {
+     CLIParserContext *ctx;
+     CLIParserInit(&ctx, "hf mf darkside",
+@@ -1284,6 +1291,7 @@ static int CmdHF14AMfDarkside(const char *Cmd) {
+     return PM3_SUCCESS;
+ }
+ 
++#endif // BADGE
+ static int CmdHF14AMfWrBl(const char *Cmd) {
+ 
+     CLIParserContext *ctx;
+@@ -1998,6 +2006,7 @@ out:
+     return PM3_SUCCESS;
+ }
+ 
++#ifndef BADGE   // hf mf nested / staticnested / hardnested / autopwn
+ static int CmdHF14AMfNested(const char *Cmd) { //TODO: single mode broken? can't find keys...
+     CLIParserContext *ctx;
+     CLIParserInit(&ctx, "hf mf nested",
+@@ -3915,6 +3924,7 @@ out:
+     return PM3_SUCCESS;
+ }
+ 
++#endif // BADGE
+ static int CmdHF14AMfChk_fast(const char *Cmd) {
+     CLIParserContext *ctx;
+     CLIParserInit(&ctx, "hf mf fchk",
+@@ -8087,6 +8097,7 @@ static int mfc_supercard_gen2_recovery(uint8_t items, uint8_t tracedata[FURUI_MA
+     return PM3_SUCCESS;
+ }
+ 
++#ifndef BADGE   // hf mf supercard: mfkey32_moebius, 18 MB heap
+ static int CmdHf14AMfSuperCard(const char *Cmd) {
+     CLIParserContext *ctx;
+     CLIParserInit(&ctx, "hf mf supercard",
+@@ -8350,6 +8361,7 @@ static int CmdHf14AMfSuperCard(const char *Cmd) {
+     return PM3_SUCCESS;
+ }
+ 
++#endif // BADGE
+ static int CmdHF14AMfWipe(const char *Cmd) {
+     CLIParserContext *ctx;
+     CLIParserInit(&ctx, "hf mf wipe",
+@@ -12025,19 +12037,25 @@ static command_t CommandTable[] = {
+     {"help",        CmdHelp,                AlwaysAvailable, "This help"},
+     {"list",        CmdHF14AMfList,         AlwaysAvailable, "List MIFARE history"},
+     {"-----------", CmdHelp,                IfPm3Iso14443a,  "----------------------- " _CYAN_("recovery") " -----------------------"},
++#ifndef BADGE   // client-side key recovery needs 18 MB (nested) to 128 MB (darkside) of heap
+     {"darkside",    CmdHF14AMfDarkside,     IfPm3Iso14443a,  "Darkside attack"},
+     {"nested",      CmdHF14AMfNested,       IfPm3Iso14443a,  "Nested attack"},
+     {"hardnested",  CmdHF14AMfNestedHard,   AlwaysAvailable, "Nested attack for hardened MIFARE Classic cards"},
+     {"staticnested", CmdHF14AMfNestedStatic, IfPm3Iso14443a, "Nested attack against static nonce MIFARE Classic cards"},
+     {"sen",         CmdHF14AMfSEN,          IfPm3Iso14443a,  "FM11RF08S Static Encrypted Nonce attack"},
++#endif
+     {"brute",       CmdHF14AMfSmartBrute,   IfPm3Iso14443a,  "Smart bruteforce to exploit weak key generators"},
++#ifndef BADGE
+     {"autopwn",     CmdHF14AMfAutoPWN,      IfPm3Iso14443a,  "Automatic key recovery tool for MIFARE Classic"},
++#endif
+ //    {"keybrute",    CmdHF14AMfKeyBrute,     IfPm3Iso14443a,  "J_Run's 2nd phase of multiple sector nested authentication key recovery"},
+     {"nack",        CmdHf14AMfNack,         IfPm3Iso14443a,  "Test for MIFARE NACK bug"},
+     {"chk",         CmdHF14AMfChk,          IfPm3Iso14443a,  "Check keys"},
+     {"fchk",        CmdHF14AMfChk_fast,     IfPm3Iso14443a,  "Check keys fast, targets all keys on card"},
+     {"decrypt",     CmdHf14AMfDecryptBytes, AlwaysAvailable, "Decrypt Crypto1 data from sniff or trace"},
++#ifndef BADGE   // mfkey32 on the client: 18 MB heap, not on the badge
+     {"supercard",   CmdHf14AMfSuperCard,    IfPm3Iso14443a,  "Extract info from a `super card`"},
++#endif
+     {"keygen",      CmdHF14AMfKeyGen,       AlwaysAvailable, "Generate key table for some known KDFs"},
+     {"-----------", CmdHelp,                IfPm3Iso14443a,  "----------------------- " _CYAN_("operations") " -----------------------"},
+     {"auth4",       CmdHF14AMfAuth4,        IfPm3Iso14443a,  "ISO14443-4 AES authentication"},
+diff --git a/client/src/cmdhw.c b/client/src/cmdhw.c
+index 772d0e47f..1e9a6442f 100644
+--- a/client/src/cmdhw.c
++++ b/client/src/cmdhw.c
+@@ -48,7 +48,9 @@
+ #include "proxgui.h"
+ #include "graph.h" // for graph data
+ 
++#ifndef BADGE
+ #include "lua.h"
++#endif
+ 
+ static int CmdHelp(const char *Cmd);
+ 
+@@ -1939,7 +1941,11 @@ void pm3_version(bool verbose, bool oneliner) {
+ #else
+     PrintAndLogEx(NORMAL, "  Python SWIG support....... " _YELLOW_("absent"));
+ #endif
++#ifdef BADGE
++    PrintAndLogEx(NORMAL, "  Lua script support........ " _YELLOW_("absent"));
++#else
+     PrintAndLogEx(NORMAL, "  Lua script support........ " _GREEN_("present") " ( " _YELLOW_("%s.%s.%s") " )", LUA_VERSION_MAJOR, LUA_VERSION_MINOR, LUA_VERSION_RELEASE);
++#endif
+ #ifdef HAVE_LUA_SWIG
+     PrintAndLogEx(NORMAL, "  Lua SWIG support.......... " _GREEN_("present"));
+ #else
+diff --git a/client/src/cmdmain.c b/client/src/cmdmain.c
+index a6e5d5403..7f9b2fa0b 100644
+--- a/client/src/cmdmain.c
++++ b/client/src/cmdmain.c
+@@ -348,14 +348,22 @@ static command_t CommandTable[] = {
+     {"lf",           CmdLF,        AlwaysAvailable,         "{ Low frequency commands... }"},
+     {"mad",          CmdMAD,       AlwaysAvailable,         "{ MAD commands... }"},
+     {"mem",          CmdFlashMem,  IfPm3Flash,              "{ Flash memory manipulation... }"},
++#ifndef BADGE
+     {"mqtt",         CmdMqtt,      AlwaysAvailable,         "{ MQTT commmands... }"},
++#endif
+     {"nfc",          CmdNFC,       AlwaysAvailable,         "{ NFC commands... }"},
++#ifndef BADGE
+     {"piv",          CmdPIV,       AlwaysAvailable,         "{ PIV commands... }"},
++#endif
+     {"reveng",       CmdRev,       AlwaysAvailable,         "{ CRC calculations from RevEng software... }"},
+     {"smart",        CmdSmartcard, AlwaysAvailable,         "{ Smart card ISO-7816 commands... }"},
++#ifndef BADGE
+     {"script",       CmdScript,    AlwaysAvailable,         "{ Scripting commands... }"},
++#endif
+     {"trace",        CmdTrace,     AlwaysAvailable,         "{ Trace manipulation... }"},
++#ifndef BADGE
+     {"usart",        CmdUsart,     IfPm3FpcUsartFromUsb,    "{ USART commands... }"},
++#endif
+     {"wiegand",      CmdWiegand,   AlwaysAvailable,         "{ Wiegand format manipulation... }"},
+     {"--------",     CmdHelp,      AlwaysAvailable,         "----------------------- " _CYAN_("General") " -----------------------"},
+     {"auto",         CmdAuto,      IfPm3Present,            "Automated detection process for unknown tags"},
+diff --git a/client/src/comms.c b/client/src/comms.c
+index de8045930..7a2b676d4 100644
+--- a/client/src/comms.c
++++ b/client/src/comms.c
+@@ -80,6 +80,24 @@ static uint64_t last_packet_time;
+ 
+ static bool dl_it(uint8_t *dest, uint32_t bytes, PacketResponseNG *response, size_t ms_timeout, bool show_warning, uint32_t rec_cmd);
+ 
++// The badge build runs on uClibc-ng linuxthreads without MMU, where a new
++// thread gets 16 KB of stack by default: far too little for the uart threads.
++#ifdef BADGE
++#define BADGE_THREAD_STACK (128 * 1024)
++static int pm3_thread_create(pthread_t *t, void *(*fn)(void *), void *arg) {
++    pthread_attr_t attr;
++    pthread_attr_init(&attr);
++    pthread_attr_setstacksize(&attr, BADGE_THREAD_STACK);
++    int res = pthread_create(t, &attr, fn, arg);
++    pthread_attr_destroy(&attr);
++    return res;
++}
++#else
++static int pm3_thread_create(pthread_t *t, void *(*fn)(void *), void *arg) {
++    return pthread_create(t, NULL, fn, arg);
++}
++#endif
++
+ // Simple alias to track usages linked to the Bootloader, these commands must not be migrated.
+ // - commands sent to enter bootloader mode as we might have to talk to old firmwares
+ // - commands sent to the bootloader as it only supports OLD frames (which will always be the case for old BL)
+@@ -398,7 +416,7 @@ void *uart_reconnect(void *targ) {
+ }
+ 
+ void StartReconnectProxmark(void) {
+-    pthread_create(&reconnect_thread, NULL, &uart_reconnect, &g_conn);
++    pm3_thread_create(&reconnect_thread, &uart_reconnect, &g_conn);
+ }
+ 
+ bool IsReconnectedOk(void) {
+@@ -761,7 +779,7 @@ bool OpenProxmarkSilent(pm3_device_t **dev, const char *port, uint32_t speed) {
+         // "Session" flag, to tell via which interface next msgs should be sent: USB or FPC USART
+         g_conn.send_via_fpc_usart = false;
+ 
+-        pthread_create(&communication_thread, NULL, &uart_communication, &g_conn);
++        pm3_thread_create(&communication_thread, &uart_communication, &g_conn);
+         __atomic_clear(&comm_thread_dead, __ATOMIC_SEQ_CST);
+         __atomic_clear(&reconnect_ok, __ATOMIC_SEQ_CST);
+ 
+@@ -827,7 +845,7 @@ bool OpenProxmark(pm3_device_t **dev, const char *port, bool wait_for_port, int
+         // "Session" flag, to tell via which interface next msgs should be sent: USB or FPC USART
+         g_conn.send_via_fpc_usart = false;
+ 
+-        pthread_create(&communication_thread, NULL, &uart_communication, &g_conn);
++        pm3_thread_create(&communication_thread, &uart_communication, &g_conn);
+         __atomic_clear(&comm_thread_dead, __ATOMIC_SEQ_CST);
+         g_session.pm3_present = true; // TODO support for multiple devices
+ 
+diff --git a/client/src/comms.h b/client/src/comms.h
+index 67ed3fcbb..9e64d7e74 100644
+--- a/client/src/comms.h
++++ b/client/src/comms.h
+@@ -41,6 +41,9 @@ extern "C" {
+ #endif
+ 
+ //For storing command that are received from the device
++#ifdef BADGE
++#define CMD_BUFFER_SIZE 32   // 100 PacketResponseNG of ~4 KB is 410 KB of RAM
++#endif
+ #ifndef CMD_BUFFER_SIZE
+ #define CMD_BUFFER_SIZE 100
+ #endif
+diff --git a/client/src/graph.h b/client/src/graph.h
+index 6f0822f96..9cac5e618 100644
+--- a/client/src/graph.h
++++ b/client/src/graph.h
+@@ -67,7 +67,16 @@ size_t restore_buffer32(buffer_savestate_t saveState, uint32_t *dest);
+ size_t restore_bufferS32(buffer_savestate_t saveState, int32_t *dest);
+ size_t restore_buffer8(buffer_savestate_t saveState, uint8_t *dest);
+ 
++// The badge (BADGE build) has little RAM: three int32 buffers of 40000*32
++// samples are 15 MB. Its Proxmark3 RDV4 delivers at most ~40 KB of samples
++// (BigBuf), so 128K samples per buffer is plenty there.
++#ifndef MAX_GRAPH_TRACE_LEN
++#ifdef BADGE
++#define MAX_GRAPH_TRACE_LEN (128 * 1024)
++#else
+ #define MAX_GRAPH_TRACE_LEN (40000 * 32)
++#endif
++#endif
+ #define GRAPH_SAVE 1
+ #define GRAPH_RESTORE 0
+ 
+diff --git a/client/src/guidummy_badge.c b/client/src/guidummy_badge.c
+new file mode 100644
+index 000000000..23ed0887c
+--- /dev/null
++++ b/client/src/guidummy_badge.c
+@@ -0,0 +1,60 @@
++//-----------------------------------------------------------------------------
++// Copyright (C) Proxmark3 contributors. See AUTHORS.md for details.
++//
++// This program is free software: you can redistribute it and/or modify
++// it under the terms of the GNU General Public License as published by
++// the Free Software Foundation, either version 3 of the License, or
++// (at your option) any later version.
++//
++// This program is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++//
++// See LICENSE.txt for the text of the license.
++//-----------------------------------------------------------------------------
++// GUI stubs for the BADGE build: guidummy.cpp as C, for a toolchain without
++// a C++ compiler (WHY2025 badge).
++//-----------------------------------------------------------------------------
++#include <stdio.h>
++#include <stdbool.h>
++#include "proxgui.h"
++
++static void no_gui(void) {
++    static int warned = 0;
++    if (!warned) {
++        printf("No GUI in this build!\n");
++        warned = 1;
++    }
++}
++
++void ShowGraphWindow(void) {
++    no_gui();
++}
++void HideGraphWindow(void) {}
++void RepaintGraphWindow(void) {}
++
++void ShowPictureWindow(const char *title, uint8_t *data, int len) {
++    (void)title;
++    (void)data;
++    (void)len;
++    no_gui();
++}
++void ShowBase64PictureWindow(const char *title, char *b64) {
++    (void)title;
++    (void)b64;
++    no_gui();
++}
++void ClearPictureWindow(void) {}
++void HidePictureWindow(void) {}
++void RepaintPictureWindow(void) {}
++
++void MainGraphics(void) {}
++void InitGraphics(int argc, char **argv, char *script_cmds_file, char *script_cmd, bool stayInCommandLoop) {
++    (void)argc;
++    (void)argv;
++    (void)script_cmds_file;
++    (void)script_cmd;
++    (void)stayInCommandLoop;
++}
++void ExitGraphics(void) {}
+diff --git a/client/src/proxmark3.c b/client/src/proxmark3.c
+index fa1d6c75d..5358e6d98 100644
+--- a/client/src/proxmark3.c
++++ b/client/src/proxmark3.c
+@@ -650,7 +650,9 @@ check_script:
+         cmd = NULL;
+     }
+ 
++#ifndef BADGE
+     CmdScriptCleanup();
++#endif
+ }
+ 
+ #ifndef LIBPM3
+diff --git a/client/src/pthread_spin_uclibc.c b/client/src/pthread_spin_uclibc.c
+new file mode 100644
+index 000000000..73814973d
+--- /dev/null
++++ b/client/src/pthread_spin_uclibc.c
+@@ -0,0 +1,57 @@
++//-----------------------------------------------------------------------------
++// Copyright (C) Proxmark3 contributors. See AUTHORS.md for details.
++//
++// This program is free software: you can redistribute it and/or modify
++// it under the terms of the GNU General Public License as published by
++// the Free Software Foundation, either version 3 of the License, or
++// (at your option) any later version.
++//
++// This program is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++//
++// See LICENSE.txt for the text of the license.
++//-----------------------------------------------------------------------------
++// BADGE build only (WHY2025 badge, uClibc-ng with linuxthreads, RV32 NOMMU).
++// uClibc-ng declares the POSIX spinlock calls but does not implement them:
++// the same compare-and-swap loop as pthread_spin_lock_shim.h, with the libc
++// type. RV32 also has no 64-bit atomics; GCC turns a __sync_fetch_and_add on
++// a uint64_t into a libcall that only the __atomic family implements.
++//-----------------------------------------------------------------------------
++#include <pthread.h>
++#include <sched.h>
++#include <stdint.h>
++
++int pthread_spin_init(pthread_spinlock_t *lock, int pshared) {
++    (void)pshared;
++    *lock = 0;
++    return 0;
++}
++
++int pthread_spin_destroy(pthread_spinlock_t *lock) {
++    (void)lock;
++    return 0;
++}
++
++int pthread_spin_lock(pthread_spinlock_t *lock) {
++    while (!__sync_bool_compare_and_swap(lock, 0, 1)) {
++        sched_yield();
++    }
++    return 0;
++}
++
++int pthread_spin_trylock(pthread_spinlock_t *lock) {
++    return __sync_bool_compare_and_swap(lock, 0, 1) ? 0 : 16; // EBUSY
++}
++
++int pthread_spin_unlock(pthread_spinlock_t *lock) {
++    __sync_synchronize();
++    *lock = 0;
++    return 0;
++}
++
++uint64_t badge_sync_fetch_and_add_8(volatile void *p, uint64_t v) __asm__("__sync_fetch_and_add_8");
++uint64_t badge_sync_fetch_and_add_8(volatile void *p, uint64_t v) {
++    return __atomic_fetch_add((volatile uint64_t *)p, v, __ATOMIC_SEQ_CST);
++}
+-- 
+2.50.1 (Apple Git-155)
+

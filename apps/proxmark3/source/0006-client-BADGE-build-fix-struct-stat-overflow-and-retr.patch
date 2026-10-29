@@ -1,0 +1,101 @@
+From 558600a75bee1dbb61fd2ca5922b95974b7edfdf Mon Sep 17 00:00:00 2001
+From: John <john.de.kroon@cyberant.com>
+Date: Thu, 29 Oct 2026 09:50:26 +0100
+Subject: [PATCH 6/7] client: BADGE build, fix struct stat overflow and retry
+ the first ping
+
+uClibc-ng's riscv32 <bits/stat.h> (64-bit time_t) gives struct stat 104
+bytes when a file asks for strict POSIX (ui.c: _POSIX_C_SOURCE 200112L),
+while stat() always writes 128. searchHomeFilePath() keeps st on its stack
+below its saved registers, so a stat() of an existing ~/.proxmark3
+overwrote the caller's s5..s7: main_loop's script_cmd_len, so -c went on
+executing the environment strings after argv as commands, and in the
+session log setup the g_session base (the NULL seen on 2026-10-29).
+-D_DEFAULT_SOURCE= in the BADGE flags gives every file the 128-byte layout.
+
+The badge's USB host loses the first packets to an idle Proxmark3, and the
+client then exited with "cannot communicate" (from the menu, often): under
+BADGE it pings twice more, 200 ms apart, before giving up.
+
+Tested in the QEMU simulation (riscv32 NOMMU, stack set to 256 KB for its
+4 MB block limit): with an existing ~/.proxmark3, -c 'rem a' ran 5 to 20
+commands before, 1 after; -c 'rem a; rem b' runs both. Found with a
+register-preservation probe and the fault in an instrumented build
+(lw a0,76(s5) with s5 = 0 right after searchHomeFilePath).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ Makefile.defs          | 10 +++++++++-
+ client/src/proxmark3.c | 15 ++++++++++++++-
+ client/src/util.c      |  7 ++++---
+ 3 files changed, 27 insertions(+), 5 deletions(-)
+
+diff --git a/Makefile.defs b/Makefile.defs
+index 2d54d071f..decf9df7b 100644
+--- a/Makefile.defs
++++ b/Makefile.defs
+@@ -185,8 +185,16 @@ ifeq ($(BADGE),1)
+   # bFLT on RISC-V needs -fPIC everywhere (NOHARDENING drops it; without it
+   # absolute addresses stay unrelocated and the program faults at start),
+   # LOWMEM drops the 18 MB crapto1 tables, BADGE gates the source changes.
++  # _DEFAULT_SOURCE: uClibc-ng's riscv32 <bits/stat.h> (64-bit time_t) lays
++  # out struct stat in 104 bytes instead of 128 when a file asks for strict
++  # POSIX (ui.c: _POSIX_C_SOURCE 200112L), but stat() always writes 128. The
++  # 24 bytes beyond it overwrote the caller's saved registers on the stack:
++  # searchHomeFilePath() then returned with s5 clobbered (-c ran on into the
++  # environment, the session log setup read g_session as NULL). Empty, as
++  # uart_posix.c and whereami.c define it; tinycbor's "1" still warns.
+   DEFCFLAGS += -Os -fno-asynchronous-unwind-tables -fno-unwind-tables \
+-               -ffunction-sections -fdata-sections -fPIC -DLOWMEM -DBADGE
++               -ffunction-sections -fdata-sections -fPIC -DLOWMEM -DBADGE \
++               -D_DEFAULT_SOURCE=
+ endif
+ 
+ ifneq ($(NOHARDENING),1)
+diff --git a/client/src/proxmark3.c b/client/src/proxmark3.c
+index 5358e6d98..5912a6926 100644
+--- a/client/src/proxmark3.c
++++ b/client/src/proxmark3.c
+@@ -1486,7 +1486,20 @@ int main(int argc, char *argv[]) {
+         OpenProxmark(&g_session.current_device, port, waitCOMPort, 20, false, speed);
+     }
+ 
+-    if (g_session.pm3_present && (TestProxmark(g_session.current_device) != PM3_SUCCESS)) {
++    int test_res = PM3_SUCCESS;
++    if (g_session.pm3_present) {
++        test_res = TestProxmark(g_session.current_device);
++#ifdef BADGE
++        // The badge's USB host loses the first packets to a Proxmark3 that
++        // has been idle (why2025-linux docs/USB.md): ping again before giving up.
++        for (int i = 0; i < 2 && test_res != PM3_SUCCESS; i++) {
++            msleep(200);
++            test_res = TestProxmark(g_session.current_device);
++        }
++#endif
++    }
++
++    if (g_session.pm3_present && (test_res != PM3_SUCCESS)) {
+         PrintAndLogEx(ERR, _RED_("ERROR:") " cannot communicate with the Proxmark3\n");
+         CloseProxmark(g_session.current_device);
+     }
+diff --git a/client/src/util.c b/client/src/util.c
+index bcf8538fb..8ec5736fb 100644
+--- a/client/src/util.c
++++ b/client/src/util.c
+@@ -39,9 +39,10 @@
+ uint8_t g_debugMode = 0;
+ // global client enable/disable printing/logging/grabbing variable
+ #ifdef BADGE
+-// No per-run session log file on the badge: it fills the small flash /root,
+-// and the setup path in fPrintAndLog() faults on this NOMMU build (g_session
+-// base register reads as NULL after the fopen there). Console output stays.
++// No per-run session log file on the badge: it fills the small flash /root.
++// (Its setup in fPrintAndLog() also faulted, with g_session read as NULL:
++// the struct stat mismatch that Makefile.defs works around with
++// _DEFAULT_SOURCE.) Console output stays.
+ uint8_t g_printAndLog = PRINTANDLOG_PRINT;
+ #else
+ uint8_t g_printAndLog = PRINTANDLOG_PRINT | PRINTANDLOG_LOG;
+-- 
+2.50.1 (Apple Git-155)
+

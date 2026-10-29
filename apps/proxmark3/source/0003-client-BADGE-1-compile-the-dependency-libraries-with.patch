@@ -1,0 +1,67 @@
+From faf02acfb7576fd2768f84938fbbde7fd956fa79 Mon Sep 17 00:00:00 2001
+From: John <john.de.kroon@cyberant.com>
+Date: Sun, 11 Oct 2026 14:59:19 +0200
+Subject: [PATCH 3/7] client: BADGE=1, compile the dependency libraries with
+ the badge flags too
+
+The libraries built through Makefile.host took DEFCFLAGS without -fPIC
+(NOHARDENING drops it), so their absolute addresses stayed unrelocated in
+the bFLT image and the client faulted at start on the badge. The flags now
+live in Makefile.defs, where every sub-make picks them up. The Lua SWIG
+wrapper stays out of the badge build. Runs on the badge: 3.98 MB image
+(text 1.58, data 0.98, bss 1.39 MB) plus a 1 MB stack.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+---
+ Makefile.defs   |  6 ++++++
+ client/Makefile | 10 +++-------
+ 2 files changed, 9 insertions(+), 7 deletions(-)
+
+diff --git a/Makefile.defs b/Makefile.defs
+index b18a45189..2d54d071f 100644
+--- a/Makefile.defs
++++ b/Makefile.defs
+@@ -181,6 +181,12 @@ ifeq ($(BADGE),1)
+   SKIPLINENOISE ?= 1
+   SKIPREVENGTEST ?= 1
+   cpu_arch ?= generic
++  # For every object, the dependency libraries (Makefile.host) included:
++  # bFLT on RISC-V needs -fPIC everywhere (NOHARDENING drops it; without it
++  # absolute addresses stay unrelocated and the program faults at start),
++  # LOWMEM drops the 18 MB crapto1 tables, BADGE gates the source changes.
++  DEFCFLAGS += -Os -fno-asynchronous-unwind-tables -fno-unwind-tables \
++               -ffunction-sections -fdata-sections -fPIC -DLOWMEM -DBADGE
+ endif
+ 
+ ifneq ($(NOHARDENING),1)
+diff --git a/client/Makefile b/client/Makefile
+index b0707f47b..3f66b23c4 100644
+--- a/client/Makefile
++++ b/client/Makefile
+@@ -456,7 +456,9 @@ endif
+ ########
+ 
+ ifneq ("$(wildcard src/pm3_luawrap.c)","")
+-    SWIG_LUA_FOUND = 1
++    ifneq ($(BADGE),1)   # no Lua on the badge
++        SWIG_LUA_FOUND = 1
++    endif
+ endif
+ ifeq ($(PYTHON_FOUND),1)
+     ifneq ("$(wildcard src/pm3_pywrap.c)","")
+@@ -475,12 +477,6 @@ endif
+ 
+ CFLAGS ?= $(DEFCFLAGS)
+ CFLAGS += $(MYDEFS) $(MYCFLAGS) $(MYINCLUDES)
+-ifeq ($(BADGE),1)
+-    # size first; -fPIC is required for bFLT on RISC-V (NOHARDENING drops it);
+-    # LOWMEM drops the 18 MB crapto1 lookup tables; BADGE gates the source changes
+-    CFLAGS += -Os -fno-asynchronous-unwind-tables -fno-unwind-tables \
+-              -ffunction-sections -fdata-sections -fPIC -DLOWMEM -DBADGE
+-endif
+ 
+ # We cannot just use CFLAGS+=... because it has impact on sub-makes if CFLAGS is defined in env:
+ PM3CFLAGS = $(CFLAGS)
+-- 
+2.50.1 (Apple Git-155)
+

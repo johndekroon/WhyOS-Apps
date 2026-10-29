@@ -1,0 +1,138 @@
+{
+ "author": "RRG/Iceman Proxmark3 contributors, badge build",
+ "bundled": [
+  {
+   "license": "Apache-2.0",
+   "license_file": "mbedtls.txt",
+   "license_url": "licenses/proxmark3/mbedtls.txt",
+   "name": "Mbed TLS (in the Proxmark3 client)",
+   "source": "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/common/mbedtls",
+   "version": "2.26.0"
+  },
+  {
+   "license": "MIT",
+   "license_file": "jansson.txt",
+   "license_url": "licenses/proxmark3/jansson.txt",
+   "name": "Jansson (in the Proxmark3 client)",
+   "source": "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/client/deps/jansson",
+   "version": "Proxmark3 da509461b"
+  },
+  {
+   "license": "MIT",
+   "license_file": "amiitool.txt",
+   "license_url": "licenses/proxmark3/amiitool.txt",
+   "name": "amiitool (in the Proxmark3 client)",
+   "source": "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/client/deps/amiitool",
+   "version": "Proxmark3 da509461b"
+  },
+  {
+   "license": "MIT",
+   "license_file": "id48.txt",
+   "license_url": "licenses/proxmark3/id48.txt",
+   "name": "id48 (in the Proxmark3 client)",
+   "source": "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/client/deps/id48",
+   "version": "Proxmark3 da509461b"
+  },
+  {
+   "license": "MIT OR WTFPL",
+   "license_file": "whereami.txt",
+   "license_url": "licenses/proxmark3/whereami.txt",
+   "name": "whereami (in the Proxmark3 client)",
+   "source": "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/client/deps/whereami",
+   "version": "Proxmark3 da509461b"
+  },
+  {
+   "license": "BSD-3-Clause",
+   "license_file": "argtable3.txt",
+   "license_url": "licenses/proxmark3/argtable3.txt",
+   "name": "argtable3 (in the Proxmark3 client)",
+   "source": "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/client/deps/cliparser",
+   "version": "Proxmark3 da509461b"
+  },
+  {
+   "license": "GPL-3.0-or-later",
+   "license_file": "reveng.txt",
+   "license_url": "licenses/proxmark3/reveng.txt",
+   "name": "CRC RevEng (in the Proxmark3 client)",
+   "source": "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/client/deps/reveng",
+   "version": "Proxmark3 da509461b"
+  },
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/proxmark3/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  }
+ ],
+ "category": "hardware",
+ "commands": [
+  {
+   "exec": "pm3",
+   "name": "pm3"
+  },
+  {
+   "exec": "pm3",
+   "name": "proxmark3"
+  }
+ ],
+ "cover": null,
+ "description": "The Proxmark3 client (RRG/Iceman) on the badge itself, for a Proxmark3\non the bottom USB port: work with LF and HF cards from the badge's\nkeyboard, without a laptop. Tested with a Proxmark3 RDV4.\n\nThe Proxmark3 needs RRG/Iceman firmware of the same release as this\nclient (v4.21611); flash it from a computer.\n\nThis is a smaller build than the client on a computer, to fit in the\nbadge's memory. Left out: Lua and Python scripts, and MIFARE Classic key\nrecovery that runs in the client (nested, darkside, hardnested). Key\nchecks that run on the Proxmark3 itself (hf mf chk, hf mf fchk) work,\nwith the default key lists included. The arrow keys recall earlier\ncommands and move the cursor; Tab does not complete.\n\nFrom the menu the client connects to the Proxmark3 by itself; quit\nleaves its output on screen until Enter. Dumps, key files and traces go\nto /root/.proxmark3/dumps, in the badge's flash. In a shell over SSH or\nthe serial console, pm3 (or proxmark3) starts the same client.",
+ "format": 1,
+ "homepage": "https://github.com/RfidResearchGroup/proxmark3",
+ "icon": null,
+ "id": "proxmark3",
+ "install_location": "sd",
+ "launch": {
+  "exec": "pm3",
+  "icon": "usb",
+  "info": "RFID and NFC cards",
+  "menu": "apps",
+  "rotation": "auto",
+  "terminal": true
+ },
+ "license": "GPL-3.0-or-later AND Apache-2.0 AND MIT AND BSD-3-Clause AND LGPL-2.1-or-later",
+ "license_url": "licenses/proxmark3/proxmark3.txt",
+ "name": "Proxmark3",
+ "permissions": [
+  "usb",
+  "files-all"
+ ],
+ "requires": {
+  "features": [
+   "usb-host",
+   "sd-card",
+   "keyboard"
+  ],
+  "memory_kb": 10000,
+  "os_api": 1
+ },
+ "screenshots": [],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/proxmark3/source",
+ "summary": "Proxmark3 client: read, write and sniff RFID and NFC cards from the badge",
+ "tags": [
+  "rfid",
+  "nfc",
+  "proxmark",
+  "mifare",
+  "security"
+ ],
+ "type": "app",
+ "upstream_version": "4.21611-636 (da509461b)",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "",
+   "package": {
+    "installed_size": 2700709,
+    "sha256": "0263e053041e711ef99661618ed5cd1c0205cdb93c9a073684d53aa474e02d78",
+    "size": 1354018,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/proxmark3-1.0.0.wpk"
+   },
+   "published": "2026-10-29T10:15:56Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/proxmark3-1.0.0-source.tar.gz",
+   "version": "1.0.0"
+  }
+ ]
+}
