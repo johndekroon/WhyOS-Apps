@@ -1,7 +1,7 @@
 From e9251c33989f8362e0cde5365e0eb03eb91adff7 Mon Sep 17 00:00:00 2001
 From: John <john.de.kroon@cyberant.com>
 Date: Thu, 29 Oct 2026 01:27:36 +0100
-Subject: [PATCH 5/7] client: BADGE build fixes for the v4.21611 base, tested
+Subject: [PATCH 5/8] client: BADGE build fixes for the v4.21611 base, tested
  on the badge
 
 Rebased the four BADGE commits onto da509461b (release v4.21611-636,

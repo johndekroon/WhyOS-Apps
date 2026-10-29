@@ -1,16 +1,23 @@
 # Proxmark3 (Repos/proxmark3, branch badge): the RRG/Iceman client built
-# with BADGE=1, a command-line app in the menu's terminal window, and the
-# pm3 and proxmark3 commands in any shell.
+# with BADGE=1. From the menu it shows its own screens (pm3 --ui, drawn
+# with why2025-linux's libwb: client/src/badgeui/); the pm3 and proxmark3
+# commands give its command line in any shell.
 format = 1
 id = "proxmark3"
 name = "Proxmark3"
-version = "1.0.0"
+version = "1.1.0"
 build = 1
 summary = "Proxmark3 client: read, write and sniff RFID and NFC cards from the badge"
 description = """
 The Proxmark3 client (RRG/Iceman) on the badge itself, for a Proxmark3
 on the bottom USB port: work with LF and HF cards from the badge's
 keyboard, without a laptop. Tested with a Proxmark3 RDV4.
+
+From the menu it opens on its own screens: search for a card, check the
+keys of a MIFARE Classic sector by sector and dump it, keep the cards you
+saved with their dumps and keys, choose the key lists to try (and edit
+your own in Write), sniff a reader and a card, and the client's command
+line on the screen (Console).
 
 The Proxmark3 needs RRG/Iceman firmware of the same release as this
 client (v4.21611); flash it from a computer.
@@ -22,16 +29,18 @@ checks that run on the Proxmark3 itself (hf mf chk, hf mf fchk) work,
 with the default key lists included. The arrow keys recall earlier
 commands and move the cursor; Tab does not complete.
 
-From the menu the client connects to the Proxmark3 by itself; quit
-leaves its output on screen until Enter. Dumps, key files and traces go
-to /root/.proxmark3/dumps, in the badge's flash. In a shell over SSH or
-the serial console, pm3 (or proxmark3) starts the same client."""
+The app connects to the Proxmark3 by itself, also when it is plugged in
+later. Dumps, key files and traces go to /root/.proxmark3/dumps, in the
+badge's flash; your key lists to /root/.proxmark3/dictionaries. In a
+shell over SSH or the serial console, pm3 (or proxmark3) starts the
+client's command line."""
 author = "RRG/Iceman Proxmark3 contributors, badge build"
-license = "GPL-3.0-or-later AND Apache-2.0 AND MIT AND BSD-3-Clause AND LGPL-2.1-or-later"
+license = "GPL-3.0-or-later AND Apache-2.0 AND MIT AND BSD-3-Clause AND LGPL-2.1-or-later AND OFL-1.1"
 license_file = "proxmark3.txt"
 homepage = "https://github.com/RfidResearchGroup/proxmark3"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/proxmark3/source"
 upstream_version = "4.21611-636 (da509461b)"
+changelog = "Its own screens from the menu: search, check and dump MIFARE Classic keys, saved cards, key lists, sniff and a console. pm3 in a shell is unchanged."
 
 type = "app"
 category = "hardware"
@@ -41,9 +50,9 @@ install_location = "sd"
 
 [launch]
 exec = "pm3"
+args = "--ui"
 info = "RFID and NFC cards"
 icon = "usb"
-terminal = true
 
 [[commands]]
 name = "pm3"
@@ -106,6 +115,27 @@ version = "Proxmark3 da509461b"
 license = "GPL-3.0-or-later"
 source = "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/client/deps/reveng"
 license_file = "reveng.txt"
+
+[[bundled]]
+name = "libwb (the screens' drawing library, why2025-linux)"
+version = "647c8ea"
+license = "MIT"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/proxmark3/source/libwb"
+license_file = "libwb.txt"
+
+[[bundled]]
+name = "JetBrains Mono (font)"
+version = "2.211"
+license = "OFL-1.1"
+source = "https://github.com/JetBrains/JetBrainsMono"
+license_file = "jetbrains-mono.txt"
+
+[[bundled]]
+name = "Space Grotesk (font)"
+version = "2.000"
+license = "OFL-1.1"
+source = "https://github.com/floriankarsten/space-grotesk"
+license_file = "space-grotesk.txt"
 
 [[bundled]]
 name = "uClibc-ng"

@@ -1,7 +1,7 @@
 From c9b9a1f45183bde067636d0c243bafe8468fec23 Mon Sep 17 00:00:00 2001
 From: John <john.de.kroon@cyberant.com>
 Date: Sun, 11 Oct 2026 14:45:29 +0200
-Subject: [PATCH 2/7] client: BADGE=1 step B, leave out the HF protocols the
+Subject: [PATCH 2/8] client: BADGE=1 step B, leave out the HF protocols the
  badge does not need
 
 Without aliro, cipurse, cryptorf, epa, emrtd, felica, fido, fmcos, secc,
