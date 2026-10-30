@@ -1,7 +1,7 @@
 From 1a963eb8917d46b73d2bf42a040ee8cd33634b07 Mon Sep 17 00:00:00 2001
 From: john <john.de.kroon@cyberant.com>
 Date: Sun, 11 Oct 2026 14:39:01 +0200
-Subject: [PATCH 1/8] client: BADGE=1 build for the WHY2025 badge (step A)
+Subject: [PATCH 01/12] client: BADGE=1 build for the WHY2025 badge (step A)
 
 A slim client for the badge's NOMMU Linux (RV32, uClibc-ng, static bFLT,
 no C++), gated behind one Make variable so a plain build is unchanged:

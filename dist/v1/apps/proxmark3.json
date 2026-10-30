@@ -58,6 +58,30 @@
    "version": "Proxmark3 da509461b"
   },
   {
+   "license": "MIT",
+   "license_file": "libwb.txt",
+   "license_url": "licenses/proxmark3/libwb.txt",
+   "name": "libwb (the screens' drawing library, why2025-linux)",
+   "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/proxmark3/source/libwb",
+   "version": "647c8ea"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "jetbrains-mono.txt",
+   "license_url": "licenses/proxmark3/jetbrains-mono.txt",
+   "name": "JetBrains Mono (font)",
+   "source": "https://github.com/JetBrains/JetBrainsMono",
+   "version": "2.211"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "space-grotesk.txt",
+   "license_url": "licenses/proxmark3/space-grotesk.txt",
+   "name": "Space Grotesk (font)",
+   "source": "https://github.com/floriankarsten/space-grotesk",
+   "version": "2.000"
+  },
+  {
    "license": "LGPL-2.1-or-later",
    "license_file": "uClibc-ng.txt",
    "license_url": "licenses/proxmark3/uClibc-ng.txt",
@@ -78,21 +102,22 @@
   }
  ],
  "cover": null,
- "description": "The Proxmark3 client (RRG/Iceman) on the badge itself, for a Proxmark3\non the bottom USB port: work with LF and HF cards from the badge's\nkeyboard, without a laptop. Tested with a Proxmark3 RDV4.\n\nThe Proxmark3 needs RRG/Iceman firmware of the same release as this\nclient (v4.21611); flash it from a computer.\n\nThis is a smaller build than the client on a computer, to fit in the\nbadge's memory. Left out: Lua and Python scripts, and MIFARE Classic key\nrecovery that runs in the client (nested, darkside, hardnested). Key\nchecks that run on the Proxmark3 itself (hf mf chk, hf mf fchk) work,\nwith the default key lists included. The arrow keys recall earlier\ncommands and move the cursor; Tab does not complete.\n\nFrom the menu the client connects to the Proxmark3 by itself; quit\nleaves its output on screen until Enter. Dumps, key files and traces go\nto /root/.proxmark3/dumps, in the badge's flash. In a shell over SSH or\nthe serial console, pm3 (or proxmark3) starts the same client.",
+ "description": "The Proxmark3 client (RRG/Iceman) on the badge itself, for a Proxmark3\non the bottom USB port: work with LF and HF cards from the badge's\nkeyboard, without a laptop. Tested with a Proxmark3 RDV4.\n\nFrom the menu it opens on its own screens: search for a card, check the\nkeys of a MIFARE Classic sector by sector and dump it, keep the cards you\nsaved with their dumps and keys (also the dumps the client saves itself,\nsuch as iCLASS and Ultralight), edit a saved dump in Write, choose the key\nlists to try (and edit your own in Write), sniff a reader and a card, and\nthe client's command line on the screen (Console).\n\nThe Proxmark3 needs RRG/Iceman firmware of the same release as this\nclient (v4.21611); flash it from a computer.\n\nThis is a smaller build than the client on a computer, to fit in the\nbadge's memory. Left out: Lua and Python scripts, and MIFARE Classic key\nrecovery that runs in the client (nested, darkside, hardnested). Key\nchecks that run on the Proxmark3 itself (hf mf chk, hf mf fchk) work,\nwith the default key lists included. The arrow keys recall earlier\ncommands and move the cursor; Tab does not complete.\n\nThe app connects to the Proxmark3 by itself, also when it is plugged in\nlater. Dumps, key files and traces go to /root/.proxmark3/dumps, in the\nbadge's flash; your key lists to /root/.proxmark3/dictionaries. In a\nshell over SSH or the serial console, pm3 (or proxmark3) starts the\nclient's command line.",
  "format": 1,
  "homepage": "https://github.com/RfidResearchGroup/proxmark3",
  "icon": null,
  "id": "proxmark3",
  "install_location": "sd",
  "launch": {
+  "args": "--ui",
   "exec": "pm3",
   "icon": "usb",
   "info": "RFID and NFC cards",
   "menu": "apps",
   "rotation": "auto",
-  "terminal": true
+  "terminal": false
  },
- "license": "GPL-3.0-or-later AND Apache-2.0 AND MIT AND BSD-3-Clause AND LGPL-2.1-or-later",
+ "license": "GPL-3.0-or-later AND Apache-2.0 AND MIT AND BSD-3-Clause AND LGPL-2.1-or-later AND OFL-1.1",
  "license_url": "licenses/proxmark3/proxmark3.txt",
  "name": "Proxmark3",
  "permissions": [
@@ -121,6 +146,19 @@
  "type": "app",
  "upstream_version": "4.21611-636 (da509461b)",
  "versions": [
+  {
+   "build": 2,
+   "changelog": "Its own screens from the menu: search, check and dump MIFARE Classic keys, saved cards (also iCLASS and Ultralight dumps, editable in Write), key lists, sniff and a console. pm3 in a shell is unchanged.",
+   "package": {
+    "installed_size": 3052189,
+    "sha256": "62b163d1beccfbb0fbeae78186f3c4ebe9f221e8190e7cd6f5e3e1652361fbe7",
+    "size": 1516895,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/proxmark3-1.1.0.wpk"
+   },
+   "published": "2026-10-30T10:26:11Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/proxmark3-1.1.0-source.tar.gz",
+   "version": "1.1.0"
+  },
   {
    "build": 1,
    "changelog": "",

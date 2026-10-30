@@ -1,0 +1,341 @@
+From 05e32057a92cdca847c77ba0ba9f325cad8fae6b Mon Sep 17 00:00:00 2001
+From: John <john.de.kroon@cyberant.com>
+Date: Fri, 30 Oct 2026 10:59:49 +0100
+Subject: [PATCH 12/12] badgeui: edit a saved card's dump in Write
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Cards › a card › options › Edit in Write writes the dump as text next to
+it (hf-...-dump.txt: one block per line in hex, the block number and what
+it holds as a # comment, sector lines for MIFARE Classic) and opens it in
+Write. When Write closes, the text is read back: every block must have
+its bytes (MIFARE Classic 16, iCLASS 8, other dumps 16 a row), else
+nothing is written and the notice names the line; the text then stays
+and opens again, newer than the dump. A good text replaces the .bin
+(written beside it, then renamed) and the notice says how many blocks
+changed. Dumps over the view's 4 KB are refused rather than cut. The
+client's .json beside the dump is left as it was.
+
+Tested: test_pm3ui.py 13/13 on the host (new test_edit_dump_in_write:
+an edit, a wrong line kept and fixed, no changes; a MIFARE Classic dump
+reads back unchanged). Not yet on the badge.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ client/src/badgeui/pm3ui.c       | 187 ++++++++++++++++++++++++++++++-
+ client/src/badgeui/test_pm3ui.py |  41 ++++++-
+ 2 files changed, 223 insertions(+), 5 deletions(-)
+
+diff --git a/client/src/badgeui/pm3ui.c b/client/src/badgeui/pm3ui.c
+index 2428a6665..6994efeb7 100644
+--- a/client/src/badgeui/pm3ui.c
++++ b/client/src/badgeui/pm3ui.c
+@@ -691,6 +691,7 @@ static int ck_full_sectors(void)
+ static struct {
+ 	int i;				/* in cards[] */
+ 	uint8_t data[4096];
++	int len;			/* the dump file's bytes */
+ 	int blocks;
+ 	struct mfc_keys k;
+ 	int have_keys;
+@@ -2521,20 +2522,28 @@ static void dump_card(void)
+ 
+ /* ---- cards ------------------------------------------------------------------------------- */
+ 
+-static void open_card(int i)
++/* the card's dump and keys into V */
++static void card_load(int i)
+ {
+ 	const struct saved *s = &cards[i];
+ 	int n;
+ 
+ 	V.i = i;
+ 	V.scroll = 0;
+-	V.blocks = 0;
++	V.blocks = V.len = 0;
+ 	V.have_keys = 0;
+-	if (s->dump[0] && (n = load_bin(s->dump, V.data, sizeof(V.data))) > 0)
++	if (s->dump[0] && (n = load_bin(s->dump, V.data, sizeof(V.data))) > 0) {
++		V.len = n;
+ 		V.blocks = (n + card_bs(s) - 1) / card_bs(s);
++	}
+ 	if (s->keys[0] && keys_load(s->keys, &V.k, s->c.sectors ? s->c.sectors : 16) == 0)
+ 		V.have_keys = 1;
+ 	O.card = s->c;
++}
++
++static void open_card(int i)
++{
++	card_load(i);
+ 	go(SC_CARD, 0);
+ }
+ 
+@@ -2571,6 +2580,14 @@ static void open_in_write(const char *path)
+ 	snprintf(b, sizeof(b), "Write: %s", path);
+ 	log_add(b, 0);
+ 	notice("Opened in Write", 0);
++	if (getenv("PM3UI_WRITE")) {
++		/* the test's edit, as someone in Write */
++		char cmd[600];
++
++		snprintf(cmd, sizeof(cmd), "%s '%s'", getenv("PM3UI_WRITE"), path);
++		if (system(cmd))
++			log_add("PM3UI_WRITE failed", 1);
++	}
+ #else
+ 	static const char dir[] = "/data/apps/write";
+ 	char exe[64], cfg[96], old_id[64] = "", old_dir[200] = "", old_cfg[200] = "";
+@@ -2613,6 +2630,166 @@ static void open_in_write(const char *path)
+ #endif
+ }
+ 
++/* ---- a card's dump in Write ------------------------------------------------------------- */
++
++/* the dump's text next to it: hf-...-dump.bin -> hf-...-dump.txt */
++static void dump_text_path(const struct saved *s, char *o, int n)
++{
++	int l = (int)strlen(s->dump);
++
++	if (l > 4 && !strcmp(s->dump + l - 4, ".bin"))
++		snprintf(o, (size_t)n, "%.*s.txt", l - 4, s->dump);
++	else
++		snprintf(o, (size_t)n, "%s.txt", s->dump);
++}
++
++/* One block per line in hex; what follows a # is a comment (the block's
++ * number and what it holds), and lines of only a comment are skipped. */
++static int dump_to_text(const struct saved *s, const char *path)
++{
++	static const char *const iclass_tags[] = { "CSN", "config", "e-purse", "Kd", "Kc", "AIA" };
++	int bs = card_bs(s);
++	const char *fn = strrchr(s->dump, '/');
++	FILE *f = fopen(path, "w");
++
++	if (!f)
++		return -1;
++	fprintf(f, "# %s \xc2\xb7 %s \xc2\xb7 UID %s\n", fn ? fn + 1 : s->dump, s->c.type, s->c.uid);
++	fprintf(f, "# One block per line, %d bytes in hex; after a # is a comment.\n", bs);
++	fprintf(f, "# Save and close Write: the Proxmark3 app then writes the dump file.\n");
++	for (int b = 0; b < V.blocks; b++) {
++		int n = V.len - b * bs < bs ? V.len - b * bs : bs;
++		char hx[64];
++
++		if (s->c.fam == FAM_MFC && b == mfc_first_block(mfc_sector_of(b)))
++			fprintf(f, "# sector %d\n", mfc_sector_of(b));
++		hex_spaced(V.data + b * bs, n, hx, sizeof(hx));
++		if (s->c.fam == FAM_MFC) {
++			int sct = mfc_sector_of(b);
++
++			fprintf(f, "%s  # %d%s\n", hx, b, !b ? " UID" :
++				b == mfc_first_block(sct) + mfc_blocks(sct) - 1 ? " keys + AC" : "");
++		} else if (s->c.fam == FAM_ICLASS) {
++			fprintf(f, "%s  # %d%s%s\n", hx, b, b < 6 ? " " : "", b < 6 ? iclass_tags[b] : "");
++		} else {
++			fprintf(f, "%s  # %03X\n", hx, b * bs);
++		}
++	}
++	return fclose(f);
++}
++
++/* The text back into the dump: 0, or the line that is wrong (err says
++ * why). Every block must have its bytes; nothing is written then. */
++static int dump_from_text(const struct saved *s, const char *path, uint8_t *out, int *changed, char *err, int en)
++{
++	char line[400];
++	int bs = card_bs(s), got = 0, ln = 0;
++	FILE *f = fopen(path, "r");
++
++	*changed = 0;
++	if (!f) {
++		snprintf(err, (size_t)en, "Could not read the text");
++		return -1;
++	}
++	while (fgets(line, sizeof(line), f)) {
++		int k = 0, want;
++
++		ln++;
++		line[strcspn(line, "#")] = 0;
++		for (char *p = line; *p; p++) {
++			if (isspace((unsigned char)*p))
++				continue;
++			if (!isxdigit((unsigned char)*p) || !isxdigit((unsigned char)p[1])) {
++				snprintf(err, (size_t)en, "Line %d: \"%c\" is not hex", ln, *p);
++				fclose(f);
++				return ln;
++			}
++			if (got + k >= V.len) {
++				snprintf(err, (size_t)en, "Line %d: more blocks than the dump has", ln);
++				fclose(f);
++				return ln;
++			}
++			out[got + k] = (uint8_t)strtol((char[3]){ p[0], p[1], 0 }, 0, 16);
++			k++;
++			p++;
++		}
++		if (!k)
++			continue;
++		want = V.len - got < bs ? V.len - got : bs;
++		if (k != want) {
++			snprintf(err, (size_t)en, "Line %d: %d bytes, a block has %d", ln, k, want);
++			fclose(f);
++			return ln;
++		}
++		if (memcmp(out + got, V.data + got, (size_t)k))
++			(*changed)++;
++		got += k;
++	}
++	fclose(f);
++	if (got != V.len) {
++		snprintf(err, (size_t)en, "%d of %d blocks: a block is missing", got / bs, V.blocks);
++		return ln ? ln : 1;
++	}
++	return 0;
++}
++
++/* Edit in Write: the dump as text; when Write closes, the text back into
++ * the dump file. After a mistake the text stays and opens again. */
++static void edit_dump(void)
++{
++	static uint8_t out[sizeof(V.data)];
++	struct saved *s = &cards[V.i];
++	char path[200], err[80], b[120], tmp[208];
++	struct stat ts, ds;
++	int changed, bad, scroll = V.scroll;
++	FILE *f;
++
++	if (!V.blocks) {
++		notice("No dump to edit", 1);
++		return;
++	}
++	if (stat(s->dump, &ds) || ds.st_size != V.len) {
++		notice("This dump is too large to edit here", 1);
++		return;
++	}
++	dump_text_path(s, path, sizeof(path));
++	/* a text newer than the dump: the edit that had a mistake */
++	if (stat(path, &ts) || ts.st_mtime < ds.st_mtime) {
++		if (dump_to_text(s, path)) {
++			notice("Could not write the text for Write", 1);
++			return;
++		}
++	}
++	open_in_write(path);
++	bad = dump_from_text(s, path, out, &changed, err, sizeof(err));
++	if (bad) {
++		snprintf(b, sizeof(b), "%s: dump not changed", err);
++		notice(b, 1);
++		log_add(b, 1);
++		return;
++	}
++	if (changed) {
++		snprintf(tmp, sizeof(tmp), "%s.new", s->dump);
++		if (!(f = fopen(tmp, "wb")) || fwrite(out, 1, (size_t)V.len, f) != (size_t)V.len) {
++			if (f)
++				fclose(f);
++			notice("Could not save the dump", 1);
++			return;
++		}
++		if (fclose(f) || rename(tmp, s->dump)) {
++			notice("Could not save the dump", 1);
++			return;
++		}
++	}
++	unlink(path);
++	card_load(V.i);
++	V.scroll = scroll;
++	snprintf(b, sizeof(b), changed == 1 ? "Dump saved: 1 block changed" : "Dump saved: %d blocks changed",
++		 changed);
++	notice(changed ? b : "No changes", 0);
++	log_add(changed ? b : "edit: no changes", 0);
++}
++
+ static int dict_user(int i)
+ {
+ 	return i >= 0 && i < n_dicts && !dicts[i].builtin;
+@@ -2771,6 +2948,8 @@ static void menu_build(int what)
+ 		menu_open(what, "CARDS", cards[V.i].c.type);
+ 		if (cards[V.i].c.fam == FAM_MFC)
+ 			menu_add("Keys");
++		if (V.blocks)
++			menu_add("Edit in Write");
+ 		if (card_loads(&cards[V.i])) {
+ 			menu_add("Simulate");
+ 			menu_add("Write to a card");
+@@ -2899,6 +3078,8 @@ static void menu_done(int i)
+ 	case M_CARD:
+ 		if (!strcmp(l, "Keys")) {
+ 			open_keys();
++		} else if (!strcmp(l, "Edit in Write")) {
++			edit_dump();
+ 		} else if (!strcmp(l, "Simulate")) {
+ 			char cmd[200];
+ 
+diff --git a/client/src/badgeui/test_pm3ui.py b/client/src/badgeui/test_pm3ui.py
+index 544b07916..44c35b012 100644
+--- a/client/src/badgeui/test_pm3ui.py
++++ b/client/src/badgeui/test_pm3ui.py
+@@ -133,6 +133,9 @@ class Test(unittest.TestCase):
+         self.assertTrue(w["cards"].startswith("1 07 94 71 12|full dump"))
+         w = self.a.run("\\r\\r\\n\\n", "card")
+         self.assertEqual(w["view"], "64")
++        # Edit in Write: the text reads back as it was (sector lines, trailers)
++        w = self.a.run("\\r\\r\\n\\n\\1\\d\\n", PM3UI_WRITE="grep -c '# sector'")
++        self.assertEqual(w["notice"], "No changes")
+         w = self.a.run("\\r\\r\\n\\n\\1\\n", "keys")
+         self.assertEqual(w["screen"].strip(), "keys")
+         # the keys into a new list of the user's
+@@ -159,14 +162,48 @@ class Test(unittest.TestCase):
+         self.assertEqual(w["view"], "32")
+         # no MIFARE keys; Simulate and Write type their iCLASS commands
+         w = self.a.run("\\r\\r\\n\\n\\1")
+-        self.assertEqual(w["menu"], "|Simulate |Write to a card |Delete")
+-        w = self.a.run("\\r\\r\\n\\n\\1\\d\\n")
++        self.assertEqual(w["menu"], "|Edit in Write |Simulate |Write to a card |Delete")
++        w = self.a.run("\\r\\r\\n\\n\\1\\d\\d\\n")
+         self.assertTrue(w["input"].startswith("hf iclass restore -f "), w["input"])
+         self.assertTrue(w["input"].endswith("hf-iclass-0102030405060708-dump.bin --first 6 --last 31 --ki 0"))
+         # the triangle loads it into the emulator memory
+         w = self.a.run("\\r\\r\\n\\n\\2")
+         self.assertIn("emulator memory", w["notice"])
+ 
++    def test_edit_dump_in_write(self):
++        # an iCLASS dump in Cards, then Edit in Write changes block 6
++        self.a.run("\\n" + "\\d" * 7 + "\\n\\d\\d\\n\\n")
++        dump = os.path.join(self.a.home, ".proxmark3/dumps/hf-iclass-0102030405060708-dump.bin")
++        text = dump[:-4] + ".txt"
++        w = self.a.run("\\r\\r\\n\\n\\1")
++        self.assertEqual(w["menu"], "|Edit in Write |Simulate |Write to a card |Delete")
++        edit = "perl -pi -e 's/^00 00 00 00 00 00 00 00  # 6$/11 22 33 44 55 66 77 88  # 6/'"
++        w = self.a.run("\\r\\r\\n\\n\\1\\n", "edited", PM3UI_WRITE=edit)
++        self.assertEqual(w["screen"].strip(), "card")
++        self.assertIn("1 block changed", w["notice"])
++        with open(dump, "rb") as f:
++            data = f.read()
++        self.assertEqual(len(data), 256)
++        self.assertEqual(data[48:56], bytes.fromhex("1122334455667788"))
++        self.assertEqual(data[:8], bytes.fromhex("0102030405060708"))
++        self.assertFalse(os.path.exists(text))
++        # a mistake: nothing written, the text stays and opens again
++        bad = "perl -pi -e 's/^00 00 00 00 00 00 00 00  # 7$/12 34  # 7/'"
++        w = self.a.run("\\r\\r\\n\\n\\1\\n", PM3UI_WRITE=bad)
++        self.assertIn("2 bytes, a block has 8", w["notice"])
++        with open(dump, "rb") as f:
++            self.assertEqual(f.read(), data)
++        with open(text) as f:
++            self.assertIn("12 34  # 7", f.read())
++        fix = "perl -pi -e 's/^12 34  # 7$/AA BB CC DD EE FF 00 11  # 7/'"
++        w = self.a.run("\\r\\r\\n\\n\\1\\n", PM3UI_WRITE=fix)
++        self.assertIn("1 block changed", w["notice"])
++        with open(dump, "rb") as f:
++            self.assertEqual(f.read()[56:64], bytes.fromhex("AABBCCDDEEFF0011"))
++        # no change: no changes
++        w = self.a.run("\\r\\r\\n\\n\\1\\n", PM3UI_WRITE="true")
++        self.assertEqual(w["notice"], "No changes")
++
+     def test_dictionary(self):
+         w = self.a.run("\\d\\n", "dict")
+         self.assertIn("mfc_default_keys.dic:2509:1", w["dicts"])
+-- 
+2.50.1 (Apple Git-155)
+

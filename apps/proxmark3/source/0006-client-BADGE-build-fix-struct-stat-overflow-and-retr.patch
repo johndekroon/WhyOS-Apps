@@ -1,7 +1,7 @@
 From 558600a75bee1dbb61fd2ca5922b95974b7edfdf Mon Sep 17 00:00:00 2001
 From: John <john.de.kroon@cyberant.com>
 Date: Thu, 29 Oct 2026 09:50:26 +0100
-Subject: [PATCH 6/8] client: BADGE build, fix struct stat overflow and retry
+Subject: [PATCH 06/12] client: BADGE build, fix struct stat overflow and retry
  the first ping
 
 uClibc-ng's riscv32 <bits/stat.h> (64-bit time_t) gives struct stat 104

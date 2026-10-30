@@ -6,7 +6,7 @@ format = 1
 id = "proxmark3"
 name = "Proxmark3"
 version = "1.1.0"
-build = 1
+build = 2
 summary = "Proxmark3 client: read, write and sniff RFID and NFC cards from the badge"
 description = """
 The Proxmark3 client (RRG/Iceman) on the badge itself, for a Proxmark3
@@ -15,9 +15,10 @@ keyboard, without a laptop. Tested with a Proxmark3 RDV4.
 
 From the menu it opens on its own screens: search for a card, check the
 keys of a MIFARE Classic sector by sector and dump it, keep the cards you
-saved with their dumps and keys, choose the key lists to try (and edit
-your own in Write), sniff a reader and a card, and the client's command
-line on the screen (Console).
+saved with their dumps and keys (also the dumps the client saves itself,
+such as iCLASS and Ultralight), edit a saved dump in Write, choose the key
+lists to try (and edit your own in Write), sniff a reader and a card, and
+the client's command line on the screen (Console).
 
 The Proxmark3 needs RRG/Iceman firmware of the same release as this
 client (v4.21611); flash it from a computer.
@@ -40,7 +41,7 @@ license_file = "proxmark3.txt"
 homepage = "https://github.com/RfidResearchGroup/proxmark3"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/proxmark3/source"
 upstream_version = "4.21611-636 (da509461b)"
-changelog = "Its own screens from the menu: search, check and dump MIFARE Classic keys, saved cards, key lists, sniff and a console. pm3 in a shell is unchanged."
+changelog = "Its own screens from the menu: search, check and dump MIFARE Classic keys, saved cards (also iCLASS and Ultralight dumps, editable in Write), key lists, sniff and a console. pm3 in a shell is unchanged."
 
 type = "app"
 category = "hardware"

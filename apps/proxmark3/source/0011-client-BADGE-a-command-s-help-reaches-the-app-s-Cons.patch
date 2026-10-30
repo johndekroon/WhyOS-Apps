@@ -1,0 +1,56 @@
+From b044f8c857920ac661f68e742744b727e419e9e0 Mon Sep 17 00:00:00 2001
+From: John <john.de.kroon@cyberant.com>
+Date: Fri, 30 Oct 2026 10:34:13 +0100
+Subject: [PATCH 11/12] client: BADGE, a command's help reaches the app's
+ Console
+
+CmdsHelp narrowed g_printAndLog to PRINTANDLOG_PRINT for each help line
+(to keep help out of the log file). The app's Console runs commands with
+PRINT off and GRAB on (be_command), so the help of `hf`, `lf`, `hf mf`,
+... went nowhere and the Console showed nothing. Under BADGE the grab is
+kept. pm3ui's where file also reports whether the Console is running.
+
+Tested on the badge (binary 6ee53144, Proxmark3 RDV4 on J8): Console,
+`hf` gives 26 lines and running 0 at once, `hw version` after it works;
+the panel read back from /dev/fb0 shows no "Running" and the normal
+hints. Host test_pm3ui.py 12/12.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ client/src/badgeui/pm3ui.c | 2 +-
+ client/src/cmdparser.c     | 5 +++++
+ 2 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/client/src/badgeui/pm3ui.c b/client/src/badgeui/pm3ui.c
+index fc8c4306f..2428a6665 100644
+--- a/client/src/badgeui/pm3ui.c
++++ b/client/src/badgeui/pm3ui.c
+@@ -3544,7 +3544,7 @@ static int where_text(char *o, int size)
+ 		      S.state, S.n, S.key, V.blocks, R.lines, R.cmd, C.n, C.n ? con_line(C.n - 1) : "");
+ 	for (int i = 0; O.pop == POP_MENU && i < menu_n; i++)
+ 		n += snprintf(o + n, (size_t)(size - n), " |%s", menu_it[i].label);
+-	n += snprintf(o + n, (size_t)(size - n), "\nlog %d\ninput %s\n", O.n_log, C.in);
++	n += snprintf(o + n, (size_t)(size - n), "\nlog %d\ninput %s\nrunning %d\n", O.n_log, C.in, C.running);
+ 	return n;
+ }
+ 
+diff --git a/client/src/cmdparser.c b/client/src/cmdparser.c
+index 76c28118a..13bc01b38 100644
+--- a/client/src/cmdparser.c
++++ b/client/src/cmdparser.c
+@@ -245,7 +245,12 @@ void CmdsHelp(const command_t Commands[]) {
+     while (Commands[i].Name) {
+         if (Commands[i].IsAvailable()) {
+             uint8_t old_printAndLog = g_printAndLog;
++#ifdef BADGE
++            // keep the help out of the log, but not out of a grab (the app's Console)
++            g_printAndLog &= (PRINTANDLOG_PRINT | PRINTANDLOG_GRAB);
++#else
+             g_printAndLog &= PRINTANDLOG_PRINT;
++#endif
+             if (Commands[i].Name[0] == '-' || Commands[i].Name[0] == ' ') {
+                 PrintAndLogEx(NORMAL, "%-*s %s", (int)max_name_len, Commands[i].Name, Commands[i].Help);
+             } else {
+-- 
+2.50.1 (Apple Git-155)
+

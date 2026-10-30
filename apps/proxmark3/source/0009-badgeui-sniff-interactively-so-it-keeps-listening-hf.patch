@@ -1,0 +1,42 @@
+From 1e3ff46257ae8452a878079330ec97a5ad8527d8 Mon Sep 17 00:00:00 2001
+From: John <john.de.kroon@cyberant.com>
+Date: Fri, 30 Oct 2026 08:34:55 +0100
+Subject: [PATCH 09/12] badgeui: sniff interactively so it keeps listening (hf
+ 14a sniff -i)
+
+The Sniff screen ran `hf 14a sniff`, which only tells the Proxmark3 to
+start sniffing and returns at once; the trace was then read before the
+reader and the card had talked, so it always showed "nothing heard".
+`-i` keeps the client in the sniff loop (polling kbd_enter_pressed, i.e.
+our kbd_stop) until Esc/Enter/the triangle, or the device buffer fills,
+so you can start listening, present the card, then stop. Matches the
+screen's "Listening..." text, which already described this behaviour.
+
+Tested: host tests (test_pm3ui.py) 11/11 green; sim backend unchanged.
+Badge end-to-end with a real reader+card still to verify.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+---
+ client/src/badgeui/pm3ui_pm3.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/client/src/badgeui/pm3ui_pm3.c b/client/src/badgeui/pm3ui_pm3.c
+index ce8bfb84c..3ac9f85c6 100644
+--- a/client/src/badgeui/pm3ui_pm3.c
++++ b/client/src/badgeui/pm3ui_pm3.c
+@@ -513,7 +513,11 @@ int be_mfc_read_block(const struct mfc_keys *k, int block, uint8_t out[16])
+ 
+ int be_sniff(void)
+ {
+-	return be_command("hf 14a sniff");
++	/* -i: keep the client in the sniff loop (it polls kbd_enter_pressed,
++	 * i.e. our kbd_stop) until Esc/Enter/triangle or the device's buffer
++	 * fills. Without it the command returns at once and the trace is read
++	 * before the reader and the card have talked. */
++	return be_command("hf 14a sniff -i");
+ }
+ 
+ /* trim spaces at both ends, in place */
+-- 
+2.50.1 (Apple Git-155)
+

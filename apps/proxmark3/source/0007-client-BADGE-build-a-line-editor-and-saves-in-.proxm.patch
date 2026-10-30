@@ -1,7 +1,7 @@
 From 63eff71935d68b131522651ef2c9fb02892b9654 Mon Sep 17 00:00:00 2001
 From: John <john.de.kroon@cyberant.com>
 Date: Thu, 29 Oct 2026 10:40:02 +0100
-Subject: [PATCH 7/8] client: BADGE build, a line editor, and saves in
+Subject: [PATCH 07/12] client: BADGE build, a line editor, and saves in
  ~/.proxmark3/dumps
 
 The badge build has neither readline nor linenoise (linenoise-ng is C++,

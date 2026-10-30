@@ -1,4 +1,4 @@
 # The prebuilt files/ archive (docs/repository.md §1.1), written by tools/import-sdapp.py
 path = "files.tar.gz"
-sha256 = "cde3c714962a132832a30726a10609766c70af1ac7d0b5292c6096260ebf9df3"
-built_from = "Repos/proxmark3 branch badge at 81a42cf98 (make client BADGE=1, LIBWB=apps/proxmark3/source/libwb), 2026-10-30"
+sha256 = "6a5e52e56abe83cf8b096627249dafc68ed85cab3e588b86e528eba43f96c694"
+built_from = "Repos/proxmark3 branch badge at 05e32057a (git archive; make client BADGE=1, LIBWB=apps/proxmark3/source/libwb), 2026-10-30"
