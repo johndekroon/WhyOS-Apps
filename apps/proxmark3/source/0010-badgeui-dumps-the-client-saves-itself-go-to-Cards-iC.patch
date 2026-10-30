@@ -1,7 +1,7 @@
 From 48469f6b6b64e1d9ab559338b0cffd1486e5e77d Mon Sep 17 00:00:00 2001
 From: John <john.de.kroon@cyberant.com>
 Date: Fri, 30 Oct 2026 09:51:50 +0100
-Subject: [PATCH 10/12] badgeui: dumps the client saves itself go to Cards
+Subject: [PATCH 10/13] badgeui: dumps the client saves itself go to Cards
  (iCLASS)
 
 An iCLASS dump runs as a typed Console command (hf iclass dump --ki 0);

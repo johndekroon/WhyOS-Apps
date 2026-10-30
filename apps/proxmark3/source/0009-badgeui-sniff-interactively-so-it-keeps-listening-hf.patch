@@ -1,7 +1,7 @@
 From 1e3ff46257ae8452a878079330ec97a5ad8527d8 Mon Sep 17 00:00:00 2001
 From: John <john.de.kroon@cyberant.com>
 Date: Fri, 30 Oct 2026 08:34:55 +0100
-Subject: [PATCH 09/12] badgeui: sniff interactively so it keeps listening (hf
+Subject: [PATCH 09/13] badgeui: sniff interactively so it keeps listening (hf
  14a sniff -i)
 
 The Sniff screen ran `hf 14a sniff`, which only tells the Proxmark3 to

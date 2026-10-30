@@ -147,6 +147,19 @@
  "upstream_version": "4.21611-636 (da509461b)",
  "versions": [
   {
+   "build": 3,
+   "changelog": "A saved card's options can load its dump into the Proxmark3 (before only on the triangle); a saved card with an iCLASS dump always counts as iCLASS, so loading, Simulate and Write are there.",
+   "package": {
+    "installed_size": 3052445,
+    "sha256": "e5433e8b23eddf40e0226e90e17bad778bf89df3d0ce5c39d9ef03c99afa1698",
+    "size": 1516909,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/proxmark3-1.1.1.wpk"
+   },
+   "published": "2026-10-30T20:54:39Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/proxmark3-1.1.1-source.tar.gz",
+   "version": "1.1.1"
+  },
+  {
    "build": 2,
    "changelog": "Its own screens from the menu: search, check and dump MIFARE Classic keys, saved cards (also iCLASS and Ultralight dumps, editable in Write), key lists, sniff and a console. pm3 in a shell is unchanged.",
    "package": {

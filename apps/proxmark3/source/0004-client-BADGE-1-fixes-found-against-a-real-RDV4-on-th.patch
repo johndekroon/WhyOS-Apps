@@ -1,7 +1,7 @@
 From 828b7a2b82047d5ef405b768c36cf5a6dc0b4121 Mon Sep 17 00:00:00 2001
 From: John <john.de.kroon@cyberant.com>
 Date: Wed, 28 Oct 2026 23:42:53 +0100
-Subject: [PATCH 04/12] client: BADGE=1, fixes found against a real RDV4 on the
+Subject: [PATCH 04/13] client: BADGE=1, fixes found against a real RDV4 on the
  badge
 
 Three bugs kept the badge build from talking to a Proxmark3 on J8:

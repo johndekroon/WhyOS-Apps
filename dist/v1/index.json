@@ -682,18 +682,18 @@
     "pm3",
     "proxmark3"
    ],
-   "details_sha256": "7e1b31f0f60eef5fa92704cad450fb8e782d4766eabe18cce05b8a222da3e3c0",
+   "details_sha256": "2d0d28e4a8ef7dc15f72d4df317e66a7e9b521b01cd3e00b9c9bc064416b9912",
    "id": "proxmark3",
    "install_location": "sd",
    "latest": {
-    "build": 2,
+    "build": 3,
     "package": {
-     "installed_size": 3052189,
-     "sha256": "62b163d1beccfbb0fbeae78186f3c4ebe9f221e8190e7cd6f5e3e1652361fbe7",
-     "size": 1516895,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/proxmark3-1.1.0.wpk"
+     "installed_size": 3052445,
+     "sha256": "e5433e8b23eddf40e0226e90e17bad778bf89df3d0ce5c39d9ef03c99afa1698",
+     "size": 1516909,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/proxmark3-1.1.1.wpk"
     },
-    "version": "1.1.0"
+    "version": "1.1.1"
    },
    "menu_icon": "usb",
    "name": "Proxmark3",
@@ -840,7 +840,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-10-30T10:26:12Z",
- "serial": 40,
+ "generated": "2026-10-30T20:54:40Z",
+ "serial": 41,
  "source": "whyos"
 }

@@ -1,7 +1,7 @@
 From 05e32057a92cdca847c77ba0ba9f325cad8fae6b Mon Sep 17 00:00:00 2001
 From: John <john.de.kroon@cyberant.com>
 Date: Fri, 30 Oct 2026 10:59:49 +0100
-Subject: [PATCH 12/12] badgeui: edit a saved card's dump in Write
+Subject: [PATCH 12/13] badgeui: edit a saved card's dump in Write
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 8bit

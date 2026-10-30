@@ -1,0 +1,175 @@
+From f7b6acc207dcf795a67fda2f023e782ee501a665 Mon Sep 17 00:00:00 2001
+From: John <john.de.kroon@cyberant.com>
+Date: Fri, 30 Oct 2026 21:51:47 +0100
+Subject: [PATCH 13/13] badgeui: load a saved card from its options; iCLASS
+ from the dump's name
+
+Loading a saved card's dump into the Proxmark3 was only on the triangle
+(the hint bar's "load"); the card's options (the square) had Simulate
+and Write but no load, so it looked missing. The options now have "Load
+into the Proxmark3" for the cards that can be loaded (MIFARE Classic,
+iCLASS), the same as the triangle.
+
+A card saved by a search that did not know its type (fam -1) got no
+load, Simulate or Write. A dump hf-iclass-... now makes it iCLASS: when
+the dump is attached, and when Cards is read (cards saved before).
+
+Tested: test_pm3ui.py 13/13 on the host (the menu, loading from it, a
+card stored with fam -1 and an iCLASS dump). Not yet on the badge.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ client/src/badgeui/pm3ui.c       | 52 ++++++++++++++++++++++----------
+ client/src/badgeui/test_pm3ui.py | 20 +++++++++---
+ 2 files changed, 52 insertions(+), 20 deletions(-)
+
+diff --git a/client/src/badgeui/pm3ui.c b/client/src/badgeui/pm3ui.c
+index 6994efeb7..24bff1f2f 100644
+--- a/client/src/badgeui/pm3ui.c
++++ b/client/src/badgeui/pm3ui.c
+@@ -374,6 +374,11 @@ static void cards_load(void)
+ 		field(&p, s->keys, sizeof(s->keys));
+ 		field(&p, s->detail, sizeof(s->detail));
+ 		s->c.found = 1;
++		/* a type the search did not know: the dump's name says it */
++		if (s->c.fam < 0 && strstr(s->dump, "/hf-iclass-")) {
++			s->c.fam = FAM_ICLASS;
++			snprintf(s->c.type, sizeof(s->c.type), "%s", hf_fams[FAM_ICLASS]);
++		}
+ 		if (s->c.uid[0])
+ 			n_cards++;
+ 	}
+@@ -2240,6 +2245,10 @@ static void dump_saved(const char *out)
+ 		uid_hex(O.card.uid, cu, sizeof(cu));
+ 		if (O.card.found && O.card.band == BAND_HF && !strcmp(cu, u)) {
+ 			c = O.card;
++			if (c.fam < 0) {	/* a type the search did not know */
++				c.fam = fam;
++				snprintf(c.type, sizeof(c.type), "%s", hf_fams[fam]);
++			}
+ 		} else {
+ 			/* the UID spaced, as a search writes it */
+ 			memset(&c, 0, sizeof(c));
+@@ -2951,6 +2960,8 @@ static void menu_build(int what)
+ 		if (V.blocks)
+ 			menu_add("Edit in Write");
+ 		if (card_loads(&cards[V.i])) {
++			if (V.blocks)
++				menu_add("Load into the Proxmark3");
+ 			menu_add("Simulate");
+ 			menu_add("Write to a card");
+ 		}
+@@ -3003,6 +3014,7 @@ static void menu_build(int what)
+ }
+ 
+ static void family_action(int i);
++static void load_card(void);
+ 
+ static void menu_done(int i)
+ {
+@@ -3080,6 +3092,8 @@ static void menu_done(int i)
+ 			open_keys();
+ 		} else if (!strcmp(l, "Edit in Write")) {
+ 			edit_dump();
++		} else if (!strcmp(l, "Load into the Proxmark3")) {
++			load_card();
+ 		} else if (!strcmp(l, "Simulate")) {
+ 			char cmd[200];
+ 
+@@ -3469,6 +3483,26 @@ static void cards_key(int code)
+ 		open_card(O.focus);
+ }
+ 
++/* the dump into the Proxmark3's emulator memory (the triangle, or the
++ * card's options) */
++static void load_card(void)
++{
++	char cmd[300];
++	const struct saved *s = &cards[V.i];
++
++	if (!O.dev.present) {
++		need_pm3();
++		return;
++	}
++	if (s->c.fam == FAM_ICLASS)
++		snprintf(cmd, sizeof(cmd), "hf iclass eload -f %s", s->dump);
++	else
++		snprintf(cmd, sizeof(cmd), "hf mf eload %s -f %s", mfc_size_flag(s->c.sectors), s->dump);
++	busy("CARDS", "Loading into the Proxmark3\xe2\x80\xa6");
++	run_command(cmd);
++	notice("In the Proxmark3's emulator memory: Simulate uses it", 0);
++}
++
+ static void card_key(int code)
+ {
+ 	int rows = card_rows(), max = V.blocks > rows ? V.blocks - rows : 0;
+@@ -3483,22 +3517,8 @@ static void card_key(int code)
+ 		V.scroll = V.scroll + rows < max ? V.scroll + rows : max;
+ 	else if (code == KEY_SYM_MENU)
+ 		menu_build(M_CARD), O.pop = POP_MENU;
+-	else if (code == KEY_SYM_MAIN && V.blocks && card_loads(&cards[V.i])) {
+-		char cmd[300];
+-		const struct saved *s = &cards[V.i];
+-
+-		if (!O.dev.present) {
+-			need_pm3();
+-			return;
+-		}
+-		if (s->c.fam == FAM_ICLASS)
+-			snprintf(cmd, sizeof(cmd), "hf iclass eload -f %s", s->dump);
+-		else
+-			snprintf(cmd, sizeof(cmd), "hf mf eload %s -f %s", mfc_size_flag(s->c.sectors), s->dump);
+-		busy("CARDS", "Loading into the Proxmark3\xe2\x80\xa6");
+-		run_command(cmd);
+-		notice("In the Proxmark3's emulator memory: Simulate uses it", 0);
+-	}
++	else if (code == KEY_SYM_MAIN && V.blocks && card_loads(&cards[V.i]))
++		load_card();
+ }
+ 
+ static void keys_key(int code)
+diff --git a/client/src/badgeui/test_pm3ui.py b/client/src/badgeui/test_pm3ui.py
+index 44c35b012..cd0dd634d 100644
+--- a/client/src/badgeui/test_pm3ui.py
++++ b/client/src/badgeui/test_pm3ui.py
+@@ -162,13 +162,25 @@ class Test(unittest.TestCase):
+         self.assertEqual(w["view"], "32")
+         # no MIFARE keys; Simulate and Write type their iCLASS commands
+         w = self.a.run("\\r\\r\\n\\n\\1")
+-        self.assertEqual(w["menu"], "|Edit in Write |Simulate |Write to a card |Delete")
+-        w = self.a.run("\\r\\r\\n\\n\\1\\d\\d\\n")
++        self.assertEqual(w["menu"], "|Edit in Write |Load into the Proxmark3 |Simulate |Write to a card |Delete")
++        w = self.a.run("\\r\\r\\n\\n\\1\\d\\d\\d\\n")
+         self.assertTrue(w["input"].startswith("hf iclass restore -f "), w["input"])
+         self.assertTrue(w["input"].endswith("hf-iclass-0102030405060708-dump.bin --first 6 --last 31 --ki 0"))
+-        # the triangle loads it into the emulator memory
++        # the triangle loads it into the emulator memory, as the options do
+         w = self.a.run("\\r\\r\\n\\n\\2")
+         self.assertIn("emulator memory", w["notice"])
++        w = self.a.run("\\r\\r\\n\\n\\1\\d\\n")
++        self.assertIn("emulator memory", w["notice"])
++        # a card saved without a type (fam -1) with an iCLASS dump: iCLASS
++        tsv = os.path.join(self.a.home, ".proxmark3/cards.tsv")
++        with open(tsv) as f:
++            f1 = f.read().split("\t")
++        f1[2] = "-1"
++        f1[3] = "Unknown tag"
++        with open(tsv, "w") as f:
++            f.write("\t".join(f1))
++        w = self.a.run("\\r\\r\\n\\n\\1")
++        self.assertIn("Load into the Proxmark3", w["menu"])
+ 
+     def test_edit_dump_in_write(self):
+         # an iCLASS dump in Cards, then Edit in Write changes block 6
+@@ -176,7 +188,7 @@ class Test(unittest.TestCase):
+         dump = os.path.join(self.a.home, ".proxmark3/dumps/hf-iclass-0102030405060708-dump.bin")
+         text = dump[:-4] + ".txt"
+         w = self.a.run("\\r\\r\\n\\n\\1")
+-        self.assertEqual(w["menu"], "|Edit in Write |Simulate |Write to a card |Delete")
++        self.assertEqual(w["menu"], "|Edit in Write |Load into the Proxmark3 |Simulate |Write to a card |Delete")
+         edit = "perl -pi -e 's/^00 00 00 00 00 00 00 00  # 6$/11 22 33 44 55 66 77 88  # 6/'"
+         w = self.a.run("\\r\\r\\n\\n\\1\\n", "edited", PM3UI_WRITE=edit)
+         self.assertEqual(w["screen"].strip(), "card")
+-- 
+2.50.1 (Apple Git-155)
+
