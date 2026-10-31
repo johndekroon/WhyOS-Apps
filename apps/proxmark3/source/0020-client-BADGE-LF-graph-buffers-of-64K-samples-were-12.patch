@@ -1,0 +1,46 @@
+From 394b2c2e78116d775b5cd610bc7471e8b2f1fbd3 Mon Sep 17 00:00:00 2001
+From: John <john.de.kroon@cyberant.com>
+Date: Sat, 31 Oct 2026 02:12:32 +0100
+Subject: [PATCH 20/20] client: BADGE, LF graph buffers of 64K samples (were
+ 128K)
+
+With 128K samples the LF demodulators' per-try buffers (MAX_GRAPH_TRACE_LEN
+bytes and ints: 128 KB and 512 KB, calloc'd and freed for every
+modulation and clock tried) ran the badge's user pool out: from the app a
+T55xx detect got the app stopped by apprun (pool free 1.1 MB, largest
+598 KB), or hung the badge until the watchdog; lf t55xx chk did so from a
+shell too (2026-10-31, a T5577). The RDV4 delivers at most ~40 KB of
+samples, so 64K is enough; every use of the constant is a bound (MIN or a
+comparison) or a buffer of that size. Halves those buffers and frees
+512 KB of the two static ones.
+
+Tested: built for the badge; on the badge see the next test round.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ client/src/graph.h | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/client/src/graph.h b/client/src/graph.h
+index 939858527..3affeee21 100644
+--- a/client/src/graph.h
++++ b/client/src/graph.h
+@@ -69,10 +69,13 @@ size_t restore_buffer8(buffer_savestate_t saveState, uint8_t *dest);
+ 
+ // The badge (BADGE build) has little RAM: three int32 buffers of 40000*32
+ // samples are 15 MB. Its Proxmark3 RDV4 delivers at most ~40 KB of samples
+-// (BigBuf), so 128K samples per buffer is plenty there.
++// (BigBuf), so 64K samples per buffer is enough there. 128K was too much:
++// the LF demodulators calloc and free buffers of this many bytes and ints
++// for every try, and with 128K a T55xx detect or password check ran the
++// user pool out (2026-10-31); the two static buffers are 256 KB each now.
+ #ifndef MAX_GRAPH_TRACE_LEN
+ #ifdef BADGE
+-#define MAX_GRAPH_TRACE_LEN (128 * 1024)
++#define MAX_GRAPH_TRACE_LEN (64 * 1024)
+ #else
+ #define MAX_GRAPH_TRACE_LEN (40000 * 32)
+ #endif
+-- 
+2.50.1 (Apple Git-155)
+

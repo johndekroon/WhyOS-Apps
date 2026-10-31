@@ -1,7 +1,7 @@
 From faf02acfb7576fd2768f84938fbbde7fd956fa79 Mon Sep 17 00:00:00 2001
 From: John <john.de.kroon@cyberant.com>
 Date: Sun, 11 Oct 2026 14:59:19 +0200
-Subject: [PATCH 03/13] client: BADGE=1, compile the dependency libraries with
+Subject: [PATCH 03/20] client: BADGE=1, compile the dependency libraries with
  the badge flags too
 
 The libraries built through Makefile.host took DEFCFLAGS without -fPIC

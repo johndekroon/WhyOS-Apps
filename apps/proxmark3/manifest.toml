@@ -5,8 +5,8 @@
 format = 1
 id = "proxmark3"
 name = "Proxmark3"
-version = "1.1.1"
-build = 3
+version = "1.1.2"
+build = 4
 summary = "Proxmark3 client: read, write and sniff RFID and NFC cards from the badge"
 description = """
 The Proxmark3 client (RRG/Iceman) on the badge itself, for a Proxmark3
@@ -15,8 +15,9 @@ keyboard, without a laptop. Tested with a Proxmark3 RDV4.
 
 From the menu it opens on its own screens: search for a card, check the
 keys of a MIFARE Classic sector by sector and dump it, keep the cards you
-saved with their dumps and keys (also the dumps the client saves itself,
-such as iCLASS and Ultralight), edit a saved dump in Write, choose the key
+saved with a name, their dumps and keys (also the dumps the client saves
+itself, iCLASS, Ultralight, ISO 15693, T55xx and more), edit a saved dump in
+Write or duplicate it to keep the original, choose the key
 lists to try (and edit your own in Write), sniff a reader and a card, and
 the client's command line on the screen (Console).
 
@@ -41,7 +42,7 @@ license_file = "proxmark3.txt"
 homepage = "https://github.com/RfidResearchGroup/proxmark3"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/proxmark3/source"
 upstream_version = "4.21611-636 (da509461b)"
-changelog = "A saved card's options can load its dump into the Proxmark3 (before only on the triangle); a saved card with an iCLASS dump always counts as iCLASS, so loading, Simulate and Write are there."
+changelog = "Every card type gets what is useful in the field (read, write, dump, load, simulate, NDEF, ...); saved cards get a name (asked after every dump), Rename and Duplicate; T55xx, EM4x05, HITAG and MIFARE Plus dumps go to Cards too; a new dump never replaces another. Fixes: an iCLASS card no longer shows as ISO 15693, LF cards were taken for MIFARE Classic, DESFire and Plus key checks, HID IDs, a blank T5577 is found. Uses 512 KB less memory for LF. The T55xx and EM4x05 password check is left out: it ran the badge out of memory."
 
 type = "app"
 category = "hardware"

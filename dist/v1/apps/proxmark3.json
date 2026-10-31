@@ -102,7 +102,7 @@
   }
  ],
  "cover": null,
- "description": "The Proxmark3 client (RRG/Iceman) on the badge itself, for a Proxmark3\non the bottom USB port: work with LF and HF cards from the badge's\nkeyboard, without a laptop. Tested with a Proxmark3 RDV4.\n\nFrom the menu it opens on its own screens: search for a card, check the\nkeys of a MIFARE Classic sector by sector and dump it, keep the cards you\nsaved with their dumps and keys (also the dumps the client saves itself,\nsuch as iCLASS and Ultralight), edit a saved dump in Write, choose the key\nlists to try (and edit your own in Write), sniff a reader and a card, and\nthe client's command line on the screen (Console).\n\nThe Proxmark3 needs RRG/Iceman firmware of the same release as this\nclient (v4.21611); flash it from a computer.\n\nThis is a smaller build than the client on a computer, to fit in the\nbadge's memory. Left out: Lua and Python scripts, and MIFARE Classic key\nrecovery that runs in the client (nested, darkside, hardnested). Key\nchecks that run on the Proxmark3 itself (hf mf chk, hf mf fchk) work,\nwith the default key lists included. The arrow keys recall earlier\ncommands and move the cursor; Tab does not complete.\n\nThe app connects to the Proxmark3 by itself, also when it is plugged in\nlater. Dumps, key files and traces go to /root/.proxmark3/dumps, in the\nbadge's flash; your key lists to /root/.proxmark3/dictionaries. In a\nshell over SSH or the serial console, pm3 (or proxmark3) starts the\nclient's command line.",
+ "description": "The Proxmark3 client (RRG/Iceman) on the badge itself, for a Proxmark3\non the bottom USB port: work with LF and HF cards from the badge's\nkeyboard, without a laptop. Tested with a Proxmark3 RDV4.\n\nFrom the menu it opens on its own screens: search for a card, check the\nkeys of a MIFARE Classic sector by sector and dump it, keep the cards you\nsaved with a name, their dumps and keys (also the dumps the client saves\nitself, iCLASS, Ultralight, ISO 15693, T55xx and more), edit a saved dump in\nWrite or duplicate it to keep the original, choose the key\nlists to try (and edit your own in Write), sniff a reader and a card, and\nthe client's command line on the screen (Console).\n\nThe Proxmark3 needs RRG/Iceman firmware of the same release as this\nclient (v4.21611); flash it from a computer.\n\nThis is a smaller build than the client on a computer, to fit in the\nbadge's memory. Left out: Lua and Python scripts, and MIFARE Classic key\nrecovery that runs in the client (nested, darkside, hardnested). Key\nchecks that run on the Proxmark3 itself (hf mf chk, hf mf fchk) work,\nwith the default key lists included. The arrow keys recall earlier\ncommands and move the cursor; Tab does not complete.\n\nThe app connects to the Proxmark3 by itself, also when it is plugged in\nlater. Dumps, key files and traces go to /root/.proxmark3/dumps, in the\nbadge's flash; your key lists to /root/.proxmark3/dictionaries. In a\nshell over SSH or the serial console, pm3 (or proxmark3) starts the\nclient's command line.",
  "format": 1,
  "homepage": "https://github.com/RfidResearchGroup/proxmark3",
  "icon": null,
@@ -146,6 +146,19 @@
  "type": "app",
  "upstream_version": "4.21611-636 (da509461b)",
  "versions": [
+  {
+   "build": 4,
+   "changelog": "Every card type gets what is useful in the field (read, write, dump, load, simulate, NDEF, ...); saved cards get a name (asked after every dump), Rename and Duplicate; T55xx, EM4x05, HITAG and MIFARE Plus dumps go to Cards too; a new dump never replaces another. Fixes: an iCLASS card no longer shows as ISO 15693, LF cards were taken for MIFARE Classic, DESFire and Plus key checks, HID IDs, a blank T5577 is found. Uses 512 KB less memory for LF. The T55xx and EM4x05 password check is left out: it ran the badge out of memory.",
+   "package": {
+    "installed_size": 3058773,
+    "sha256": "f1f513d4c2c6e3e0c5137e9405523c4564afdf6ed257fcdbfd28fde0f6fc90b7",
+    "size": 1520198,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/proxmark3-1.1.2.wpk"
+   },
+   "published": "2026-10-31T01:48:43Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/proxmark3-1.1.2-source.tar.gz",
+   "version": "1.1.2"
+  },
   {
    "build": 3,
    "changelog": "A saved card's options can load its dump into the Proxmark3 (before only on the triangle); a saved card with an iCLASS dump always counts as iCLASS, so loading, Simulate and Write are there.",

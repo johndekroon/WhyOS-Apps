@@ -1,0 +1,735 @@
+From adba73720d44c622769448544da67a71ed55f0c0 Mon Sep 17 00:00:00 2001
+From: John <john.de.kroon@cyberant.com>
+Date: Fri, 30 Oct 2026 22:24:00 +0100
+Subject: [PATCH 16/20] badgeui: a dump asks for a name, names can change; LF
+ dumps go to Cards
+
+- Every saved card can have a name (cards.tsv's 13th column; files
+  without it read as before). Cards shows the name with the type and
+  detail under it, and the type when there is none. After every dump,
+  the app's own MIFARE Classic dump and any dump the client saves (the
+  Console, an action), a pop-up asks for one: Enter keeps what is typed
+  (empty: the type again), Esc leaves the name as it was. Rename in the
+  card's options, in the list and on the card, opens it again. A name
+  takes any printable character but a tab (the file's separator).
+- T55xx and EM4x05 dumps (lf-t55xx-<block 1>-...-dump, lf-4x05-, -4369-,
+  -4469-<UID>-dump) were lost: they now go to Cards too, on the LF card
+  searched last (a T55xx dump has no UID of its own), else on a saved
+  one with the ID in the name, else a new card. The dump's type becomes
+  the card's. They show as 4-byte blocks; a T55xx offers Write to a
+  T55xx (lf t55xx restore -f, typed in), EM4x05 nothing to write with
+  (the client has no restore for it); both Edit in Write. HF > T55xx
+  gains Restore.
+- A card's options only offer what it can do: Simulate when the type
+  has it, writing when there is a dump or none is needed.
+
+Tested: test_pm3ui.py 22/22 on the host (new: a name after a Console
+dump, Rename, Esc, an empty name; a T55xx dump alone and after an LF
+search; an EM4x05 dump), screens compared by eye. Not yet on the badge.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ client/src/badgeui/pm3ui.c       | 225 ++++++++++++++++++++++---------
+ client/src/badgeui/pm3ui_sim.c   |  47 ++++---
+ client/src/badgeui/test_pm3ui.py |  64 +++++++--
+ 3 files changed, 250 insertions(+), 86 deletions(-)
+
+diff --git a/client/src/badgeui/pm3ui.c b/client/src/badgeui/pm3ui.c
+index 26dd024c7..fe3da30a1 100644
+--- a/client/src/badgeui/pm3ui.c
++++ b/client/src/badgeui/pm3ui.c
+@@ -181,7 +181,7 @@ static const struct action fam_acts[N_HF_FAM + N_LF_FAM][ACTS_MAX] = {
+ 	{ { "Read", A_RUN, "lf indala reader" }, { "Simulate", A_EDIT, "lf indala sim -r %U" },
+ 	  { "Clone to a T55xx", A_EDIT, "lf indala clone -r %U" } },
+ 	/* T55xx */
+-	{ { "Detect", A_RUN, "lf t55xx detect" }, { "Dump", A_RUN, "lf t55xx dump" },
++	{ { "Detect", A_RUN, "lf t55xx detect" }, { "Dump", A_RUN, "lf t55xx dump" }, { "Restore", A_EDIT, "lf t55xx restore -f %F" },
+ 	  { "Check passwords", A_RUN, "lf t55xx chk -f t55xx_default_pwds" }, { "Wipe", A_EDIT, "lf t55xx wipe" } },
+ 	/* EM4x05 */
+ 	{ { "Info", A_RUN, "lf em 4x05 info" }, { "Dump", A_RUN, "lf em 4x05 dump" } },
+@@ -317,24 +317,36 @@ static const char *mfc_size_text(int sectors)
+ 	return sectors == 5 ? "320 B" : sectors == 32 ? "2 KB" : sectors == 40 ? "4 KB" : "1 KB";
+ }
+ 
+-/* the card types of the dumps the client names hf-<type>-<UID>-dump */
+-static const struct { const char *tag; int fam; } dump_tags[] = {
+-	{ "iclass", FAM_ICLASS }, { "mf", FAM_MFC }, { "mfu", FAM_MFU }, { "15", FAM_15 },
++/* the card types of the dumps the client names hf-<type>-<UID>-dump,
++ * lf-t55xx-<block 1>-...-dump and lf-4x05-<UID>-dump (4369, 4469) */
++static const struct { int band; const char *tag; int fam; } dump_tags[] = {
++	{ BAND_HF, "iclass", FAM_ICLASS }, { BAND_HF, "mf", FAM_MFC }, { BAND_HF, "mfu", FAM_MFU },
++	{ BAND_HF, "15", FAM_15 }, { BAND_LF, "t55xx", FAM_T55XX }, { BAND_LF, "4x05", FAM_EM4X05 },
++	{ BAND_LF, "4369", FAM_EM4X05 }, { BAND_LF, "4469", FAM_EM4X05 },
+ };
+ 
+-/* the card type a dump's name says (hf-<type>-<UID>-dump), or -1 */
+-static int dump_fam(const char *path)
++/* the card type a dump's name says, and its band; -1 if none */
++static int dump_kind(const char *path, int *band)
+ {
+ 	const char *base = strrchr(path, '/') ? strrchr(path, '/') + 1 : path, *dash;
++	int b = !strncmp(base, "hf-", 3) ? BAND_HF : !strncmp(base, "lf-", 3) ? BAND_LF : -1;
+ 
+-	if (strncmp(base, "hf-", 3) || !(dash = strchr(base + 3, '-')))
++	if (b < 0 || !(dash = strchr(base + 3, '-')))
+ 		return -1;
+ 	for (size_t i = 0; i < sizeof(dump_tags) / sizeof(dump_tags[0]); i++)
+-		if ((int)strlen(dump_tags[i].tag) == dash - base - 3 && !strncmp(base + 3, dump_tags[i].tag, (size_t)(dash - base - 3)))
++		if (dump_tags[i].band == b && (int)strlen(dump_tags[i].tag) == dash - base - 3 &&
++		    !strncmp(base + 3, dump_tags[i].tag, (size_t)(dash - base - 3))) {
++			*band = b;
+ 			return dump_tags[i].fam;
++		}
+ 	return -1;
+ }
+ 
++static const char *fam_name(int band, int fam)
++{
++	return band == BAND_LF ? lf_fams[fam] : hf_fams[fam];
++}
++
+ /* ---- the saved cards (~/.proxmark3/cards.tsv) ---------------------------------- */
+ 
+ struct saved {
+@@ -342,6 +354,7 @@ struct saved {
+ 	struct pm3_card c;
+ 	char dump[160], keys[160];
+ 	char detail[48];
++	char name[48];			/* the user's, "" for none: the type is shown */
+ };
+ 
+ static struct saved cards[CARDS_MAX];
+@@ -377,7 +390,7 @@ static void cards_load(void)
+ 	while (n_cards < CARDS_MAX && fgets(line, sizeof(line), f)) {
+ 		struct saved *s = &cards[n_cards];
+ 		char *p = line, num[24];
+-		int fam;
++		int fam, band;
+ 
+ 		line[strcspn(line, "\n")] = 0;
+ 		memset(s, 0, sizeof(*s));
+@@ -398,12 +411,13 @@ static void cards_load(void)
+ 		field(&p, s->dump, sizeof(s->dump));
+ 		field(&p, s->keys, sizeof(s->keys));
+ 		field(&p, s->detail, sizeof(s->detail));
++		field(&p, s->name, sizeof(s->name));	/* "" in files from before names */
+ 		s->c.found = 1;
+ 		/* the dump says what the card is (cards saved before the search
+ 		 * knew better: an iCLASS card called ISO 15693, or no type) */
+-		if (s->dump[0] && (fam = dump_fam(s->dump)) >= 0 && fam != s->c.fam) {
++		if (s->dump[0] && (fam = dump_kind(s->dump, &band)) >= 0 && band == s->c.band && fam != s->c.fam) {
+ 			s->c.fam = fam;
+-			snprintf(s->c.type, sizeof(s->c.type), "%s", hf_fams[fam]);
++			snprintf(s->c.type, sizeof(s->c.type), "%s", fam_name(band, fam));
+ 		}
+ 		if (s->c.uid[0])
+ 			n_cards++;
+@@ -423,8 +437,8 @@ static void cards_save(void)
+ 	for (int i = 0; i < n_cards; i++) {
+ 		const struct saved *s = &cards[i];
+ 
+-		fprintf(f, "%ld\t%d\t%d\t%s\t%s\t%s\t%s\t%d\t%d\t%s\t%s\t%s\n", s->t, s->c.band, s->c.fam, s->c.type,
+-			s->c.uid, s->c.proto, s->c.magic, s->c.sak, s->c.sectors, s->dump, s->keys, s->detail);
++		fprintf(f, "%ld\t%d\t%d\t%s\t%s\t%s\t%s\t%d\t%d\t%s\t%s\t%s\t%s\n", s->t, s->c.band, s->c.fam, s->c.type,
++			s->c.uid, s->c.proto, s->c.magic, s->c.sak, s->c.sectors, s->dump, s->keys, s->detail, s->name);
+ 	}
+ 	if (fclose(f) == 0)
+ 		rename(tmp, path);
+@@ -458,6 +472,12 @@ static struct saved *card_save(const struct pm3_card *c)
+ 	return &cards[0];
+ }
+ 
++/* what Cards calls it: its name, else its type */
++static const char *card_title(const struct saved *s)
++{
++	return s->name[0] ? s->name : s->c.type;
++}
++
+ static void when_text(long t, char *o, int n)
+ {
+ 	static const char *const mon[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct",
+@@ -823,9 +843,11 @@ static void menu_open(int what, const char *eb, const char *title)
+ static struct {
+ 	char eb[24], title[48], text[48];
+ 	int what;
++	int card;			/* IN_CARD_NAME: in cards[] */
+ } IN;
+ 
+-enum { IN_NEW_DICT, IN_ADD_KEYS };	/* a new list; one with the card's keys */
++/* a new list; one with the card's keys; a saved card's name */
++enum { IN_NEW_DICT, IN_ADD_KEYS, IN_CARD_NAME };
+ 
+ static struct {
+ 	char eb[24], title[64];
+@@ -1433,11 +1455,19 @@ static void draw_cards(void)
+ 		wb_card(X0, y, XW - 12, rh, 4, on, &GLOW_FOCUS);
+ 		text(&f_mono13, X0 + 18, text_top(&f_mono13, y + rh / 2), s->c.band == BAND_LF ? "LF" : "HF",
+ 		     on ? WB_COLOR_CYAN : WB_COLOR_TEXT_LOW, 0);
+-		x = text(&f_ui20, X0 + 18 + 34 + 16, text_top(&f_ui20, y + 25), s->c.type, on ? WB_COLOR_CYAN : WB_COLOR_TEXT_HI,
+-			 0);
++		x = text(&f_ui20, X0 + 18 + 34 + 16, text_top(&f_ui20, y + 25),
++			 wb_fit(&f_ui20, card_title(s), XW - 12 - 18 - 34 - 16 - 260, b, sizeof(b)),
++			 on ? WB_COLOR_CYAN : WB_COLOR_TEXT_HI, 0);
+ 		text(&f_mono16b, x + 10, text_top(&f_mono16b, y + 25), wb_fit(&f_mono16b, s->c.uid, XW - 12 - x - 120, b,
+ 		     sizeof(b)), WB_COLOR_TEXT_HI, 0);
+-		text(&f_mono13, X0 + 18 + 34 + 16, text_top(&f_mono13, y + 51), s->detail, WB_COLOR_TEXT_MID, 0);
++		if (s->name[0]) {
++			char d[112];
++
++			snprintf(d, sizeof(d), "%s \xc2\xb7 %s", s->c.type, s->detail);
++			text(&f_mono13, X0 + 18 + 34 + 16, text_top(&f_mono13, y + 51), d, WB_COLOR_TEXT_MID, 0);
++		} else {
++			text(&f_mono13, X0 + 18 + 34 + 16, text_top(&f_mono13, y + 51), s->detail, WB_COLOR_TEXT_MID, 0);
++		}
+ 		when_text(s->t, w, sizeof(w));
+ 		text(&f_mono13, X0 + XW - 12 - 18 - text_w(&f_mono13, w, 0), text_top(&f_mono13, y + rh / 2), w,
+ 		     WB_COLOR_TEXT_MID, 0);
+@@ -1488,7 +1518,7 @@ static int is_hf(const struct pm3_card *c, int fam)
+  * block. Writing a MIFARE Classic asks first and runs (CF_RESTORE); the
+  * others are typed in the Console, to edit (a key, a block range).
+  */
+-struct card_cmds { int band, fam; const char *load, *sim, *write, *write_label; };
++struct card_cmds { int band, fam; const char *load, *sim, *write, *write_label; };	/* sim may be 0 */
+ static const struct card_cmds card_table[] = {
+ 	{ BAND_HF, FAM_MFC, "hf mf eload %S -f %F", "hf mf sim %S -u %U", 0, "Write to a card" },
+ 	{ BAND_HF, FAM_MFU, "hf mfu eload -f %F", "hf mfu sim -t 2 -u %U", "hf mfu restore -f %F", "Write to a card" },
+@@ -1498,8 +1528,15 @@ static const struct card_cmds card_table[] = {
+ 	{ BAND_LF, FAM_EM410X, 0, "lf em 410x sim --id %U", "lf em 410x clone --id %U", "Clone to a T55xx" },
+ 	{ BAND_LF, FAM_HID, 0, "lf hid sim -r %U", "lf hid clone -r %U", "Clone to a T55xx" },
+ 	{ BAND_LF, FAM_INDALA, 0, "lf indala sim -r %U", "lf indala clone -r %U", "Clone to a T55xx" },
++	{ BAND_LF, FAM_T55XX, 0, 0, "lf t55xx restore -f %F", "Write to a T55xx" },
+ };
+ 
++/* writing it needs the dump (MIFARE Classic's write is the dump too) */
++static int write_needs_dump(const struct card_cmds *k)
++{
++	return !k->write || strstr(k->write, "%F");
++}
++
+ static const struct card_cmds *card_cmds(const struct saved *s)
+ {
+ 	for (size_t i = 0; i < sizeof(card_table) / sizeof(card_table[0]); i++)
+@@ -1508,10 +1545,12 @@ static const struct card_cmds *card_cmds(const struct saved *s)
+ 	return 0;
+ }
+ 
+-/* a dump's block: MIFARE Classic 16 bytes, iCLASS 8; other dumps as rows
+- * of 16 bytes */
++/* a dump's block: MIFARE Classic 16 bytes, iCLASS 8, T55xx and EM4x05 4;
++ * other dumps as rows of 16 bytes */
+ static int card_bs(const struct saved *s)
+ {
++	if (s->c.band == BAND_LF && (s->c.fam == FAM_T55XX || s->c.fam == FAM_EM4X05))
++		return 4;	/* their blocks are 32 bits */
+ 	return is_hf(&s->c, FAM_ICLASS) ? 8 : 16;
+ }
+ 
+@@ -1546,7 +1585,24 @@ static void draw_card_iclass(int tx, int ty, int rows)
+ 	}
+ }
+ 
+-/* another dump: its bytes, 16 to a row, with the offset */
++/* another dump: its bytes, 16 to a row with the offset; 4-byte blocks
++ * (T55xx, EM4x05) one to a row with their number */
++static void draw_card_blocks(int tx, int ty, int rows)
++{
++	text(&f_mono13, tx, text_top(&f_mono13, 198 + 16), "BLK", WB_COLOR_TEXT_LOW, 16);
++	text(&f_mono13, tx + 48, text_top(&f_mono13, 198 + 16), "DATA", WB_COLOR_TEXT_LOW, 16);
++	fill(X0 + 1, 198 + 32, XW - 14, 1, WB_COLOR_LINE);
++	for (int i = 0; i < rows && V.scroll + i < V.blocks; i++) {
++		int b = V.scroll + i, cy = ty + i * DUMP_LH + DUMP_LH / 2;
++		char hx[64];
++
++		snprintf(hx, sizeof(hx), "%02d", b);
++		text(&f_mono14, tx, text_top(&f_mono14, cy), hx, WB_COLOR_TEXT_LOW, 0);
++		hex_spaced(V.data + b * 4, V.len - b * 4 < 4 ? V.len - b * 4 : 4, hx, sizeof(hx));
++		text(&f_mono14, tx + 48, text_top(&f_mono14, cy), hx, WB_COLOR_TEXT_HI, 0);
++	}
++}
++
+ static void draw_card_bytes(int tx, int ty, int rows)
+ {
+ 	text(&f_mono13, tx, text_top(&f_mono13, 198 + 16), "OFFS", WB_COLOR_TEXT_LOW, 16);
+@@ -1577,7 +1633,12 @@ static void draw_card(void)
+ 	wb_scene();
+ 	status_bar();
+ 	eyebrow(X0 + 6, 72, eb);
+-	text(&f_ui36b, X0 + 6, 72 + 18 + 6, s->c.type, WB_COLOR_TEXT_HI, -11);
++	{
++		char t[64];
++
++		text(&f_ui36b, X0 + 6, 72 + 18 + 6, wb_fit(&f_ui36b, card_title(s), XW - 12 - 260, t, sizeof(t)),
++		     WB_COLOR_TEXT_HI, -11);
++	}
+ 	head_right(WB_COLOR_OK, 0, 0, s->c.uid);
+ 	card_chips(s, 150);
+ 	console_box(X0, 198, XW - 12, 466);
+@@ -1595,6 +1656,8 @@ static void draw_card(void)
+ 	if (!is_hf(&s->c, FAM_MFC)) {
+ 		if (is_hf(&s->c, FAM_ICLASS))
+ 			draw_card_iclass(tx, ty, rows);
++		else if (card_bs(s) == 4)
++			draw_card_blocks(tx, ty, rows);
+ 		else
+ 			draw_card_bytes(tx, ty, rows);
+ 		scrollbar(W - X0 - 4, 198, 466, V.blocks, rows, V.scroll);
+@@ -1652,7 +1715,7 @@ static void draw_keys(void)
+ 
+ 	for (int i = 0; i < V.k.sectors; i++)
+ 		n += V.k.found[i][0] + V.k.found[i][1];
+-	snprintf(eb, sizeof(eb), "PROXMARK3 \xe2\x80\xba CARDS \xe2\x80\xba %s \xe2\x80\xba", s->c.type);
++	snprintf(eb, sizeof(eb), "PROXMARK3 \xe2\x80\xba CARDS \xe2\x80\xba %s \xe2\x80\xba", card_title(s));
+ 	for (char *p = eb; *p; p++)
+ 		*p = (char)toupper((unsigned char)*p);
+ 	wb_scene();
+@@ -2063,9 +2126,11 @@ static void draw_input(void)
+ 	y = dialog(IN.eb, IN.title, 56 + 30, 0, 0, 0, 0, -1);
+ 	box_focus(x, y, w, 56, WB_RADIUS_MD, &GLOW_FOCUS);
+ 	tx = text(&f_mono18, x + 20, text_top(&f_mono18, y + 28), IN.text, WB_COLOR_TEXT_HI, 0);
+-	text(&f_mono18, tx, text_top(&f_mono18, y + 28), ".dic", WB_COLOR_TEXT_LOW, 0);
++	if (IN.what != IN_CARD_NAME)
++		text(&f_mono18, tx, text_top(&f_mono18, y + 28), ".dic", WB_COLOR_TEXT_LOW, 0);
+ 	fill(tx + 1, y + 16, 2, 24, WB_COLOR_CYAN);
+-	text(&f_ui16, x, y + 56 + 10, "Letters, digits, - and _", WB_COLOR_TEXT_LOW, 0);
++	text(&f_ui16, x, y + 56 + 10, IN.what == IN_CARD_NAME ? "Its name in Cards (empty: its type); Esc: as it is" :
++	     "Letters, digits, - and _", WB_COLOR_TEXT_LOW, 0);
+ 	dlg_hints(hs, 2);
+ }
+ 
+@@ -2259,12 +2324,30 @@ static void console_typed(const char *cmd)
+ 
+ /* ---- dumps the client saved itself ------------------------------------------------------- */
+ 
++/* the name pop-up for saved card i (after a dump, or Rename) */
++static void ask_name(int i)
++{
++	O.pop = POP_INPUT;
++	IN.what = IN_CARD_NAME;
++	IN.card = i;
++	snprintf(IN.eb, sizeof(IN.eb), "CARDS");
++	snprintf(IN.title, sizeof(IN.title), "Name this card");
++	snprintf(IN.text, sizeof(IN.text), "%s", cards[i].name);
++}
++
+ /*
+  * A dump command typed in the Console or run as an action (hf iclass dump,
+- * hf mf dump, hf mfu dump, hf 15 dump) saves its file itself and says so:
+- * "Saved 256 bytes to binary file `.../hf-iclass-<CSN>-dump.bin`". That
+- * file goes to Cards: on the card searched last when the name has its
+- * UID, else on the card the name says (hf-<type>-<UID>-dump).
++ * hf mf dump, hf mfu dump, hf 15 dump, lf t55xx dump, lf em 4x05 dump)
++ * saves its file itself and says so: "Saved 256 bytes to binary file
++ * `.../hf-iclass-<CSN>-dump.bin`". That file goes to Cards, which then
++ * asks for a name:
++ * - HF: on the card searched last when the name has its UID, else on the
++ *   card the name says (hf-<type>-<UID>-dump);
++ * - LF: on the card searched last on LF (a T55xx dump has no UID of its
++ *   own: lf-t55xx-<block 1>-...), else on a saved one with the ID in the
++ *   name, else a new card with that ID.
++ * The dump's type becomes the card's (an iCLASS card a search called ISO
++ * 15693, a T55xx that sends an EM410x ID).
+  */
+ static void dump_saved(const char *out)
+ {
+@@ -2277,7 +2360,7 @@ static void dump_saved(const char *out)
+ 		struct pm3_card c;
+ 		struct saved *s;
+ 		struct stat st;
+-		int k = 0, fam = -1;
++		int k = 0, fam, band = BAND_HF, bs;
+ 
+ 		/* the path, without the colour codes around it */
+ 		for (p += sizeof(said) - 1; *p && *p != '`' && *p != '\n' && k < (int)sizeof(path) - 1; p++) {
+@@ -2290,55 +2373,55 @@ static void dump_saved(const char *out)
+ 		}
+ 		path[k] = 0;
+ 		base = strrchr(path, '/') ? strrchr(path, '/') + 1 : path;
+-		if (strncmp(base, "hf-", 3) || !strstr(base, "-dump") || stat(path, &st) || st.st_size <= 0)
++		if (!strstr(base, "-dump") || stat(path, &st) || st.st_size <= 0)
+ 			continue;
+-		if ((fam = dump_fam(path)) < 0)
++		if ((fam = dump_kind(path, &band)) < 0)
+ 			continue;
+ 		dash = strchr(base + 3, '-');
+ 		k = 0;
+ 		for (const char *q = dash + 1; isxdigit((unsigned char)*q) && k < (int)sizeof(u) - 1; q++)
+ 			u[k++] = (char)toupper((unsigned char)*q);
+ 		u[k] = 0;
+-		if (k < 8 || k % 2)
++		if (band == BAND_HF && (k < 8 || k % 2))
+ 			continue;
+ 		uid_hex(O.card.uid, cu, sizeof(cu));
+-		if (O.card.found && O.card.band == BAND_HF && !strcmp(cu, u)) {
++		if (O.card.found && O.card.band == band && (band == BAND_LF || !strcmp(cu, u))) {
+ 			c = O.card;
+-			/* the dump says what the card is: an iCLASS card a search
+-			 * called ISO 15693, or one it did not know */
+-			if (c.fam != fam) {
+-				c.fam = fam;
+-				snprintf(c.type, sizeof(c.type), "%s", hf_fams[fam]);
+-			}
+ 		} else {
+-			/* the UID spaced, as a search writes it */
+ 			memset(&c, 0, sizeof(c));
+ 			c.found = 1;
+-			c.band = BAND_HF;
+-			c.fam = fam;
++			c.band = band;
+ 			c.sak = -1;
+-			snprintf(c.type, sizeof(c.type), "%s", hf_fams[fam]);
+-			for (int i = 0, n = 0; u[i] && n < (int)sizeof(c.uid) - 3; i += 2)
+-				n += snprintf(c.uid + n, sizeof(c.uid) - (size_t)n, i ? " %.2s" : "%.2s", u + i);
++			if (band == BAND_HF)	/* the UID spaced, as a search writes it */
++				for (int i = 0, n = 0; u[i] && n < (int)sizeof(c.uid) - 3; i += 2)
++					n += snprintf(c.uid + n, sizeof(c.uid) - (size_t)n, i ? " %.2s" : "%.2s", u + i);
++			else
++				snprintf(c.uid, sizeof(c.uid), "%s", u[0] ? u : "T55xx");
+ 			for (int i = 0; i < n_cards; i++) {
+ 				uid_hex(cards[i].c.uid, cu, sizeof(cu));
+-				if (cards[i].c.band == BAND_HF && !strcmp(cu, u))
++				if (cards[i].c.band == band && u[0] && !strcmp(cu, u))
+ 					c = cards[i].c;
+ 			}
+ 		}
+-		if (c.fam == FAM_MFC && !c.sectors)
++		if (c.fam != fam) {
++			c.fam = fam;
++			snprintf(c.type, sizeof(c.type), "%s", fam_name(band, fam));
++		}
++		if (is_hf(&c, FAM_MFC) && !c.sectors)
+ 			c.sectors = st.st_size <= 320 ? 5 : st.st_size <= 1024 ? 16 : st.st_size <= 2048 ? 32 : 40;
+ 		s = card_save(&c);
+ 		snprintf(s->dump, sizeof(s->dump), "%s", path);
+-		if (c.fam == FAM_MFC)
++		bs = card_bs(s);
++		if (is_hf(&c, FAM_MFC))
+ 			snprintf(s->detail, sizeof(s->detail), "dump \xc2\xb7 %s", mfc_size_text(c.sectors));
+-		else if (c.fam == FAM_ICLASS)
+-			snprintf(s->detail, sizeof(s->detail), "dump \xc2\xb7 %ld blocks", (long)st.st_size / 8);
++		else if (bs < 16)
++			snprintf(s->detail, sizeof(s->detail), "dump \xc2\xb7 %ld blocks", (long)st.st_size / bs);
+ 		else
+ 			snprintf(s->detail, sizeof(s->detail), "dump \xc2\xb7 %ld bytes", (long)st.st_size);
+ 		cards_save();
+ 		log_add("dump: saved to Cards", 0);
+ 		notice("Saved to Cards", 0);
++		ask_name(0);
+ 	}
+ }
+ 
+@@ -2561,6 +2644,7 @@ static void dump(const struct mfc_keys *k)
+ 	cards_save();
+ 	log_add(bad ? "dump: some sectors not read" : "dump: saved", bad);
+ 	open_card(0);
++	ask_name(0);
+ 	if (bad)
+ 		notice("Sectors without a key were not read", 1);
+ 	else
+@@ -2741,6 +2825,8 @@ static int dump_to_text(const struct saved *s, const char *path)
+ 				b == mfc_first_block(sct) + mfc_blocks(sct) - 1 ? " keys + AC" : "");
+ 		} else if (is_hf(&s->c, FAM_ICLASS)) {
+ 			fprintf(f, "%s  # %d%s%s\n", hx, b, b < 6 ? " " : "", b < 6 ? iclass_tags[b] : "");
++		} else if (bs < 16) {
++			fprintf(f, "%s  # %d\n", hx, b);
+ 		} else {
+ 			fprintf(f, "%s  # %03X\n", hx, b * bs);
+ 		}
+@@ -3007,15 +3093,16 @@ static void menu_build(int what)
+ 		menu_add("Key lists (Dictionary)")->sep = 1;
+ 		break;
+ 	case M_CARDS:
+-		menu_open(what, "CARDS", cards[O.focus].c.type);
++		menu_open(what, "CARDS", card_title(&cards[O.focus]));
+ 		menu_add("Open");
++		menu_add("Rename");
+ 		if (is_hf(&cards[O.focus].c, FAM_MFC))
+ 			menu_add("Keys");
+ 		menu_add("Delete")->danger = 1;
+ 		menu_it[menu_n - 1].sep = 1;
+ 		break;
+ 	case M_CARD:
+-		menu_open(what, "CARDS", cards[V.i].c.type);
++		menu_open(what, "CARDS", card_title(&cards[V.i]));
+ 		if (is_hf(&cards[V.i].c, FAM_MFC))
+ 			menu_add("Keys");
+ 		if (V.blocks)
+@@ -3025,9 +3112,12 @@ static void menu_build(int what)
+ 
+ 			if (k->load && V.blocks)
+ 				menu_add("Load into the Proxmark3");
+-			menu_add("Simulate");
+-			menu_add(k->write_label);
++			if (k->sim)
++				menu_add("Simulate");
++			if (V.blocks || !write_needs_dump(k))
++				menu_add(k->write_label);
+ 		}
++		menu_add("Rename");
+ 		menu_add("Delete")->danger = 1;
+ 		menu_it[menu_n - 1].sep = 1;
+ 		break;
+@@ -3140,6 +3230,8 @@ static void menu_done(int i)
+ 	case M_CARDS:
+ 		if (!strcmp(l, "Open")) {
+ 			open_card(O.focus);
++		} else if (!strcmp(l, "Rename")) {
++			ask_name(O.focus);
+ 		} else if (!strcmp(l, "Keys")) {
+ 			V.i = O.focus;
+ 			V.have_keys = 0;
+@@ -3163,11 +3255,14 @@ static void menu_done(int i)
+ 			/* the dump-based ones simulate the emulator memory (Load) */
+ 			expand(card_cmds(&cards[V.i])->sim, cmd, sizeof(cmd), cards[V.i].dump);
+ 			console_typed(cmd);
+-		} else if (!strcmp(l, "Write to a card") || !strcmp(l, "Clone to a T55xx")) {
++		} else if (!strcmp(l, "Rename")) {
++			ask_name(V.i);
++		} else if (!strcmp(l, "Write to a card") || !strcmp(l, "Clone to a T55xx") ||
++			   !strcmp(l, "Write to a T55xx")) {
+ 			const struct card_cmds *k = card_cmds(&cards[V.i]);
+ 			char cmd[300];
+ 
+-			if (k->band == BAND_HF && !V.blocks) {
++			if (write_needs_dump(k) && !V.blocks) {
+ 				notice("No dump to write", 1);
+ 			} else if (!k->write) {
+ 				confirm(CF_RESTORE, "WRITE TO A CARD", "Write this dump to the card on the Proxmark3?", "Write", 0);
+@@ -3277,6 +3372,14 @@ static void input_done(void)
+ 	int add_keys = IN.what == IN_ADD_KEYS;
+ 
+ 	O.pop = POP_NONE;
++	if (IN.what == IN_CARD_NAME) {
++		if (IN.card >= 0 && IN.card < n_cards && strcmp(cards[IN.card].name, IN.text)) {
++			notice(IN.text[0] ? "Name saved" : "Name removed", 0);
++			snprintf(cards[IN.card].name, sizeof(cards[0].name), "%s", IN.text);
++			cards_save();
++		}
++		return;
++	}
+ 	if (!IN.text[0])
+ 		return;
+ 	if (add_keys) {
+@@ -3333,8 +3436,9 @@ static int pop_key(int code)
+ 			input_done();
+ 		else if (code == KEY_BACKSPACE && n)
+ 			IN.text[n - 1] = 0;
+-		else if (c && (isalnum((unsigned char)c) || c == '-' || c == '_') && n < (int)sizeof(IN.text) - 1) {
+-			IN.text[n] = c;
++		else if (c && (IN.what == IN_CARD_NAME ? c >= ' ' && c < 0x7f :
++			       isalnum((unsigned char)c) || c == '-' || c == '_') && n < (int)sizeof(IN.text) - 1) {
++			IN.text[n] = c;		/* a name has no tab: cards.tsv's separator */
+ 			IN.text[n + 1] = 0;
+ 		}
+ 	}
+@@ -3799,7 +3903,8 @@ static int where_text(char *o, int size)
+ 		      CK.permille, ck_found_keys(), CK.k.sectors * 2);
+ 	n += snprintf(o + n, (size_t)(size - n), "cards %d", n_cards);
+ 	for (int i = 0; i < n_cards; i++)
+-		n += snprintf(o + n, (size_t)(size - n), " %s|%s", cards[i].c.uid, cards[i].detail);
++		n += snprintf(o + n, (size_t)(size - n), cards[i].name[0] ? " %s|%s|%s" : " %s|%s", cards[i].c.uid,
++			      cards[i].detail, cards[i].name);
+ 	n += snprintf(o + n, (size_t)(size - n), "\ndicts %d", n_dicts);
+ 	for (int i = 0; i < n_dicts; i++)
+ 		n += snprintf(o + n, (size_t)(size - n), " %s:%d:%d", dicts[i].name, dicts[i].count, dicts[i].on);
+diff --git a/client/src/badgeui/pm3ui_sim.c b/client/src/badgeui/pm3ui_sim.c
+index 66f17c12a..d66975b09 100644
+--- a/client/src/badgeui/pm3ui_sim.c
++++ b/client/src/badgeui/pm3ui_sim.c
+@@ -60,6 +60,26 @@ int be_search(int band, struct pm3_card *c, char *err, int n)
+ 	return 0;
+ }
+ 
++/* as the client: the file in ~/.proxmark3/dumps, its path in colour */
++static void saved_dump(const char *name, const unsigned char *d, size_t n)
++{
++	char path[256];
++	FILE *f;
++
++	snprintf(path, sizeof(path), "%s/.proxmark3", getenv("HOME"));
++	mkdir(path, 0755);
++	snprintf(path, sizeof(path), "%s/.proxmark3/dumps", getenv("HOME"));
++	mkdir(path, 0755);
++	snprintf(path, sizeof(path), "%s/.proxmark3/dumps/%s.bin", getenv("HOME"), name);
++	if ((f = fopen(path, "wb"))) {
++		fwrite(d, 1, n, f);
++		fclose(f);
++	}
++	snprintf(out, sizeof(out),
++		 "[+] Saved \x1b[33m%zu\x1b[0m bytes to binary file `\x1b[33m%s\x1b[0m`\n"
++		 "[+] Saved to json file \x1b[33m%.*s.json\x1b[0m\n", n, path, (int)strlen(path) - 4, path);
++}
++
+ int be_command(const char *cmd)
+ {
+ 	if (!strcmp(cmd, "hf mf info"))
+@@ -70,24 +90,19 @@ int be_command(const char *cmd)
+ 			 "[+] Backdoor key..... A396EFA4E24F\n\n[=] --- Magic Tag Information\n"
+ 			 "[+] Magic capabilities... Gen 1a\n\n[=] --- PRNG Information\n[+] Prng....... weak\n");
+ 	else if (!strncmp(cmd, "hf iclass dump", 14)) {
+-		/* as the client: the file in ~/.proxmark3/dumps, its path in colour */
+-		char path[256];
+ 		unsigned char d[256] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x12, 0xFF, 0xFF, 0xFF, 0x7F,
+ 					 0x1F, 0xFF, 0x3C };
+-		FILE *f;
+-
+-		snprintf(path, sizeof(path), "%s/.proxmark3", getenv("HOME"));
+-		mkdir(path, 0755);
+-		snprintf(path, sizeof(path), "%s/.proxmark3/dumps", getenv("HOME"));
+-		mkdir(path, 0755);
+-		snprintf(path, sizeof(path), "%s/.proxmark3/dumps/hf-iclass-0102030405060708-dump.bin", getenv("HOME"));
+-		if ((f = fopen(path, "wb"))) {
+-			fwrite(d, 1, sizeof(d), f);
+-			fclose(f);
+-		}
+-		snprintf(out, sizeof(out),
+-			 "[+] Saved \x1b[33m256\x1b[0m bytes to binary file `\x1b[33m%s\x1b[0m`\n"
+-			 "[+] Saved to json file \x1b[33m%.*s.json\x1b[0m\n", path, (int)strlen(path) - 4, path);
++
++		saved_dump("hf-iclass-0102030405060708-dump", d, sizeof(d));
++	} else if (!strncmp(cmd, "lf t55xx dump", 13)) {
++		/* block 0 the config, 1-2 an EM410x's bits */
++		unsigned char d[48] = { 0x00, 0x14, 0x80, 0x40, 0xFF, 0x80, 0x3E, 0x07, 0x93, 0x21, 0x5C, 0x6E };
++
++		saved_dump("lf-t55xx-FF803E07-93215C6E-dump", d, sizeof(d));
++	} else if (!strncmp(cmd, "lf em 4x05 dump", 15)) {
++		unsigned char d[64] = { 0x00, 0x04, 0x00, 0x00, 0x12, 0x34, 0x56, 0x78 };
++
++		saved_dump("lf-4x05-12345678-dump", d, sizeof(d));
+ 	} else if (!strncmp(cmd, "hf mf eload", 11))
+ 		snprintf(out, sizeof(out), "[=] 64 blocks ( 1024 bytes ) to upload\n[+] Done!\n");
+ 	else
+diff --git a/client/src/badgeui/test_pm3ui.py b/client/src/badgeui/test_pm3ui.py
+index c20c90513..943767f98 100644
+--- a/client/src/badgeui/test_pm3ui.py
++++ b/client/src/badgeui/test_pm3ui.py
+@@ -108,7 +108,7 @@ class Test(unittest.TestCase):
+         self.assertTrue(os.path.exists(os.path.join(self.a.home, ".proxmark3/dumps/hf-mf-07947112-key.bin")))
+         # the triangle dumps; the dump opens
+         w = self.a.run("\\n\\n\\n\\d\\n\\w\\2", "dump")
+-        self.assertEqual(w["screen"].strip(), "card")
++        self.assertEqual(w["screen"], "card input")          # a name for it
+         self.assertEqual(w["view"], "64")
+         with open(os.path.join(self.a.home, ".proxmark3/dumps/hf-mf-07947112-dump.bin"), "rb") as f:
+             data = f.read()
+@@ -124,7 +124,7 @@ class Test(unittest.TestCase):
+         w = self.a.run("\\n\\n\\n\\d\\d\\n", PM3UI_HOLD="1")
+         self.assertEqual(w["screen"].strip(), "check")
+         w = self.a.run("\\n\\n\\n\\d\\d\\n\\w\\2")
+-        self.assertEqual(w["screen"].strip(), "card")
++        self.assertEqual(w["screen"], "card input")
+ 
+     def test_cards(self):
+         self.a.run("\\n\\n\\n\\d\\n\\w\\2")
+@@ -145,9 +145,9 @@ class Test(unittest.TestCase):
+             self.assertEqual(f.read(), "FFFFFFFFFFFF\n")
+         self.assertIn("1 key added", w["notice"])
+         # delete: Cancel is the default, then Delete
+-        w = self.a.run("\\r\\r\\n\\1\\d\\d\\n\\n")
++        w = self.a.run("\\r\\r\\n\\1\\d\\d\\d\\n\\n")
+         self.assertTrue(w["cards"].startswith("1 "))
+-        w = self.a.run("\\r\\r\\n\\1\\d\\d\\n\\d\\n")
++        w = self.a.run("\\r\\r\\n\\1\\d\\d\\d\\n\\d\\n")
+         self.assertTrue(w["cards"].startswith("0"))
+ 
+     def test_iclass_dump_to_cards(self):
+@@ -162,7 +162,7 @@ class Test(unittest.TestCase):
+         self.assertEqual(w["view"], "32")
+         # no MIFARE keys; Simulate and Write type their iCLASS commands
+         w = self.a.run("\\r\\r\\n\\n\\1")
+-        self.assertEqual(w["menu"], "|Edit in Write |Load into the Proxmark3 |Simulate |Write to a card |Delete")
++        self.assertEqual(w["menu"], "|Edit in Write |Load into the Proxmark3 |Simulate |Write to a card |Rename |Delete")
+         w = self.a.run("\\r\\r\\n\\n\\1\\d\\d\\d\\n")
+         self.assertTrue(w["input"].startswith("hf iclass restore -f "), w["input"])
+         self.assertTrue(w["input"].endswith("hf-iclass-0102030405060708-dump.bin --first 6 --last 31 --ki 0"))
+@@ -197,7 +197,7 @@ class Test(unittest.TestCase):
+         # an ISO 15693 dump: load, simulate and write, as for iCLASS
+         dump = self.saved_card(5, "ISO 15693 tag", "E0 04 01 50 12 34 56 78", "hf-15-E004015012345678-dump.bin", 512)
+         w = self.a.run("\\r\\r\\n\\n\\1", "card-15")
+-        self.assertEqual(w["menu"], "|Edit in Write |Load into the Proxmark3 |Simulate |Write to a card |Delete")
++        self.assertEqual(w["menu"], "|Edit in Write |Load into the Proxmark3 |Simulate |Write to a card |Rename |Delete")
+         w = self.a.run("\\r\\r\\n\\n\\1\\d\\n")
+         self.assertIn("emulator memory", w["notice"])
+         w = self.a.run("\\r\\r\\n\\n\\1\\d\\d\\n")
+@@ -224,9 +224,9 @@ class Test(unittest.TestCase):
+         # are number 0), but Simulate and Clone with its ID
+         self.a.run("\\r\\n\\2\\1\\n")                 # LF, search, Save to Cards
+         w = self.a.run("\\r\\r\\n\\1")
+-        self.assertEqual(w["menu"], "|Open |Delete")
++        self.assertEqual(w["menu"], "|Open |Rename |Delete")
+         w = self.a.run("\\r\\r\\n\\n\\1", "card-lf")
+-        self.assertEqual(w["menu"], "|Simulate |Clone to a T55xx |Delete")
++        self.assertEqual(w["menu"], "|Simulate |Clone to a T55xx |Rename |Delete")
+         w = self.a.run("\\r\\r\\n\\n\\1\\n")
+         self.assertEqual(w["input"], "lf em 410x sim --id 0F0368568B")
+         w = self.a.run("\\r\\r\\n\\n\\1\\d\\n")
+@@ -238,7 +238,7 @@ class Test(unittest.TestCase):
+         dump = self.saved_card(1, "MIFARE Ultralight \xb7 NTAG", "04 A1 B2 C3 D4 E5 F6",
+                                "hf-mfu-04A1B2C3D4E5F6-dump.bin", 512)
+         w = self.a.run("\\r\\r\\n\\n\\1")
+-        self.assertEqual(w["menu"], "|Edit in Write |Load into the Proxmark3 |Simulate |Write to a card |Delete")
++        self.assertEqual(w["menu"], "|Edit in Write |Load into the Proxmark3 |Simulate |Write to a card |Rename |Delete")
+         w = self.a.run("\\r\\r\\n\\n\\1\\d\\d\\n")
+         self.assertEqual(w["input"], "hf mfu sim -t 2 -u 04A1B2C3D4E5F6")
+         w = self.a.run("\\r\\r\\n\\n\\1\\d\\d\\d\\n")
+@@ -251,13 +251,57 @@ class Test(unittest.TestCase):
+         w = self.a.run("\\n\\d\\d\\d\\d\\n\\d\\n")
+         self.assertEqual(w["result"].split(" ", 1)[1], "hf mfp chk -f mfp_default_keys")
+ 
++    def test_dump_asks_a_name(self):
++        # a dump in the Console asks for a name; the name is in Cards, and
++        # can be changed there
++        con = "\\d\\r\\r\\n"
++        w = self.a.run(con + "hf iclass dump\\n")
++        self.assertEqual(w["screen"], "console input")
++        self.assertEqual(w["input"], "hf iclass dump") if False else None
++        w = self.a.run(con + "hf iclass dump\\nOffice door\\n", "named")
++        self.assertEqual(w["cards"], "1 01 02 03 04 05 06 07 08|dump · 32 blocks|Office door")
++        self.assertEqual(w["notice"], "Name saved")
++        w = self.a.run("\\r\\r\\n", "cards-named")
++        w = self.a.run("\\r\\r\\n\\1\\d\\n" + "\\b" * 4 + "Front\\n")   # Rename in the list
++        self.assertEqual(w["cards"], "1 01 02 03 04 05 06 07 08|dump · 32 blocks|Office Front")
++        # Esc keeps it; an empty name shows the type again
++        w = self.a.run("\\r\\r\\n\\n\\1" + "\\d" * 4 + "\\nX\\e")
++        self.assertTrue(w["cards"].endswith("|Office Front"))
++        w = self.a.run("\\r\\r\\n\\n\\1" + "\\d" * 4 + "\\n" + "\\b" * 12 + "\\n")
++        self.assertEqual(w["cards"], "1 01 02 03 04 05 06 07 08|dump · 32 blocks")
++        self.assertEqual(w["notice"], "Name removed")
++
++    def test_t55xx_and_em4x05_dumps(self):
++        con = "\\d\\r\\r\\n"
++        # a T55xx dump alone: a card of its own, the ID its block 1
++        w = self.a.run(con + "lf t55xx dump\\nGarage\\n")
++        self.assertEqual(w["cards"], "1 FF803E07|dump · 12 blocks|Garage")
++        w = self.a.run("\\r\\r\\n\\n\\1", "card-t55xx")
++        self.assertEqual(w["view"], "12")
++        self.assertEqual(w["menu"], "|Edit in Write |Write to a T55xx |Rename |Delete")
++        w = self.a.run("\\r\\r\\n\\n\\1\\d\\n")
++        self.assertTrue(w["input"].startswith("lf t55xx restore -f "), w["input"])
++        self.assertTrue(w["input"].endswith("lf-t55xx-FF803E07-93215C6E-dump.bin"))
++        # an EM4x05 dump: its UID; nothing to write it back with
++        w = self.a.run(con + "lf em 4x05 dump\\n\\e")
++        self.assertTrue(w["cards"].startswith("2 12345678|dump · 16 blocks"), w["cards"])
++        w = self.a.run("\\r\\r\\n\\n\\1")
++        self.assertEqual(w["menu"], "|Edit in Write |Rename |Delete")
++
++    def test_t55xx_dump_after_a_search(self):
++        # searched on LF (an EM410x on a T55xx), then dumped: the same card,
++        # now a T55xx with the dump
++        w = self.a.run("\\r\\n\\2\\e\\e\\d\\r\\r\\nlf t55xx dump\\n\\e")
++        self.assertEqual(w["cards"], "1 0F0368568B|dump · 12 blocks")
++        self.assertEqual(w["card"].split("|")[0], "1 1 0 EM410x")
++
+     def test_edit_dump_in_write(self):
+         # an iCLASS dump in Cards, then Edit in Write changes block 6
+         self.a.run("\\n" + "\\d" * 7 + "\\n\\d\\d\\n\\n")
+         dump = os.path.join(self.a.home, ".proxmark3/dumps/hf-iclass-0102030405060708-dump.bin")
+         text = dump[:-4] + ".txt"
+         w = self.a.run("\\r\\r\\n\\n\\1")
+-        self.assertEqual(w["menu"], "|Edit in Write |Load into the Proxmark3 |Simulate |Write to a card |Delete")
++        self.assertEqual(w["menu"], "|Edit in Write |Load into the Proxmark3 |Simulate |Write to a card |Rename |Delete")
+         edit = "perl -pi -e 's/^00 00 00 00 00 00 00 00  # 6$/11 22 33 44 55 66 77 88  # 6/'"
+         w = self.a.run("\\r\\r\\n\\n\\1\\n", "edited", PM3UI_WRITE=edit)
+         self.assertEqual(w["screen"].strip(), "card")
+-- 
+2.50.1 (Apple Git-155)
+

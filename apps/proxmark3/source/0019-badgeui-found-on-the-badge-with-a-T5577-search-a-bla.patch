@@ -1,0 +1,146 @@
+From 8d0dc3f30168667d2d6c52b02fd2b16aa4558572 Mon Sep 17 00:00:00 2001
+From: John <john.de.kroon@cyberant.com>
+Date: Sat, 31 Oct 2026 01:35:25 +0100
+Subject: [PATCH 19/20] badgeui: found on the badge with a T5577: search, a
+ blank dump, chk
+
+A test round on the badge (2026-10-31, RDV4, a T5577 with block 1
+empty) found:
+- lf search saw the T55xx chip but no ID it knows, and the app said "No
+  card found": a T55xx is now a card of its own (type and ID "T55xx").
+- A T55xx dump with block 1 empty is named lf-t55xx-dump.bin; the "d"
+  of "dump" was taken for a hex digit and the card's ID became "D". The
+  digits after the type count only as a whole group (up to "-", "." or
+  the end), and on LF only with 8 or more; else the ID is "T55xx".
+- Check passwords (lf t55xx chk) hung the badge twice from the app.
+  From a shell the same command took the user pool from 7 MB free to
+  under 0.5 MB within seconds (every other command then failed with a
+  segmentation fault): each password runs the LF demodulators, which
+  allocate and free blocks of 128-512 KB many times over. The app
+  already holds ~3 MB, so there it ran out first and the badge hung
+  until the watchdog. T55xx and EM4x05 (the same kind of loop) no longer
+  offer it; it stays in the Console.
+
+Tested: test_pm3ui.py 33/33 on the host (new: a blank T55xx dump); on
+the badge Tools/usb/hil/test_hil_pm3ui_t55xx.py, 6 of 7 with the build
+before this commit (the 7th was chk).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ client/src/badgeui/pm3ui.c       | 26 ++++++++++++++++++++------
+ client/src/badgeui/pm3ui_pm3.c   | 12 +++++++++++-
+ client/src/badgeui/pm3ui_sim.c   |  3 ++-
+ client/src/badgeui/test_pm3ui.py |  6 ++++++
+ 4 files changed, 39 insertions(+), 8 deletions(-)
+
+diff --git a/client/src/badgeui/pm3ui.c b/client/src/badgeui/pm3ui.c
+index b9a7b7d92..4af884c9e 100644
+--- a/client/src/badgeui/pm3ui.c
++++ b/client/src/badgeui/pm3ui.c
+@@ -145,6 +145,14 @@ static const char *const lf_fams[N_LF_FAM] = { "EM410x", "HID Prox", "Indala", "
+ enum { A_RUN, A_EDIT, A_CHECK, A_DUMP };
+ struct action { const char *name; int kind; const char *cmd; };
+ 
++/*
++ * No password check for T55xx or EM4x05 (lf t55xx chk, lf em 4x05 chk):
++ * each password runs the LF demodulators, which allocate and free blocks
++ * of 128-512 KB many times over; on the badge that took the user pool
++ * from 7 MB free to under 0.5 MB within seconds (also from a shell), and
++ * in the app the badge then hung until the watchdog (2026-10-31, a T5577).
++ * They stay in the Console.
++ */
+ #define ACTS_MAX	10
+ static const struct action fam_acts[N_HF_FAM + N_LF_FAM][ACTS_MAX] = {
+ 	/* MIFARE Classic */
+@@ -194,12 +202,10 @@ static const struct action fam_acts[N_HF_FAM + N_LF_FAM][ACTS_MAX] = {
+ 	/* T55xx */
+ 	{ { "Detect", A_RUN, "lf t55xx detect" }, { "Info", A_RUN, "lf t55xx info" }, { "Dump", A_RUN, "lf t55xx dump" },
+ 	  { "Read a block", A_EDIT, "lf t55xx read -b 0" }, { "Write a block", A_EDIT, "lf t55xx write -b 1 -d 00000000" },
+-	  { "Restore", A_EDIT, "lf t55xx restore -f %F" }, { "Check passwords", A_RUN, "lf t55xx chk -f t55xx_default_pwds" },
+-	  { "Wipe", A_EDIT, "lf t55xx wipe" } },
++	  { "Restore", A_EDIT, "lf t55xx restore -f %F" }, { "Wipe", A_EDIT, "lf t55xx wipe" } },
+ 	/* EM4x05 */
+ 	{ { "Info", A_RUN, "lf em 4x05 info" }, { "Dump", A_RUN, "lf em 4x05 dump" }, { "Read a word", A_EDIT, "lf em 4x05 read -a 1" },
+-	  { "Write a word", A_EDIT, "lf em 4x05 write -a 1 -d 00000000" },
+-	  { "Check passwords", A_RUN, "lf em 4x05 chk -f t55xx_default_pwds" } },
++	  { "Write a word", A_EDIT, "lf em 4x05 write -a 1 -d 00000000" } },
+ 	/* HITAG */
+ 	{ { "Info", A_RUN, "lf hitag info" }, { "Read", A_RUN, "lf hitag reader" }, { "Check keys", A_RUN, "lf hitag chk" },
+ 	  { "Dump", A_EDIT, "lf hitag dump --pwd" }, { "Load the dump", A_EDIT, "lf hitag eload -2 -f %F" },
+@@ -2478,8 +2484,16 @@ static void dump_saved(const char *out)
+ 			continue;
+ 		dash = strchr(base + 3, '-');
+ 		k = 0;
+-		for (const char *q = dash + 1; isxdigit((unsigned char)*q) && k < (int)sizeof(u) - 1; q++)
+-			u[k++] = (char)toupper((unsigned char)*q);
++		{
++			const char *q = dash + 1;
++
++			for (; isxdigit((unsigned char)*q) && k < (int)sizeof(u) - 1; q++)
++				u[k++] = (char)toupper((unsigned char)*q);
++			/* a whole group of hex digits (lf-t55xx-dump: "d" of "dump" is
++			 * none), at least 8 on LF too (a T55xx block, an EM4x05 UID) */
++			if ((*q && *q != '-' && *q != '.') || (band == BAND_LF && k < 8))
++				k = 0;
++		}
+ 		u[k] = 0;
+ 		if (band == BAND_HF && (k < 8 || k % 2))
+ 			continue;
+diff --git a/client/src/badgeui/pm3ui_pm3.c b/client/src/badgeui/pm3ui_pm3.c
+index 8f592b60e..a720dbd51 100644
+--- a/client/src/badgeui/pm3ui_pm3.c
++++ b/client/src/badgeui/pm3ui_pm3.c
+@@ -330,8 +330,18 @@ static void search_lf(struct pm3_card *c)
+ 	o = be_output();
+ 	if (strstr(o, "Chipset detection: T55xx") || strstr(o, "Chipset... T55xx"))
+ 		snprintf(c->magic, sizeof(c->magic), "T55xx chip");
+-	if (!valid_found(o, type, sizeof(type)))
++	if (!valid_found(o, type, sizeof(type))) {
++		/* a T55xx that sends nothing lf search knows (blank, or its own
++		 * config): the chip is there, its blocks are what it has */
++		if (c->magic[0]) {
++			c->found = 1;
++			c->fam = FAM_T55XX;
++			snprintf(c->type, sizeof(c->type), "T55xx");
++			snprintf(c->uid, sizeof(c->uid), "T55xx");
++			snprintf(c->proto, sizeof(c->proto), "T55xx chip \xc2\xb7 no ID lf search knows");
++		}
+ 		return;
++	}
+ 	c->found = 1;
+ 	c->fam = -1;
+ 	if (!strcmp(type + (strlen(type) > 3 ? strlen(type) - 3 : 0), " ID"))
+diff --git a/client/src/badgeui/pm3ui_sim.c b/client/src/badgeui/pm3ui_sim.c
+index ae3e3e594..ba2bca7db 100644
+--- a/client/src/badgeui/pm3ui_sim.c
++++ b/client/src/badgeui/pm3ui_sim.c
+@@ -101,7 +101,8 @@ int be_command(const char *cmd)
+ 		/* block 0 the config, 1-2 an EM410x's bits */
+ 		unsigned char d[48] = { 0x00, 0x14, 0x80, 0x40, 0xFF, 0x80, 0x3E, 0x07, 0x93, 0x21, 0x5C, 0x6E };
+ 
+-		saved_dump("lf-t55xx-FF803E07-93215C6E-dump", d, sizeof(d));
++		/* PM3UI_T55XX_BLANK: block 1 empty, the client names it lf-t55xx-dump */
++		saved_dump(getenv("PM3UI_T55XX_BLANK") ? "lf-t55xx-dump" : "lf-t55xx-FF803E07-93215C6E-dump", d, sizeof(d));
+ 	} else if (!strncmp(cmd, "hf mfp dump", 11)) {
+ 		unsigned char d[2048] = { 0x04, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 };
+ 
+diff --git a/client/src/badgeui/test_pm3ui.py b/client/src/badgeui/test_pm3ui.py
+index 06e4c3c74..4311f9d17 100644
+--- a/client/src/badgeui/test_pm3ui.py
++++ b/client/src/badgeui/test_pm3ui.py
+@@ -289,6 +289,12 @@ class Test(unittest.TestCase):
+         w = self.a.run("\\r\\r\\n\\n\\1")
+         self.assertEqual(w["menu"], "|Edit in Write |Rename |Duplicate |Delete")
+ 
++    def test_blank_t55xx_dump(self):
++        # block 1 empty: lf-t55xx-dump.bin, no ID in the name (found on the
++        # badge 2026-10-31: the "d" of "dump" became the ID "D")
++        w = self.a.run("\\d\\r\\r\\nlf t55xx dump\\n\\e", PM3UI_T55XX_BLANK="1")
++        self.assertEqual(w["cards"], "1 T55xx|dump · 12 blocks")
++
+     def test_t55xx_dump_after_a_search(self):
+         # searched on LF (an EM410x on a T55xx), then dumped: the same card,
+         # now a T55xx with the dump
+-- 
+2.50.1 (Apple Git-155)
+

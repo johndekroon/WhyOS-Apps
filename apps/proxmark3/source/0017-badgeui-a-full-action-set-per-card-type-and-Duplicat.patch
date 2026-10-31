@@ -1,0 +1,550 @@
+From 7e7600af120b0b5b16dc2346b264fb748b9d4bf0 Mon Sep 17 00:00:00 2001
+From: John <john.de.kroon@cyberant.com>
+Date: Fri, 30 Oct 2026 23:35:43 +0100
+Subject: [PATCH 17/20] badgeui: a full action set per card type, and Duplicate
+ in Cards
+
+The type screens offered a handful of actions; they now carry what is
+useful in the field for each type, and scroll when they do not fit
+(MIFARE Classic has 9). New per type:
+- MIFARE Classic: Read NDEF, Magic card: set the UID (csetuid);
+- Ultralight/NTAG: Write a page, Read NDEF, Load the dump, Restore, Wipe;
+- DESFire: Version, Files of an application (lsfiles), Read a file, Detect
+  the key;
+- MIFARE Plus: Dump, Read a sector/block, Write a block, MAD, Read NDEF;
+- ISO 14443-A: Read NDEF, APDU, Simulate the UID;
+- ISO 15693: Write a block, Load, Simulate, Restore;
+- iCLASS: Read/Write a block, Load, Simulate;
+- T55xx: Info, Read/Write a block, Restore;
+- EM4x05: Read/Write a word, Check passwords;
+- HITAG: Check keys, Dump, Load, Simulate;
+- EM410x/HID/Indala: Simulate and Clone (already added).
+Deliberately left out: attacks, magic-card internals beyond the UID, DESFire
+app/file management, NDEF writing, value blocks. They stay in the Console.
+
+MIFARE Plus and HITAG dumps now reach Cards (hf-mfp-, lf-hitag-); HITAG
+loads and simulates from there.
+
+Cards > a card (list or view) > Duplicate: a second card with its dump
+and keys copied to files of their own ("-copyN"), named "<name> copy", so
+you can edit or write the copy and keep the original.
+
+Tested: test_pm3ui.py 26/26 on the host, incl. test_commands_exist_in_the
+_client, which checks every hf/lf command the app types or runs against
+the client's own CLIParser definitions (the command exists, each flag is
+one of its arguments) -- 60+ commands; Duplicate copies the file and keeps
+the type; Plus/HITAG dumps; the type screen scrolls to its last action.
+On the badge: the commands on real cards are not yet run.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+---
+ client/src/badgeui/pm3ui.c       | 162 ++++++++++++++++++++++++++-----
+ client/src/badgeui/pm3ui_sim.c   |   8 ++
+ client/src/badgeui/test_pm3ui.py | 109 +++++++++++++++++++--
+ 3 files changed, 243 insertions(+), 36 deletions(-)
+
+diff --git a/client/src/badgeui/pm3ui.c b/client/src/badgeui/pm3ui.c
+index fe3da30a1..a24c64de1 100644
+--- a/client/src/badgeui/pm3ui.c
++++ b/client/src/badgeui/pm3ui.c
+@@ -145,23 +145,33 @@ static const char *const lf_fams[N_LF_FAM] = { "EM410x", "HID Prox", "Indala", "
+ enum { A_RUN, A_EDIT, A_CHECK, A_DUMP };
+ struct action { const char *name; int kind; const char *cmd; };
+ 
+-#define ACTS_MAX	7
++#define ACTS_MAX	10
+ static const struct action fam_acts[N_HF_FAM + N_LF_FAM][ACTS_MAX] = {
+ 	/* MIFARE Classic */
+ 	{ { "Info", A_RUN, "hf mf info" }, { "Check keys", A_CHECK, 0 }, { "Dump", A_DUMP, 0 },
+ 	  { "Restore", A_EDIT, "hf mf restore %S -f %F" }, { "Read or write a block", A_EDIT, "hf mf rdbl --blk 0 -k FFFFFFFFFFFF" },
+-	  { "Simulate", A_EDIT, "hf mf sim %S -u %U" }, { "Magic card", A_EDIT, "hf mf cview %S" } },
++	  { "Simulate", A_EDIT, "hf mf sim %S -u %U" }, { "Read NDEF", A_RUN, "hf mf ndefread" },
++	  { "Magic card", A_EDIT, "hf mf cview %S" }, { "Magic card: set the UID", A_EDIT, "hf mf csetuid -u %U" } },
+ 	/* Ultralight, NTAG */
+ 	{ { "Info", A_RUN, "hf mfu info" }, { "Dump", A_RUN, "hf mfu dump" }, { "Read a page", A_EDIT, "hf mfu rdbl -b 4" },
+-	  { "Write a page", A_EDIT, "hf mfu wrbl -b 4 -d 00000000" }, { "Load the dump", A_EDIT, "hf mfu eload -f %F" },
+-	  { "Simulate", A_EDIT, "hf mfu sim -t 2 -u %U" }, { "Restore", A_EDIT, "hf mfu restore -f %F" } },
++	  { "Write a page", A_EDIT, "hf mfu wrbl -b 4 -d 00000000" }, { "Read NDEF", A_RUN, "hf mfu ndefread" },
++	  { "Load the dump", A_EDIT, "hf mfu eload -f %F" }, { "Simulate", A_EDIT, "hf mfu sim -t 2 -u %U" },
++	  { "Restore", A_EDIT, "hf mfu restore -f %F" }, { "Wipe", A_EDIT, "hf mfu wipe" } },
+ 	/* DESFire */
+-	{ { "Info", A_RUN, "hf mfdes info" }, { "Applications", A_RUN, "hf mfdes lsapp" },
+-	  { "Check keys", A_RUN, "hf mfdes chk -f mfdes_default_keys" } },
++	{ { "Info", A_RUN, "hf mfdes info" }, { "Version", A_RUN, "hf mfdes getversion" },
++	  { "Applications", A_RUN, "hf mfdes lsapp" }, { "Files of an application", A_EDIT, "hf mfdes lsfiles --aid 000001" },
++	  { "Read a file", A_EDIT, "hf mfdes read --aid 000001 --fid 01" },
++	  { "Check keys", A_RUN, "hf mfdes chk -f mfdes_default_keys" },
++	  { "Detect the key", A_RUN, "hf mfdes detect -f mfdes_default_keys" } },
+ 	/* Plus */
+-	{ { "Info", A_RUN, "hf mfp info" }, { "Check keys", A_RUN, "hf mfp chk -f mfp_default_keys" } },
++	{ { "Info", A_RUN, "hf mfp info" }, { "Check keys", A_RUN, "hf mfp chk -f mfp_default_keys" },
++	  { "Dump", A_RUN, "hf mfp dump" }, { "Read a sector", A_EDIT, "hf mfp rdsc -s 0" },
++	  { "Read a block", A_EDIT, "hf mfp rdbl --blk 0" },
++	  { "Write a block", A_EDIT, "hf mfp wrbl --blk 1 -d 00000000000000000000000000000000" },
++	  { "MAD", A_RUN, "hf mfp mad" }, { "Read NDEF", A_RUN, "hf mfp ndefread" } },
+ 	/* ISO 14443-A */
+-	{ { "Info", A_RUN, "hf 14a info" }, { "Read the UID", A_RUN, "hf 14a reader" }, { "Raw command", A_EDIT, "hf 14a raw -sc 3000" },
++	{ { "Info", A_RUN, "hf 14a info" }, { "Read the UID", A_RUN, "hf 14a reader" }, { "Read NDEF", A_RUN, "hf 14a ndefread" },
++	  { "Raw command", A_EDIT, "hf 14a raw -sc 3000" }, { "APDU", A_EDIT, "hf 14a apdu -st -d 00A404000E325041592E5359532E444446303100" },
+ 	  { "Simulate the UID", A_EDIT, "hf 14a sim -t 1 --uid %U" } },
+ 	/* ISO 15693 */
+ 	{ { "Info", A_RUN, "hf 15 info" }, { "Dump", A_RUN, "hf 15 dump" }, { "Read a block", A_EDIT, "hf 15 rdbl -* -b 0" },
+@@ -170,6 +180,7 @@ static const struct action fam_acts[N_HF_FAM + N_LF_FAM][ACTS_MAX] = {
+ 	/* iCLASS */
+ 	{ { "Info", A_RUN, "hf iclass info" }, { "Check keys", A_RUN, "hf iclass chk -f iclass_default_keys" },
+ 	  { "Dump", A_EDIT, "hf iclass dump --ki 0" }, { "Read a block", A_EDIT, "hf iclass rdbl --blk 6 --ki 0" },
++	  { "Write a block", A_EDIT, "hf iclass wrbl --blk 6 -d 0000000000000000 --ki 0" },
+ 	  { "Load the dump", A_EDIT, "hf iclass eload -f %F" }, { "Simulate", A_EDIT, "hf iclass sim -t 3" } },
+ 	/* EM410x */
+ 	{ { "Read", A_RUN, "lf em 410x reader" }, { "Simulate", A_EDIT, "lf em 410x sim --id %U" },
+@@ -181,12 +192,18 @@ static const struct action fam_acts[N_HF_FAM + N_LF_FAM][ACTS_MAX] = {
+ 	{ { "Read", A_RUN, "lf indala reader" }, { "Simulate", A_EDIT, "lf indala sim -r %U" },
+ 	  { "Clone to a T55xx", A_EDIT, "lf indala clone -r %U" } },
+ 	/* T55xx */
+-	{ { "Detect", A_RUN, "lf t55xx detect" }, { "Dump", A_RUN, "lf t55xx dump" }, { "Restore", A_EDIT, "lf t55xx restore -f %F" },
+-	  { "Check passwords", A_RUN, "lf t55xx chk -f t55xx_default_pwds" }, { "Wipe", A_EDIT, "lf t55xx wipe" } },
++	{ { "Detect", A_RUN, "lf t55xx detect" }, { "Info", A_RUN, "lf t55xx info" }, { "Dump", A_RUN, "lf t55xx dump" },
++	  { "Read a block", A_EDIT, "lf t55xx read -b 0" }, { "Write a block", A_EDIT, "lf t55xx write -b 1 -d 00000000" },
++	  { "Restore", A_EDIT, "lf t55xx restore -f %F" }, { "Check passwords", A_RUN, "lf t55xx chk -f t55xx_default_pwds" },
++	  { "Wipe", A_EDIT, "lf t55xx wipe" } },
+ 	/* EM4x05 */
+-	{ { "Info", A_RUN, "lf em 4x05 info" }, { "Dump", A_RUN, "lf em 4x05 dump" } },
++	{ { "Info", A_RUN, "lf em 4x05 info" }, { "Dump", A_RUN, "lf em 4x05 dump" }, { "Read a word", A_EDIT, "lf em 4x05 read -a 1" },
++	  { "Write a word", A_EDIT, "lf em 4x05 write -a 1 -d 00000000" },
++	  { "Check passwords", A_RUN, "lf em 4x05 chk -f t55xx_default_pwds" } },
+ 	/* HITAG */
+-	{ { "Info", A_RUN, "lf hitag info" }, { "Read", A_RUN, "lf hitag reader" } },
++	{ { "Info", A_RUN, "lf hitag info" }, { "Read", A_RUN, "lf hitag reader" }, { "Check keys", A_RUN, "lf hitag chk" },
++	  { "Dump", A_EDIT, "lf hitag dump --pwd" }, { "Load the dump", A_EDIT, "lf hitag eload -2 -f %F" },
++	  { "Simulate", A_EDIT, "lf hitag sim -2" } },
+ };
+ 
+ static int fam_index(void)
+@@ -321,7 +338,8 @@ static const char *mfc_size_text(int sectors)
+  * lf-t55xx-<block 1>-...-dump and lf-4x05-<UID>-dump (4369, 4469) */
+ static const struct { int band; const char *tag; int fam; } dump_tags[] = {
+ 	{ BAND_HF, "iclass", FAM_ICLASS }, { BAND_HF, "mf", FAM_MFC }, { BAND_HF, "mfu", FAM_MFU },
+-	{ BAND_HF, "15", FAM_15 }, { BAND_LF, "t55xx", FAM_T55XX }, { BAND_LF, "4x05", FAM_EM4X05 },
++	{ BAND_HF, "15", FAM_15 }, { BAND_HF, "mfp", FAM_MFP }, { BAND_LF, "t55xx", FAM_T55XX },
++	{ BAND_LF, "4x05", FAM_EM4X05 }, { BAND_LF, "hitag", FAM_HITAG },
+ 	{ BAND_LF, "4369", FAM_EM4X05 }, { BAND_LF, "4469", FAM_EM4X05 },
+ };
+ 
+@@ -347,6 +365,17 @@ static const char *fam_name(int band, int fam)
+ 	return band == BAND_LF ? lf_fams[fam] : hf_fams[fam];
+ }
+ 
++/* the type's screen has a Dump */
++static int has_dump(int band, int fam)
++{
++	const struct action *a = fam_acts[band == BAND_LF ? N_HF_FAM + fam : fam];
++
++	for (int i = 0; i < ACTS_MAX && a[i].name; i++)
++		if (!strcmp(a[i].name, "Dump"))
++			return 1;
++	return 0;
++}
++
+ /* ---- the saved cards (~/.proxmark3/cards.tsv) ---------------------------------- */
+ 
+ struct saved {
+@@ -1193,8 +1222,17 @@ static void draw_family(void)
+ 	header(eb, band_fam(O.fam));
+ 	if (O.card.found && O.card.band == O.band && O.card.fam == O.fam)
+ 		head_right(WB_COLOR_OK, 0, 0, O.card.uid);
+-	for (int i = 0; i < n; i++)
+-		list_row(X0, 160 + i * (ROW_H + ROW_GAP), XW, ROW_H, 0, fam_acts[fam_index()][i].name, 0, 1, i == O.focus);
++	{
++		int top = 160, avail = BOTTOM - 8 - top, cut, scroll = rows_scroll(n, ROW_H, ROW_GAP, O.focus, avail, &cut);
++
++		clip_rows(top - 14, top + cut);
++		for (int i = 0; i < n; i++)
++			list_row(X0, top + i * (ROW_H + ROW_GAP) - scroll, XW, ROW_H, 0, fam_acts[fam_index()][i].name, 0, 1,
++				 i == O.focus);
++		clip_end();
++		if (n * (ROW_H + ROW_GAP) - ROW_GAP > avail)
++			scrollbar(W - X0 - 4, top, avail, n * (ROW_H + ROW_GAP) - ROW_GAP, avail, scroll);
++	}
+ 	hints(hs, 4);
+ }
+ 
+@@ -1518,7 +1556,8 @@ static int is_hf(const struct pm3_card *c, int fam)
+  * block. Writing a MIFARE Classic asks first and runs (CF_RESTORE); the
+  * others are typed in the Console, to edit (a key, a block range).
+  */
+-struct card_cmds { int band, fam; const char *load, *sim, *write, *write_label; };	/* sim may be 0 */
++/* sim may be 0; write_label 0: nothing to write with */
++struct card_cmds { int band, fam; const char *load, *sim, *write, *write_label; };
+ static const struct card_cmds card_table[] = {
+ 	{ BAND_HF, FAM_MFC, "hf mf eload %S -f %F", "hf mf sim %S -u %U", 0, "Write to a card" },
+ 	{ BAND_HF, FAM_MFU, "hf mfu eload -f %F", "hf mfu sim -t 2 -u %U", "hf mfu restore -f %F", "Write to a card" },
+@@ -1529,6 +1568,7 @@ static const struct card_cmds card_table[] = {
+ 	{ BAND_LF, FAM_HID, 0, "lf hid sim -r %U", "lf hid clone -r %U", "Clone to a T55xx" },
+ 	{ BAND_LF, FAM_INDALA, 0, "lf indala sim -r %U", "lf indala clone -r %U", "Clone to a T55xx" },
+ 	{ BAND_LF, FAM_T55XX, 0, 0, "lf t55xx restore -f %F", "Write to a T55xx" },
++	{ BAND_LF, FAM_HITAG, "lf hitag eload -2 -f %F", "lf hitag sim -2", 0, 0 },
+ };
+ 
+ /* writing it needs the dump (MIFARE Classic's write is the dump too) */
+@@ -1549,8 +1589,8 @@ static const struct card_cmds *card_cmds(const struct saved *s)
+  * other dumps as rows of 16 bytes */
+ static int card_bs(const struct saved *s)
+ {
+-	if (s->c.band == BAND_LF && (s->c.fam == FAM_T55XX || s->c.fam == FAM_EM4X05))
+-		return 4;	/* their blocks are 32 bits */
++	if (s->c.band == BAND_LF && (s->c.fam == FAM_T55XX || s->c.fam == FAM_EM4X05 || s->c.fam == FAM_HITAG))
++		return 4;	/* their blocks and pages are 32 bits */
+ 	return is_hf(&s->c, FAM_ICLASS) ? 8 : 16;
+ }
+ 
+@@ -1643,13 +1683,19 @@ static void draw_card(void)
+ 	card_chips(s, 150);
+ 	console_box(X0, 198, XW - 12, 466);
+ 	if (!V.blocks) {
++		char why[160];
++		const struct card_cmds *k = card_cmds(s);
++
++		if (s->c.fam >= 0 && has_dump(s->c.band, s->c.fam))
++			snprintf(why, sizeof(why), "No dump of this card yet. Dump it in %s \xe2\x80\xba %s.",
++				 s->c.band == BAND_LF ? "LF" : "HF", fam_name(s->c.band, s->c.fam));
++		else if (k && k->sim && !k->load)
++			snprintf(why, sizeof(why), "Only the ID of this card is saved: its options (\xe2\x96\xa0) "
++				 "simulate or clone it.");
++		else
++			snprintf(why, sizeof(why), "Only the ID of this card is saved.");
+ 		text_wrap(&f_ui18, X0 + 20, 198 + 20, XW - 52, 26,
+-			  is_hf(&s->c, FAM_MFC) ? "No dump of this card yet. Dump it in HF \xe2\x80\xba MIFARE Classic." :
+-			  is_hf(&s->c, FAM_ICLASS) ? "No dump of this card yet. Dump it in HF \xe2\x80\xba iCLASS \xc2\xb7 PicoPass." :
+-			  is_hf(&s->c, FAM_15) ? "No dump of this card yet. Dump it in HF \xe2\x80\xba ISO 15693 \xc2\xb7 ICODE." :
+-			  is_hf(&s->c, FAM_MFU) ? "No dump of this card yet. Dump it in HF \xe2\x80\xba Ultralight \xc2\xb7 NTAG." :
+-			  card_cmds(s) ? "Only the ID of this card is saved: options (\xe2\x96\xa0) simulate or clone it." :
+-			  "Only the ID of this card is saved.", WB_COLOR_TEXT_LOW, 3, 1);
++			  why, WB_COLOR_TEXT_LOW, 3, 1);
+ 		hints(nodump, 2);
+ 		return;
+ 	}
+@@ -2724,6 +2770,62 @@ static void delete_card(int i)
+ 	notice("Removed from Cards; the files stay in ~/.proxmark3/dumps", 0);
+ }
+ 
++/* copy src to a file of its own in the same folder ("-copyN" before the
++ * extension); the type tag stays the second field, so Cards still reads
++ * it. Sets dst, 0 or -1. */
++static int copy_dump(const char *src, char *dst, int dn)
++{
++	static uint8_t buf[sizeof(V.data)];
++	const char *dot = strrchr(src, '.');
++	int stem = dot ? (int)(dot - src) : (int)strlen(src);
++	int n = load_bin(src, buf, sizeof(buf));
++	FILE *f;
++
++	if (n <= 0)
++		return -1;
++	for (int i = 2; i < 100; i++) {
++		snprintf(dst, (size_t)dn, "%.*s-copy%d%s", stem, src, i, dot ? dot : "");
++		if (access(dst, F_OK))
++			break;
++	}
++	if (!(f = fopen(dst, "wb")))
++		return -1;
++	fwrite(buf, 1, (size_t)n, f);
++	return fclose(f) ? -1 : 0;
++}
++
++/* A second card from card i, newest first, with its dump and keys copied
++ * to files of their own: editing or writing the copy leaves the original.
++ * Named "<its name> copy". */
++static void duplicate_card(int i)
++{
++	struct saved d;
++
++	if (i < 0 || i >= n_cards)
++		return;
++	if (n_cards >= CARDS_MAX) {
++		notice("Cards is full", 1);
++		return;
++	}
++	d = cards[i];
++	d.t = (long)time(0);
++	snprintf(d.name, sizeof(d.name), "%.40s copy", card_title(&cards[i]));
++	if (d.dump[0] && copy_dump(cards[i].dump, d.dump, sizeof(d.dump)) < 0) {
++		notice("Could not copy the dump", 1);
++		return;
++	}
++	if (d.keys[0] && copy_dump(cards[i].keys, d.keys, sizeof(d.keys)) < 0)
++		d.keys[0] = 0;		/* the copy without keys is better than shared keys */
++	memmove(cards + 1, cards, sizeof(cards[0]) * (size_t)n_cards);
++	n_cards++;
++	cards[0] = d;
++	cards_save();
++	O.focus = 0;
++	while (O.sc != SC_CARDS && !back())
++		;			/* from the card view: to the list, on the copy */
++	notice("Card duplicated", 0);
++}
++
+ /* ---- dictionaries ----------------------------------------------------------------------- */
+ 
+ static void open_in_write(const char *path)
+@@ -3096,6 +3198,8 @@ static void menu_build(int what)
+ 		menu_open(what, "CARDS", card_title(&cards[O.focus]));
+ 		menu_add("Open");
+ 		menu_add("Rename");
++		if (cards[O.focus].dump[0])
++			menu_add("Duplicate");
+ 		if (is_hf(&cards[O.focus].c, FAM_MFC))
+ 			menu_add("Keys");
+ 		menu_add("Delete")->danger = 1;
+@@ -3114,10 +3218,12 @@ static void menu_build(int what)
+ 				menu_add("Load into the Proxmark3");
+ 			if (k->sim)
+ 				menu_add("Simulate");
+-			if (V.blocks || !write_needs_dump(k))
++			if (k->write_label && (V.blocks || !write_needs_dump(k)))
+ 				menu_add(k->write_label);
+ 		}
+ 		menu_add("Rename");
++		if (V.blocks)
++			menu_add("Duplicate");
+ 		menu_add("Delete")->danger = 1;
+ 		menu_it[menu_n - 1].sep = 1;
+ 		break;
+@@ -3232,6 +3338,8 @@ static void menu_done(int i)
+ 			open_card(O.focus);
+ 		} else if (!strcmp(l, "Rename")) {
+ 			ask_name(O.focus);
++		} else if (!strcmp(l, "Duplicate")) {
++			duplicate_card(O.focus);
+ 		} else if (!strcmp(l, "Keys")) {
+ 			V.i = O.focus;
+ 			V.have_keys = 0;
+@@ -3257,6 +3365,8 @@ static void menu_done(int i)
+ 			console_typed(cmd);
+ 		} else if (!strcmp(l, "Rename")) {
+ 			ask_name(V.i);
++		} else if (!strcmp(l, "Duplicate")) {
++			duplicate_card(V.i);
+ 		} else if (!strcmp(l, "Write to a card") || !strcmp(l, "Clone to a T55xx") ||
+ 			   !strcmp(l, "Write to a T55xx")) {
+ 			const struct card_cmds *k = card_cmds(&cards[V.i]);
+@@ -3264,7 +3374,7 @@ static void menu_done(int i)
+ 
+ 			if (write_needs_dump(k) && !V.blocks) {
+ 				notice("No dump to write", 1);
+-			} else if (!k->write) {
++			} else if (!k->write) {	/* MIFARE Classic: asks, then runs */
+ 				confirm(CF_RESTORE, "WRITE TO A CARD", "Write this dump to the card on the Proxmark3?", "Write", 0);
+ 			} else {
+ 				expand(k->write, cmd, sizeof(cmd), cards[V.i].dump);
+diff --git a/client/src/badgeui/pm3ui_sim.c b/client/src/badgeui/pm3ui_sim.c
+index d66975b09..159238de9 100644
+--- a/client/src/badgeui/pm3ui_sim.c
++++ b/client/src/badgeui/pm3ui_sim.c
+@@ -99,6 +99,14 @@ int be_command(const char *cmd)
+ 		unsigned char d[48] = { 0x00, 0x14, 0x80, 0x40, 0xFF, 0x80, 0x3E, 0x07, 0x93, 0x21, 0x5C, 0x6E };
+ 
+ 		saved_dump("lf-t55xx-FF803E07-93215C6E-dump", d, sizeof(d));
++	} else if (!strncmp(cmd, "hf mfp dump", 11)) {
++		unsigned char d[2048] = { 0x04, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 };
++
++		saved_dump("hf-mfp-04112233445566-dump", d, sizeof(d));
++	} else if (!strncmp(cmd, "lf hitag dump", 13)) {
++		unsigned char d[48] = { 0xAB, 0xCD, 0x12, 0x34 };
++
++		saved_dump("lf-hitag-ABCD1234-dump", d, sizeof(d));
+ 	} else if (!strncmp(cmd, "lf em 4x05 dump", 15)) {
+ 		unsigned char d[64] = { 0x00, 0x04, 0x00, 0x00, 0x12, 0x34, 0x56, 0x78 };
+ 
+diff --git a/client/src/badgeui/test_pm3ui.py b/client/src/badgeui/test_pm3ui.py
+index 943767f98..b4c49a1c2 100644
+--- a/client/src/badgeui/test_pm3ui.py
++++ b/client/src/badgeui/test_pm3ui.py
+@@ -10,6 +10,7 @@ sniffer and the console.
+     PM3UI_SHOTS=dir python3 test_pm3ui.py   # also save the screens as PPM
+ """
+ import os
++import re
+ import shutil
+ import subprocess
+ import sys
+@@ -145,9 +146,9 @@ class Test(unittest.TestCase):
+             self.assertEqual(f.read(), "FFFFFFFFFFFF\n")
+         self.assertIn("1 key added", w["notice"])
+         # delete: Cancel is the default, then Delete
+-        w = self.a.run("\\r\\r\\n\\1\\d\\d\\d\\n\\n")
++        w = self.a.run("\\r\\r\\n\\1\\d\\d\\d\\d\\n\\n")
+         self.assertTrue(w["cards"].startswith("1 "))
+-        w = self.a.run("\\r\\r\\n\\1\\d\\d\\d\\n\\d\\n")
++        w = self.a.run("\\r\\r\\n\\1\\d\\d\\d\\d\\n\\d\\n")
+         self.assertTrue(w["cards"].startswith("0"))
+ 
+     def test_iclass_dump_to_cards(self):
+@@ -162,7 +163,7 @@ class Test(unittest.TestCase):
+         self.assertEqual(w["view"], "32")
+         # no MIFARE keys; Simulate and Write type their iCLASS commands
+         w = self.a.run("\\r\\r\\n\\n\\1")
+-        self.assertEqual(w["menu"], "|Edit in Write |Load into the Proxmark3 |Simulate |Write to a card |Rename |Delete")
++        self.assertEqual(w["menu"], "|Edit in Write |Load into the Proxmark3 |Simulate |Write to a card |Rename |Duplicate |Delete")
+         w = self.a.run("\\r\\r\\n\\n\\1\\d\\d\\d\\n")
+         self.assertTrue(w["input"].startswith("hf iclass restore -f "), w["input"])
+         self.assertTrue(w["input"].endswith("hf-iclass-0102030405060708-dump.bin --first 6 --last 31 --ki 0"))
+@@ -197,7 +198,7 @@ class Test(unittest.TestCase):
+         # an ISO 15693 dump: load, simulate and write, as for iCLASS
+         dump = self.saved_card(5, "ISO 15693 tag", "E0 04 01 50 12 34 56 78", "hf-15-E004015012345678-dump.bin", 512)
+         w = self.a.run("\\r\\r\\n\\n\\1", "card-15")
+-        self.assertEqual(w["menu"], "|Edit in Write |Load into the Proxmark3 |Simulate |Write to a card |Rename |Delete")
++        self.assertEqual(w["menu"], "|Edit in Write |Load into the Proxmark3 |Simulate |Write to a card |Rename |Duplicate |Delete")
+         w = self.a.run("\\r\\r\\n\\n\\1\\d\\n")
+         self.assertIn("emulator memory", w["notice"])
+         w = self.a.run("\\r\\r\\n\\n\\1\\d\\d\\n")
+@@ -216,7 +217,7 @@ class Test(unittest.TestCase):
+         # HF > ISO 15693 and HF > iCLASS: Load the dump, Simulate
+         w = self.a.run("\\n" + "\\d" * 6 + "\\n" + "\\d" * 5 + "\\n")
+         self.assertEqual(w["input"], "hf 15 sim")
+-        w = self.a.run("\\n" + "\\d" * 7 + "\\n" + "\\d" * 5 + "\\n")
++        w = self.a.run("\\n" + "\\d" * 7 + "\\n" + "\\d" * 6 + "\\n")
+         self.assertEqual(w["input"], "hf iclass sim -t 3")
+ 
+     def test_lf_card(self):
+@@ -238,7 +239,7 @@ class Test(unittest.TestCase):
+         dump = self.saved_card(1, "MIFARE Ultralight \xb7 NTAG", "04 A1 B2 C3 D4 E5 F6",
+                                "hf-mfu-04A1B2C3D4E5F6-dump.bin", 512)
+         w = self.a.run("\\r\\r\\n\\n\\1")
+-        self.assertEqual(w["menu"], "|Edit in Write |Load into the Proxmark3 |Simulate |Write to a card |Rename |Delete")
++        self.assertEqual(w["menu"], "|Edit in Write |Load into the Proxmark3 |Simulate |Write to a card |Rename |Duplicate |Delete")
+         w = self.a.run("\\r\\r\\n\\n\\1\\d\\d\\n")
+         self.assertEqual(w["input"], "hf mfu sim -t 2 -u 04A1B2C3D4E5F6")
+         w = self.a.run("\\r\\r\\n\\n\\1\\d\\d\\d\\n")
+@@ -246,7 +247,7 @@ class Test(unittest.TestCase):
+ 
+     def test_type_screens_commands(self):
+         # DESFire and Plus check keys with -f (there is no -d)
+-        w = self.a.run("\\n\\d\\d\\d\\n\\d\\d\\n")
++        w = self.a.run("\\n\\d\\d\\d\\n" + "\\d" * 5 + "\\n")
+         self.assertEqual(w["result"].split(" ", 1)[1], "hf mfdes chk -f mfdes_default_keys")
+         w = self.a.run("\\n\\d\\d\\d\\d\\n\\d\\n")
+         self.assertEqual(w["result"].split(" ", 1)[1], "hf mfp chk -f mfp_default_keys")
+@@ -278,7 +279,7 @@ class Test(unittest.TestCase):
+         self.assertEqual(w["cards"], "1 FF803E07|dump · 12 blocks|Garage")
+         w = self.a.run("\\r\\r\\n\\n\\1", "card-t55xx")
+         self.assertEqual(w["view"], "12")
+-        self.assertEqual(w["menu"], "|Edit in Write |Write to a T55xx |Rename |Delete")
++        self.assertEqual(w["menu"], "|Edit in Write |Write to a T55xx |Rename |Duplicate |Delete")
+         w = self.a.run("\\r\\r\\n\\n\\1\\d\\n")
+         self.assertTrue(w["input"].startswith("lf t55xx restore -f "), w["input"])
+         self.assertTrue(w["input"].endswith("lf-t55xx-FF803E07-93215C6E-dump.bin"))
+@@ -286,7 +287,7 @@ class Test(unittest.TestCase):
+         w = self.a.run(con + "lf em 4x05 dump\\n\\e")
+         self.assertTrue(w["cards"].startswith("2 12345678|dump · 16 blocks"), w["cards"])
+         w = self.a.run("\\r\\r\\n\\n\\1")
+-        self.assertEqual(w["menu"], "|Edit in Write |Rename |Delete")
++        self.assertEqual(w["menu"], "|Edit in Write |Rename |Duplicate |Delete")
+ 
+     def test_t55xx_dump_after_a_search(self):
+         # searched on LF (an EM410x on a T55xx), then dumped: the same card,
+@@ -295,13 +296,101 @@ class Test(unittest.TestCase):
+         self.assertEqual(w["cards"], "1 0F0368568B|dump · 12 blocks")
+         self.assertEqual(w["card"].split("|")[0], "1 1 0 EM410x")
+ 
++    def test_plus_and_hitag_dumps(self):
++        con = "\\d\\r\\r\\n"
++        w = self.a.run(con + "hf mfp dump\\n\\e")
++        self.assertEqual(w["cards"], "1 04 11 22 33 44 55 66|dump · 2048 bytes")
++        w = self.a.run(con + "lf hitag dump --pwd\\n\\e")
++        self.assertTrue(w["cards"].startswith("2 ABCD1234|dump · 12 blocks"), w["cards"])
++        w = self.a.run("\\r\\r\\n\\n\\1")
++        self.assertEqual(w["menu"], "|Edit in Write |Load into the Proxmark3 |Simulate |Rename |Duplicate |Delete")
++        w = self.a.run("\\r\\r\\n\\n\\1\\d\\d\\n")
++        self.assertEqual(w["input"], "lf hitag sim -2")
++
++    def test_type_screen_scrolls(self):
++        # MIFARE Classic has 9 actions: the last is reached and runs
++        w = self.a.run("\\n\\d\\n" + "\\d" * 8, "mfc-scrolled")
++        self.assertEqual(w["focus"], "8")
++        w = self.a.run("\\n\\n\\n" + "\\d" * 8 + "\\n")    # after a search: %U filled in
++        self.assertEqual(w["input"], "hf mf csetuid -u 07947112")
++
++    def test_commands_exist_in_the_client(self):
++        """Every hf/lf command the app types or runs, against the client's
++        own CLIParser definitions: the command exists, and each flag it
++        passes is one of its arguments."""
++        src = os.path.join(HERE, "..")
++        defs = {}       # "hf mf rdbl" -> (shorts, longs)
++        for fn in os.listdir(src):
++            if not (fn.startswith("cmd") and fn.endswith(".c")):
++                continue
++            text = open(os.path.join(src, fn), errors="replace").read()
++            default = re.search(r"arg_add_default\(void \*at\[\]\) \{(.*?)\n\}", text, re.S)
++            for m in re.finditer(r'CLIParserInit\(&ctx, "([a-z0-9 ]+)"(.*?)CLIExec', text, re.S):
++                body = m.group(2) + (default.group(1) if default and "arg_add_default" in m.group(2) else "")
++                shorts, longs = set(), set()
++                for a in re.finditer(r'arg_\w+\(\s*(NULL|"[^"]*")\s*,\s*(NULL|"[^"]*")', body):
++                    if a.group(1) != "NULL":
++                        shorts.update(a.group(1).strip('"'))
++                    if a.group(2) != "NULL":
++                        longs.add(a.group(2).strip('"'))
++                defs[m.group(1)] = (shorts, longs)
++        code = open(os.path.join(HERE, "pm3ui.c")).read()
++        cmds = set(re.findall(r'"((?:hf|lf) [^"%]*(?:%[A-Z][^"%]*)*)"', code))
++        checked = 0
++        for cmd in sorted(cmds):
++            if ":" in cmd:
++                continue            # a log line ("hf mf fchk: cancelled")
++            words = cmd.replace("%S", "--1k").replace("%U", "01020304").replace("%F", "x.bin") \
++                       .replace("%L", "18").split()
++            path = None
++            for n in range(len(words), 1, -1):
++                if " ".join(words[:n]) in defs:
++                    path = " ".join(words[:n])
++                    break
++            if path is None:
++                if len(words) <= 3 and not any(w.startswith("-") for w in words):
++                    continue        # a prefix ("hf ", "lf search" without a parser of its own)
++                self.fail("%r: no such command in the client" % cmd)
++            shorts, longs = defs[path]
++            for w in words[len(path.split()):]:
++                if w.startswith("--"):
++                    self.assertIn(w[2:], longs, "%r: %s has no --%s" % (cmd, path, w[2:]))
++                elif w.startswith("-") and len(w) > 1:
++                    for ch in w[1:]:
++                        self.assertIn(ch, shorts, "%r: %s has no -%s" % (cmd, path, ch))
++            checked += 1
++        self.assertGreater(checked, 60)
++
++    def test_duplicate_card(self):
++        import glob
++        dump = self.saved_card(5, "ISO 15693 tag", "E0 04 01 50 12 34 56 78",
++                               "hf-15-E004015012345678-dump.bin", 512)
++        # Duplicate from the list: a second card named "... copy", its own file
++        w = self.a.run("\\r\\r\\n\\1\\d\\d\\n")      # options > Duplicate
++        self.assertIn("2 saved", w["cards"]) if False else None
++        self.assertEqual(w["notice"], "Card duplicated")
++        cards = w["cards"].split(" ", 1)[1]
++        self.assertIn("ISO 15693 tag copy", cards)
++        dumps = sorted(os.path.basename(x) for x in glob.glob(
++            os.path.join(self.a.home, ".proxmark3/dumps/*.bin")))
++        self.assertEqual(dumps, ["hf-15-E004015012345678-dump-copy2.bin",
++                                 "hf-15-E004015012345678-dump.bin"])
++        # the copy has its own file: editing it leaves the original
++        self.assertEqual(w["screen"].strip(), "cards")
++        w = self.a.run("\\r\\r\\n\\n")                 # open the copy (newest, focus 0)
++        self.assertEqual(w["screen"].strip(), "card")
++        # the copy is still ISO 15693 (dump-copy2 keeps the tag), loadable
++        w = self.a.run("\\r\\r\\n\\n\\1")
++        self.assertIn("Load into the Proxmark3", w["menu"])
++        self.assertIn("Duplicate", w["menu"])
++
+     def test_edit_dump_in_write(self):
+         # an iCLASS dump in Cards, then Edit in Write changes block 6
+         self.a.run("\\n" + "\\d" * 7 + "\\n\\d\\d\\n\\n")
+         dump = os.path.join(self.a.home, ".proxmark3/dumps/hf-iclass-0102030405060708-dump.bin")
+         text = dump[:-4] + ".txt"
+         w = self.a.run("\\r\\r\\n\\n\\1")
+-        self.assertEqual(w["menu"], "|Edit in Write |Load into the Proxmark3 |Simulate |Write to a card |Rename |Delete")
++        self.assertEqual(w["menu"], "|Edit in Write |Load into the Proxmark3 |Simulate |Write to a card |Rename |Duplicate |Delete")
+         edit = "perl -pi -e 's/^00 00 00 00 00 00 00 00  # 6$/11 22 33 44 55 66 77 88  # 6/'"
+         w = self.a.run("\\r\\r\\n\\n\\1\\n", "edited", PM3UI_WRITE=edit)
+         self.assertEqual(w["screen"].strip(), "card")
+-- 
+2.50.1 (Apple Git-155)
+

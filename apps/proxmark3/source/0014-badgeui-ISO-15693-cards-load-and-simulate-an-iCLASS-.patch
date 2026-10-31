@@ -1,0 +1,283 @@
+From ed060e9aa05478649556aa32627f09c24e559ad6 Mon Sep 17 00:00:00 2001
+From: John <john.de.kroon@cyberant.com>
+Date: Fri, 30 Oct 2026 22:07:24 +0100
+Subject: [PATCH 14/20] badgeui: ISO 15693 cards load and simulate; an iCLASS
+ card stays iCLASS
+
+A user's iCLASS card showed as an ISO 15693 tag in Cards and could not
+be loaded or simulated:
+- hf search tries ISO 15693 before iCLASS, and an iCLASS card can
+  answer both; the search took the first "Valid ... found". iCLASS now
+  wins when hf search found it, with its CSN as the UID.
+- A dump attached to a card now sets the card's type from its name
+  (hf-iclass-, hf-15-, hf-mf-, hf-mfu-), also for cards already in
+  cards.tsv: an hf-iclass dump makes the card iCLASS.
+- ISO 15693 cards with a dump get what iCLASS has: Load into the
+  Proxmark3 (hf 15 eload -f), Simulate (hf 15 sim, typed in the
+  Console) and Write to a card (hf 15 restore -f, typed in).
+- HF > ISO 15693 and HF > iCLASS gain "Load the dump" (eload with the
+  saved card's dump) and "Simulate".
+
+Tested: test_pm3ui.py 16/16 on the host (an ISO 15693 card's options and
+their commands, an iCLASS dump on a card saved as ISO 15693, the type
+screens' new actions); pm3ui_pm3.c compiled for the badge. The search
+change needs a real card: not yet tested on the badge.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ client/src/badgeui/pm3ui.c       | 69 ++++++++++++++++++++++----------
+ client/src/badgeui/pm3ui_pm3.c   | 16 +++++---
+ client/src/badgeui/test_pm3ui.py | 37 +++++++++++++++++
+ 3 files changed, 95 insertions(+), 27 deletions(-)
+
+diff --git a/client/src/badgeui/pm3ui.c b/client/src/badgeui/pm3ui.c
+index 24bff1f2f..3638b5913 100644
+--- a/client/src/badgeui/pm3ui.c
++++ b/client/src/badgeui/pm3ui.c
+@@ -162,10 +162,12 @@ static const struct action fam_acts[N_HF_FAM + N_LF_FAM][ACTS_MAX] = {
+ 	/* ISO 14443-A */
+ 	{ { "Info", A_RUN, "hf 14a info" }, { "Read the UID", A_RUN, "hf 14a reader" }, { "Raw command", A_EDIT, "hf 14a raw -sc 3000" } },
+ 	/* ISO 15693 */
+-	{ { "Info", A_RUN, "hf 15 info" }, { "Dump", A_RUN, "hf 15 dump" }, { "Read a block", A_EDIT, "hf 15 rdbl -* -b 0" } },
++	{ { "Info", A_RUN, "hf 15 info" }, { "Dump", A_RUN, "hf 15 dump" }, { "Read a block", A_EDIT, "hf 15 rdbl -* -b 0" },
++	  { "Load the dump", A_EDIT, "hf 15 eload -f %F" }, { "Simulate", A_EDIT, "hf 15 sim" } },
+ 	/* iCLASS */
+ 	{ { "Info", A_RUN, "hf iclass info" }, { "Check keys", A_RUN, "hf iclass chk -f iclass_default_keys" },
+-	  { "Dump", A_EDIT, "hf iclass dump --ki 0" } },
++	  { "Dump", A_EDIT, "hf iclass dump --ki 0" }, { "Load the dump", A_EDIT, "hf iclass eload -f %F" },
++	  { "Simulate", A_EDIT, "hf iclass sim -t 3" } },
+ 	/* EM410x */
+ 	{ { "Read", A_RUN, "lf em 410x reader" }, { "Simulate", A_EDIT, "lf em 410x sim --id %U" },
+ 	  { "Clone to a T55xx", A_EDIT, "lf em 410x clone --id %U" } },
+@@ -311,6 +313,24 @@ static const char *mfc_size_text(int sectors)
+ 	return sectors == 5 ? "320 B" : sectors == 32 ? "2 KB" : sectors == 40 ? "4 KB" : "1 KB";
+ }
+ 
++/* the card types of the dumps the client names hf-<type>-<UID>-dump */
++static const struct { const char *tag; int fam; } dump_tags[] = {
++	{ "iclass", FAM_ICLASS }, { "mf", FAM_MFC }, { "mfu", FAM_MFU }, { "15", FAM_15 },
++};
++
++/* the card type a dump's name says (hf-<type>-<UID>-dump), or -1 */
++static int dump_fam(const char *path)
++{
++	const char *base = strrchr(path, '/') ? strrchr(path, '/') + 1 : path, *dash;
++
++	if (strncmp(base, "hf-", 3) || !(dash = strchr(base + 3, '-')))
++		return -1;
++	for (size_t i = 0; i < sizeof(dump_tags) / sizeof(dump_tags[0]); i++)
++		if ((int)strlen(dump_tags[i].tag) == dash - base - 3 && !strncmp(base + 3, dump_tags[i].tag, (size_t)(dash - base - 3)))
++			return dump_tags[i].fam;
++	return -1;
++}
++
+ /* ---- the saved cards (~/.proxmark3/cards.tsv) ---------------------------------- */
+ 
+ struct saved {
+@@ -353,6 +373,7 @@ static void cards_load(void)
+ 	while (n_cards < CARDS_MAX && fgets(line, sizeof(line), f)) {
+ 		struct saved *s = &cards[n_cards];
+ 		char *p = line, num[24];
++		int fam;
+ 
+ 		line[strcspn(line, "\n")] = 0;
+ 		memset(s, 0, sizeof(*s));
+@@ -374,10 +395,11 @@ static void cards_load(void)
+ 		field(&p, s->keys, sizeof(s->keys));
+ 		field(&p, s->detail, sizeof(s->detail));
+ 		s->c.found = 1;
+-		/* a type the search did not know: the dump's name says it */
+-		if (s->c.fam < 0 && strstr(s->dump, "/hf-iclass-")) {
+-			s->c.fam = FAM_ICLASS;
+-			snprintf(s->c.type, sizeof(s->c.type), "%s", hf_fams[FAM_ICLASS]);
++		/* the dump says what the card is (cards saved before the search
++		 * knew better: an iCLASS card called ISO 15693, or no type) */
++		if (s->dump[0] && (fam = dump_fam(s->dump)) >= 0 && fam != s->c.fam) {
++			s->c.fam = fam;
++			snprintf(s->c.type, sizeof(s->c.type), "%s", hf_fams[fam]);
+ 		}
+ 		if (s->c.uid[0])
+ 			n_cards++;
+@@ -1457,7 +1479,7 @@ static int card_bs(const struct saved *s)
+ /* the dumps the Proxmark3 can load into its emulator memory */
+ static int card_loads(const struct saved *s)
+ {
+-	return s->c.fam == FAM_MFC || s->c.fam == FAM_ICLASS;
++	return s->c.fam == FAM_MFC || s->c.fam == FAM_ICLASS || s->c.fam == FAM_15;
+ }
+ 
+ /* an iCLASS dump: the blocks before the application, then the rest */
+@@ -1524,6 +1546,7 @@ static void draw_card(void)
+ 		text_wrap(&f_ui18, X0 + 20, 198 + 20, XW - 52, 26,
+ 			  s->c.fam == FAM_MFC ? "No dump of this card yet. Dump it in HF \xe2\x80\xba MIFARE Classic." :
+ 			  s->c.fam == FAM_ICLASS ? "No dump of this card yet. Dump it in HF \xe2\x80\xba iCLASS \xc2\xb7 PicoPass." :
++			  s->c.fam == FAM_15 ? "No dump of this card yet. Dump it in HF \xe2\x80\xba ISO 15693 \xc2\xb7 ICODE." :
+ 			  "Only the ID of this card is saved.", WB_COLOR_TEXT_LOW, 3, 1);
+ 		hints(nodump, 2);
+ 		return;
+@@ -2199,17 +2222,13 @@ static void console_typed(const char *cmd)
+  * file goes to Cards: on the card searched last when the name has its
+  * UID, else on the card the name says (hf-<type>-<UID>-dump).
+  */
+-static const struct { const char *tag; int fam; } dump_tags[] = {
+-	{ "iclass", FAM_ICLASS }, { "mf", FAM_MFC }, { "mfu", FAM_MFU }, { "15", FAM_15 },
+-};
+-
+ static void dump_saved(const char *out)
+ {
+ 	static const char said[] = "to binary file `";
+ 	const char *p = out;
+ 
+ 	while ((p = strstr(p, said))) {
+-		char path[160], tag[16], u[48], cu[48];
++		char path[160], u[48], cu[48];
+ 		const char *base, *dash;
+ 		struct pm3_card c;
+ 		struct saved *s;
+@@ -2229,23 +2248,21 @@ static void dump_saved(const char *out)
+ 		base = strrchr(path, '/') ? strrchr(path, '/') + 1 : path;
+ 		if (strncmp(base, "hf-", 3) || !strstr(base, "-dump") || stat(path, &st) || st.st_size <= 0)
+ 			continue;
+-		dash = strchr(base + 3, '-');
+-		if (!dash || dash - base - 3 >= (int)sizeof(tag))
++		if ((fam = dump_fam(path)) < 0)
+ 			continue;
+-		snprintf(tag, sizeof(tag), "%.*s", (int)(dash - base - 3), base + 3);
+-		for (size_t i = 0; i < sizeof(dump_tags) / sizeof(dump_tags[0]); i++)
+-			if (!strcmp(tag, dump_tags[i].tag))
+-				fam = dump_tags[i].fam;
++		dash = strchr(base + 3, '-');
+ 		k = 0;
+ 		for (const char *q = dash + 1; isxdigit((unsigned char)*q) && k < (int)sizeof(u) - 1; q++)
+ 			u[k++] = (char)toupper((unsigned char)*q);
+ 		u[k] = 0;
+-		if (fam < 0 || k < 8 || k % 2)
++		if (k < 8 || k % 2)
+ 			continue;
+ 		uid_hex(O.card.uid, cu, sizeof(cu));
+ 		if (O.card.found && O.card.band == BAND_HF && !strcmp(cu, u)) {
+ 			c = O.card;
+-			if (c.fam < 0) {	/* a type the search did not know */
++			/* the dump says what the card is: an iCLASS card a search
++			 * called ISO 15693, or one it did not know */
++			if (c.fam != fam) {
+ 				c.fam = fam;
+ 				snprintf(c.type, sizeof(c.type), "%s", hf_fams[fam]);
+ 			}
+@@ -3097,8 +3114,9 @@ static void menu_done(int i)
+ 		} else if (!strcmp(l, "Simulate")) {
+ 			char cmd[200];
+ 
+-			/* iCLASS: the dump in the emulator memory (the triangle loads it) */
+-			expand(cards[V.i].c.fam == FAM_ICLASS ? "hf iclass sim -t 3" : "hf mf sim %S -u %U", cmd, sizeof(cmd), 0);
++			/* iCLASS, ISO 15693: the dump in the emulator memory (Load) */
++			expand(cards[V.i].c.fam == FAM_ICLASS ? "hf iclass sim -t 3" : cards[V.i].c.fam == FAM_15 ? "hf 15 sim" :
++			       "hf mf sim %S -u %U", cmd, sizeof(cmd), 0);
+ 			console_typed(cmd);
+ 		} else if (!strcmp(l, "Write to a card")) {
+ 			if (!V.blocks) {
+@@ -3110,6 +3128,11 @@ static void menu_done(int i)
+ 				snprintf(cmd, sizeof(cmd), "hf iclass restore -f %s --first 6 --last %d --ki 0", cards[V.i].dump,
+ 					 V.blocks - 1);
+ 				console_typed(cmd);
++			} else if (cards[V.i].c.fam == FAM_15) {
++				char cmd[300];
++
++				snprintf(cmd, sizeof(cmd), "hf 15 restore -f %s", cards[V.i].dump);
++				console_typed(cmd);
+ 			} else
+ 				confirm(CF_RESTORE, "WRITE TO A CARD", "Write this dump to the card on the Proxmark3?", "Write", 0);
+ 		} else {
+@@ -3496,6 +3519,8 @@ static void load_card(void)
+ 	}
+ 	if (s->c.fam == FAM_ICLASS)
+ 		snprintf(cmd, sizeof(cmd), "hf iclass eload -f %s", s->dump);
++	else if (s->c.fam == FAM_15)
++		snprintf(cmd, sizeof(cmd), "hf 15 eload -f %s", s->dump);
+ 	else
+ 		snprintf(cmd, sizeof(cmd), "hf mf eload %s -f %s", mfc_size_flag(s->c.sectors), s->dump);
+ 	busy("CARDS", "Loading into the Proxmark3\xe2\x80\xa6");
+diff --git a/client/src/badgeui/pm3ui_pm3.c b/client/src/badgeui/pm3ui_pm3.c
+index 3ac9f85c6..88709f177 100644
+--- a/client/src/badgeui/pm3ui_pm3.c
++++ b/client/src/badgeui/pm3ui_pm3.c
+@@ -295,17 +295,23 @@ static void search_hf_other(struct pm3_card *c)
+ 		return;
+ 	c->found = 1;
+ 	c->fam = -1;
+-	if (strstr(type, "15693")) {
+-		c->fam = FAM_15;
+-		snprintf(c->type, sizeof(c->type), "ISO 15693 tag");
+-	} else if (strstr(type, "iCLASS")) {
++	/* hf search tries ISO 15693 before iCLASS, and an iCLASS card can
++	 * answer both: iCLASS wins, with its CSN */
++	if (strstr(o, "iCLASS tag")) {
+ 		c->fam = FAM_ICLASS;
++		snprintf(type, sizeof(type), "iCLASS tag / PicoPass tag");
+ 		snprintf(c->type, sizeof(c->type), "iCLASS \xc2\xb7 PicoPass");
++	} else if (strstr(type, "15693")) {
++		c->fam = FAM_15;
++		snprintf(c->type, sizeof(c->type), "ISO 15693 tag");
+ 	} else {
+ 		snprintf(c->type, sizeof(c->type), "%s", type);
+ 	}
+ 	snprintf(c->proto, sizeof(c->proto), "%s", type);
+-	hex_after(o, "UID", 8, c->uid, sizeof(c->uid));
++	if (c->fam == FAM_ICLASS)
++		hex_after(o, "CSN", 8, c->uid, sizeof(c->uid));
++	if (!c->uid[0])
++		hex_after(o, "UID", 8, c->uid, sizeof(c->uid));
+ 	if (!c->uid[0])
+ 		hex_after(o, "CSN", 8, c->uid, sizeof(c->uid));
+ }
+diff --git a/client/src/badgeui/test_pm3ui.py b/client/src/badgeui/test_pm3ui.py
+index cd0dd634d..51cd4f237 100644
+--- a/client/src/badgeui/test_pm3ui.py
++++ b/client/src/badgeui/test_pm3ui.py
+@@ -182,6 +182,43 @@ class Test(unittest.TestCase):
+         w = self.a.run("\\r\\r\\n\\n\\1")
+         self.assertIn("Load into the Proxmark3", w["menu"])
+ 
++    def saved_card(self, fam, type_, uid, dump_name, size):
++        """a card in cards.tsv with a dump, as the app writes them"""
++        d = os.path.join(self.a.home, ".proxmark3/dumps")
++        os.makedirs(d, exist_ok=True)
++        dump = os.path.join(d, dump_name)
++        with open(dump, "wb") as f:
++            f.write(bytes(range(256)) * (size // 256))
++        with open(os.path.join(self.a.home, ".proxmark3/cards.tsv"), "w") as f:
++            f.write("\t".join(["1793300000", "0", str(fam), type_, uid, "", "", "-1", "0", dump, "", "dump"]) + "\n")
++        return dump
++
++    def test_iso15693_card(self):
++        # an ISO 15693 dump: load, simulate and write, as for iCLASS
++        dump = self.saved_card(5, "ISO 15693 tag", "E0 04 01 50 12 34 56 78", "hf-15-E004015012345678-dump.bin", 512)
++        w = self.a.run("\\r\\r\\n\\n\\1", "card-15")
++        self.assertEqual(w["menu"], "|Edit in Write |Load into the Proxmark3 |Simulate |Write to a card |Delete")
++        w = self.a.run("\\r\\r\\n\\n\\1\\d\\n")
++        self.assertIn("emulator memory", w["notice"])
++        w = self.a.run("\\r\\r\\n\\n\\1\\d\\d\\n")
++        self.assertEqual(w["input"], "hf 15 sim")
++        w = self.a.run("\\r\\r\\n\\n\\1\\d\\d\\d\\n")
++        self.assertEqual(w["input"], "hf 15 restore -f " + dump)
++
++    def test_iclass_dump_on_an_iso15693_card(self):
++        # saved as ISO 15693 by a search, its dump iCLASS: it is iCLASS
++        self.saved_card(5, "ISO 15693 tag", "01 02 03 04 05 06 07 08", "hf-iclass-0102030405060708-dump.bin", 256)
++        w = self.a.run("\\r\\r\\n\\n\\1\\d\\d\\n")
++        self.assertEqual(w["input"], "hf iclass sim -t 3")
++        self.assertEqual(w["view"], "32")             # 8-byte blocks
++
++    def test_family_load_and_simulate(self):
++        # HF > ISO 15693 and HF > iCLASS: Load the dump, Simulate
++        w = self.a.run("\\n" + "\\d" * 6 + "\\n" + "\\d" * 4 + "\\n")
++        self.assertEqual(w["input"], "hf 15 sim")
++        w = self.a.run("\\n" + "\\d" * 7 + "\\n" + "\\d" * 4 + "\\n")
++        self.assertEqual(w["input"], "hf iclass sim -t 3")
++
+     def test_edit_dump_in_write(self):
+         # an iCLASS dump in Cards, then Edit in Write changes block 6
+         self.a.run("\\n" + "\\d" * 7 + "\\n\\d\\d\\n\\n")
+-- 
+2.50.1 (Apple Git-155)
+

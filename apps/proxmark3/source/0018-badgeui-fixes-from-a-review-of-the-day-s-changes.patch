@@ -1,0 +1,396 @@
+From 89d5a120c087599344aed0e46fa9fe268b57d5a4 Mon Sep 17 00:00:00 2001
+From: John <john.de.kroon@cyberant.com>
+Date: Sat, 31 Oct 2026 00:01:42 +0100
+Subject: [PATCH 18/20] badgeui: fixes from a review of the day's changes
+
+- A dump never replaces another. A new dump went on the newest saved
+  card with its UID, often a duplicate: the copy then pointed at the
+  original's file again, so editing the copy changed the original, and
+  the copy's own file dropped out of Cards. A new dump now goes on a card
+  with that UID that has no dump yet (saved from a search), else a new
+  card; the app's own MIFARE Classic dump takes a free file name (-001,
+  -002, as the client's newfilenamemcopy) instead of overwriting.
+- An LF dump with a UID of its own (EM4x05, HITAG) went on the LF card
+  searched last, whatever its ID: a saved EM410x became an EM4x05. Only a
+  T55xx dump (no UID of its own) still goes on the searched card.
+- HITAG's load ran lf hitag eload -2 at once; the client wants the Hitag
+  type (-1, -2, -s, -m), so it is typed in the Console now.
+- A type screen's %F (Load the dump, Restore) took the oldest saved card
+  with the UID, of any type; now the newest of the type (a copy being
+  edited, not its original).
+- Duplicate from the card view left the list's focus on another card.
+- Duplicate copies the whole file (it read at most 4 KB) and fails
+  rather than overwrite when no "-copyN" name is free.
+- An action's dump (hf mfu dump, ...) asked for the name before the
+  result screen, which cleared "Saved to Cards".
+- The host sim names its dumps as the client does (-001 when the file
+  exists); two dead lines in the tests removed.
+
+Tested: test_pm3ui.py 32/32 on the host (new: a dump never replaces
+another, a card saved from a search gets the dump, an LF dump of another
+chip, HITAG's load typed, the type screen loads the newest dump,
+Duplicate from the card view); the review's three reproductions behave.
+Not on the badge.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ client/src/badgeui/pm3ui.c       | 137 ++++++++++++++++++++++++-------
+ client/src/badgeui/pm3ui_sim.c   |   3 +
+ client/src/badgeui/test_pm3ui.py |  68 ++++++++++++++-
+ 3 files changed, 178 insertions(+), 30 deletions(-)
+
+diff --git a/client/src/badgeui/pm3ui.c b/client/src/badgeui/pm3ui.c
+index a24c64de1..b9a7b7d92 100644
+--- a/client/src/badgeui/pm3ui.c
++++ b/client/src/badgeui/pm3ui.c
+@@ -501,6 +501,58 @@ static struct saved *card_save(const struct pm3_card *c)
+ 	return &cards[0];
+ }
+ 
++/*
++ * The saved card a new dump goes on: one with this UID on this band that
++ * has no dump yet (saved from a search, the key check), else a new card,
++ * newest first. A dump never replaces another: dumping a card again, or a
++ * card that was duplicated, adds a card, so no dump drops out of Cards and
++ * a copy stays apart from its original. 0 when Cards is full.
++ */
++static struct saved *card_for_dump(const struct pm3_card *c)
++{
++	struct saved s;
++	int i;
++
++	for (i = 0; i < n_cards; i++)
++		if (cards[i].c.band == c->band && !strcmp(cards[i].c.uid, c->uid) && !cards[i].dump[0])
++			break;
++	if (i < n_cards) {
++		s = cards[i];
++		memmove(cards + 1, cards, sizeof(cards[0]) * (size_t)i);
++	} else {
++		if (n_cards == CARDS_MAX)
++			return 0;
++		memset(&s, 0, sizeof(s));
++		memmove(cards + 1, cards, sizeof(cards[0]) * (size_t)n_cards);
++		n_cards++;
++	}
++	s.c = *c;
++	s.c.found = 1;
++	s.t = (long)time(0);
++	cards[0] = s;
++	return &cards[0];
++}
++
++/* path, or path-001.bin, -002, ... when that exists, as the client names
++ * its files (newfilenamemcopy): a dump never overwrites another */
++static void free_path(char *path, int n)
++{
++	char base[256];
++	const char *dot;
++	int stem;
++
++	if (access(path, F_OK))
++		return;
++	snprintf(base, sizeof(base), "%s", path);
++	dot = strrchr(base, '.');
++	stem = dot ? (int)(dot - base) : (int)strlen(base);
++	for (int i = 1; i < 1000; i++) {
++		snprintf(path, (size_t)n, "%.*s-%03d%s", stem, base, i, dot ? dot : "");
++		if (access(path, F_OK))
++			return;
++	}
++}
++
+ /* what Cards calls it: its name, else its type */
+ static const char *card_title(const struct saved *s)
+ {
+@@ -1556,19 +1608,20 @@ static int is_hf(const struct pm3_card *c, int fam)
+  * block. Writing a MIFARE Classic asks first and runs (CF_RESTORE); the
+  * others are typed in the Console, to edit (a key, a block range).
+  */
+-/* sim may be 0; write_label 0: nothing to write with */
+-struct card_cmds { int band, fam; const char *load, *sim, *write, *write_label; };
++/* sim may be 0; write_label 0: nothing to write with; load_typed: the
++ * load is typed in the Console (it needs a choice) instead of run */
++struct card_cmds { int band, fam; const char *load, *sim, *write, *write_label; int load_typed; };
+ static const struct card_cmds card_table[] = {
+-	{ BAND_HF, FAM_MFC, "hf mf eload %S -f %F", "hf mf sim %S -u %U", 0, "Write to a card" },
+-	{ BAND_HF, FAM_MFU, "hf mfu eload -f %F", "hf mfu sim -t 2 -u %U", "hf mfu restore -f %F", "Write to a card" },
+-	{ BAND_HF, FAM_15, "hf 15 eload -f %F", "hf 15 sim", "hf 15 restore -f %F", "Write to a card" },
++	{ BAND_HF, FAM_MFC, "hf mf eload %S -f %F", "hf mf sim %S -u %U", 0, "Write to a card", 0 },
++	{ BAND_HF, FAM_MFU, "hf mfu eload -f %F", "hf mfu sim -t 2 -u %U", "hf mfu restore -f %F", "Write to a card", 0 },
++	{ BAND_HF, FAM_15, "hf 15 eload -f %F", "hf 15 sim", "hf 15 restore -f %F", "Write to a card", 0 },
+ 	{ BAND_HF, FAM_ICLASS, "hf iclass eload -f %F", "hf iclass sim -t 3",
+-	  "hf iclass restore -f %F --first 6 --last %L --ki 0", "Write to a card" },
+-	{ BAND_LF, FAM_EM410X, 0, "lf em 410x sim --id %U", "lf em 410x clone --id %U", "Clone to a T55xx" },
+-	{ BAND_LF, FAM_HID, 0, "lf hid sim -r %U", "lf hid clone -r %U", "Clone to a T55xx" },
+-	{ BAND_LF, FAM_INDALA, 0, "lf indala sim -r %U", "lf indala clone -r %U", "Clone to a T55xx" },
+-	{ BAND_LF, FAM_T55XX, 0, 0, "lf t55xx restore -f %F", "Write to a T55xx" },
+-	{ BAND_LF, FAM_HITAG, "lf hitag eload -2 -f %F", "lf hitag sim -2", 0, 0 },
++	  "hf iclass restore -f %F --first 6 --last %L --ki 0", "Write to a card", 0 },
++	{ BAND_LF, FAM_EM410X, 0, "lf em 410x sim --id %U", "lf em 410x clone --id %U", "Clone to a T55xx", 0 },
++	{ BAND_LF, FAM_HID, 0, "lf hid sim -r %U", "lf hid clone -r %U", "Clone to a T55xx", 0 },
++	{ BAND_LF, FAM_INDALA, 0, "lf indala sim -r %U", "lf indala clone -r %U", "Clone to a T55xx", 0 },
++	{ BAND_LF, FAM_T55XX, 0, 0, "lf t55xx restore -f %F", "Write to a T55xx", 0 },
++	{ BAND_LF, FAM_HITAG, "lf hitag eload -2 -f %F", "lf hitag sim -2", 0, 0, 1 },	/* -1 -2 -s -m: its type */
+ };
+ 
+ /* writing it needs the dump (MIFARE Classic's write is the dump too) */
+@@ -2430,8 +2483,11 @@ static void dump_saved(const char *out)
+ 		u[k] = 0;
+ 		if (band == BAND_HF && (k < 8 || k % 2))
+ 			continue;
++		/* the card searched last, when the dump is of it: same UID; a T55xx
++		 * dump has none of its own (its name has block 1) */
+ 		uid_hex(O.card.uid, cu, sizeof(cu));
+-		if (O.card.found && O.card.band == band && (band == BAND_LF || !strcmp(cu, u))) {
++		if (O.card.found && O.card.band == band &&
++		    ((band == BAND_LF && fam == FAM_T55XX) || (u[0] && !strcmp(cu, u)))) {
+ 			c = O.card;
+ 		} else {
+ 			memset(&c, 0, sizeof(c));
+@@ -2455,7 +2511,10 @@ static void dump_saved(const char *out)
+ 		}
+ 		if (is_hf(&c, FAM_MFC) && !c.sectors)
+ 			c.sectors = st.st_size <= 320 ? 5 : st.st_size <= 1024 ? 16 : st.st_size <= 2048 ? 32 : 40;
+-		s = card_save(&c);
++		if (!(s = card_for_dump(&c))) {
++			notice("Cards is full: the dump is in ~/.proxmark3/dumps", 1);
++			continue;
++		}
+ 		snprintf(s->dump, sizeof(s->dump), "%s", path);
+ 		bs = card_bs(s);
+ 		if (is_hf(&c, FAM_MFC))
+@@ -2499,7 +2558,6 @@ static void result(const char *eb, const char *title, const char *cmd, int push)
+ 	busy(eb, "Running\xe2\x80\xa6");
+ 	be_command(cmd);
+ 	out = be_output();
+-	dump_saved(out);
+ 	log_add(cmd, 0);
+ 	{
+ 		char b[200];
+@@ -2537,6 +2595,7 @@ static void result(const char *eb, const char *title, const char *cmd, int push)
+ 	}
+ 	if (push)
+ 		go(SC_RESULT, 0);
++	dump_saved(out);	/* after go(), which clears the notice */
+ }
+ 
+ /* ---- search ------------------------------------------------------------------------------ */
+@@ -2670,6 +2729,7 @@ static void dump(const struct mfc_keys *k)
+ 		}
+ 	}
+ 	card_file(&O.card, "dump", path, sizeof(path));
++	free_path(path, sizeof(path));
+ 	if (!(f = fopen(path, "wb")) || fwrite(data, 16, (size_t)mfc_total_blocks(sectors), f) !=
+ 					   (size_t)mfc_total_blocks(sectors)) {
+ 		if (f)
+@@ -2678,7 +2738,10 @@ static void dump(const struct mfc_keys *k)
+ 		return;
+ 	}
+ 	fclose(f);
+-	s = card_save(&O.card);
++	if (!(s = card_for_dump(&O.card))) {
++		notice("Cards is full: the dump is in ~/.proxmark3/dumps", 1);
++		return;
++	}
+ 	snprintf(s->dump, sizeof(s->dump), "%s", path);
+ 	if (bad)
+ 		snprintf(s->detail, sizeof(s->detail), "%d of %d sectors read", sectors - bad, sectors);
+@@ -2775,23 +2838,32 @@ static void delete_card(int i)
+  * it. Sets dst, 0 or -1. */
+ static int copy_dump(const char *src, char *dst, int dn)
+ {
+-	static uint8_t buf[sizeof(V.data)];
+ 	const char *dot = strrchr(src, '.');
+-	int stem = dot ? (int)(dot - src) : (int)strlen(src);
+-	int n = load_bin(src, buf, sizeof(buf));
+-	FILE *f;
++	int stem = dot ? (int)(dot - src) : (int)strlen(src), i, bad = 0;
++	uint8_t buf[512];
++	FILE *in, *out;
++	size_t n;
+ 
+-	if (n <= 0)
+-		return -1;
+-	for (int i = 2; i < 100; i++) {
++	for (i = 2; i < 1000; i++) {
+ 		snprintf(dst, (size_t)dn, "%.*s-copy%d%s", stem, src, i, dot ? dot : "");
+ 		if (access(dst, F_OK))
+ 			break;
+ 	}
+-	if (!(f = fopen(dst, "wb")))
++	if (i == 1000 || !(in = fopen(src, "rb")))
++		return -1;
++	if (!(out = fopen(dst, "wb"))) {
++		fclose(in);
+ 		return -1;
+-	fwrite(buf, 1, (size_t)n, f);
+-	return fclose(f) ? -1 : 0;
++	}
++	/* the whole file, whatever its size (the view shows 4 KB of it) */
++	while ((n = fread(buf, 1, sizeof(buf), in)) > 0)
++		bad |= fwrite(buf, 1, n, out) != n;
++	bad |= ferror(in);
++	fclose(in);
++	bad |= fclose(out) != 0;
++	if (bad)
++		unlink(dst);
++	return bad ? -1 : 0;
+ }
+ 
+ /* A second card from card i, newest first, with its dump and keys copied
+@@ -2820,9 +2892,9 @@ static void duplicate_card(int i)
+ 	n_cards++;
+ 	cards[0] = d;
+ 	cards_save();
+-	O.focus = 0;
+ 	while (O.sc != SC_CARDS && !back())
+-		;			/* from the card view: to the list, on the copy */
++		;			/* from the card view: to the list */
++	O.focus = 0;			/* on the copy (back() set the list's old focus) */
+ 	notice("Card duplicated", 0);
+ }
+ 
+@@ -3588,9 +3660,14 @@ static void family_action(int i)
+ 		dump_card();
+ 		return;
+ 	case A_EDIT:
++		/* the newest saved card of this type with this UID (Cards is
++		 * newest first: a copy being edited, not its original) */
+ 		for (int k = 0; k < n_cards; k++)
+-			if (!strcmp(cards[k].c.uid, O.card.uid) && cards[k].dump[0])
++			if (cards[k].dump[0] && cards[k].c.band == O.band && cards[k].c.fam == O.fam &&
++			    !strcmp(cards[k].c.uid, O.card.uid)) {
+ 				snprintf(dumpf, sizeof(dumpf), "%s", cards[k].dump);
++				break;
++			}
+ 		expand(a->cmd, cmd, sizeof(cmd), dumpf);
+ 		console_typed(cmd);
+ 		return;
+@@ -3774,6 +3851,10 @@ static void load_card(void)
+ 	if (!card_loads(s))
+ 		return;
+ 	expand(card_cmds(s)->load, cmd, sizeof(cmd), s->dump);
++	if (card_cmds(s)->load_typed) {
++		console_typed(cmd);
++		return;
++	}
+ 	busy("CARDS", "Loading into the Proxmark3\xe2\x80\xa6");
+ 	run_command(cmd);
+ 	notice("In the Proxmark3's emulator memory: Simulate uses it", 0);
+diff --git a/client/src/badgeui/pm3ui_sim.c b/client/src/badgeui/pm3ui_sim.c
+index 159238de9..ae3e3e594 100644
+--- a/client/src/badgeui/pm3ui_sim.c
++++ b/client/src/badgeui/pm3ui_sim.c
+@@ -11,6 +11,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <sys/stat.h>
++#include <unistd.h>
+ 
+ #include "pm3ui.h"
+ 
+@@ -71,6 +72,8 @@ static void saved_dump(const char *name, const unsigned char *d, size_t n)
+ 	snprintf(path, sizeof(path), "%s/.proxmark3/dumps", getenv("HOME"));
+ 	mkdir(path, 0755);
+ 	snprintf(path, sizeof(path), "%s/.proxmark3/dumps/%s.bin", getenv("HOME"), name);
++	for (int i = 1; !access(path, F_OK); i++)	/* as newfilenamemcopy: -001, -002 */
++		snprintf(path, sizeof(path), "%s/.proxmark3/dumps/%s-%03d.bin", getenv("HOME"), name, i);
+ 	if ((f = fopen(path, "wb"))) {
+ 		fwrite(d, 1, n, f);
+ 		fclose(f);
+diff --git a/client/src/badgeui/test_pm3ui.py b/client/src/badgeui/test_pm3ui.py
+index b4c49a1c2..06e4c3c74 100644
+--- a/client/src/badgeui/test_pm3ui.py
++++ b/client/src/badgeui/test_pm3ui.py
+@@ -258,7 +258,7 @@ class Test(unittest.TestCase):
+         con = "\\d\\r\\r\\n"
+         w = self.a.run(con + "hf iclass dump\\n")
+         self.assertEqual(w["screen"], "console input")
+-        self.assertEqual(w["input"], "hf iclass dump") if False else None
++        self.a = App()                  # a second dump would be a second card
+         w = self.a.run(con + "hf iclass dump\\nOffice door\\n", "named")
+         self.assertEqual(w["cards"], "1 01 02 03 04 05 06 07 08|dump · 32 blocks|Office door")
+         self.assertEqual(w["notice"], "Name saved")
+@@ -314,6 +314,71 @@ class Test(unittest.TestCase):
+         w = self.a.run("\\n\\n\\n" + "\\d" * 8 + "\\n")    # after a search: %U filled in
+         self.assertEqual(w["input"], "hf mf csetuid -u 07947112")
+ 
++    def test_a_dump_never_replaces_another(self):
++        # dumped, duplicated, dumped again: three cards, each its own file;
++        # the copy keeps its own (it would have shared the original's)
++        con = "\\d\\r\\r\\n"
++        self.a.run(con + "hf iclass dump\\nOrig\\n")
++        self.a.run("\\r\\r\\n\\1\\d\\d\\n")                 # Duplicate: "Orig copy"
++        self.a.run(con + "hf iclass dump\\nNew\\n")
++        with open(os.path.join(self.a.home, ".proxmark3/cards.tsv")) as f:
++            rows = [line.rstrip("\n").split("\t") for line in f]
++        self.assertEqual([r[12] for r in rows], ["New", "Orig copy", "Orig"])
++        dumps = [os.path.basename(r[9]) for r in rows]
++        self.assertEqual(dumps, ["hf-iclass-0102030405060708-dump-001.bin",
++                                 "hf-iclass-0102030405060708-dump-copy2.bin",
++                                 "hf-iclass-0102030405060708-dump.bin"])
++
++    def test_a_card_saved_from_a_search_gets_the_dump(self):
++        # saved with its ID only: the dump goes on that card, not a new one
++        self.a.run("\\n\\n\\1\\n")                           # HF search, Save to Cards
++        w = self.a.run("\\n\\n\\n\\d\\n\\w\\2\\e")          # check, dump (Esc: no name)
++        self.assertTrue(w["cards"].startswith("1 07 94 71 12|full dump"), w["cards"])
++        # dumped again: a second card, a second file (-001), the first kept
++        w = self.a.run("\\n\\n\\n\\d\\n\\w\\2\\e")
++        self.assertTrue(w["cards"].startswith("2 "), w["cards"])
++        d = os.path.join(self.a.home, ".proxmark3/dumps")
++        self.assertTrue(os.path.exists(os.path.join(d, "hf-mf-07947112-dump.bin")))
++        self.assertTrue(os.path.exists(os.path.join(d, "hf-mf-07947112-dump-001.bin")))
++
++    def test_lf_dump_of_another_chip(self):
++        # an EM410x searched and saved as "Garage", then an EM4x05 (another
++        # chip, its UID in the file name) dumped: a card of its own
++        con = "\\d\\r\\r\\n"
++        self.a.run("\\r\\n\\2\\1\\n")                         # LF search, Save to Cards
++        self.a.run("\\r\\r\\n\\1\\d\\nGarage\\n")
++        w = self.a.run("\\r\\n\\2\\e\\e" + con + "lf em 4x05 dump\\n\\e")
++        self.assertEqual(w["cards"], "2 12345678|dump · 16 blocks 0F0368568B|ID only|Garage")
++
++    def test_hitag_load_is_typed(self):
++        # lf hitag eload needs the Hitag type: typed in the Console, to choose
++        self.a.run("\\d\\r\\r\\nlf hitag dump --pwd\\n\\e")
++        w = self.a.run("\\r\\r\\n\\n\\2")
++        self.assertEqual(w["screen"].strip(), "console")
++        self.assertTrue(w["input"].startswith("lf hitag eload -2 -f "), w["input"])
++        self.assertEqual(w["result"].split(" ", 1)[0], "0")      # nothing ran
++
++    def test_type_screen_loads_the_newest_dump(self):
++        # an iCLASS dump and its copy: HF > iCLASS > Load the dump takes the
++        # copy (newest), the one being edited
++        self.a.run("\\d\\r\\r\\nhf iclass dump\\n\\e")
++        self.a.run("\\r\\r\\n\\1\\d\\d\\n")                 # Duplicate
++        # the copy opened (Cards' newest), back to the start, HF > iCLASS
++        w = self.a.run("\\r\\r\\n\\n\\e\\e\\l\\l\\n" + "\\d" * 7 + "\\n" + "\\d" * 5 + "\\n")
++        self.assertTrue(w["input"].endswith("-dump-copy2.bin"), w["input"])
++
++    def test_duplicate_from_the_card_view(self):
++        # two cards; the older (second) duplicated from its view: the list,
++        # on the copy
++        con = "\\d\\r\\r\\n"
++        self.a.run(con + "hf iclass dump\\nA\\n")
++        self.a.run(con + "lf t55xx dump\\nB\\n")
++        w = self.a.run("\\r\\r\\n\\d\\n\\1\\d\\d\\d\\d\\d\\n")   # A: options, Duplicate
++        self.assertEqual(w["notice"], "Card duplicated")
++        self.assertEqual(w["screen"].strip(), "cards")
++        self.assertEqual(w["focus"], "0")
++        self.assertTrue(w["cards"].split(" ", 1)[1].startswith("01 02 03 04 05 06 07 08|dump · 32 blocks|A copy"))
++
+     def test_commands_exist_in_the_client(self):
+         """Every hf/lf command the app types or runs, against the client's
+         own CLIParser definitions: the command exists, and each flag it
+@@ -367,7 +432,6 @@ class Test(unittest.TestCase):
+                                "hf-15-E004015012345678-dump.bin", 512)
+         # Duplicate from the list: a second card named "... copy", its own file
+         w = self.a.run("\\r\\r\\n\\1\\d\\d\\n")      # options > Duplicate
+-        self.assertIn("2 saved", w["cards"]) if False else None
+         self.assertEqual(w["notice"], "Card duplicated")
+         cards = w["cards"].split(" ", 1)[1]
+         self.assertIn("ISO 15693 tag copy", cards)
+-- 
+2.50.1 (Apple Git-155)
+

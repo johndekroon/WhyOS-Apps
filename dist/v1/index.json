@@ -682,18 +682,18 @@
     "pm3",
     "proxmark3"
    ],
-   "details_sha256": "2d0d28e4a8ef7dc15f72d4df317e66a7e9b521b01cd3e00b9c9bc064416b9912",
+   "details_sha256": "11587094e788c6bbe72d440adb9f6582fa4dd877043a637b982fcfd65bc5c000",
    "id": "proxmark3",
    "install_location": "sd",
    "latest": {
-    "build": 3,
+    "build": 4,
     "package": {
-     "installed_size": 3052445,
-     "sha256": "e5433e8b23eddf40e0226e90e17bad778bf89df3d0ce5c39d9ef03c99afa1698",
-     "size": 1516909,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/proxmark3-1.1.1.wpk"
+     "installed_size": 3058773,
+     "sha256": "f1f513d4c2c6e3e0c5137e9405523c4564afdf6ed257fcdbfd28fde0f6fc90b7",
+     "size": 1520198,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/proxmark3-1.1.2.wpk"
     },
-    "version": "1.1.1"
+    "version": "1.1.2"
    },
    "menu_icon": "usb",
    "name": "Proxmark3",
@@ -716,7 +716,7 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-10-30"
+   "updated": "2026-10-31"
   },
   {
    "author": "why2025-linux contributors",
@@ -840,7 +840,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-10-30T20:54:40Z",
- "serial": 41,
+ "generated": "2026-10-31T01:48:43Z",
+ "serial": 42,
  "source": "whyos"
 }

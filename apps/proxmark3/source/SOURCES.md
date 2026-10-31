@@ -2,9 +2,9 @@
 
 Together with the upstream repository below, this directory is the
 complete corresponding source of the `proxmark3` package
-(docs/package.md §2.10). The patches are the thirteen commits of branch
+(docs/package.md §2.10). The patches are the twenty commits of branch
 `badge` of our copy of the client (`BADGE=1`, a build for the badge's
-NOMMU Linux), made with `git format-patch` at commit `f7b6acc20`; the
+NOMMU Linux), made with `git format-patch` at commit `394b2c2e7`; the
 toolchain is in [toolchain/](../../../toolchain/README.md).
 
 | Upstream | URL | Commit |
@@ -15,7 +15,7 @@ toolchain is in [toolchain/](../../../toolchain/README.md).
 |---|---|
 | `0001-…` to `0007-…` | the `BADGE=1` build: smaller buffers, crapto1 without its 18 MB tables, no Lua, Python, Qt, Bluetooth, hardnested or MQTT, and the fixes found on the badge with an RDV4 (0006: the `struct stat` mismatch of uClibc-ng on riscv32, and a second and third ping on start; 0007: a line editor with history, and saves in `~/.proxmark3/dumps`) |
 | `0008-…` | the app's own screens (`pm3 --ui`, `client/src/badgeui/`), drawn with libwb |
-| `0009-…` to `0013-…` | fixes and additions to the screens: Sniff keeps listening (`hf 14a sniff -i`), dumps the client saves itself (iCLASS, Ultralight, …) go to Cards, a command's help reaches the Console, a saved dump can be edited in Write, and loaded from the card's options |
+| `0009-…` to `0020-…` | fixes and additions to the screens: Sniff keeps listening (`hf 14a sniff -i`), dumps the client saves itself go to Cards, a command's help reaches the Console, saved dumps can be edited in Write, loaded, renamed and duplicated, a full set of actions per card type, the fixes found on the badge with a T5577, and LF graph buffers of 64K samples instead of 128K (0020) |
 | `libwb/` | why2025-linux's drawing library `libwb/` at commit `647c8ea`, as built (the same copy as [ohminous](../../ohminous/source/SOURCES.md)): header-only, MIT; `gen/` the scripts that made its fonts and icons, with the fonts' licences |
 | `pm3` | the start script in the package (`files/pm3`) |
 

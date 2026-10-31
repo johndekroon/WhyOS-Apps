@@ -1,7 +1,7 @@
 From f7b6acc207dcf795a67fda2f023e782ee501a665 Mon Sep 17 00:00:00 2001
 From: John <john.de.kroon@cyberant.com>
 Date: Fri, 30 Oct 2026 21:51:47 +0100
-Subject: [PATCH 13/13] badgeui: load a saved card from its options; iCLASS
+Subject: [PATCH 13/20] badgeui: load a saved card from its options; iCLASS
  from the dump's name
 
 Loading a saved card's dump into the Proxmark3 was only on the triangle
