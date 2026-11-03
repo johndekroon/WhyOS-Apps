@@ -6,15 +6,15 @@
 #
 # As the store's client/build.sh and WhyOS sdapps/build.sh: -fPIC,
 # elf2flt -r, --no-relax, and a check that no absolute jump into the first
-# 2 KB is left. The screens draw with libwb: WHY2025_LINUX
+# 2 KB is left. The screens draw with libwb: WHYOS
 # (default ../../WhyOS).
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 BR_OUT=${BR_OUT:-$HOME/br-badge}
 T=$BR_OUT/host/bin/riscv32-buildroot-linux-uclibc
 cd "$here"
-MENU=${WHY2025_LINUX:-$here/../../WhyOS}/libwb
-[ -f "$MENU/wbdraw.h" ] || { echo "build.sh: no $MENU/wbdraw.h (set WHY2025_LINUX)" >&2; exit 1; }
+MENU=${WHYOS:-$here/../../WhyOS}/libwb
+[ -f "$MENU/wbdraw.h" ] || { echo "build.sh: no $MENU/wbdraw.h (set WHYOS)" >&2; exit 1; }
 mkdir -p build
 "$T-gcc" -Os -fPIC -static -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables \
 	-Wall -Wno-format-truncation -Wno-unused-function -Isrc -I"$MENU" -o build/files src/*.c \

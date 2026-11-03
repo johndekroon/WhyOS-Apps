@@ -1,5 +1,5 @@
 From 1a963eb8917d46b73d2bf42a040ee8cd33634b07 Mon Sep 17 00:00:00 2001
-From: john <john.de.kroon@cyberant.com>
+From: John de Kroon
 Date: Sun, 11 Oct 2026 14:39:01 +0200
 Subject: [PATCH 01/20] client: BADGE=1 build for the WHY2025 badge (step A)
 
@@ -11,8 +11,6 @@ GUI stubs as C, 128 KB stacks for the uart threads, and no Lua, hardnested,
 static-nonce attack, MQTT, USART or PIV. Client-side Mifare key recovery
 (darkside, nested, hardnested, autopwn, supercard) needs 18-128 MB of heap
 and is left out of the command table.
-
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 ---
  Makefile.defs                    | 16 +++++++++
  client/Makefile                  | 49 +++++++++++++++++++++++---

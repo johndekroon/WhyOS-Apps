@@ -45,7 +45,7 @@ four times a second and draws again.
 | `tests/test_ui.py` | the screens on the host: keys from a script, screens as PPM (`SHOTS=dir` keeps them as PNG) |
 
 ```
-make -C files test        # unit tests, then the screens (needs WhyOS: set WHY2025_LINUX to your checkout)
+make -C files test        # unit tests, then the screens (needs WhyOS: set WHYOS to your checkout)
 files/build.sh            # the badge's build/files (also needs a Buildroot build of WhyOS: set BR_OUT)
 ```
 

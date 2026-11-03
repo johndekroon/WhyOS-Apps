@@ -1,5 +1,5 @@
 From 7e7600af120b0b5b16dc2346b264fb748b9d4bf0 Mon Sep 17 00:00:00 2001
-From: John <john.de.kroon@cyberant.com>
+From: John de Kroon
 Date: Fri, 30 Oct 2026 23:35:43 +0100
 Subject: [PATCH 17/20] badgeui: a full action set per card type, and Duplicate
  in Cards
@@ -35,8 +35,6 @@ the client's own CLIParser definitions (the command exists, each flag is
 one of its arguments) -- 60+ commands; Duplicate copies the file and keeps
 the type; Plus/HITAG dumps; the type screen scrolls to its last action.
 On the badge: the commands on real cards are not yet run.
-
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 ---
  client/src/badgeui/pm3ui.c       | 162 ++++++++++++++++++++++++++-----
  client/src/badgeui/pm3ui_sim.c   |   8 ++

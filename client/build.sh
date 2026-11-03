@@ -7,14 +7,14 @@
 # mbedTLS from deps.sh badge; zlib from the badge build's staging. As
 # WhyOS sdapps/build.sh: -fPIC, elf2flt -r, --no-relax, and a check
 # that no absolute jump into the first 2 KB is left. The screens draw with
-# libwb: WHY2025_LINUX (default ../../WhyOS)/libwb.
+# libwb: WHYOS (default ../../WhyOS)/libwb.
 set -eu
 here=$(cd "$(dirname "$0")" && pwd)
 BR_OUT=${BR_OUT:-$HOME/br-badge}
 T=$BR_OUT/host/bin/riscv32-buildroot-linux-uclibc
 cd "$here"
-MENU=${WHY2025_LINUX:-$here/../../WhyOS}/libwb
-[ -f "$MENU/wbdraw.h" ] || { echo "build.sh: no $MENU/wbdraw.h (set WHY2025_LINUX)" >&2; exit 1; }
+MENU=${WHYOS:-$here/../../WhyOS}/libwb
+[ -f "$MENU/wbdraw.h" ] || { echo "build.sh: no $MENU/wbdraw.h (set WHYOS)" >&2; exit 1; }
 ./deps.sh badge
 sed -e '/^#/d' -e 's/.*/"&\\n"/' roots.pem > src/roots.inc
 mkdir -p build

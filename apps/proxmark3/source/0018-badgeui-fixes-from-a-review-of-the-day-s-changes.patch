@@ -1,5 +1,5 @@
 From 89d5a120c087599344aed0e46fa9fe268b57d5a4 Mon Sep 17 00:00:00 2001
-From: John <john.de.kroon@cyberant.com>
+From: John de Kroon
 Date: Sat, 31 Oct 2026 00:01:42 +0100
 Subject: [PATCH 18/20] badgeui: fixes from a review of the day's changes
 
@@ -31,8 +31,6 @@ another, a card saved from a search gets the dump, an LF dump of another
 chip, HITAG's load typed, the type screen loads the newest dump,
 Duplicate from the card view); the review's three reproductions behave.
 Not on the badge.
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  client/src/badgeui/pm3ui.c       | 137 ++++++++++++++++++++++++-------
  client/src/badgeui/pm3ui_sim.c   |   3 +

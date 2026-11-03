@@ -25,9 +25,9 @@ the image.
 | `tests/test_ui.py` | the screens on the host: keys from a script, screens as PPM |
 
 ```
-make -C write test        # unit tests, then the screens (needs WhyOS: set WHY2025_LINUX to your checkout)
+make -C write test        # unit tests, then the screens (needs WhyOS: set WHYOS to your checkout)
 write/build.sh            # the badge's build/write (also needs a Buildroot build of WhyOS: set BR_OUT)
-python3 write/assets/gen.py > write/src/write_fonts.h   # needs PIL and cairosvg, and WHY2025_LINUX for the fonts
+python3 write/assets/gen.py > write/src/write_fonts.h   # needs PIL and cairosvg, and WHYOS for the fonts
 ```
 
 The screen tests set `WRITE_UI_CHECK`: every frame drawn band by band

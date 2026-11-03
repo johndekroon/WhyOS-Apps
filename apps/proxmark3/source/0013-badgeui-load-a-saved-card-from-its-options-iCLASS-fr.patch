@@ -1,5 +1,5 @@
 From f7b6acc207dcf795a67fda2f023e782ee501a665 Mon Sep 17 00:00:00 2001
-From: John <john.de.kroon@cyberant.com>
+From: John de Kroon
 Date: Fri, 30 Oct 2026 21:51:47 +0100
 Subject: [PATCH 13/20] badgeui: load a saved card from its options; iCLASS
  from the dump's name
@@ -16,8 +16,6 @@ the dump is attached, and when Cards is read (cards saved before).
 
 Tested: test_pm3ui.py 13/13 on the host (the menu, loading from it, a
 card stored with fam -1 and an iCLASS dump). Not yet on the badge.
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  client/src/badgeui/pm3ui.c       | 52 ++++++++++++++++++++++----------
  client/src/badgeui/test_pm3ui.py | 20 +++++++++---

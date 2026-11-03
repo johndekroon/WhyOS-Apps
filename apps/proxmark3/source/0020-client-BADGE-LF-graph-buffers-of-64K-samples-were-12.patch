@@ -1,5 +1,5 @@
 From 394b2c2e78116d775b5cd610bc7471e8b2f1fbd3 Mon Sep 17 00:00:00 2001
-From: John <john.de.kroon@cyberant.com>
+From: John de Kroon
 Date: Sat, 31 Oct 2026 02:12:32 +0100
 Subject: [PATCH 20/20] client: BADGE, LF graph buffers of 64K samples (were
  128K)
@@ -15,8 +15,6 @@ comparison) or a buffer of that size. Halves those buffers and frees
 512 KB of the two static ones.
 
 Tested: built for the badge; on the badge see the next test round.
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  client/src/graph.h | 7 +++++--
  1 file changed, 5 insertions(+), 2 deletions(-)

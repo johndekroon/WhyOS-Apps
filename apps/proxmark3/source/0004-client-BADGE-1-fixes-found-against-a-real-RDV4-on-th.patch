@@ -1,5 +1,5 @@
 From 828b7a2b82047d5ef405b768c36cf5a6dc0b4121 Mon Sep 17 00:00:00 2001
-From: John <john.de.kroon@cyberant.com>
+From: John de Kroon
 Date: Wed, 28 Oct 2026 23:42:53 +0100
 Subject: [PATCH 04/20] client: BADGE=1, fixes found against a real RDV4 on the
  badge
@@ -23,8 +23,6 @@ from /mnt/sd over the J1 console): proxmark3 /dev/ttyACM0 -c "hw version"
 opens the port, the comm thread runs and the RDV4 answers; the client
 then stops at the capabilities check (RDV4 sends v7, client expects 13),
 so no command beyond the handshake is tested yet. objdump: 0 jalr N(zero).
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  client/Makefile              |  5 ++++-
  client/src/uart/uart_posix.c | 16 ++++++++++++++++

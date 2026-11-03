@@ -1,5 +1,5 @@
 From e9251c33989f8362e0cde5365e0eb03eb91adff7 Mon Sep 17 00:00:00 2001
-From: John <john.de.kroon@cyberant.com>
+From: John de Kroon
 Date: Thu, 29 Oct 2026 01:27:36 +0100
 Subject: [PATCH 05/20] client: BADGE build fixes for the v4.21611 base, tested
  on the badge
@@ -22,8 +22,6 @@ Tested 2026-10-29 on the badge from /data/apps/proxmark3/ (flash), RDV4
 with v4.21611 firmware on J8, no --incognito: hw version/ping/status,
 hf search (MIFARE Classic 1K, UID 07 94 71 12, Gen 1a), lf search.
 Old master-based branch tip kept as tag badge-master-20261006.
-
-Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 ---
  client/src/guidummy_badge.c | 6 ++----
  client/src/util.c           | 7 +++++++

@@ -27,7 +27,7 @@ client/store-host check-package dist/v1/packages/gnuboy-1.0.0.wpk
 client/build.sh                 # the badge's build/store (needs a Buildroot build of WhyOS: set BR_OUT)
 ```
 
-The screens need WhyOS (its `libwb/`): set `WHY2025_LINUX` to your checkout
+The screens need WhyOS (its `libwb/`): set `WHYOS` to your checkout
 (default `../../WhyOS`); without it `make test` skips them. The program is
 `apps/store/` in the store, installed in flash. On the badge,
 `STORE_UI_TIMING=1` writes a line per frame to stderr: its time, the bands

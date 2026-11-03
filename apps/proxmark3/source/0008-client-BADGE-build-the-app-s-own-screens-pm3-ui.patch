@@ -1,5 +1,5 @@
 From 81a42cf98986dc127797a0061b9b28a1f1d3d355 Mon Sep 17 00:00:00 2001
-From: John <john.de.kroon@cyberant.com>
+From: John de Kroon
 Date: Fri, 30 Oct 2026 00:27:56 +0100
 Subject: [PATCH 08/20] client: BADGE build, the app's own screens (pm3 --ui)
 MIME-Version: 1.0
@@ -26,8 +26,6 @@ Tested: test_pm3ui.py on the Mac (11 tests, ASan/UBSan). On the badge
 Tools/usb/hil/test_hil_pm3ui.py, 6 of 6: start from Apps and connect,
 search (Gen 1a found), hf mf info, check keys 32/32, dump 64 blocks,
 Dictionary, Console hw ping, sniff start and stop. bFLT 2.90 MB.
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  client/Makefile                  |    5 +
  client/src/badgeui/gen_icons.py  |   41 +

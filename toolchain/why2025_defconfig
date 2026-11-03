@@ -361,7 +361,7 @@ BR2_XZCAT="xzcat"
 BR2_LZCAT="lzip -d -c"
 BR2_ZSTDCAT="zstdcat"
 BR2_TAR_OPTIONS=""
-BR2_DEFCONFIG="@WHY2025_LINUX@/configs/why2025_defconfig"
+BR2_DEFCONFIG="@WHYOS@/configs/why2025_defconfig"
 BR2_DL_DIR="$(TOPDIR)/dl"
 BR2_HOST_DIR="$(BASE_DIR)/host"
 
@@ -388,7 +388,7 @@ BR2_OPTIMIZE_2=y
 # BR2_ENABLE_LTO is not set
 BR2_STATIC_LIBS=y
 BR2_PACKAGE_OVERRIDE_FILE="$(CONFIG_DIR)/local.mk"
-BR2_GLOBAL_PATCH_DIR="@WHY2025_LINUX@/patches/buildroot/global-patches"
+BR2_GLOBAL_PATCH_DIR="@WHYOS@/patches/buildroot/global-patches"
 
 #
 # Advanced
@@ -491,11 +491,11 @@ BR2_ENABLE_LOCALE_WHITELIST="C en_US"
 #
 # BR2_TARGET_TZ_INFO is not set
 BR2_ROOTFS_USERS_TABLES=""
-BR2_ROOTFS_OVERLAY="@WHY2025_LINUX@/patches/buildroot/overlay"
+BR2_ROOTFS_OVERLAY="@WHYOS@/patches/buildroot/overlay"
 BR2_ROOTFS_PRE_BUILD_SCRIPT=""
-BR2_ROOTFS_POST_BUILD_SCRIPT="@WHY2025_LINUX@/patches/buildroot/post-build.sh"
+BR2_ROOTFS_POST_BUILD_SCRIPT="@WHYOS@/patches/buildroot/post-build.sh"
 BR2_ROOTFS_POST_FAKEROOT_SCRIPT=""
-BR2_ROOTFS_POST_IMAGE_SCRIPT="@WHY2025_LINUX@/patches/buildroot/post-image.sh"
+BR2_ROOTFS_POST_IMAGE_SCRIPT="@WHYOS@/patches/buildroot/post-image.sh"
 BR2_ROOTFS_POST_SCRIPT_ARGS=""
 BR2_ROOTFS_POST_BUILD_SCRIPT_ARGS=""
 BR2_ROOTFS_POST_IMAGE_SCRIPT_ARGS=""
@@ -524,12 +524,12 @@ BR2_LINUX_KERNEL_CUSTOM_GIT=y
 BR2_LINUX_KERNEL_CUSTOM_REPO_URL="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
 BR2_LINUX_KERNEL_CUSTOM_REPO_VERSION="v6.18.35"
 BR2_LINUX_KERNEL_VERSION="v6.18.35"
-BR2_LINUX_KERNEL_PATCH="@WHY2025_LINUX@/patches/linux"
+BR2_LINUX_KERNEL_PATCH="@WHYOS@/patches/linux"
 # BR2_LINUX_KERNEL_USE_DEFCONFIG is not set
 # BR2_LINUX_KERNEL_USE_ARCH_DEFAULT_CONFIG is not set
 BR2_LINUX_KERNEL_USE_CUSTOM_CONFIG=y
-BR2_LINUX_KERNEL_CUSTOM_CONFIG_FILE="@WHY2025_LINUX@/patches/linux/kernel.config"
-BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="@WHY2025_LINUX@/patches/linux/usb-host.fragment @WHY2025_LINUX@/patches/linux/flash-data.fragment"
+BR2_LINUX_KERNEL_CUSTOM_CONFIG_FILE="@WHYOS@/patches/linux/kernel.config"
+BR2_LINUX_KERNEL_CONFIG_FRAGMENT_FILES="@WHYOS@/patches/linux/usb-host.fragment @WHYOS@/patches/linux/flash-data.fragment"
 BR2_LINUX_KERNEL_CUSTOM_LOGO_PATH=""
 BR2_LINUX_KERNEL_IMAGE=y
 # BR2_LINUX_KERNEL_IMAGEGZ is not set
@@ -582,7 +582,7 @@ BR2_LINUX_KERNEL_GZIP=y
 #
 BR2_PACKAGE_BUSYBOX=y
 BR2_PACKAGE_BUSYBOX_CONFIG="package/busybox/busybox-minimal.config"
-BR2_PACKAGE_BUSYBOX_CONFIG_FRAGMENT_FILES="@WHY2025_LINUX@/patches/buildroot/busybox.fragment"
+BR2_PACKAGE_BUSYBOX_CONFIG_FRAGMENT_FILES="@WHYOS@/patches/buildroot/busybox.fragment"
 # BR2_PACKAGE_BUSYBOX_SHOW_OTHERS is not set
 
 #
@@ -2721,7 +2721,7 @@ BR2_PACKAGE_DROPBEAR_SMALL=y
 # BR2_PACKAGE_DROPBEAR_WTMP is not set
 # BR2_PACKAGE_DROPBEAR_LASTLOG is not set
 # BR2_PACKAGE_DROPBEAR_LEGACY_CRYPTO is not set
-BR2_PACKAGE_DROPBEAR_LOCALOPTIONS_FILE="@WHY2025_LINUX@/patches/buildroot/dropbear-localoptions.h"
+BR2_PACKAGE_DROPBEAR_LOCALOPTIONS_FILE="@WHYOS@/patches/buildroot/dropbear-localoptions.h"
 
 #
 # ejabberd needs erlang, toolchain w/ C++

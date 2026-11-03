@@ -1,5 +1,5 @@
 From 48469f6b6b64e1d9ab559338b0cffd1486e5e77d Mon Sep 17 00:00:00 2001
-From: John <john.de.kroon@cyberant.com>
+From: John de Kroon
 Date: Fri, 30 Oct 2026 09:51:50 +0100
 Subject: [PATCH 10/20] badgeui: dumps the client saves itself go to Cards
  (iCLASS)
@@ -21,8 +21,6 @@ Keys is only offered for MIFARE Classic.
 Tested: test_pm3ui.py 12/12 on the host (new test_iclass_dump_to_cards,
 with the sim printing the client's colour codes around the path); the
 screen compared by eye; cross-build in the VM clean. Not yet on the badge.
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  client/src/badgeui/pm3ui.c       | 194 +++++++++++++++++++++++++++++--
  client/src/badgeui/pm3ui_sim.c   |  22 +++-

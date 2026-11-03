@@ -1,4 +1,4 @@
-From: John <john.de.kroon@cyberant.com>
+From: John de Kroon
 Subject: [PATCH] linuxthreads: sigaction safe in a vfork child
 
 The user handler table is shared with the parent under vfork(). A child

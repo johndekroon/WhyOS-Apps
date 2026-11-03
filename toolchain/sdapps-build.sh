@@ -4,7 +4,7 @@
 #
 #   sdapps/build.sh [gnuboy] [netsurf] [nmap] [imgview] [links] [nethack]
 #                   [doom] [sensorpanel] [nano] [calc] [hideous] [barbarious] [pdfview]
-#                   [ohminous] [buspirate: the old app, OHMinous replaced it]
+#                   [ohminous]
 #                   [micropython]
 #                                                                          default: all
 #
@@ -476,19 +476,6 @@ build_sensorpanel() {
 	ls -l "$d"
 }
 
-# The Bus Pirate 6 screens of the start menu, on their own: the menu's
-# source with -DBP_APP (the menu itself leaves them out, -DHAS_BP=0).
-build_buspirate() {
-	local d=$DEST/buspirate O=$HERE/../patches/buildroot/overlay-src
-	mkdir -p "$d"
-	flat 16384
-	"$CC" "${CFLAGS[@]}" -Wall -DBP_APP -I"$O" -I"$HERE/../libwb" "$O/home.c" "${LDFLAT[@]}" -o "$d/buspirate"
-	zero_page "$d/buspirate.gdb"
-	rm -f "$d/buspirate.gdb"
-	cp "$HERE/buspirate/app.conf" "$d/"
-	ls -l "$d"
-}
-
 # The calculator (calc/calc.c): drawn with the menu's code and fonts, as
 # the Bus Pirate app is; libm for the functions.
 build_calc() {
@@ -679,7 +666,6 @@ for app in "${@:-gnuboy netsurf nmap imgview links nethack doom sensorpanel nano
 		nethack) build_nethack ;;
 		doom) build_doom ;;
 		sensorpanel) build_sensorpanel ;;
-		buspirate) build_buspirate ;;
 		nano) build_nano ;;
 		calc) build_calc ;;
 		hideous) build_hideous ;;

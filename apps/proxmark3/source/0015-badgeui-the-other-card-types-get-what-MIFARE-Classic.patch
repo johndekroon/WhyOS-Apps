@@ -1,5 +1,5 @@
 From db405fe8b3aa6621fba807bcc6bd6bd9b5a52002 Mon Sep 17 00:00:00 2001
-From: John <john.de.kroon@cyberant.com>
+From: John de Kroon
 Date: Fri, 30 Oct 2026 22:12:51 +0100
 Subject: [PATCH 15/20] badgeui: the other card types get what MIFARE Classic
  has; fixes
@@ -28,8 +28,6 @@ its CLIParser definition in this client.
 Tested: test_pm3ui.py 19/19 on the host (new: an LF card's options and
 commands, an Ultralight card's, DESFire/Plus chk with -f). The HID raw
 ID and the commands on real cards: not yet on the badge.
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  client/src/badgeui/pm3ui.c       | 133 ++++++++++++++++++++-----------
  client/src/badgeui/pm3ui_pm3.c   |   9 +++

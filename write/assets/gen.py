@@ -31,7 +31,7 @@ import cairosvg
 from PIL import Image, ImageDraw, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-WHY = os.environ.get("WHY2025_LINUX", os.path.join(HERE, "..", "..", "..", "WhyOS"))
+WHY = os.environ.get("WHYOS", os.path.join(HERE, "..", "..", "..", "WhyOS"))
 FONTS = os.path.join(WHY, "patches", "buildroot", "overlay-src", "home-assets", "fonts")
 UI = os.path.join(FONTS, "SpaceGrotesk-VF.ttf")
 MONO = os.path.join(FONTS, "JetBrainsMono-VF.ttf")

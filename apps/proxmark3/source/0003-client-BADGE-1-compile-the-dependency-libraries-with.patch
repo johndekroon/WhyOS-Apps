@@ -1,5 +1,5 @@
 From faf02acfb7576fd2768f84938fbbde7fd956fa79 Mon Sep 17 00:00:00 2001
-From: John <john.de.kroon@cyberant.com>
+From: John de Kroon
 Date: Sun, 11 Oct 2026 14:59:19 +0200
 Subject: [PATCH 03/20] client: BADGE=1, compile the dependency libraries with
  the badge flags too
@@ -10,8 +10,6 @@ the bFLT image and the client faulted at start on the badge. The flags now
 live in Makefile.defs, where every sub-make picks them up. The Lua SWIG
 wrapper stays out of the badge build. Runs on the badge: 3.98 MB image
 (text 1.58, data 0.98, bss 1.39 MB) plus a 1 MB stack.
-
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 ---
  Makefile.defs   |  6 ++++++
  client/Makefile | 10 +++-------

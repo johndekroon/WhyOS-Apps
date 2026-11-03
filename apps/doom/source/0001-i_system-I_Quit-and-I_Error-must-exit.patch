@@ -1,4 +1,4 @@
-From: John <john.de.kroon@cyberant.com>
+From: John de Kroon
 Subject: [PATCH] i_system: I_Quit and I_Error must exit
 
 Without ORIGCODE (undefined in config.h) both returned or spun:
@@ -10,8 +10,6 @@ Without ORIGCODE (undefined in config.h) both returned or spun:
 - I_Error spun at full CPU forever, a black screen until killed, e.g.
   when the zone did not fit ("Unable to allocate 4 MiB of RAM for
   zone"). Exiting lets the start menu retry with a smaller zone.
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
 --- a/fbdoom/i_system.c
 +++ b/fbdoom/i_system.c

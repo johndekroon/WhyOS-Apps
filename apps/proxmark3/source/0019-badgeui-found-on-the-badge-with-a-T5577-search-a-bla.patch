@@ -1,5 +1,5 @@
 From 8d0dc3f30168667d2d6c52b02fd2b16aa4558572 Mon Sep 17 00:00:00 2001
-From: John <john.de.kroon@cyberant.com>
+From: John de Kroon
 Date: Sat, 31 Oct 2026 01:35:25 +0100
 Subject: [PATCH 19/20] badgeui: found on the badge with a T5577: search, a
  blank dump, chk
@@ -24,8 +24,6 @@ empty) found:
 Tested: test_pm3ui.py 33/33 on the host (new: a blank T55xx dump); on
 the badge Tools/usb/hil/test_hil_pm3ui_t55xx.py, 6 of 7 with the build
 before this commit (the 7th was chk).
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  client/src/badgeui/pm3ui.c       | 26 ++++++++++++++++++++------
  client/src/badgeui/pm3ui_pm3.c   | 12 +++++++++++-

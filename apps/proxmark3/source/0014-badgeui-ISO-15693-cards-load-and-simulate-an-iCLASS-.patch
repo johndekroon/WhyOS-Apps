@@ -1,5 +1,5 @@
 From ed060e9aa05478649556aa32627f09c24e559ad6 Mon Sep 17 00:00:00 2001
-From: John <john.de.kroon@cyberant.com>
+From: John de Kroon
 Date: Fri, 30 Oct 2026 22:07:24 +0100
 Subject: [PATCH 14/20] badgeui: ISO 15693 cards load and simulate; an iCLASS
  card stays iCLASS
@@ -22,8 +22,6 @@ Tested: test_pm3ui.py 16/16 on the host (an ISO 15693 card's options and
 their commands, an iCLASS dump on a card saved as ISO 15693, the type
 screens' new actions); pm3ui_pm3.c compiled for the badge. The search
 change needs a real card: not yet tested on the badge.
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  client/src/badgeui/pm3ui.c       | 69 ++++++++++++++++++++++----------
  client/src/badgeui/pm3ui_pm3.c   | 16 +++++---

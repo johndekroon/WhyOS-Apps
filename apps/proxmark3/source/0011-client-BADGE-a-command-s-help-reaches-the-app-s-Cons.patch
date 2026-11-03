@@ -1,5 +1,5 @@
 From b044f8c857920ac661f68e742744b727e419e9e0 Mon Sep 17 00:00:00 2001
-From: John <john.de.kroon@cyberant.com>
+From: John de Kroon
 Date: Fri, 30 Oct 2026 10:34:13 +0100
 Subject: [PATCH 11/20] client: BADGE, a command's help reaches the app's
  Console
@@ -14,8 +14,6 @@ Tested on the badge (binary 6ee53144, Proxmark3 RDV4 on J8): Console,
 `hf` gives 26 lines and running 0 at once, `hw version` after it works;
 the panel read back from /dev/fb0 shows no "Running" and the normal
 hints. Host test_pm3ui.py 12/12.
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  client/src/badgeui/pm3ui.c | 2 +-
  client/src/cmdparser.c     | 5 +++++

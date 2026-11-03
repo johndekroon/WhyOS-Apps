@@ -1,5 +1,5 @@
 From 05e32057a92cdca847c77ba0ba9f325cad8fae6b Mon Sep 17 00:00:00 2001
-From: John <john.de.kroon@cyberant.com>
+From: John de Kroon
 Date: Fri, 30 Oct 2026 10:59:49 +0100
 Subject: [PATCH 12/20] badgeui: edit a saved card's dump in Write
 MIME-Version: 1.0
@@ -20,8 +20,6 @@ client's .json beside the dump is left as it was.
 Tested: test_pm3ui.py 13/13 on the host (new test_edit_dump_in_write:
 an edit, a wrong line kept and fixed, no changes; a MIFARE Classic dump
 reads back unchanged). Not yet on the badge.
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  client/src/badgeui/pm3ui.c       | 187 ++++++++++++++++++++++++++++++-
  client/src/badgeui/test_pm3ui.py |  41 ++++++-

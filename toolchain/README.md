@@ -28,7 +28,7 @@ sources, to rebuild that toolchain and relink or rebuild the apps
 1. Unpack Buildroot 2025.02.15. Configure it with `why2025_defconfig`, with
    `BR2_GLOBAL_PATCH_DIR` pointing at a directory that has `uclibc/` from
    here. The defconfig refers to the rest of WhyOS through
-   `@WHY2025_LINUX@` (kernel patches, overlay); the toolchain itself needs
+   `@WHYOS@` (kernel patches, overlay); the toolchain itself needs
    only the patch above.
 2. `make toolchain` gives `output/host/bin/riscv32-buildroot-linux-uclibc-*`.
 3. Put an app's `source/` files in `sdapps/<app>/` next to `sdapps-build.sh`

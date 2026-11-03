@@ -1,5 +1,5 @@
 From 63eff71935d68b131522651ef2c9fb02892b9654 Mon Sep 17 00:00:00 2001
-From: John <john.de.kroon@cyberant.com>
+From: John de Kroon
 Date: Thu, 29 Oct 2026 10:40:02 +0100
 Subject: [PATCH 07/20] client: BADGE build, a line editor, and saves in
  ~/.proxmark3/dumps
@@ -25,8 +25,6 @@ of a wrapped line, the row edges, history, Ctrl+C). The badge build in
 the QEMU simulation: -c runs one command, history survives a restart,
 old preferences with $HOME get the new paths and a set path (/tmp) stays,
 a fresh $HOME gets .proxmark3/dumps and saves its preferences.
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
  client/src/pm3line.c     | 300 +++++++++++++++++++++++++++++++++++++++
  client/src/preferences.c |  41 +++++-
