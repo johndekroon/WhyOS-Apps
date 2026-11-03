@@ -51,7 +51,7 @@ print("acceleration %.2f %.2f %.2f m/s²" % (ax, ay, az))
   control for a game.
 - `in_pressure_input` gives the air pressure in kPa, but this badge's
   sensor reads about 2.3 times too high (around 225–250 instead of about
-  100), a known calibration mismatch (`why2025-linux/sdapps/sensorpanel`).
+  100), a known calibration mismatch (WhyOS `sdapps/sensorpanel`).
 - The Sensor panel app in the store shows the same values, handy to
   compare.
 
@@ -141,9 +141,7 @@ UDP works the same way with `socket.SOCK_DGRAM`.
 **The badge has no IPv6.** Ask `socket.getaddrinfo()` for IPv4 addresses
 with `socket.AF_INET`, as in the example above: many sites also have an
 IPv6 address, and connecting to it fails with `OSError: 97`. The store's
-MicroPython 1.29.0 (until 2026-10-28) returns those IPv6 addresses first,
-so there `requests` fails for such sites too (Google, example.org);
-1.29.1 returns only IPv4 addresses, as Python on a PC does.
+MicroPython returns only IPv4 addresses, as Python on a PC does.
 
 Without a network, `socket.getaddrinfo()` and `requests` raise `OSError`;
 catch it to show a message instead of a traceback. A certificate that does
@@ -270,7 +268,7 @@ r.close()
 
 Connected to a computer by its **bottom** USB port (with the side port
 unplugged), the badge is a USB keyboard and mouse for that computer, as in
-the HIDeous app (WhyBadge documentation, chapter 8.6). A program can type
+the HIDeous app. A program can type
 by writing keyboard reports to `/dev/hidg0`: 8 bytes, the modifier keys
 in the first, the key in the third.
 
@@ -353,9 +351,8 @@ adverts, and make a bot that answers. It is
 the MeshCore tools on a computer use, with one addition for the badge:
 `MeshCore.create_unix()`, which connects to the badge's own node.
 
-`meshcore` comes with the store's MicroPython 1.29.1 and later (in the
-store since 2026-10-28); with an older one, `import meshcore` raises
-`ImportError`.
+`meshcore` comes with the store's MicroPython 1.29.1 and later; with an
+older one, `import meshcore` raises `ImportError`.
 
 **Before you start:**
 
@@ -448,20 +445,13 @@ folder to make it your own. It shows three rules for bots:
   after the other, as the example does.
 - **Wait a moment before answering on a channel.** A radio that is sending
   hears nothing, and repeaters pass a channel message on right after it
-  arrives. The example waits 2 s; an answer sent at once was lost every
-  time in our tests.
+  arrives. The example waits 2 s; an answer sent at once gets lost.
 - **The node serves one program.** When the MeshCore app opens, the bot
   gets `EventType.DISCONNECTED`. `MeshCore.create_unix(auto_reconnect=True)`
   makes it connect again, which takes the node back from the app.
 
 Keep a bot quiet: it shares the airtime of everyone on the mesh, and in
 Europe a radio may only send a small part of the time.
-
-The examples in this section ran on 2026-10-28 against two MeshCore nodes
-on a simulated radio (reading, a channel message, a direct message with
-its ack, losing the node to another program and taking it back). On the
-badge itself the library has read the node's settings, contacts and
-channels; a bot talking to another badge over the air has not been tried.
 
 ### Seeing what the library does
 

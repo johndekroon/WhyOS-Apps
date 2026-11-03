@@ -4,14 +4,14 @@ Every app in this repository is a static BFLT program built with the
 badge's Buildroot toolchain, and every one of them links uClibc-ng. This
 directory holds what is needed, together with the public upstream
 sources, to rebuild that toolchain and relink or rebuild the apps
-(docs/package.md §2.10). The files are copies from why2025-linux at
-commit `2be6d7c`.
+(docs/package.md §2.10). The files are copies from
+[WhyOS](https://github.com/WhyOSLInux/WhyOS).
 
 | File | What |
 |---|---|
-| `why2025_defconfig` | The Buildroot configuration (`configs/why2025_defconfig` of why2025-linux) |
+| `why2025_defconfig` | The Buildroot configuration (`configs/why2025_defconfig` of WhyOS) |
 | `uclibc/0001-linuxthreads-sigaction-vfork-safe.patch` | The badge's change to uClibc-ng (`patches/buildroot/global-patches/uclibc/`) |
-| `sdapps-build.sh` | The script that built the apps (`sdapps/build.sh`, copied again at commit `8a412f9` on 2026-10-28, with HIDeous, BARbarious, the PDF viewer and OHMinous, `-I libwb` for the apps that draw with why2025-linux's drawing library, and MicroPython's patches, meshcore_py and own modules; the Bus Pirate app it replaced builds only by name); each app's `source/` has its own files |
+| `sdapps-build.sh` | The script that builds the apps (`sdapps/build.sh`, with `-I libwb` for the apps that draw with WhyOS's drawing library, and MicroPython's patches, meshcore_py and own modules); each app's `source/` has its own files |
 
 ## Components
 
@@ -27,12 +27,12 @@ commit `2be6d7c`.
 
 1. Unpack Buildroot 2025.02.15. Configure it with `why2025_defconfig`, with
    `BR2_GLOBAL_PATCH_DIR` pointing at a directory that has `uclibc/` from
-   here. The defconfig refers to the rest of why2025-linux through
+   here. The defconfig refers to the rest of WhyOS through
    `@WHY2025_LINUX@` (kernel patches, overlay); the toolchain itself needs
    only the patch above.
 2. `make toolchain` gives `output/host/bin/riscv32-buildroot-linux-uclibc-*`.
 3. Put an app's `source/` files in `sdapps/<app>/` next to `sdapps-build.sh`
-   (its `libwb/`, when it has one, next to `sdapps/`, as in why2025-linux;
+   (its `libwb/`, when it has one, next to `sdapps/`, as in WhyOS;
    its `SOURCES.md` says where the other files go), set `BR_OUT` to the Buildroot output directory and run
    `sdapps-build.sh <app>`. The script fetches the upstream sources listed
    in each app's `SOURCES.md` and checks their SHA-256.

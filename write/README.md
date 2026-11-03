@@ -1,24 +1,23 @@
 # write: Write, the WhyOS text editor
 
-Write is the text editor of the WhyBadge design (`design/write/` in the
-WhyBadge workspace: the screens in `canvas/`, behaviour and keys in
-`README.md`). Notes and documents in rich text, saved as markdown; other
-text and code in a code view with highlighting. The package is
-[apps/write](../apps/write): a system app in flash (`/data/apps/write`),
-like the store, listed under Apps; why2025-linux puts it in the image.
+Write is the text editor of WhyOS. Notes and documents in rich text, saved
+as markdown; other text and code in a code view with highlighting. The
+package is [apps/write](../apps/write): a system app in flash
+(`/data/apps/write`), like the store, listed under Apps; WhyOS puts it in
+the image.
 
 | File | What |
 |---|---|
 | `src/text.c` | the text buffer: lines, insert and delete, undo and redo in steps (typing merges per word, 100 steps), the saved state |
 | `src/md.c` | one markdown line as the rich view shows it: the block marker, the inline styles Write knows (`**`, `*`, `***`, `<u>`), the caret map between visible text and source, writing styles back |
 | `src/edit.c` | editing in the three modes (rich, markdown source, code): typing, Enter and Backspace rules, styles and paragraph styles, the clipboard, caret moves |
-| `src/find.c` | find and replace (§8 of the design) |
+| `src/find.c` | find and replace |
 | `src/tags.c` | the HTML element still open before the caret, so `</` in the code view finishes its closing tag |
 | `src/syntax.c` | the twelve languages of the Language screen and their highlighting |
 | `src/files.c` | loading (256 KB at most), saving through a temporary file and rename, names, the Open list, dates |
 | `src/layout.c` | lines into rows: wrapping, heights (cached per line), caret x/y, up and down |
 | `src/app.c` | the app as a state machine: keys in; document, overlays, requests out |
-| `src/ui.c` | the screens, drawn with libwb from why2025-linux (`libwb/wb.h`, `wbstatus.h`) in the style of the canvas "Menu's met frontpaneel" (2026-10-27) |
+| `src/ui.c` | the screens, drawn with libwb from WhyOS (`libwb/wb.h`, `wbstatus.h`) in the menu's style |
 | `src/repeat.c` | a key held down repeats, by Write's own timer: which keys, when |
 | `src/main.c` | the badge program (keypad, panel, SIGTERM, running scripts) and the host program for the screen tests |
 | `src/write_fonts.h` | the document fonts and a few icons, from `assets/gen.py` (checked in) |
@@ -26,31 +25,30 @@ like the store, listed under Apps; why2025-linux puts it in the image.
 | `tests/test_ui.py` | the screens on the host: keys from a script, screens as PPM |
 
 ```
-make -C write test        # unit tests, then the screens (needs why2025-linux next to this repo)
-write/build.sh            # the badge's build/write (needs ~/br-badge, in the build VM)
-python3 write/assets/gen.py > write/src/write_fonts.h   # in the build VM (PIL, cairosvg)
+make -C write test        # unit tests, then the screens (needs WhyOS: set WHY2025_LINUX to your checkout)
+write/build.sh            # the badge's build/write (also needs a Buildroot build of WhyOS: set BR_OUT)
+python3 write/assets/gen.py > write/src/write_fonts.h   # needs PIL and cairosvg, and WHY2025_LINUX for the fonts
 ```
 
 The screen tests set `WRITE_UI_CHECK`: every frame drawn band by band
 (only the bands whose contents changed) must equal the same frame drawn
 whole. Host builds go to `tests/unit/bin-<system>/` and
-`write-ui-host-<system>`, as this folder is shared with the build VM.
+`write-ui-host-<system>`, so a folder shared with a build VM keeps both.
 
-The screens as PNG: `SHOTS=dir python3 -m pytest -q tests` in the build VM
-(PIL); on macOS the screen tests stop at ASan's `detect_leaks`, which the
+The screens as PNG: `SHOTS=dir python3 -m pytest -q tests` on Linux (needs
+PIL); on macOS the screen tests stop at ASan's `detect_leaks`, which the
 platform lacks (`ASAN_OPTIONS` in `tests/test_ui.py`).
 
 On the badge: `/tmp/write.keys` takes key codes from a test (`c31` is
 Ctrl+S, `f106` Fn+Right); `WRITE_UI_TIMING=1` writes how long each frame
 took to stderr (`/tmp/app-write.log`). The clipboard is
 `/tmp/write.clip`, the log `/tmp/write.log`, the settings
-`$APP_CONFIG/settings`. The hardware test is
-`Tools/usb/hil/test_hil_write.py` in the WhyBadge workspace.
+`$APP_CONFIG/settings`.
 
-## Decisions the design left open
+## Decisions
 
 - Italic: Space Grotesk has none; Write slants the regular glyphs.
-- Files over 256 KB are refused with a message (README §11's proposal).
+- Files over 256 KB are refused with a message.
 - The logo key saves a named document over itself and an unnamed one as
   `/root/untitled.md` (`-2`, `-3` ... when that exists).
 - The clipboard is `/tmp/write.clip`: shared between documents, gone after
@@ -70,15 +68,13 @@ took to stderr (`/tmp/app-write.log`). The clipboard is
 - A held key repeats after 400 ms, every 50 ms: the arrows and Backspace
   (also with Ctrl, Alt or Fn), Space and the keys that type, not Enter,
   Tab, Esc or the symbol keys. Write's own timer, as the menu's lists:
-  the keypad's own repeats (why2025-linux kernel patch 0060, the same
+  the keypad's own repeats (WhyOS kernel patch 0060, the same
   pace) are ignored, so a repeat comes only after the last one is drawn.
-- Help is drawn as the design's Help screen, not with libwb's
-  `help_popup`: twelve keys, some with three caps, do not fit in the
+- Help is Write's own screen, not libwb's `help_popup`: twelve keys, some with three caps, do not fit in the
   shared pop-up.
-- The look (2026-10-27, the canvas "Menu's met frontpaneel"): the
-  frontpanel's scene behind the status bar, the document bar (its chips
-  glass) and the hint bar (glass); the text on an opaque page between
-  them, as the design's layout (2a) keeps it. Glass under 24 px text would
+- The look: the frontpanel's scene behind the status bar, the document
+  bar (its chips glass) and the hint bar (glass); the text on an opaque
+  page between them. Glass under 24 px text would
   show the scene's lines through the letters, and the page's bands are the
   ones typing and scrolling redraw: there the scene costs nothing, it is
   drawn only in the bands of the bars. Full screen has no scene (the text
@@ -93,4 +89,4 @@ took to stderr (`/tmp/app-write.log`). The clipboard is
   with the void at 95 %, so the text under it does not show through.
 - The badge turning: the main loop wakes at least every 250 ms and each
   frame reads the rotation; a turn redraws the screen (the scene turns).
-  Switches are libwb's (cyan when on, as the canvas).
+  Switches are libwb's (cyan when on).

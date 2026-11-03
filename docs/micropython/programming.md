@@ -41,7 +41,7 @@ at(8, 1, "\x1b[?25h")
 ```
 
 Graphics (pixels, images, the badge's own fonts and menus) cannot be
-drawn from Python yet.
+drawn from Python.
 
 ## Reading keys
 
@@ -95,7 +95,7 @@ arrive as the codes of F1 to F6.
 
 Things to know about raw mode:
 
-- **Ctrl-C no longer stops the program**: it arrives as `"\x03"`. Handle it
+- **Ctrl-C does not stop the program**: it arrives as `"\x03"`. Handle it
   yourself, as in the example below. The logo key always closes the
   window.
 - **A new line needs `"\r\n"`**: in raw mode `"\n"` only moves down.
@@ -361,7 +361,7 @@ The menu shows "Hello" under Apps the next time it lists the apps.
 | Setting | Choices |
 |---|---|
 | `CATEGORY` | `apps`, `games` |
-| `ICON` | `terminal`, `games`, `sensors`, `wifi`, `lora`, `led`, `chip`, `keyboard`, `text`, `sun`, `bolt`, `palette` and more (see why2025-linux `docs/APPS.md`) |
+| `ICON` | `terminal`, `games`, `sensors`, `wifi`, `lora`, `led`, `chip`, `keyboard`, `text`, `sun`, `bolt`, `palette` and more (see WhyOS `docs/APPS.md`) |
 | `TERMINAL` | `close`: the window closes when the program ends without an error. `1`: the window always stays open until Enter or Esc, for a program whose last output should stay readable |
 | `OPENS_ALSO` | Extensions, such as `"txt csv"`: Files then offers your program under Open with for such files; `ARGS="%f"` passes the file, and `"$@"` in `start` hands it to the program as `sys.argv[1]` |
 

@@ -5,7 +5,7 @@ pages are for writing your own Python programs for the badge: from the first
 `print("hello")` to a program with its own tile in the menu that reads the
 sensors, talks to the internet or types on a computer.
 
-The store's MicroPython 1.29.1 (2026-10-28) is MicroPython 1.29.0 with
+The store's MicroPython 1.29.1 is MicroPython 1.29.0 with
 the badge's own modules built in (`meshcore`, `setting`, `ics`,
 `xml.etree.ElementTree`); the prompt and `sys.version` say 1.29.0.
 
@@ -30,14 +30,8 @@ reference; these pages cover what is particular to the badge.
 - Write, the badge's text editor, edits Python with syntax colours and
   runs the script with one key (▲).
 - A program runs in a text window of 73 × 25 characters with 16 colours.
-  Drawing graphics on the screen from Python is not possible yet.
+  Drawing graphics on the screen from Python is not possible.
 - There are no threads; `asyncio` does several things at once.
 - A program gets 2 MB of memory by default.
 
-These pages were written on 2026-10-28 from the MicroPython build and the
-WhyOS source. On 2026-10-28 every program in them was run on a badge, and
-the keys and the window from a tile in the menu. Not run there: typing on
-a computer (no computer was connected), a serial device (none was
-connected), sending over LoRa (tried with simulated MeshCore nodes), and
-the steps in Write and Files. If an example does not work, that is a bug
-in these pages.
+If an example does not work, that is a bug in these pages.

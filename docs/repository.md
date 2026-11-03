@@ -34,33 +34,34 @@ docs/                          this specification
 
 Two ways to supply the program:
 
-- **`artifact.toml`** (phase 1): the author builds the app with the badge
+- **`artifact.toml`**: the author builds the app with the badge
   toolchain and supplies a `files/` archive (tar.gz): committed in the
   app directory as `files.tar.gz` (`path`), or published somewhere stable
   (`url`). `artifact.toml` pins it with its SHA-256. CI checks the hash
-  and packs it. Committed archives keep every version in the git history;
-  that is accepted for now (a few MB per version) and can move to
-  `url` or Git LFS later without a format change.
-- **`build.sh`** (phase 3): CI builds from pinned sources in a container
-  with the badge toolchain ([roadmap.md](roadmap.md)). The script gets
-  `$OUT` (the `files/` directory to fill) and the toolchain
+  and packs it. Committed archives keep every version in the git history
+  (a few MB per version).
+- **`build.sh`**: builds the package's `files/` from pinned sources. The
+  script gets `$OUT` (the `files/` directory to fill) and the toolchain
   in `$PATH`; it MUST pin every download by version and SHA-256.
+  `tools/validate.py` accepts it in place of `artifact.toml`, but nothing
+  runs it: `tools/publish.py` needs an `artifact.toml`, so an app in the
+  store has one.
 
 ```toml
 # apps/gnuboy/artifact.toml
 path = "files.tar.gz"               # or: url = "https://…/files.tar.gz"
 sha256 = "…"
-built_from = "why2025-linux sdapps/build.sh at 2be6d7c"   # free text: what produced it
+built_from = "WhyOS sdapps/build.sh at <commit>"   # free text: what produced it
 ```
 
 `tools/import-sdapp.py` makes such an archive from an app built with
-why2025-linux `sdapps/build.sh`: it drops `app.conf` and debug files,
+WhyOS `sdapps/build.sh`: it drops `app.conf` and debug files,
 adds `overlay/` and `licenses/`, writes a reproducible archive (sorted,
 fixed timestamps and owners) and updates `artifact.toml`.
 
 `tools/validate.py` runs the checks of §4 that need no network (schema,
 category, archive rules, programs, licence files, source) on all or the
-given apps; CI will run it on every pull request.
+given apps; CI runs it on every push and pull request.
 
 ### 1.2 Source in this repository
 
@@ -82,15 +83,14 @@ is the complete corresponding source ([package.md](package.md) §2.10).
   maintainer's.
 - Reviewers check, beyond CI: the license allows redistribution, the
   description is accurate, the app stays within its declared storage, and
-  it does not harm the badge (the badge has no memory protection; see
-  why2025-linux `docs/KNOWN-ISSUES.md`).
+  it does not harm the badge (the badge has no memory protection).
 
 ## 3. Categories
 
 `categories.json` ([schema](../schema/categories.schema.json)) is the
 fixed tree of types and categories. Manifests may only use what is in it,
-so the store's tabs stay tidy: at most four categories per type
-(2026-10-13), including `other`. Categories are for browsing the store;
+so the store's tabs stay tidy: at most four categories per type,
+including `other`. Categories are for browsing the store;
 the start menu lists installed apps by name only.
 
 ```json
@@ -110,11 +110,10 @@ the start menu lists installed apps by name only.
   over: manifests that name it stay valid, and `publish.py` writes the
   new id into the index and the app's details. A published package keeps
   the id it was built with (a package never changes); new versions
-  should use the new id. On 2026-10-13 eleven app and seven game
-  categories became four each this way.
+  should use the new id.
 - `menu` says where the start menu lists apps of this type or category
   by default (`apps`, `games`, `tools`, `none`); a category may override
-  its type's. No category uses `tools` (2026-10-12): Settings > Tools in the
+  its type's. No category uses `tools`: Settings > Tools in the
   menu is for the badge's own utilities, and apps from the store, network
   tools such as nmap included, belong under Apps or Games.
 - `icon` is one of the menu's built-in icon names.
@@ -147,8 +146,6 @@ Publishing is a git push; there is no publishing job and no secret.
 (built for the host) on every package in `dist/`, and a check that `dist/`
 is what `publish.py` makes from `apps/` (so a forgotten publish fails).
 
-Not yet: building packages from source in CI (phase 3, roadmap).
-
 ## 5. Published files
 
 Base URL of the default source:
@@ -171,9 +168,8 @@ v1/categories.json                 copy of the category tree
 ```
 
 URLs of packages in the index are absolute, so a mirror can host
-packages elsewhere, and packages could later move to release assets or
-Git LFS without a format change. Every published version stays in git;
-that is accepted for now (a few MB per version).
+packages elsewhere. Every published version stays in git (a few MB per
+version).
 
 ### 5.1 Index
 
@@ -224,8 +220,8 @@ it stays small (aim: under 1 KB per app).
   search finds `nmap` by its command and CI can check names are unique.
 - `serial` increases with every publication that changes something. A
   client MUST refuse an index with a lower `serial` than the one it has
-  cached (a stale mirror or cache). `expires` is optional and not written
-  now.
+  cached (a stale mirror or cache). `expires` is optional;
+  `tools/publish.py` does not write it.
 - `install_location` and `menu_icon` (the menu icon named in
   `launch.icon`, the fallback when there is no `icon`) are in the index
   too, so lists need no details.
@@ -256,8 +252,8 @@ it without fetching and shrinking a screenshot.
 
 ## 6. Integrity
 
-There is no signature (decided 2026-10-12: publishing should be a plain
-git push, without keys or a publishing job).
+There is no signature: publishing is a plain git push, without keys or a
+publishing job.
 
 - The index and the details come over HTTPS from the source's base URL;
   the client checks TLS against the CA roots it carries.
@@ -268,7 +264,3 @@ git push, without keys or a publishing job).
 - What this does not protect against: someone who can push to this
   repository, or who controls a mirror the user added, can publish
   anything. Review and branch protection on `main` are the safeguard.
-
-A signed index can be added later without breaking clients: an
-`index.json.minisig` next to the index and a `KEYS` field in source
-files, both ignored by clients that do not know them.

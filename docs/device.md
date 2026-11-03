@@ -1,8 +1,8 @@
 # On the badge: layout, registry and lifecycle
 
-Paths in this document use `$HOME` for the user's home directory (today
-`/root`, in flash through the `/data` overlay) and `SD` for the card's
-mount point (today `/mnt/sd`). The client MUST take both from the
+Paths in this document use `$HOME` for the user's home directory
+(`/root`, in flash through the `/data` overlay) and `SD` for the card's
+mount point (`/mnt/sd`). The client MUST take both from the
 environment and `/etc/whyos-release`, not hard-code them.
 
 ## 1. Where everything lives
@@ -26,7 +26,7 @@ SD/badge/.store/journal            the operation in progress (§5.7); $HOME/.why
 $HOME/.whyos/config/<id>/          storage.config: small settings, survive a new card
 $HOME/.whyos/bin/<command>         wrapper scripts for [[commands]] (package.md §2.3.1)
 $HOME/.whyos/store/installed/<id>.json   registry: one file per installed app (§2.2)
-$HOME/.whyos/store/cleanup.json    removals still to be done on cards that were absent (§5.4)
+$HOME/.whyos/store/cleanup.json    removals waiting for cards that were absent (§5.4)
 $HOME/.whyos/store/sources.d/      extra sources and overrides (§2.3)
 $HOME/.whyos/store/settings.json   store preferences
 
@@ -161,8 +161,8 @@ and the reason the registry lives in flash.
 
 ### 5.2 Install
 
-1. Refresh the index if it is older than the configured age (default 1
-   hour) and the network is up; otherwise use the cached one.
+1. Refresh the index if it is older than an hour and the network is up;
+   otherwise use the cached one.
 2. Resolve: take the latest version's package, check
    `requires.os_api`, `requires.features`, `requires.apps` (install those
    first), and warn on `requires.memory_kb`.
@@ -247,7 +247,7 @@ the registry entry from `.package/manifest.json` and `.package/source`
 Power cuts, a pulled card, or the watchdog can stop the store anywhere.
 `.store/journal` holds the operation in progress. `store maintain`, run
 by the client at start and by the system after the card is mounted
-(boot, and on insertion):
+(at boot, and when Settings > Storage & devices > Disks mounts it):
 
 - an unfinished **install/update**: if `apps/<id>` is complete (its
   `.package/files.sha256` matches), finish steps 9–11; otherwise restore
@@ -259,11 +259,10 @@ by the client at start and by the system after the card is mounted
   7 days;
 - runs pending cleanups for this card (§5.4);
 - registers the apps in flash that have `.package/` but no registry
-  entry, as an OS image brings them (§5.6; since store 0.2.12, before only
-  the store itself); apps on a card stay for "Adopt";
-- makes the programs in installed apps runnable (package.md §1.2): store
-  0.2.10 and older left programs that the manifest does not name `0644`,
-  which do not run from an f2fs card.
+  entry, as an OS image brings them (§5.6); apps on a card stay for
+  "Adopt";
+- makes the programs in installed apps runnable (package.md §1.2): a
+  program left at `0644` does not run from an f2fs card.
 
 ### 5.8 Legacy apps
 
@@ -303,9 +302,8 @@ The command wrappers in `$HOME/.whyos/bin/` set the same variables, so
 an app behaves the same from the menu and from a shell.
 
 The placeholders `%D`, `%C` and `%T` in `ARGS` and `FILES` expand to the
-same values ([package.md](package.md) §2.3). This is a small change in
-the menu's argument expansion and in `apprun`; the existing `%d`, `%f`,
-`%u`, `%a` stay.
+same values ([package.md](package.md) §2.3), next to `%d`, `%f`, `%u` and
+`%a`.
 
 ### 6.2 Rules for apps
 
@@ -318,13 +316,14 @@ the menu's argument expansion and in `apprun`; the existing `%d`, `%f`,
 - Work without a card when possible (`APP_DATA` may be missing if the
   card is removed while running); fail with a non-zero exit status and a
   clear message otherwise.
-- Follow why2025-linux `docs/APPS.md` for the display, keypad, memory and
+- Follow WhyOS `docs/APPS.md` for the display, keypad, memory and
   exit status.
 
-Porting existing apps: gnuboy's `--savedir=/mnt/sd/roms/saves` becomes
-`%D/roms/saves` and `FILES=/mnt/sd/roms` becomes `%D/roms`; NetSurf's
-cookies and history move from `/root/.netsurf` to `APP_CONFIG` (by
-starting it with `HOME=$APP_CONFIG`, or a patch).
+Porting an existing app means replacing its fixed paths. For gnuboy,
+`--savedir=/mnt/sd/roms/saves` becomes `%D/roms/saves` and
+`FILES=/mnt/sd/roms` becomes `%D/roms`; for NetSurf, cookies and history
+go from `/root/.netsurf` to `APP_CONFIG` (by starting it with
+`HOME=$APP_CONFIG`, or a patch).
 
 ### 6.3 `/etc/whyos-release`
 
@@ -340,7 +339,7 @@ SD=/mnt/sd
 
 `API` goes up when the OS adds something apps may rely on (a new
 placeholder, a new device, a library); it never goes down. A changelog of
-API levels lives in why2025-linux `docs/APPS.md`.
+API levels lives in WhyOS `docs/APPS.md`.
 
 ## 7. Space
 

@@ -91,7 +91,7 @@ and in some special methods) are listed in MicroPython's
 | `argparse` | Command-line options for your scripts |
 | `deflate` | gzip and zlib compression and decompression (`DeflateIO`) |
 | `cryptolib` | AES in ECB and CBC mode |
-| `framebuf` | Drawing into a pixel buffer (no way to show it on the screen yet) |
+| `framebuf` | Drawing into a pixel buffer (with no way to show it on the screen) |
 | `micropython` | `const`, the `native` and `viper` decorators, `mem_info` |
 | `uctypes` | C structures over raw memory (careful: a wrong address can hang the badge) |
 | `machine` | Little more than its name: no `Pin`, `I2C`, `SPI` ([badge.md](badge.md)) |
@@ -111,5 +111,5 @@ Pure-Python packages from [micropython-lib](https://github.com/micropython/micro
 install with `python -m mip install <name>`, for example `datetime`,
 `logging`, `os-path`, `pathlib`, `shutil`, `itertools`, `functools`,
 `string`, `textwrap`, `unittest`, `base64`, `hmac`, `uuid`, `copy`. They
-go to `lib/` in your scripts folder. Not every package has been tried on
-the badge.
+go to `lib/` in your scripts folder. A package may not work on the badge:
+try it first.

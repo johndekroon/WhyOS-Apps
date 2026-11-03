@@ -25,8 +25,7 @@ files/...              anything else the app needs at run time
 - `manifest.json` first lets the client check the package before it
   writes anything.
 - Everything outside `manifest.json` and `files/` is reserved; clients
-  MUST ignore it. (Room for later additions such as `migrate/` or
-  `delta/`.)
+  MUST ignore it.
 - The client writes `app.conf` and `.package/` into the app directory
   itself ([device.md](device.md) §3). A package MUST NOT contain
   `files/app.conf` or `files/.package/`.
@@ -91,15 +90,15 @@ the strict schema reports this as an unknown key.
 
 | Field | Req. | Meaning |
 |---|---|---|
-| `type` | yes | `app`, `game` or `system`. `system` packages (the store itself, Files, Write, later drivers or fonts) are not shown in the browse tabs and cannot be removed ([device.md](device.md) §5.4) |
+| `type` | yes | `app`, `game` or `system`. `system` packages (the store itself, Files, Write) are not shown in the browse tabs and cannot be removed ([device.md](device.md) §5.4) |
 | `category` | yes | A category id (or a retired id listed under `aliases`) under this type in [categories.json](../categories.json) |
 | `tags` | no | Up to 8 lowercase words for search (`emulator`, `gameboy`) |
 | `content_warning` | no | Free text shown on the info page (e.g. flashing images) |
 
 ### 2.3 Launch
 
-The `[launch]` table holds what `app.conf` holds today
-(why2025-linux `docs/APPS.md`). At install time the client writes
+The `[launch]` table holds what `app.conf` holds
+(WhyOS `docs/APPS.md`). At install time the client writes
 `app.conf` from it, so the start menu and `apprun` need no knowledge of
 the store. Keys map one to one:
 
@@ -120,7 +119,7 @@ the store. Keys map one to one:
 
 **Screen rotation.** WhyOS turns the screen with the badge: `sleepd`
 reads the accelerometer and sets the panel's rotation and the arrow keys'
-mapping (why2025-linux `docs/HOME.md`, "Tilt"). That is what most apps
+mapping (WhyOS `docs/HOME.md`, "Tilt"). That is what most apps
 want, so `rotation = "auto"` is the default. An app or game that uses the
 accelerometer itself (tilt controls, a spirit level) sets
 `rotation = "locked"`: while it runs, the screen stays upright (rotation
@@ -130,27 +129,27 @@ to itself. When the app ends, automatic rotation resumes. An app that
 locks rotation SHOULD also list `accelerometer` in `requires.features`.
 
 `NAME` comes from `name`. The client adds `ID`, `TYPE` and `SUBCATEGORY`
-lines to `app.conf`; the current menu ignores unknown keys, a later one
-groups by them ([client.md](client.md) §5).
+lines to `app.conf`; the menu reads `ID` and `TYPE` and ignores keys it
+does not know ([client.md](client.md) §5).
 
 Placeholders in `args` and `files`:
 
-| | Meaning | Today |
-|---|---|---|
-| `%d` | app directory | exists |
-| `%f`, `%u`, `%a`, `%%` | chosen file, file URL, answer to `ask`, percent | exist |
-| `%D` | the app's data directory on the card (`storage.data`) | new |
-| `%C` | the app's config directory in `$HOME` (`storage.config`) | new |
-| `%T` | the app's cache directory (`storage.cache`) | new |
+| | Meaning |
+|---|---|
+| `%d` | app directory |
+| `%f`, `%u`, `%a`, `%%` | chosen file, file URL, answer to `ask`, percent |
+| `%D` | the app's data directory on the card (`storage.data`) |
+| `%C` | the app's config directory in `$HOME` (`storage.config`) |
+| `%T` | the app's cache directory (`storage.cache`) |
 
-The new placeholders and environment variables are the runtime contract
-in [device.md](device.md) §6.
+`%D`, `%C`, `%T` and the `APP_*` environment variables are the runtime
+contract in [device.md](device.md) §6.
 
 #### 2.3.1 Command-line apps
 
 Many tools are command-line programs (nmap, Links, a Proxmark3 client).
 They need no UI of their own: the OS shows them in a generic terminal
-window, `appterm` (why2025-linux `docs/APPS.md`, "Command-line apps"). A
+window, `appterm` (WhyOS `docs/APPS.md`, "Command-line apps"). A
 package declares this with `launch.terminal`; nothing else in the format
 is different.
 
@@ -277,8 +276,7 @@ enabled = true
 - **config** is for small settings that should survive a card swap:
   preferences, high scores, a last-opened file. The cap is enforced by
   the store (it reports apps over their cap; it does not stop a running
-  app). Flash is shared by all apps and the system, so the sum is kept
-  small ([roadmap.md](roadmap.md), open questions).
+  app). Flash is shared by all apps and the system, so keep the sum small.
 - **data** is for anything large: game images, save states, downloaded
   content, databases. It is on the card and goes when the card goes.
 - **user_folders** are data folders the user puts files into. Remove
@@ -292,9 +290,8 @@ enabled = true
 
 `permissions`: a list from `network`, `usb`, `bluetooth`, `files-all`
 (read or write outside its own storage), `system` (changes system
-settings). WhyOS cannot enforce these yet (no MMU, everything runs as
-root); the store shows them on the info page. The field exists now so
-that enforcement later does not need a format change.
+settings). WhyOS does not enforce these (no MMU, everything runs as
+root); the store shows them on the info page.
 
 ### 2.8 Lifecycle hooks (optional)
 
@@ -387,7 +384,7 @@ the app page marks them as "not open source".
 
 The store serves one target: WhyOS on the badge. Programs are static BFLT
 binaries for RV32IMAFC without MMU, linked against uClibc-ng with the
-badge's toolchain (why2025-linux `sdapps/build.sh`). There is no platform
+badge's toolchain (WhyOS `sdapps/build.sh`). There is no platform
 field and no choice between builds: a package either runs on the badge
 or is rejected by CI. Packages without native code (data packs, scripts
 for the shell) are fine. When the OS changes in a way apps notice, that is

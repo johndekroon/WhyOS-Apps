@@ -14,7 +14,7 @@ the badge (BFLT) and for the host (tests, CI).
 | `src/registry.c` | registry, card id, journal, pending cleanups |
 | `src/paths.c`, `src/sources.c` | where things live; sources and mirrors |
 | `src/json.c` | JSON reading (jsmn, `third_party/`) and writing |
-| `src/ui.c` | the screens (client.md §4), drawn with why2025-linux's `libwb/` (`wb.h`, `wbstatus.h`) in the menu's style |
+| `src/ui.c` | the screens (client.md §4), drawn with WhyOS's `libwb/` (`wb.h`, `wbstatus.h`) in the menu's style |
 | `src/qoi.c` | QOI decoder for icons and screenshots |
 | `roots.pem` | the CA roots it trusts, picked by `mkroots.py` from Mozilla's list |
 | `deps.sh` | builds the pinned mbedTLS for the host or the badge |
@@ -24,11 +24,11 @@ the badge (BFLT) and for the host (tests, CI).
 ```
 make -C client host test        # Linux; builds mbedTLS once into client/.deps
 client/store-host check-package dist/v1/packages/gnuboy-1.0.0.wpk
-client/build.sh                 # the badge's build/store (needs ~/br-badge)
+client/build.sh                 # the badge's build/store (needs a Buildroot build of WhyOS: set BR_OUT)
 ```
 
-The screens need why2025-linux (its `libwb/`) next to this repo (`WHY2025_LINUX`, default
-`../../why2025-linux`); without it `make test` skips them. The program is
+The screens need WhyOS (its `libwb/`): set `WHY2025_LINUX` to your checkout
+(default `../../why2025-linux`); without it `make test` skips them. The program is
 `apps/store/` in the store, installed in flash. On the badge,
 `STORE_UI_TIMING=1` writes a line per frame to stderr: its time, the bands
 drawn, and libwb's recording, scene, glass and writing-out times (µs). The

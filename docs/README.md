@@ -2,13 +2,13 @@
 
 Spec version **1.0-draft**, 2026-10-12.
 
-The badge runs Linux ("WhyOS" in this document). Apps already run from the
-microSD card: a directory with an `app.conf` in `badge/apps/<app>/`, which
-the start menu (`home`) lists and starts through `apprun`
-(why2025-linux `docs/APPS.md`). Installing means copying directories by
-hand, and there is no catalogue, no versions, no updates and no clean way
-to remove an app with everything it wrote. This specification adds those,
-backed by a GitHub repository.
+The badge runs Linux ("WhyOS" in this document,
+[github.com/WhyOSLInux/WhyOS](https://github.com/WhyOSLInux/WhyOS)). An app
+is a directory with an `app.conf` in `badge/apps/<app>/` on the microSD
+card, which the start menu (`home`) lists and starts through `apprun`
+(WhyOS `docs/APPS.md`). This specification adds a catalogue, versions,
+updates and a clean way to remove an app with everything it wrote, backed
+by a GitHub repository.
 
 ## Goals
 
@@ -29,11 +29,10 @@ backed by a GitHub repository.
   and source builds without breaking old clients. Only WhyOS on the badge
   is targeted; there are no other platforms.
 
-## Non-goals (for now)
+## Non-goals
 
 Payments, user accounts, ratings and reviews, sandboxing, automatic
-background updates, shared libraries between apps. See
-[roadmap.md](roadmap.md).
+background updates, shared libraries between apps.
 
 ## Terms
 
