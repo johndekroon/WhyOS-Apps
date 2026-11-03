@@ -42,7 +42,7 @@ args = "--datadir %d/share --unprivileged --nsock-engine poll"
 
 [requires]
 os_api = 1
-memory_kb = 7000          # 7 of 13 MB for a one-port scan (Docs/16-linux.md)
+memory_kb = 7000          # 7 of 13 MB for a one-port scan
 features = ["wifi", "sd-card"]
 
 [[bundled]]

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /*
  * Files: the installed apps that open files (apps.c), from their app.conf
- * as the menu reads them (why2025-linux home.c app_parse): NAME, ID,
+ * as the menu reads them (WhyOS home.c app_parse): NAME, ID,
  * EXEC, OPENS (the extensions Enter opens with the app; "*" any) and
  * OPENS_ALSO (offered under Open with only). Files does not start apps
  * itself: it names the app and the file to the menu (main.c).

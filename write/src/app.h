@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * Write: the app as a state machine (design/write/README.md §4-§10). Keys go
+ * Write: the app as a state machine. Keys go
  * in, the document, the overlays and requests (quit, run a program) come
  * out; ui.c draws what is here and main.c does the input and output, so
  * everything a key does can be tested without a screen (tests/unit/test_app.c).

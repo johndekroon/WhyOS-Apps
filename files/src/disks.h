@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /*
  * Files: the drives on the Drives screen and mounting them (disks.c), as
- * the menu's Settings > Storage & devices > Disks sees them (why2025-linux
+ * the menu's Settings > Storage & devices > Disks sees them (WhyOS
  * home.c, "disks"; docs/DATA.md): the SD card and USB drives by partition,
  * then the badge's own (Badge storage /data, Memory /tmp, System /).
  *

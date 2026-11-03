@@ -9,7 +9,7 @@
  * Files does not start apps: to open a file it writes the app's folder and
  * the file to /tmp/files-open ("<app dir>\n<file>\n") and ends; the menu
  * starts the app and, when it ends, Files again on that file
- * (why2025-linux home.c, "Files, an app"). A note for the screen (the app
+ * (WhyOS home.c, "Files, an app"). A note for the screen (the app
  * did not start) comes in /tmp/files-notice, read once.
  *
  * While Files is open the SD card's FAT is mounted at /media/sd

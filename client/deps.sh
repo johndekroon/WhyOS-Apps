@@ -5,8 +5,8 @@
 #   client/deps.sh badge    the same for the badge, with its toolchain
 #
 # Into client/.deps/<target>/{include,lib}. The same release as
-# why2025-linux sdapps/build.sh (NetSurf). The badge build needs a badge
-# toolchain: BR_OUT (default ~/br-badge) from why2025-linux Tools/usb/br.sh.
+# WhyOS sdapps/build.sh (NetSurf). The badge build needs a badge
+# toolchain: BR_OUT (default ~/br-badge) from a WhyOS badge build (BUILDING.md).
 set -eu
 target=$1
 here=$(cd "$(dirname "$0")" && pwd)

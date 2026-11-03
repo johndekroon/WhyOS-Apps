@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * Write: editing a document (design/write/README.md §3, §6, §7, §10).
+ * Write: editing a document.
  *
  * Three modes over the same text buffer:
  *   M_RICH    markdown shown with its styles; the caret moves over visible

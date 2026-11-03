@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: MIT */
-/* Files: the drives and mounting them (disks.h); from why2025-linux home.c. */
+/* Files: the drives and mounting them (disks.h); from WhyOS home.c. */
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -208,7 +208,7 @@ static void mnt_point(const struct disks *d, const struct fsinfo *f, char *out, 
 }
 
 /* has usbd lent the card to a computer: the whole card, or the badge
- * layout's FAT? (usbd's /var/run/usb.state, why2025-linux docs/USB.md) */
+ * layout's FAT? (usbd's /var/run/usb.state, WhyOS docs/USB.md) */
 static int sd_lent(const struct fsinfo *f)
 {
 	char buf[192];

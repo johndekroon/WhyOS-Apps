@@ -3,8 +3,8 @@
  * Write: the program. On the badge it reads the keypad (evdev, not
  * grabbed: apprun needs the logo key), keeps Shift, Ctrl, Alt and Fn,
  * writes the panel band by band and ends on SIGTERM after saving (the logo
- * key, design/write/README.md §10). /tmp/write.keys takes key codes from a
- * test, as /tmp/meshchat.keys does (docs/HOME.md of why2025-linux):
+ * key). /tmp/write.keys takes key codes from a
+ * test, as /tmp/meshchat.keys does (docs/HOME.md of WhyOS):
  * decimal codes, each optionally after s (Shift), c (Ctrl), a (Alt) and f
  * (Fn): "c31" is Ctrl+S, "f106" Fn+Right.
  *

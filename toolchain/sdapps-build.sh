@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build the apps that live on the SD card (sdapps/README.md), in the build
-# VM, with the toolchain of a badge build (Tools/usb/br.sh badge first).
+# VM, with the toolchain of a badge build (WhyOS BUILDING.md first).
 #
 #   sdapps/build.sh [gnuboy] [netsurf] [nmap] [imgview] [links] [nethack]
 #                   [doom] [sensorpanel] [nano] [calc] [hideous] [barbarious] [pdfview]
@@ -197,7 +197,7 @@ build_netsurf() {
 	ls -l "$d" "$d/res"
 }
 
-# nmap is C++: the badge's toolchain with C++ added (Tools/usb/br.sh cxx),
+# nmap is C++: the badge's toolchain with C++ added (WhyOS BUILDING.md),
 # a separate Buildroot output that only builds the toolchain. nmap 7.95 is
 # what Buildroot 2025.02 packages (its sha256), with its own libpcap,
 # libdnet, liblinear and pcre; no Lua (NSE), OpenSSL, libssh2, zlib, ncat
@@ -210,7 +210,7 @@ CXX_OUT=${CXX_OUT:-$HOME/br-cxx}
 build_nmap() {
 	local s d=$DEST/nmap X=$CXX_OUT/host/bin/riscv32-buildroot-linux-uclibc f
 	local F="-Os -fPIC -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables"
-	[ -x "$X-g++" ] || { echo "no C++ toolchain: Tools/usb/br.sh cxx" >&2; exit 1; }
+	[ -x "$X-g++" ] || { echo "no C++ toolchain: see WhyOS BUILDING.md" >&2; exit 1; }
 	s=$SRC/$(get "$NMAP_URL" "$NMAP_SHA")
 	patch -d "$s" -p1 -s -f -N < "$HOME/buildroot/package/nmap/0001-libdnet-always-build-a-static-library.patch" \
 		>/dev/null || true
@@ -558,7 +558,7 @@ MUPDF_DEFS="-DFZ_ENABLE_ICC=0 -DFZ_ENABLE_JPX=0 -DFZ_ENABLE_CBZ=0 -DFZ_ENABLE_IM
 
 build_pdfview() {
 	local s d=$DEST/pdfview O=$HERE/../patches/buildroot/overlay-src X=$CXX_OUT/host/bin/riscv32-buildroot-linux-uclibc
-	[ -x "$X-g++" ] || { echo "no C++ toolchain: Tools/usb/br.sh cxx" >&2; exit 1; }
+	[ -x "$X-g++" ] || { echo "no C++ toolchain: see WhyOS BUILDING.md" >&2; exit 1; }
 	s=$SRC/$(get "$MUPDF_URL" "$MUPDF_SHA")
 	make -s -C "$s" -j"$(nproc)" libs build=release OS=Linux OUT=build/badge CC="$CC" CXX="$X-g++" \
 		AR="$T-ar" "${MUPDF_OPTS[@]}" XCFLAGS="$LIBCFLAGS $MUPDF_DEFS"

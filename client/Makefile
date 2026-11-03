@@ -4,14 +4,14 @@
 #                              script, screens as PPM (tests/test_ui.py)
 #   make -C client test        the client's tests (tests/, pytest)
 # The badge build is build.sh. The screens draw with libwb from
-# why2025-linux (WHY2025_LINUX, default ../../why2025-linux).
+# WhyOS (WHY2025_LINUX, default ../../WhyOS).
 DEPS    = .deps/host
 CC     ?= cc
 # bounded snprintf truncates on purpose: no format-truncation warnings
 CFLAGS ?= -O1 -g -Wall -Wextra -Werror -Wno-format-truncation -fsanitize=address,undefined
 SRCS    = $(filter-out src/ui.c,$(wildcard src/*.c))
 HDRS    = $(wildcard src/*.h) src/roots.inc
-WHY2025_LINUX ?= $(abspath ../../why2025-linux)
+WHY2025_LINUX ?= $(abspath ../../WhyOS)
 MENU    = $(WHY2025_LINUX)/libwb
 
 host: store-host

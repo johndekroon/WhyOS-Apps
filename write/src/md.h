@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * Write: one markdown line, as the rich view shows it (design/write/README.md §3).
+ * Write: one markdown line, as the rich view shows it.
  *
  * The source line is the truth. md_parse finds the line's block (heading,
  * list item, quote, a code block's line) and its visible text: the line

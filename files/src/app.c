@@ -35,7 +35,7 @@ static char key_char(int code, int shift)
 
 /*
  * $APP_CONFIG/settings: "hidden=1". Before Files was an app the menu kept
- * it as files.hidden in /etc/badge/settings (why2025-linux settings.h):
+ * it as files.hidden in /etc/badge/settings (WhyOS settings.h):
  * taken over while Files has no file of its own.
  */
 static void settings_read(struct files *f)
@@ -111,7 +111,7 @@ static enum row_icon icon_of(enum br_kind k)
 	return ic[k];
 }
 
-/* Drives (Docs/06 6.10): every disk's file systems, then the badge's own */
+/* Drives: every disk's file systems, then the badge's own */
 static void build_drives(struct files *f)
 {
 	struct list *l = &f->l;
@@ -637,7 +637,7 @@ void files_key(struct files *f, int key, int value)
 		return;
 	}
 	if (value == 2) {
-		/* held: the steps that repeat (why2025-linux keyrep.h), faster
+		/* held: the steps that repeat (WhyOS keyrep.h), faster
 		 * after 1.5 s (30 repeats) and 2.5 s, as the menu's lists */
 		int step = key == K_UP || key == K_DOWN || key == K_LEFT || key == K_RIGHT ||
 			   key == K_PGUP || key == K_PGDN ||
@@ -655,7 +655,7 @@ void files_key(struct files *f, int key, int value)
 	}
 	f->b.notice[0] = 0;
 	/* the right three symbol keys do the same on every screen but pop-ups
-	 * (Docs/06 6.6): the circle the log, the cloud the settings, the
+	 * (WhyOS docs/APPS.md): the circle the log, the cloud the settings, the
 	 * diamond this screen's help */
 	if ((f->sc == SC_LIST || f->sc == SC_SETTINGS || f->sc == SC_LOG) &&
 	    (key == K_F4 || key == K_F5 || key == K_F6)) {

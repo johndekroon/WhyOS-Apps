@@ -2,18 +2,18 @@
 # SPDX-License-Identifier: MIT
 """Generate src/write_fonts.h: the fonts Write draws documents in.
 
-The menu's fonts (why2025-linux home_assets.h) have ASCII and a few symbols:
+The menu's fonts (WhyOS home_assets.h) have ASCII and a few symbols:
 enough for the menu, not for a text editor, where é, ü, € and curly quotes
 must show. These are the same typefaces, Space Grotesk and JetBrains Mono
-(SIL OFL, from why2025-linux home-assets/fonts), at the sizes of the design
-(design/write: body 24, headings 36/28/24, mono 20/18, and the small text
+(SIL OFL, from WhyOS home-assets/fonts), at the sizes of the design
+(body 24, headings 36/28/24, mono 20/18, and the small text
 size's 20/28/24/20, mono 18/16), with ASCII, Latin-1 and the punctuation
 people type. Alpha is 4 bits per pixel, two pixels to a byte, high nibble
 first, each glyph row padded to a whole byte: half the flash of 8 bits, and
 the difference does not show at these sizes.
 
 Italic is not here: Space Grotesk has none, and Write slants the regular
-glyphs when it draws them (design/write/README.md §11).
+glyphs when it draws them.
 
 Also the icons of the design that the menu's assets lack, from their SVG
 paths (24x24 viewBox), as 8-bit alpha like the menu's.
@@ -31,7 +31,7 @@ import cairosvg
 from PIL import Image, ImageDraw, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-WHY = os.environ.get("WHY2025_LINUX", os.path.join(HERE, "..", "..", "..", "why2025-linux"))
+WHY = os.environ.get("WHY2025_LINUX", os.path.join(HERE, "..", "..", "..", "WhyOS"))
 FONTS = os.path.join(WHY, "patches", "buildroot", "overlay-src", "home-assets", "fonts")
 UI = os.path.join(FONTS, "SpaceGrotesk-VF.ttf")
 MONO = os.path.join(FONTS, "JetBrainsMono-VF.ttf")

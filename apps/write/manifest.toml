@@ -1,4 +1,4 @@
-# Write, the text editor of design/write (write/), in flash so it works
+# Write, the text editor (write/), in flash so it works
 # without a card, as the store does. A system app: not in the store's
 # browse tabs, in the menu under Apps; it updates itself like any app.
 format = 1

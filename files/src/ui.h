@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * Files: drawing the app (ui.c) with libwb (why2025-linux libwb: wb.h,
+ * Files: drawing the app (ui.c) with libwb (WhyOS libwb: wb.h,
  * wbstatus.h), in bands of BAND_H rows: no 1 MB frame buffer next to the
  * program, as the store, Write and appterm. ui_present draws every band and
  * hands it to out(); a frame with a pop-up is drawn whole while there is

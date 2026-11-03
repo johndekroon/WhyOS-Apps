@@ -1,14 +1,14 @@
 """Write's screens (src/ui.c, src/main.c) on the host: write-ui-host takes
 its keys from a script and writes the screens it is asked for as PPM.
 
-    make -C write test        (builds write-ui-host where why2025-linux is)
+    make -C write test        (builds write-ui-host where WhyOS is)
 
 Every run sets WRITE_UI_CHECK: each frame drawn band by band (only the bands
 whose contents changed) must equal the same frame drawn whole, so a band
 that should have been redrawn and was not fails the test. SHOTS=dir keeps
 the screens as PNG (needs PIL).
 
-Colours are the design's (design/write/canvas, Neon Orbit tokens), read
+Colours are the design's (Neon Orbit tokens), read
 back from RGB565: a channel is within 8 of the token.
 """
 import os

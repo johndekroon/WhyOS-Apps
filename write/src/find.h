@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * Write: find and replace (design/write/README.md §8). Matches are per line,
+ * Write: find and replace. Matches are per line,
  * in the text the caret walks over: the visible text in M_RICH (no
  * markers), the source otherwise. Case is folded for ASCII only.
  */

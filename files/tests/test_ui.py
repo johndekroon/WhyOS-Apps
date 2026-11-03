@@ -1,7 +1,7 @@
 """Files' screens (src/ui.c, src/main.c) on the host: files-ui-host takes
 its keys from a script and writes the screens it is asked for as PPM.
 
-    make -C files test        (builds files-ui-host where why2025-linux is)
+    make -C files test        (builds files-ui-host where WhyOS is)
 
 The drives are disks.c's fixed set for the host (an SD card in the badge
 layout with its FAT at /media/sd, a USB stick, the badge's own); the

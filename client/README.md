@@ -28,7 +28,7 @@ client/build.sh                 # the badge's build/store (needs a Buildroot bui
 ```
 
 The screens need WhyOS (its `libwb/`): set `WHY2025_LINUX` to your checkout
-(default `../../why2025-linux`); without it `make test` skips them. The program is
+(default `../../WhyOS`); without it `make test` skips them. The program is
 `apps/store/` in the store, installed in flash. On the badge,
 `STORE_UI_TIMING=1` writes a line per frame to stderr: its time, the bands
 drawn, and libwb's recording, scene, glass and writing-out times (µs). The

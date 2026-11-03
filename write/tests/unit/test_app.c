@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: MIT */
-/* The app's states and keys (src/app.c): design/write/README.md §4-§10. */
+/* The app's states and keys (src/app.c). */
 #include <sys/stat.h>
 #include <unistd.h>
 

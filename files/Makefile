@@ -4,10 +4,10 @@
 #   make -C files ui-host     files-ui-host-<system>: the screens, keys from a
 #                             script, screens as PPM
 # The badge build is build.sh. The screens draw with libwb from
-# why2025-linux (WHY2025_LINUX, default ../../why2025-linux).
+# WhyOS (WHY2025_LINUX, default ../../WhyOS).
 CC     ?= cc
 CFLAGS ?= -O1 -g -Wall -Wextra -Werror -Wno-format-truncation -fsanitize=address,undefined
-WHY2025_LINUX ?= $(abspath ../../why2025-linux)
+WHY2025_LINUX ?= $(abspath ../../WhyOS)
 MENU    = $(WHY2025_LINUX)/libwb
 
 # the modules without the screens

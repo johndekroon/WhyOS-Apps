@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * Files: the screens (ui.h), drawn with libwb (why2025-linux libwb) in the
- * style of the canvas "Menu's met frontpaneel" and its board Files.dc.html
- * (2026-10-27): the frontpanel's figures behind every screen, a folder as
+ * Files: the screens (ui.h), drawn with libwb (WhyOS libwb):
+ * the frontpanel's figures behind every screen, a folder as
  * one panel of glass with a column header (name, size, changed), the
  * places (SD card, USB, System) as pills right of the title, and pop-ups
  * frosted. Every band draws the whole screen, clipped to the band; a frame

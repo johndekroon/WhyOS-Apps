@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Turn an app built by why2025-linux sdapps/build.sh into apps/<id>/files.tar.gz.
+"""Turn an app built by WhyOS sdapps/build.sh into apps/<id>/files.tar.gz.
 
     tools/import-sdapp.py <id> <built app dir> --built-from "<what produced it>"
 

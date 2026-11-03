@@ -645,7 +645,7 @@ def test_maintain_makes_installed_programs_runnable(env):
 
 
 def test_maintain_adopts_every_app_an_image_put_in_flash(env):
-    # why2025-linux stage-apps.py brings the store and Write: files and
+    # WhyOS stage-apps.py brings the store and Write: files and
     # .package/ in /data/apps, no registry entry
     env.store("install", "tiny")
     env.store("install", "hello")

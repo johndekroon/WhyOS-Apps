@@ -66,7 +66,7 @@ exec = "pm3"
 
 [requires]
 os_api = 1
-memory_kb = 10000         # ≈ 5 MB at the prompt, ≈ 9.8 MB during hf search (Docs/08-usb.md 8.5)
+memory_kb = 10000         # ≈ 5 MB at the prompt, ≈ 9.8 MB during hf search
 features = ["usb-host", "sd-card", "keyboard"]   # sd-card: the app itself is on the card
 
 [[bundled]]

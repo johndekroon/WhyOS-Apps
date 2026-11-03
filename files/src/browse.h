@@ -2,7 +2,7 @@
 /*
  * Files: the folder on screen and what can be done to its entries -- the
  * model behind the screens, without drawing (browse.c). Moved out of the
- * menu (why2025-linux home.c, "Files: a file browser") on 2026-10-25.
+ * menu (WhyOS home.c, "Files: a file browser") on 2026-10-25.
  *
  * dir "" is Drives (disks.h); every other dir is absolute. Folders come
  * first, then files, each by name with case ignored; names starting with a

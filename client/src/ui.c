@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /*
  * store: the full-screen UI (docs/client.md §4), drawn with libwb
- * (why2025-linux libwb/: wb.h, wbstatus.h) in the menu's style: the
+ * (WhyOS libwb/: wb.h, wbstatus.h) in the menu's style: the
  * frontpanel's scene behind every screen, lists of glass rows (an icon, the
  * name, a second line, a value or state on the right), the eyebrow saying
  * where the screen lies, frosted pop-ups with their keys inside.
@@ -26,9 +26,9 @@
  * not blurred (that needs the whole picture).
  *
  * "Open" writes the app's id to /tmp/store-open (P.tmp) and ends: the menu, back
- * from apprun, starts it (why2025-linux home.c).
+ * from apprun, starts it (WhyOS home.c).
  *
- * Keys as the WhyBadge design has them (Docs/06-design-system.md 6.6-6.8):
+ * Keys as the WhyOS design has them (WhyOS docs/APPS.md):
  * Enter does the row's thing, Esc one layer back (in Search it first
  * clears what was typed), Backspace only erases text; the square key is
  * a pop-up menu where a screen has one (a category: sort), the circle the

@@ -160,7 +160,7 @@ def test_settings_and_licences(env):
 
 
 def test_symbol_keys(env):
-    """The design's keys (Docs/06-design-system.md 6.6): the diamond a help
+    """The design's keys (WhyOS docs/APPS.md): the diamond a help
     pop-up, the circle the log, the cloud the settings; Esc in Search
     clears the typed text before going back."""
     with open(os.path.join(env.tmpdir, "app-store.log"), "w") as f:

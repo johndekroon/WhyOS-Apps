@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: MIT */
-/* Find and replace (src/find.c, design/write/README.md §8). */
+/* Find and replace (src/find.c). */
 #include "t.h"
 #include "find.h"
 

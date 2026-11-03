@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /*
  * Write: a key held down repeats, as on a computer. Write keeps its own
- * timer, as the menu's lists do (why2025-linux docs/HOME.md), and ignores
+ * timer, as the menu's lists do (WhyOS docs/HOME.md), and ignores
  * the keypad's repeats (kernel patch 0060, since 2026-10-25; the same
  * pace): a repeat comes after the frame of the last one, and a late one
  * does not catch up, so nothing runs on after the key is let go.

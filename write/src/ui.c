@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * Write: the screens (design/write/canvas, in the style of the canvas
- * "Menu's met frontpaneel"), drawn with libwb from why2025-linux (wb.h,
+ * Write: the screens, drawn with libwb from WhyOS (wb.h,
  * wbstatus.h) and Write's own fonts for the document (write_fonts.h:
  * Latin-1, 4-bit alpha, italic slanted).
  *
@@ -399,7 +398,7 @@ static void docbar(struct app *a)
 		docbar_right(a, &d, cy);
 }
 
-/* The page under the bars: opaque, with the light top edge of the canvas's
+/* The page under the bars: opaque, with the light top edge of the design's
  * glass (see the top of this file). */
 static void page(void)
 {
@@ -765,7 +764,7 @@ static int find_y(struct app *a)
 	return a->full ? 16 : WB_STATUS_BAR_H + 44 + 10;
 }
 
-/* A text field: the focus's cyan glass, else the canvas's search field (the
+/* A text field: the focus's cyan glass, else the design's search field (the
  * void at 45 % and a faint edge); c the focus's colour (red for an error). */
 static void field_h(int x, int y, int w, int h, int focus, uint32_t c)
 {
@@ -880,7 +879,7 @@ static void full_hint(void)
 /* ---- pop-ups ------------------------------------------------------------------------- */
 
 /*
- * The canvas's pop-ups: a glass panel 96 px from the sides (POP_X) over the
+ * The design's pop-ups: a glass panel 96 px from the sides (POP_X) over the
  * dimmed screen, the eyebrow and the title, the options, and the pop-up's
  * keys inside at its bottom (the hint bar under it is the screen's). Drawn
  * in bands, libwb makes the panel plain glass, not frosted.
@@ -1048,7 +1047,7 @@ static void style_draw(struct app *a)
 		wb_card(tx, y, tw, 56, WB_RADIUS_MD, a->focus == i, &GLOW_FOCUS);
 		if (on && a->focus != i)	/* on: pink (6.2) */
 			box(tx, y, tw, 56, WB_SQUARE, WB_COLOR_PINK, PINK_TINT, WB_COLOR_PINK, 1, 0);
-		/* the shortcut small under the label (design/write/README.md §7) */
+		/* the shortcut small under the label */
 		wtext(lf, tx + 14, wtop(lf, cy - 8), marks[i], c, i == 1);
 		if (i == 2)
 			fill(tx + 14, cy + 1, wtext_w(lf, marks[i]), 2, c);
@@ -1323,7 +1322,7 @@ static void open_draw(struct app *a)
 	status_bar();
 	wb_header(open_crumb(a, eb, sizeof(eb)), a->op_folders ? "Choose a folder" : a->op_drives ? "Drives" : "Open",
 		  !a->op_folders && !a->op_drives ? "text and code" : 0);
-	if (a->op_filter[0]) {	/* the canvas's search field */
+	if (a->op_filter[0]) {	/* the design's search field */
 		int tx;
 
 		field_h(x, ly, w, 44, 0, 0);

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * Write: files (design/write/README.md §4, §5). Saving writes a temporary
+ * Write: files. Saving writes a temporary
  * file in the same folder and renames it over the original, so a reset
  * while saving leaves the old file whole.
  */

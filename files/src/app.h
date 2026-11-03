@@ -4,8 +4,7 @@
  * screen to draw (a list of rows, pop-ups over it) and, when a file is to
  * be opened, the app and the file for the menu to start (open_dir,
  * open_file). The screens and keys are the menu's Files as it was
- * (why2025-linux docs/HOME.md "Files", WhyBadge Docs/06-design-system.md
- * 6.10): Drives and the folders, Enter opens, the square key's options,
+ * (WhyOS docs/HOME.md "Files"): Drives and the folders, Enter opens, the square key's options,
  * the triangle /root, the cross Drives, Esc up a folder and closes at /.
  */
 #ifndef FILES_APP_H
