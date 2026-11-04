@@ -1,6 +1,5 @@
 Files, the WhyOS file browser (WhyOS-Apps files/), and the menu's drawing
-code it is built with (why2025-linux patches/buildroot/overlay-src:
-wbdraw.h, wbstatus.h, home_assets.h) are under the MIT licence:
+code it is built with (WhyOS libwb/) are under the MIT licence:
 
 Copyright (c) 2026 WhyOS-Apps contributors
 

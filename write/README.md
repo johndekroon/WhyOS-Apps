@@ -17,18 +17,18 @@ the image.
 | `src/files.c` | loading (256 KB at most), saving through a temporary file and rename, names, the Open list, dates |
 | `src/layout.c` | lines into rows: wrapping, heights (cached per line), caret x/y, up and down |
 | `src/app.c` | the app as a state machine: keys in; document, overlays, requests out |
-| `src/ui.c` | the screens, drawn with libwb from WhyOS (`libwb/wb.h`, `wbstatus.h`) in the menu's style |
+| `src/ui.c` | the screens, drawn with libwb from WhyOS (`libwb/wb.h`, `wbstatus.h`, `wbdoc.h` for the document) in the menu's style |
 | `src/repeat.c` | a key held down repeats, by Write's own timer: which keys, when |
 | `src/main.c` | the badge program (keypad, panel, SIGTERM, running scripts) and the host program for the screen tests |
-| `src/write_fonts.h` | the document fonts and a few icons, from `assets/gen.py` (checked in) |
 | `tests/unit/` | the modules' tests (`t.h` is the harness) |
 | `tests/test_ui.py` | the screens on the host: keys from a script, screens as PPM |
 
 ```
 make -C write test        # unit tests, then the screens (needs WhyOS: set WHYOS to your checkout)
 write/build.sh            # the badge's build/write (also needs a Buildroot build of WhyOS: set BR_OUT)
-python3 write/assets/gen.py > write/src/write_fonts.h   # needs PIL and cairosvg, and WHYOS for the fonts
 ```
+
+Fonts and icons live in WhyOS: add them to `libwb/gen/assets.py`.
 
 The screen tests set `WRITE_UI_CHECK`: every frame drawn band by band
 (only the bands whose contents changed) must equal the same frame drawn

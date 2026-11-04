@@ -32,7 +32,7 @@ $(UI_BIN): $(wildcard src/*.c) $(HDRS) $(wildcard $(MENU)/*.h)
 	$(CC) $(CFLAGS) -Wno-sign-compare -DWRITE_HOST -DWRITE_UI_HOST -DWB_HOST -Isrc -I$(MENU) \
 		-o $@ $(wildcard src/*.c)
 
-UI_HOST = $(if $(wildcard $(MENU)/wbdraw.h),$(UI_BIN))
+UI_HOST = $(if $(wildcard $(MENU)/wbdoc.h),$(UI_BIN))
 
 unit-test: units
 	@set -e; for t in $(UNITS); do $$t; done

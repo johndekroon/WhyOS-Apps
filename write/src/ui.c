@@ -1,8 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * Write: the screens, drawn with libwb from WhyOS (wb.h,
- * wbstatus.h) and Write's own fonts for the document (write_fonts.h:
- * Latin-1, 4-bit alpha, italic slanted).
+ * Write: the screens, drawn with libwb from WhyOS (wb.h, wbstatus.h, and
+ * wbdoc.h for the document: Latin-1, 4-bit alpha, italic slanted).
  *
  *   editor      the frontpanel's scene behind the status bar, the document
  *               bar (name, edited dot, what is going on, the caret's style
@@ -43,17 +42,17 @@
 #define H	WB_SCREEN_H
 #include "wb.h"
 #include "wbstatus.h"
-#include "write_fonts.h"
+#include "wbdoc.h"
 
 struct ui_status ui_st = { "14:32", 1, -1, 0, 1 };
 
 extern int (*app_adv16)(void *ctx, int font, unsigned cp);
 
-static const struct wf_font *const FONTS[FONT_COUNT] = {
-	[FONT_UI24] = &wf_ui24, [FONT_UI24B] = &wf_ui24b, [FONT_UI36B] = &wf_ui36b,
-	[FONT_UI28B] = &wf_ui28b, [FONT_UI20] = &wf_ui20, [FONT_UI20B] = &wf_ui20b,
-	[FONT_MONO20] = &wf_mono20, [FONT_MONO18] = &wf_mono18, [FONT_MONO16] = &wf_mono16,
-	[FONT_MONO14] = &wf_mono14,
+static const struct wd_font *const FONTS[FONT_COUNT] = {
+	[FONT_UI24] = &wd_ui24, [FONT_UI24B] = &wd_ui24b, [FONT_UI36B] = &wd_ui36b,
+	[FONT_UI28B] = &wd_ui28b, [FONT_UI20] = &wd_ui20, [FONT_UI20B] = &wd_ui20b,
+	[FONT_MONO20] = &wd_mono20, [FONT_MONO18] = &wd_mono18, [FONT_MONO16] = &wd_mono16,
+	[FONT_MONO14] = &wd_mono14,
 };
 
 #define PINK_TINT	31	/* rgba(242,94,149,0.12) */
@@ -100,134 +99,10 @@ static void hline_a(int x, int y, int w, unsigned a)
 		put(x + i, y, 0xFFFFFF, a);
 }
 
-/* ---- Write's fonts --------------------------------------------------------------- */
-
-static const struct wf_glyph *wglyph(const struct wf_font *f, unsigned cp)
-{
-	int lo = 0x7f - 0x20, hi = f->n - 1;
-
-	if (cp >= 0x20 && cp <= 0x7e)
-		return &f->g[cp - 0x20];
-	while (lo <= hi) {
-		int mid = (lo + hi) / 2;
-
-		if (f->g[mid].cp == cp)
-			return &f->g[mid];
-		if (f->g[mid].cp < cp)
-			lo = mid + 1;
-		else
-			hi = mid - 1;
-	}
-	return &f->g['?' - 0x20];
-}
-
 static int ui_adv16(void *ctx, int font, unsigned cp)
 {
 	(void)ctx;
-	return wglyph(FONTS[font], cp)->adv16;
-}
-
-/* one glyph with its line's top at y; slant: italic, bold: struck twice */
-static void wglyph_draw(const struct wf_font *f, const struct wf_glyph *g, int x16, int y, uint32_t c,
-			int slant, int bold)
-{
-	int gx = (x16 + 8) / 16 + g->x, gy = y + g->y, stride = (g->w + 1) / 2;
-	int j0 = fb_y0 - gy > 0 ? fb_y0 - gy : 0, j1 = fb_y1 - gy < g->h ? fb_y1 - gy : g->h;
-	const uint8_t *bits = f->bits + g->off;
-
-	for (int j = j0; j < j1; j++) {
-		int sh = slant ? (f->ascent - (g->y + j)) / 5 : 0;
-		const uint8_t *row = bits + j * stride;
-
-		for (int i = 0; i < g->w; i++) {
-			unsigned a = (unsigned)((i & 1 ? row[i >> 1] & 15 : row[i >> 1] >> 4) * 17);
-
-			if (!a)
-				continue;
-			put(gx + i + sh, gy + j, c, a);
-			if (bold)
-				put(gx + i + sh + 1, gy + j, c, a);
-		}
-	}
-}
-
-static unsigned utf8_next(const char *s, int n, int *k)
-{
-	const unsigned char *p = (const unsigned char *)s + *k;
-	unsigned cp = p[0];
-	int len = 1;
-
-	if (cp >= 0xf0 && *k + 4 <= n) {
-		cp = ((cp & 7) << 18) | ((p[1] & 63) << 12) | ((p[2] & 63) << 6) | (p[3] & 63);
-		len = 4;
-	} else if (cp >= 0xe0 && *k + 3 <= n) {
-		cp = ((cp & 15) << 12) | ((p[1] & 63) << 6) | (p[2] & 63);
-		len = 3;
-	} else if (cp >= 0xc0 && *k + 2 <= n) {
-		cp = ((cp & 31) << 6) | (p[1] & 63);
-		len = 2;
-	}
-	*k += len;
-	return cp;
-}
-
-/* a string in one of Write's fonts; returns the end x */
-static int wtext(const struct wf_font *f, int x, int y, const char *s, uint32_t c, int slant)
-{
-	int x16 = x * 16, n = (int)strlen(s), k = 0;
-
-	while (k < n) {
-		const struct wf_glyph *g = wglyph(f, utf8_next(s, n, &k));
-
-		wglyph_draw(f, g, x16, y, c, slant, 0);
-		x16 += g->adv16;
-	}
-	return (x16 + 8) / 16;
-}
-
-static int wtext_w(const struct wf_font *f, const char *s)
-{
-	int x16 = 0, n = (int)strlen(s), k = 0;
-
-	while (k < n)
-		x16 += wglyph(f, utf8_next(s, n, &k))->adv16;
-	return (x16 + 8) / 16;
-}
-
-static int wtop(const struct wf_font *f, int cy)
-{
-	return cy - (f->ascent + f->descent) / 2;
-}
-
-static void wicon(const struct wf_icon *ic, int x, int y, uint32_t c)
-{
-	int j0 = fb_y0 - y > 0 ? fb_y0 - y : 0, j1 = fb_y1 - y < ic->h ? fb_y1 - y : ic->h;
-
-	for (int j = j0; j < j1; j++)
-		for (int i = 0; i < ic->w; i++)
-			put(x + i, y + j, c, ic->a[j * ic->w + i]);
-}
-
-/* s cut to w px in font f, with an ellipsis */
-static const char *wfit(const struct wf_font *f, const char *s, int w, char *buf, int size)
-{
-	int n;
-
-	if (wtext_w(f, s) <= w)
-		return s;
-	n = (int)strlen(s);
-	if (n > size - 4)
-		n = size - 4;
-	while (n > 0) {
-		memcpy(buf, s, (size_t)n);
-		memcpy(buf + n, "\xe2\x80\xa6", 4);
-		if (wtext_w(f, buf) <= w)
-			return buf;
-		n--;
-		while (n > 0 && ((unsigned char)s[n] & 0xc0) == 0x80)
-			n--;
-	}
-	return "";
+	return wd_find(FONTS[font], cp)->adv16;
 }
 
 /* ---- bars ------------------------------------------------------------------------- */
@@ -326,7 +201,7 @@ static void docbar_right(struct app *a, const struct docbar *d, int cy)
 		text(&f_mono13, x + 10, text_top(&f_mono13, cy), d->indent, WB_COLOR_TEXT_MID, 0);
 		x -= 6 + lw;
 		chip(x, cy, lw, 0);
-		wicon(&wi_code14, x + 10, cy - 7, WB_COLOR_TEXT_MID);
+		icon(&wi_code14, x + 10, cy - 7, WB_COLOR_TEXT_MID, 255);
 		text(&f_ui16, x + 10 + 14 + 6, text_top(&f_ui16, cy), d->lang, WB_COLOR_TEXT_HI, 0);
 		return;
 	}
@@ -349,7 +224,7 @@ static void docbar_right(struct app *a, const struct docbar *d, int cy)
 		if (i == 0)
 			text(&f_ui18b, x + 14 - text_w(&f_ui18b, "B", 0) / 2, text_top(&f_ui18b, cy), "B", c, 0);
 		else if (i == 1)
-			wtext(&wf_ui20, x + 12 - wtext_w(&wf_ui20, "I") / 2, wtop(&wf_ui20, cy), "I", c, 1);
+			wd_text(&wd_ui20, x + 12 - wd_text_w(&wd_ui20, "I") / 2, wd_top(&wd_ui20, cy), "I", c, 1);
 		else {
 			int tw = text_w(&f_ui16, "U", 0);
 
@@ -386,7 +261,7 @@ static void docbar(struct app *a)
 			int w = 8 + 12 + 6 + text_w(&f_mono13, d.info, 0) + 8;
 
 			box(x, cy - 11, w, 22, 11, WB_COLOR_PINK, PINK_TINT, WB_COLOR_PINK, 1, 0);
-			wicon(&wi_copy, x + 8, cy - 6, WB_COLOR_PINK);
+			icon(&wi_copy, x + 8, cy - 6, WB_COLOR_PINK, 255);
 			text(&f_mono13, x + 8 + 12 + 6, text_top(&f_mono13, cy), d.info, WB_COLOR_PINK, 0);
 		} else {
 			uint32_t c = d.info_kind == 1 ? WB_COLOR_CYAN : d.info_kind == 3 ? WB_COLOR_ERROR : WB_COLOR_TEXT_MID;
@@ -520,7 +395,7 @@ static void row_draw(struct app *a, const struct frow *fr)
 	const unsigned char *st;
 	enum blk kind;
 	struct lstyle ls;
-	const struct wf_font *base;
+	const struct wd_font *base;
 	int n, x16, k, top, cur_line = fr->line == a->e.caret.line, sk0 = 0, sk1 = 0, snl = 0, have_sel;
 	int caret_k = -1, ty, lh = fr->r.h;
 	uint32_t tc = WB_COLOR_TEXT_HI;
@@ -604,14 +479,14 @@ static void row_draw(struct app *a, const struct frow *fr)
 	/* list markers, a quote's line, line numbers */
 	if (a->e.mode == M_RICH && fr->first) {
 		if (kind == B_BULLET) {
-			wtext(base, fr->r.x + TX - 32 + 9 - wtext_w(base, "\xe2\x80\xa2") / 2, ty, "\xe2\x80\xa2",
+			wd_text(base, fr->r.x + TX - 32 + 9 - wd_text_w(base, "\xe2\x80\xa2") / 2, ty, "\xe2\x80\xa2",
 			      WB_COLOR_TEXT_MID, 0);
 		} else if (kind == B_NUMBER) {
 			char num[16];
-			const struct wf_font *mf = a->small ? &wf_mono18 : &wf_mono20;
+			const struct wd_font *mf = a->small ? &wd_mono18 : &wd_mono20;
 
 			snprintf(num, sizeof(num), "%d.", a->e.t.l[fr->line].s[0] ? atoi(a->e.t.l[fr->line].s) : 0);
-			wtext(mf, TX, wtop(mf, top + lh / 2), num, WB_COLOR_TEXT_MID, 0);
+			wd_text(mf, TX, wd_top(mf, top + lh / 2), num, WB_COLOR_TEXT_MID, 0);
 		}
 	}
 	if (a->e.mode == M_RICH && kind == B_QUOTE)
@@ -634,8 +509,8 @@ static void row_draw(struct app *a, const struct frow *fr)
 	for (k = fr->r.k0; k < fr->r.k1; ) {
 		int k0 = k, style = st ? st[k] & 7 : 0, bold = 0, slant = 0;
 		unsigned cp = utf8_next(s, n, &k);
-		const struct wf_font *f = FONTS[lay_font_of(&ls, style)];
-		const struct wf_glyph *g;
+		const struct wd_font *f = FONTS[lay_font_of(&ls, style)];
+		const struct wd_glyph *g;
 		uint32_t c = tc;
 		int adv;
 
@@ -658,10 +533,10 @@ static void row_draw(struct app *a, const struct frow *fr)
 			bold = (style & ST_B) != 0;
 		}
 		slant = (style & ST_I) || (a->e.mode == M_RICH && kind == B_QUOTE);
-		g = wglyph(f, cp == '\t' ? ' ' : cp);
+		g = wd_find(f, cp == '\t' ? ' ' : cp);
 		adv = cp == '\t' ? 4 * g->adv16 : g->adv16;
 		if (cp != ' ' && cp != '\t')
-			wglyph_draw(f, g, x16, ty + (base->ascent - f->ascent), c, slant, bold);
+			wd_glyph_draw(f, g, x16, ty + (base->ascent - f->ascent), c, slant, bold);
 		if (style & ST_U)
 			fill((x16 + 8) / 16, ty + base->ascent + 4, (adv + 8) / 16, 2, c);
 		x16 += adv;
@@ -684,21 +559,21 @@ static void new_doc_tips(struct app *a)
 					    "Heading 3", "Quote", "Bold", "Italic", "Underline", "Code block" };
 	int y = TY + 32 + 36, colw = (TW - 24) / 2;
 
-	wtext(&wf_ui24, TX + 4, wtop(&wf_ui24, TY + 16), "Start typing\xe2\x80\xa6", WB_COLOR_PLACEHOLDER, 0);
+	wd_text(&wd_ui24, TX + 4, wd_top(&wd_ui24, TY + 16), "Start typing\xe2\x80\xa6", WB_COLOR_PLACEHOLDER, 0);
 	text(&f_mono13, TX, y, "MARKDOWN WORKS WHILE YOU TYPE", WB_COLOR_TEXT_LOW, 21);
 	y += 17 + 10;
 	for (int i = 0; i < 10; i++) {
 		int x = TX + (i % 2) * (colw + 24), ry = y + (i / 2) * 41, cy = ry + 20;
-		const struct wf_font *lf = i == 0 || i == 2 || i == 4 || i == 6 ? &wf_ui20b : &wf_ui20;
+		const struct wd_font *lf = i == 0 || i == 2 || i == 4 || i == 6 ? &wd_ui20b : &wd_ui20;
 
 		fill(x, ry, colw, 1, WB_COLOR_SURFACE2);
-		wtext(&wf_mono16, x, wtop(&wf_mono16, cy), md[i], WB_COLOR_CYAN, 0);
+		wd_text(&wd_mono16, x, wd_top(&wd_mono16, cy), md[i], WB_COLOR_CYAN, 0);
 		if (i == 9)
-			wtext(&wf_mono16, x + 116 + 14, wtop(&wf_mono16, cy), what[i], WB_COLOR_TEXT_MID, 0);
+			wd_text(&wd_mono16, x + 116 + 14, wd_top(&wd_mono16, cy), what[i], WB_COLOR_TEXT_MID, 0);
 		else
-			wtext(lf, x + 116 + 14, wtop(lf, cy), what[i], WB_COLOR_TEXT_MID, i == 7);
+			wd_text(lf, x + 116 + 14, wd_top(lf, cy), what[i], WB_COLOR_TEXT_MID, i == 7);
 		if (i == 8)
-			fill(x + 116 + 14, cy + 9, wtext_w(lf, what[i]), 1, WB_COLOR_TEXT_MID);
+			fill(x + 116 + 14, cy + 9, wd_text_w(lf, what[i]), 1, WB_COLOR_TEXT_MID);
 	}
 	(void)a;
 }
@@ -817,7 +692,7 @@ static void find_bar(struct app *a)
 		if (!v[0] && r) {
 			text(&f_ui16, tx, text_top(&f_ui16, cy), "Replace with\xe2\x80\xa6", WB_COLOR_PLACEHOLDER, 0);
 		} else {
-			tx = wtext(&wf_mono18, tx, wtop(&wf_mono18, cy), wfit(&wf_mono18, v, fw - 120, buf, sizeof(buf)),
+			tx = wd_text(&wd_mono18, tx, wd_top(&wd_mono18, cy), wd_fit(&wd_mono18, v, fw - 120, buf, sizeof(buf)),
 				   WB_COLOR_TEXT_HI, 0);
 		}
 		if (focus)
@@ -851,14 +726,14 @@ static void full_footer(struct app *a)
 	int cy = H - 20, x, pct;
 
 	app_docbar(a, &d);
-	x = wtext(&wf_mono14, 56, wtop(&wf_mono14, cy), d.name, WB_COLOR_TEXT_LOW, 0);
+	x = wd_text(&wd_mono14, 56, wd_top(&wd_mono14, cy), d.name, WB_COLOR_TEXT_LOW, 0);
 	if (d.edited)
 		box(x + 8, cy - 3, 6, 6, 3, WB_COLOR_YELLOW, 255, 0, 0, 0);
 	pct = a->lay.total > TH ? (int)((long long)a->scroll * 100 / (a->lay.total - TH)) : 100;
 	if (pct > 100)
 		pct = 100;
 	snprintf(right, sizeof(right), "%s \xc2\xb7 %d%%", d.count, pct);
-	wtext(&wf_mono14, W - 56 - wtext_w(&wf_mono14, right), wtop(&wf_mono14, cy), right, WB_COLOR_TEXT_LOW, 0);
+	wd_text(&wd_mono14, W - 56 - wd_text_w(&wd_mono14, right), wd_top(&wd_mono14, cy), right, WB_COLOR_TEXT_LOW, 0);
 }
 
 static void full_hint(void)
@@ -943,7 +818,7 @@ static void head(int x, int y, const char *eb, const char *title, const char *su
 	char buf[160];
 
 	text(&f_mono13, x, y, eb, WB_COLOR_CYAN, 21);
-	wtext(&wf_ui28b, x, y + 17 + 6, wfit(&wf_ui28b, title, tw, buf, sizeof(buf)), WB_COLOR_TEXT_HI, 0);
+	wd_text(&wd_ui28b, x, y + 17 + 6, wd_fit(&wd_ui28b, title, tw, buf, sizeof(buf)), WB_COLOR_TEXT_HI, 0);
 	if (sub)
 		text(&f_mono14, x, y + 55 + 4, wb_fit(&f_mono14, sub, tw, buf, sizeof(buf)), WB_COLOR_TEXT_MID, 0);
 }
@@ -961,9 +836,9 @@ static void menu_rows_draw(struct app *a, int x, int y, int w)
 		}
 		pop_focus(x, y, w, POP_ROW, f);
 		cy = y + POP_ROW / 2;
-		wtext(&wf_ui20, x + 14, wtop(&wf_ui20, cy), r->label, WB_COLOR_TEXT_HI, 0);
+		wd_text(&wd_ui20, x + 14, wd_top(&wd_ui20, cy), r->label, WB_COLOR_TEXT_HI, 0);
 		if (r->chev) {
-			wicon(&wi_chev, rx - 18, cy - 9, f ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID);
+			icon(&wi_chev, rx - 18, cy - 9, f ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 255);
 			rx -= 18 + 12;
 		}
 		if (r->toggle) {
@@ -1029,12 +904,12 @@ static void style_draw(struct app *a)
 	snprintf(title, sizeof(title), "\xe2\x80\x9c%s\xe2\x80\x9d", word[0] ? word : "\xe2\x80\xa6");
 	pop_panel(y, h);
 	y += 22;
-	wicon(&wi_triangle, x, y + 1, WB_COLOR_KEY_TRIANGLE);
+	icon(&wi_triangle, x, y + 1, WB_COLOR_KEY_TRIANGLE, 255);
 	text(&f_mono13, x + 12 + 8, y, "STYLE", WB_COLOR_CYAN, 21);
 	{
 		char buf[100];
 
-		wtext(&wf_ui28b, x, y + 17 + 6, wfit(&wf_ui28b, title, w, buf, sizeof(buf)), WB_COLOR_TEXT_HI, 0);
+		wd_text(&wd_ui28b, x, y + 17 + 6, wd_fit(&wd_ui28b, title, w, buf, sizeof(buf)), WB_COLOR_TEXT_HI, 0);
 	}
 	y += 55 + 14;
 	text(&f_mono13, x, y, "TEXT", WB_COLOR_TEXT_LOW, 21);
@@ -1042,15 +917,15 @@ static void style_draw(struct app *a)
 	for (int i = 0; i < 3; i++) {
 		int on = style & (i == 0 ? ST_B : i == 1 ? ST_I : ST_U), tx = x + i * (tw + 8), cy = y + 28;
 		uint32_t c = on ? WB_COLOR_PINK : WB_COLOR_TEXT_HI;
-		const struct wf_font *lf = i == 0 ? &wf_ui20b : &wf_ui20;
+		const struct wd_font *lf = i == 0 ? &wd_ui20b : &wd_ui20;
 
 		wb_card(tx, y, tw, 56, WB_RADIUS_MD, a->focus == i, &GLOW_FOCUS);
 		if (on && a->focus != i)	/* on: pink (6.2) */
 			box(tx, y, tw, 56, WB_SQUARE, WB_COLOR_PINK, PINK_TINT, WB_COLOR_PINK, 1, 0);
 		/* the shortcut small under the label */
-		wtext(lf, tx + 14, wtop(lf, cy - 8), marks[i], c, i == 1);
+		wd_text(lf, tx + 14, wd_top(lf, cy - 8), marks[i], c, i == 1);
 		if (i == 2)
-			fill(tx + 14, cy + 1, wtext_w(lf, marks[i]), 2, c);
+			fill(tx + 14, cy + 1, wd_text_w(lf, marks[i]), 2, c);
 		text(&f_mono13, tx + 14, text_top(&f_mono13, cy + 14), keys[i], on ? WB_COLOR_PINK : WB_COLOR_TEXT_MID, 0);
 	}
 	y += 56 + 14;
@@ -1058,12 +933,12 @@ static void style_draw(struct app *a)
 	y += 17 + 8;
 	for (int i = 0; i < 8; i++, y += ST_ROW + POP_GAP) {
 		int f = a->focus == 3 + i, cy = y + ST_ROW / 2, lx = x + 14 + 24 + 14;
-		const struct wf_font *lf = i == 1 ? &wf_ui28b : i == 2 ? &wf_ui24b : i == 3 ? &wf_ui20b :
-					   i == 7 ? &wf_mono16 : &wf_ui20;
+		const struct wd_font *lf = i == 1 ? &wd_ui28b : i == 2 ? &wd_ui24b : i == 3 ? &wd_ui20b :
+					   i == 7 ? &wd_mono16 : &wd_ui20;
 
 		pop_focus(x, y, w, ST_ROW, f);
 		choice_box(x + 14, cy, i == cur);
-		wtext(lf, lx, wtop(lf, cy), paras[i], i == 6 ? WB_COLOR_TEXT_MID : WB_COLOR_TEXT_HI, i == 6);
+		wd_text(lf, lx, wd_top(lf, cy), paras[i], i == 6 ? WB_COLOR_TEXT_MID : WB_COLOR_TEXT_HI, i == 6);
 		if (pkeys[i][0])
 			text(&f_mono14, x + w - 14 - text_w(&f_mono14, pkeys[i], 0), text_top(&f_mono14, cy), pkeys[i],
 			     f ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 0);
@@ -1103,7 +978,7 @@ static void saveas_draw(struct app *a)
 	pop_panel(y, h);
 	y += 32;
 	eyebrow(x, y, "WRITE");
-	wtext(&wf_ui28b, x, y + 18 + 6, "Save as", WB_COLOR_TEXT_HI, 0);
+	wd_text(&wd_ui28b, x, y + 18 + 6, "Save as", WB_COLOR_TEXT_HI, 0);
 	y += 18 + 6 + 36 + 20;
 	text(&f_ui16, x, y, "Name", WB_COLOR_TEXT_MID, 0);
 	y += 20 + 8;
@@ -1114,11 +989,11 @@ static void saveas_draw(struct app *a)
 		int tx;
 
 		snprintf(before, sizeof(before), "%.*s", a->sa_caret, a->sa_name);
-		tx = wtext(&wf_mono20, x + 16, wtop(&wf_mono20, cy), before, WB_COLOR_TEXT_HI, 0);
+		tx = wd_text(&wd_mono20, x + 16, wd_top(&wd_mono20, cy), before, WB_COLOR_TEXT_HI, 0);
 		if (a->sa_focus == 0)
 			fill(tx, cy - 12, 2, 24, c);
-		tx = wtext(&wf_mono20, tx + 2, wtop(&wf_mono20, cy), a->sa_name + a->sa_caret, WB_COLOR_TEXT_HI, 0);
-		wtext(&wf_mono20, tx, wtop(&wf_mono20, cy), a->sa_ext, WB_COLOR_PLACEHOLDER, 0);
+		tx = wd_text(&wd_mono20, tx + 2, wd_top(&wd_mono20, cy), a->sa_name + a->sa_caret, WB_COLOR_TEXT_HI, 0);
+		wd_text(&wd_mono20, tx, wd_top(&wd_mono20, cy), a->sa_ext, WB_COLOR_PLACEHOLDER, 0);
 	}
 	y += 56 + 8;
 	snprintf(buf, sizeof(buf), "%s", ok ? (!strcmp(a->sa_ext, ".md") ? "Saved as markdown. \xe2\x86\x93 to choose another folder." :
@@ -1127,9 +1002,9 @@ static void saveas_draw(struct app *a)
 	y += 44 + 12;
 	cy = y + 30;
 	wb_card(x, y, w, 60, WB_RADIUS_MD, a->sa_focus == 1, &GLOW_FOCUS);
-	wicon(&wi_folder, x + 18, cy - 11, a->sa_focus == 1 ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID);
-	wtext(&wf_ui20, x + 18 + 22 + 14, wtop(&wf_ui20, cy), "Folder", WB_COLOR_TEXT_HI, 0);
-	wicon(&wi_chev, x + w - 16 - 18, cy - 9, a->sa_focus == 1 ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID);
+	icon(&wi_folder, x + 18, cy - 11, a->sa_focus == 1 ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 255);
+	wd_text(&wd_ui20, x + 18 + 22 + 14, wd_top(&wd_ui20, cy), "Folder", WB_COLOR_TEXT_HI, 0);
+	icon(&wi_chev, x + w - 16 - 18, cy - 9, a->sa_focus == 1 ? WB_COLOR_CYAN : WB_COLOR_TEXT_MID, 255);
 	{
 		char pb[96];
 		const char *p = wb_fit(&f_mono14, a->sa_dir, w - 200, pb, sizeof(pb));
@@ -1174,7 +1049,7 @@ static void log_draw(struct app *a)
 	wb_card(x, y, w, 32 + shown * 26, WB_RADIUS_MD, 0, 0);
 	y += 16;
 	if (!a->n_log) {
-		wtext(&wf_ui20, x + 20, y, "No log yet.", WB_COLOR_TEXT_MID, 0);
+		wd_text(&wd_ui20, x + 20, y, "No log yet.", WB_COLOR_TEXT_MID, 0);
 	} else {
 		for (int i = first; i < a->n_log; i++, y += 26)
 			text(&f_mono14, x + 20, y + 4, wb_fit(&f_mono14, a->log[i], w - 40, buf, sizeof(buf)),
@@ -1257,7 +1132,7 @@ static void help_draw(struct app *a)
 	y += 22;
 	icon(&kc_diamond, x, y + 1, WB_COLOR_KEY_DIAMOND, 255);
 	text(&f_mono13, x + 12 + 8, y, "HELP", WB_COLOR_CYAN, 21);
-	wtext(&wf_ui28b, x, y + 17 + 6, "Write", WB_COLOR_TEXT_HI, 0);
+	wd_text(&wd_ui28b, x, y + 17 + 6, "Write", WB_COLOR_TEXT_HI, 0);
 	y += 55 + 8;
 	text_wrap(&f_ui18, x, y, w, 25, about, WB_COLOR_TEXT_MID, 2, 1);
 	y += lines * 25 + 14;
@@ -1327,7 +1202,7 @@ static void open_draw(struct app *a)
 
 		field_h(x, ly, w, 44, 0, 0);
 		loupe(x + 14, ly + 13, WB_COLOR_TEXT_MID);
-		tx = wtext(&wf_ui20, x + 14 + 18 + 10, wtop(&wf_ui20, ly + 22), a->op_filter, WB_COLOR_TEXT_HI, 0);
+		tx = wd_text(&wd_ui20, x + 14 + 18 + 10, wd_top(&wd_ui20, ly + 22), a->op_filter, WB_COLOR_TEXT_HI, 0);
 		fill(tx + 2, ly + 12, 2, 20, WB_COLOR_CYAN);
 		ly += 44 + 12;
 	}
@@ -1347,11 +1222,11 @@ static void open_draw(struct app *a)
 		if (ry > H)
 			break;
 		wb_card(x, ry, w, 56, WB_RADIUS_MD, f, &GLOW_FOCUS);
-		wicon(r->isnew ? &wi_plus : r->here ? &wi_check : a->op_drives ? &wi_drive : r->dir ? &wi_folder :
+		icon(r->isnew ? &wi_plus : r->here ? &wi_check : a->op_drives ? &wi_drive : r->dir ? &wi_folder :
 		      lang_of_path(r->name) == L_MARKDOWN || lang_of_path(r->name) == L_PLAIN ? &wi_doc : &wi_code,
-		      x + 16, cy - 11, ink);
+		      x + 16, cy - 11, ink, 255);
 		if (r->dir) {
-			wicon(&wi_chev, rx - 18, cy - 9, ink);
+			icon(&wi_chev, rx - 18, cy - 9, ink, 255);
 			rx -= 18 + 14;
 		}
 		if (r->isnew)
@@ -1367,8 +1242,8 @@ static void open_draw(struct app *a)
 			text(&f_mono14, rx, text_top(&f_mono14, cy), val, ink, 0);
 			rx -= 14;
 		}
-		wtext(&wf_ui20, x + 16 + 22 + 14, wtop(&wf_ui20, cy),
-		      wfit(&wf_ui20, r->here ? "This folder" : name, rx - x - 16 - 22 - 14, buf, sizeof(buf)), WB_COLOR_TEXT_HI, 0);
+		wd_text(&wd_ui20, x + 16 + 22 + 14, wd_top(&wd_ui20, cy),
+		      wd_fit(&wd_ui20, r->here ? "This folder" : name, rx - x - 16 - 22 - 14, buf, sizeof(buf)), WB_COLOR_TEXT_HI, 0);
 	}
 	clip_end();
 	scrollbar(x + w + 12, ly, H - WB_HINT_BAR_H - 8 - ly, a->op_n * 64, vis * 64, first * 64);

@@ -14,7 +14,7 @@ BR_OUT=${BR_OUT:-$HOME/br-badge}
 T=$BR_OUT/host/bin/riscv32-buildroot-linux-uclibc
 cd "$here"
 MENU=${WHYOS:-$here/../../WhyOS}/libwb
-[ -f "$MENU/wbdraw.h" ] || { echo "build.sh: no $MENU/wbdraw.h (set WHYOS)" >&2; exit 1; }
+[ -f "$MENU/wbdoc.h" ] || { echo "build.sh: no $MENU/wbdoc.h (set WHYOS)" >&2; exit 1; }
 mkdir -p build
 "$T-gcc" -Os -fPIC -static -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables \
 	-Wall -Wno-format-truncation -Wno-unused-function -Isrc -I"$MENU" -o build/write src/*.c \
