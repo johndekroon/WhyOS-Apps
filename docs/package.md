@@ -292,7 +292,7 @@ enabled = true
 
 | Permission | What the app may do |
 |---|---|
-| `network` | Connect to the internet and to devices on the network |
+| `network` | Connect to the internet and to devices on the network, and accept incoming connections |
 | `network-admin` | All of `network`, send and read whole packets (raw and packet sockets), and control Wi-Fi through `wpa_supplicant` |
 | `lora` | Use LoRa and MeshCore |
 | `bluetooth` | Use Bluetooth |
