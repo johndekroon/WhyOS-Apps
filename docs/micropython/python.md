@@ -89,7 +89,7 @@ and in some special methods) are listed in MicroPython's
 | `xml.etree.ElementTree` | Reading and writing XML, as in CPython ([badge.md](badge.md)); from the store's MicroPython 1.29.1 on |
 | `mip` | The package installer |
 | `argparse` | Command-line options for your scripts |
-| `deflate` | gzip and zlib compression and decompression (`DeflateIO`) |
+| `deflate` | Unpacking gzip and zlib data (`DeflateIO`); packing is not built in |
 | `cryptolib` | AES in ECB and CBC mode |
 | `framebuf` | Drawing into a pixel buffer (with no way to show it on the screen) |
 | `micropython` | `const`, the `native` and `viper` decorators, `mem_info` |
