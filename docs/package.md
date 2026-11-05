@@ -288,10 +288,22 @@ enabled = true
 
 ### 2.7 Permissions (reserved)
 
-`permissions`: a list from `network`, `usb`, `bluetooth`, `files-all`
-(read or write outside its own storage), `system` (changes system
-settings). WhyOS does not enforce these (no MMU, everything runs as
-root); the store shows them on the info page.
+`permissions`: a list from:
+
+| Permission | What the app may do |
+|---|---|
+| `network` | Connect to the internet and to devices on the network |
+| `network-raw` | All of `network`, and send and read whole packets (raw and packet sockets) |
+| `lora` | Use LoRa and MeshCore |
+| `bluetooth` | Use Bluetooth |
+| `usb` | Use devices on the bottom USB port |
+| `hid` | Act as a keyboard and mouse on a connected computer |
+| `gpio` | Use the pins of the expansion headers |
+| `files-all` | Read and change the user's files: the card outside `badge/`, and the screenshots |
+| `system` | Full access to the badge, as root |
+
+`network-raw` includes `network`, so an app lists one of the two. WhyOS does not enforce these yet;
+the store shows them on the info page.
 
 ### 2.8 Lifecycle hooks (optional)
 
