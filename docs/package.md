@@ -293,7 +293,7 @@ enabled = true
 | Permission | What the app may do |
 |---|---|
 | `network` | Connect to the internet and to devices on the network |
-| `network-raw` | All of `network`, and send and read whole packets (raw and packet sockets) |
+| `network-raw` | All of `network`, send and read whole packets (raw and packet sockets), and scan for Wi-Fi networks |
 | `lora` | Use LoRa and MeshCore |
 | `bluetooth` | Use Bluetooth |
 | `usb` | Use devices on the bottom USB port |
