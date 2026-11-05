@@ -47,7 +47,7 @@ changelog = "Every card type gets what is useful in the field (read, write, dump
 type = "app"
 category = "hardware"
 tags = ["rfid", "nfc", "proxmark", "mifare", "security"]
-permissions = ["usb", "files-all"]   # files-all: it saves in /root/.proxmark3
+permissions = ["usb"]
 install_location = "sd"
 
 [launch]
