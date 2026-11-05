@@ -45,7 +45,7 @@ category = "development"
 tags = ["python", "micropython", "programming", "repl", "scripting", "terminal"]
 install_location = "sd"
 
-permissions = ["network", "lora", "files-all"]
+permissions = ["system"]
 
 [launch]
 exec = "start"

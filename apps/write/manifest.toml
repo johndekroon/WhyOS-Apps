@@ -32,7 +32,7 @@ changelog = "Pop-ups look the same everywhere: the screen behind them dims less,
 type = "system"
 category = "other"
 tags = ["editor", "text", "markdown", "notes", "code"]
-permissions = ["files-all"]
+permissions = ["system"]
 install_location = "flash"
 
 [launch]
