@@ -44,6 +44,8 @@ category = "hardware"
 tags = ["gpio", "logic-analyzer", "i2c", "uart", "ws2812", "bus-pirate", "power-supply"]
 install_location = "sd"
 
+permissions = ["usb"]
+
 [launch]
 exec = "ohminous"
 info = "pins, logic, buses, power"

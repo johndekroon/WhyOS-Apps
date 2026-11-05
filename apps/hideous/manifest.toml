@@ -55,6 +55,8 @@ category = "utilities"
 tags = ["keyboard", "mouse", "usb", "text", "typing"]
 install_location = "sd"
 
+permissions = ["hid"]
+
 [launch]
 exec = "hideous"
 info = "type saved texts, move the mouse"

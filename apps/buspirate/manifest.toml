@@ -5,3 +5,4 @@ format = 1
 id = "buspirate"
 name = "Bus Pirate"
 withdrawn = "Replaced by OHMinous, which does the same for a Bus Pirate 6 and adds the badge's own header pins."
+permissions = ["usb"]

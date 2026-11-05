@@ -36,6 +36,8 @@ category = "productivity"
 tags = ["editor", "text", "terminal", "nano", "gnu"]
 install_location = "sd"
 
+permissions = ["files-all"]
+
 [launch]
 exec = "start"
 args = "%f"

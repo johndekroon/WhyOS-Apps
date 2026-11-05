@@ -128,7 +128,7 @@
 
     "permissions": {
       "type": "array", "uniqueItems": true,
-      "items": { "enum": ["network", "network-raw", "lora", "bluetooth", "usb", "hid", "gpio", "files-all", "system"] }
+      "items": { "enum": ["network", "network-admin", "lora", "bluetooth", "usb", "hid", "gpio", "files-all", "system"] }
     },
 
     "hooks": {

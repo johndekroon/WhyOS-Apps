@@ -293,7 +293,7 @@ enabled = true
 | Permission | What the app may do |
 |---|---|
 | `network` | Connect to the internet and to devices on the network |
-| `network-raw` | All of `network`, send and read whole packets (raw and packet sockets), and control Wi-Fi through `wpa_supplicant` |
+| `network-admin` | All of `network`, send and read whole packets (raw and packet sockets), and control Wi-Fi through `wpa_supplicant` |
 | `lora` | Use LoRa and MeshCore |
 | `bluetooth` | Use Bluetooth |
 | `usb` | Use devices on the bottom USB port |
@@ -302,7 +302,7 @@ enabled = true
 | `files-all` | Read and change the user's files: the card outside `badge/`, and the screenshots |
 | `system` | Full access to the badge, as root |
 
-`network-raw` includes `network`, so an app lists one of the two. WhyOS does not enforce these yet;
+`network-admin` includes `network`, so an app lists one of the two. WhyOS does not enforce these yet;
 the store shows them on the info page.
 
 ### 2.8 Lifecycle hooks (optional)

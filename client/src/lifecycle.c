@@ -143,6 +143,8 @@ static int write_package_files(const char *dir, const char *mtext, const char *s
 	conf_list(f, &m, "TYPES", "launch.types");
 	conf_list(f, &m, "OPENS", "launch.opens");
 	conf_list(f, &m, "OPENS_ALSO", "launch.opens_also");
+	/* what the sandbox lets it do (WhyOS sandbox/policy.h): only the store says this */
+	conf_list(f, &m, "PERMISSIONS", "permissions");
 	t = json_path(&m, 0, "launch.terminal");
 	if (json_bool(&m, t, 0))
 		conf_put(f, "TERMINAL", "1");

@@ -45,6 +45,8 @@ category = "development"
 tags = ["python", "micropython", "programming", "repl", "scripting", "terminal"]
 install_location = "sd"
 
+permissions = ["network", "lora", "files-all"]
+
 [launch]
 exec = "start"
 args = "--menu %f"
