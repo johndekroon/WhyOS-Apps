@@ -302,8 +302,8 @@ enabled = true
 | `files-all` | Read and change the user's files: the card outside `badge/`, and the screenshots |
 | `system` | Full access to the badge, as root |
 
-`network-admin` includes `network`, so an app lists one of the two. WhyOS does not enforce these yet;
-the store shows them on the info page.
+`network-admin` includes `network`, so an app lists one of the two. The sandbox enforces these: an app
+gets what it lists and nothing more. The store shows them on the info page.
 
 ### 2.8 Lifecycle hooks (optional)
 
