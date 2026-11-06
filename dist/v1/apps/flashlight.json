@@ -1,0 +1,84 @@
+{
+ "author": "WhyOS-Apps contributors",
+ "bundled": [
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/flashlight/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "jetbrains-mono.txt",
+   "license_url": "licenses/flashlight/jetbrains-mono.txt",
+   "name": "JetBrains Mono (font)",
+   "source": "https://github.com/JetBrains/JetBrainsMono",
+   "version": "2.211"
+  },
+  {
+   "license": "OFL-1.1",
+   "license_file": "space-grotesk.txt",
+   "license_url": "licenses/flashlight/space-grotesk.txt",
+   "name": "Space Grotesk (font)",
+   "source": "https://github.com/floriankarsten/space-grotesk",
+   "version": "2.000"
+  }
+ ],
+ "category": "tools",
+ "cover": "screens/flashlight-cover.qoi",
+ "description": "Three modes: white at 100%, white at 50% and red at 100%. The square,\ntriangle and cross choose one, the arrow keys step through them and the\ndiamond shows the help. The mode you used last comes back the next time.\n\nFor the first two seconds the screen stays at the badge's own brightness\nand shows the keys, so a dark room is not lit at once. Then the keys go\nand the whole screen is the light. The screen stays on until you close\nthe app with Esc or the logo key, and the brightness goes back to your\nsetting.",
+ "format": 1,
+ "homepage": "https://github.com/johndekroon/WhyOS-Apps",
+ "icon": null,
+ "id": "flashlight",
+ "install_location": "sd",
+ "launch": {
+  "exec": "flashlight",
+  "icon": "sun",
+  "info": "a white or red light",
+  "menu": "apps",
+  "rotation": "auto",
+  "terminal": false
+ },
+ "license": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
+ "license_url": "licenses/flashlight/flashlight.txt",
+ "name": "Flashlight",
+ "requires": {
+  "features": [
+   "display",
+   "keyboard"
+  ],
+  "memory_kb": 300,
+  "os_api": 1
+ },
+ "screenshots": [
+  "screens/flashlight-1.qoi",
+  "screens/flashlight-2.qoi",
+  "screens/flashlight-3.qoi"
+ ],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/flashlight/source",
+ "summary": "The whole screen as a light: white at full or half brightness, or red.",
+ "tags": [
+  "flashlight",
+  "torch",
+  "light"
+ ],
+ "type": "app",
+ "versions": [
+  {
+   "build": 1,
+   "changelog": "The first version.",
+   "package": {
+    "installed_size": 208759,
+    "sha256": "4dd85e25e2ba1bf805d3a24a49a0f695d93f1b8193aa2e14248a8d0d5729c658",
+    "size": 90442,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flashlight-1.0.0.wpk"
+   },
+   "published": "2026-11-06T10:41:29Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/flashlight-1.0.0-source.tar.gz",
+   "version": "1.0.0"
+  }
+ ]
+}

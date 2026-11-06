@@ -200,6 +200,43 @@
    "updated": "2026-10-28"
   },
   {
+   "author": "WhyOS-Apps contributors",
+   "category": "tools",
+   "commands": [],
+   "details_sha256": "041b3d5df52dc8ecec7651f9e6603e351061226592521a774aab2a3f393b4972",
+   "id": "flashlight",
+   "install_location": "sd",
+   "latest": {
+    "build": 1,
+    "package": {
+     "installed_size": 208759,
+     "sha256": "4dd85e25e2ba1bf805d3a24a49a0f695d93f1b8193aa2e14248a8d0d5729c658",
+     "size": 90442,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flashlight-1.0.0.wpk"
+    },
+    "version": "1.0.0"
+   },
+   "menu_icon": "sun",
+   "name": "Flashlight",
+   "requires": {
+    "features": [
+     "display",
+     "keyboard"
+    ],
+    "memory_kb": 300,
+    "os_api": 1
+   },
+   "summary": "The whole screen as a light: white at full or half brightness, or red.",
+   "tags": [
+    "flashlight",
+    "torch",
+    "light"
+   ],
+   "terminal": false,
+   "type": "app",
+   "updated": "2026-11-06"
+  },
+  {
    "author": "gnuboy authors (rofl0r/gnuboy), badge port",
    "category": "emulators",
    "commands": [],
@@ -840,7 +877,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-10-31T01:48:43Z",
- "serial": 42,
+ "generated": "2026-11-06T10:41:31Z",
+ "serial": 43,
  "source": "whyos"
 }

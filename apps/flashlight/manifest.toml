@@ -29,7 +29,7 @@ install_location = "sd"
 
 [launch]
 exec = "flashlight"
-info = "the screen as a white or red light"
+info = "a white or red light"
 icon = "sun"
 
 [requires]
