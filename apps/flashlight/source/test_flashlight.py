@@ -25,6 +25,7 @@ SHOTS = [
     ("start-red", "\\3"),
     ("white", "\\p"),
     ("red", "\\p\\3"),
+    ("help", "\\p\\6"),
 ]
 
 # keys pressed -> mode, keys showing, backlight (-1: the system's)
@@ -39,7 +40,7 @@ CASES = [
     ("\\p\\r\\r\\r", 0, 0, 255),
     ("\\p\\l", 2, 0, 255),
     ("\\p\\u\\u", 1, 0, 127),
-    ("\\p\\4\\5\\6", 0, 0, 255),
+    ("\\p\\4\\5", 0, 0, 255),
     # a mode chosen in the first two seconds: the colour at once, the light after
     ("\\3", 2, 1, -1),
     ("\\3\\p", 2, 0, 255),
@@ -52,6 +53,7 @@ def run(exe, keys, conf, ppm=None):
     out = subprocess.run(args, capture_output=True, text=True, check=True, env=env).stdout
     assert "stale" not in out, keys
     vals = dict(l.split() for l in out.splitlines() if " " in l)
+    run.help = int(vals["help"])
     return int(vals["mode"]), int(vals["keys"]), int(vals["light"]), "closed" in out
 
 
@@ -92,6 +94,22 @@ def main():
     conf = tempfile.mkdtemp(dir=tmp)
     assert run(exe, "\\p\\e", conf)[3]
     assert not run(exe, "\\p\\f\\e\\g", conf)[3]
+
+    # the diamond opens the help; Esc and the diamond close it, other keys do nothing there
+    conf = tempfile.mkdtemp(dir=tmp)
+    ppm = os.path.join(tmp, "h.ppm")
+    assert run(exe, "\\p\\6", conf, ppm)[:3] == (0, 0, 255) and run.help == 1
+    assert pixel(pixels(ppm), 360, 360) != WHITE
+    assert run(exe, "\\p\\6\\3\\r", conf)[:3] == (0, 0, 255) and run.help == 1
+    got = run(exe, "\\p\\6\\e", conf, ppm)
+    assert not got[3] and run.help == 0 and pixels(ppm) == bytes(WHITE) * (720 * 720)
+    run(exe, "\\p\\6\\6", conf, ppm)
+    assert run.help == 0 and pixels(ppm) == bytes(WHITE) * (720 * 720)
+    assert not run(exe, "\\p\\6\\f\\e\\g", conf)[3] and run.help == 1
+    # opened in the first two seconds: the light still comes, the keys' panel is gone after
+    assert run(exe, "\\6\\p\\e", conf, ppm)[:3] == (0, 0, 255)
+    assert pixels(ppm) == bytes(WHITE) * (720 * 720)
+    assert run(exe, "\\6\\e", conf)[:3] == (0, 1, -1)
 
     # the last mode comes back, and starts at the system's brightness again
     conf = tempfile.mkdtemp(dir=tmp)

@@ -5,7 +5,7 @@
  *
  * Three modes: white at full brightness, white at half and red at full.
  * The square, triangle and cross choose one, the arrows step through them,
- * Esc closes. The mode is kept in APP_CONFIG/mode and comes back next time.
+ * the diamond opens the help, Esc closes. The mode is kept in APP_CONFIG/mode and comes back next time.
  *
  * For the first START_MS the backlight stays as the system has it, so a
  * dark room is not lit at once, and the screen shows the keys. After that
@@ -82,6 +82,7 @@ static const struct mode {
 static struct {
 	int mode;
 	int start;			/* the first START_MS: the keys show */
+	int help;			/* the diamond's pop-up is open */
 	int fn;				/* Fn is down: Fn+Esc is sleepd's */
 } S;
 
@@ -205,9 +206,24 @@ static void out_rows(const uint16_t *rows, int y0, int y1)
 static void paint(void *arg)
 {
 	static const struct hint close_hint[] = { { "Esc", "close", 1 } };
+	static const struct help_key help_keys[] = {
+		{ "#1", "White at full brightness" },
+		{ "#2", "White at half brightness" },
+		{ "#3", "Red at full brightness" },
+		{ "\xe2\x86\x91\xe2\x86\x93\xe2\x86\x90\xe2\x86\x92", "Step through the modes" },
+		{ "Esc", "Close the flashlight" },
+		{ "#6", "This help" },
+		{ "Logo", "Back to the menu" },
+	};
 
 	(void)arg;
 	fill(0, 0, W, H, modes[S.mode].color);
+	if (S.help) {
+		help_popup("Flashlight", "The whole screen as a light. It stays on until you close it, "
+			   "and the mode you chose comes back next time.",
+			   help_keys, sizeof(help_keys) / sizeof(help_keys[0]));
+		return;
+	}
 	if (!S.start)
 		return;
 	box_plain(PANEL_X, PANEL_Y, PANEL_W, PANEL_H, 0, WB_COLOR_SURFACE1);
@@ -242,6 +258,13 @@ static int key(int code)
 {
 	int m = S.mode;
 
+	if (S.help) {		/* only an explanation: Esc or the diamond closes it */
+		if ((code == KEY_ESC && !S.fn) || code == KEY_SYM_HELP) {
+			S.help = 0;
+			present();
+		}
+		return 0;
+	}
 	switch (code) {
 	case KEY_ESC:
 		return !S.fn;
@@ -258,6 +281,10 @@ static int key(int code)
 	case KEY_UP:
 		m = (m + N_MODES - 1) % N_MODES;
 		break;
+	case KEY_SYM_HELP:
+		S.help = 1;
+		present();
+		return 0;
 	default:
 		return 0;
 	}
@@ -320,7 +347,8 @@ static void say_int(const char *name, int v)
 
 /* flashlight-host KEYS OUT.ppm: \p the first START_MS pass, \e Esc, \f
  * Fn down, \g Fn up, \u \d \l \r the arrows, \1..\6 the symbol keys. Prints
- * the mode, whether the keys show and the backlight (-1: the system's). */
+ * the mode, whether the keys and the help show and the backlight (-1: the
+ * system's). */
 int main(int argc, char **argv)
 {
 	const char *k = argc > 1 ? argv[1] : "";
@@ -365,6 +393,7 @@ int main(int argc, char **argv)
 		save_ppm(argv[2]);
 	say_int("mode", S.mode);
 	say_int("keys", S.start);
+	say_int("help", S.help);
 	say_int("light", bl_level);
 	return 0;
 }
