@@ -68,6 +68,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 3,
+   "changelog": "Waiting for the screen moved into the drawing library; the app works as before.",
+   "package": {
+    "installed_size": 207771,
+    "sha256": "56117c391a98d492cc2a09c5ec875ebd409502c3ef693ec9f2a5fe6b4c67a02e",
+    "size": 89829,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flashlight-1.0.2.wpk"
+   },
+   "published": "2026-11-06T14:16:26Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/flashlight-1.0.2-source.tar.gz",
+   "version": "1.0.2"
+  },
+  {
    "build": 2,
    "changelog": "The keys are in the hint bar at the start, the help shows whole, and white 100% is the panel's brightest.",
    "package": {

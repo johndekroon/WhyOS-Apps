@@ -177,9 +177,6 @@ static void out_rows(const uint16_t *rows, int y0, int y1)
 	memcpy(screen + y0 * W, rows, (size_t)(y1 - y0) * W * 2);
 #else
 	pwrite(fb_fd, rows, (size_t)(y1 - y0) * W * 2, (off_t)y0 * W * 2);
-	/* c1urun answers before it has copied the rows (sandbox/README.md), and
-	 * the next band goes in the same buffer: any other call waits for it */
-	lseek(fb_fd, 0, SEEK_CUR);
 #endif
 }
 

@@ -26,7 +26,7 @@ row 0, outside the band), and writes it to `/dev/fb0` itself.
 | `wbdraw.h` | pixels (`put`, `fill`, `dim`), boxes (`box`), text (`text`, `text_w`, `text_top`, `wb_fit`, `text_wrap`), icons, key caps, `hint_bar`, `eyebrow`, `help_popup`, `scrollbar`, `list_scroll`, `clip_rows`, `tick`, `empty_screen` |
 | `wbscene.h` | the frontpanel's figures behind the screen (moon with craters, orbits, head), turned with the badge and coloured; `scene_draw`, `rot`, `rot_read` |
 | `wbglass.h` | `glass()` boxes and frosted pop-ups (`glass_backdrop`), `GLOW_FOCUS`, `box_shaped`, `dim_outside` |
-| `wbui.h` | `wb_scene`, `wb_scene_turned`, `wb_bands`, `wb_frame`, `wb_header`, `wb_row`, `wb_switch`, `step_button`, `edge_rect`, `icon_scaled`, `loupe`, `menu_popup`, `dialog`, `dlg_hints`, `panel_hints` |
+| `wbui.h` | `wb_scene`, `wb_scene_turned`, `wb_bands`, `wb_frame`, `wb_out_wait`, `wb_header`, `wb_row`, `wb_switch`, `step_button`, `edge_rect`, `icon_scaled`, `loupe`, `menu_popup`, `dialog`, `dlg_hints`, `panel_hints` |
 | `wbstatus.h` | the status bar's clock, Wi-Fi and LoRa (`status_right`) |
 | `wbdoc.h` | text people type, in UTF-8 with Latin-1: the document fonts (`wd_ui24`, `wd_mono20` and so on), `wd_text`, `wd_text_w`, `wd_top`, `wd_fit`, `wd_glyph_draw` |
 | `keyrep.h` | which keys repeat when held: the arrows, Page Up/Down, Backspace, Delete, Space and the typing keys |
@@ -85,6 +85,9 @@ changed since the frame before are then drawn and written out.
   The pop-up's blur is kept while what is under it stays the same, so a
   key that moves the pop-up's focus draws the pop-up's changed bands
   (~200 ms instead of ~500).
+- Both wait for the band to be copied before its buffer takes other rows:
+  in the sandbox a write returns before that. A program with its own band
+  loop calls `wb_out_wait()` after each write.
 - `paint()` runs once more than the bands drawn: it must only draw (no
   reading keys, no counters). It must call `wb_scene()` itself (the frame's
   rotation is read while recording and kept while drawing).

@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """The flashlight on the host: keys pressed, modes and screens checked
-(flashlight.c, FL_HOST).
+(flashlight.c, FL_HOST), then its badge code in the sandbox's simulation
+(sandbox/test/sbsim.c).
 
     python3 sdapps/flashlight/test_flashlight.py [--shots DIR]
 
 --shots also draws its screens as PNG into DIR, to look at.
 """
 import os
+import shutil
 import struct
 import subprocess
 import sys
@@ -16,6 +18,8 @@ import zlib
 HERE = os.path.dirname(os.path.abspath(__file__))
 O = os.path.join(HERE, "..", "..", "patches", "buildroot", "overlay-src")
 WB = os.path.join(HERE, "..", "..", "libwb")
+SANDBOX = os.path.join(HERE, "..", "..", "sandbox")
+sys.path.insert(0, os.path.join(SANDBOX, "test"))
 
 WHITE, RED = (255, 255, 255), (255, 0, 0)
 
@@ -77,6 +81,79 @@ def png(ppm, path):
     with open(path, "wb") as f:
         f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 720, 720, 8, 2, 0, 0, 0)) +
                 chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+
+
+def sandboxed(tmp):
+    """The badge's code under sbsim: late copies, the policy, sleepd, a virtual clock."""
+    import sbsim
+
+    src = os.path.join(HERE, "flashlight.c")
+    inc = [O, WB]
+    exe = os.path.join(tmp, "flashlight-sim")
+    sbsim.build(exe, [src], include=inc)
+
+    def run(name, exe=exe, **kw):
+        root = os.path.join(tmp, "sim-" + name)
+        sbsim.tree(root, "flashlight")
+        return root, os.path.join(root, "out"), sbsim.run(exe, root, os.path.join(root, "out"), "flashlight", **kw)
+
+    # the first two seconds, the modes and the help, with every copy as late as can be
+    keys = [(3000, 64), (3600, 1), (4000, 60), (5000, 61), (6000, 1)]
+    root, out, r = run("keys", keys=keys, shots=[1000, 2500, 3400, 3800, 4500, 5500], end=20000)
+    assert r["status"] == 0 and r["end_ms"] < 7000, r
+    assert r["torn"] == 0, r["first_torn"]
+    assert r["refused"] == [] and r["ioctls_refused"] == 0, r
+    at = [t for t, _ in r["light"]]
+    assert [v for _, v in r["light"]] == [80, 30, 80] and 2000 <= at[0] < 2100 and 4000 <= at[1] < 4300, r["light"]
+    start, plain, help_, closed = (sbsim.pixels(out, t) for t in (1000, 2500, 3400, 3800))
+    assert sbsim.pixel(start, 360, 690) != WHITE and sbsim.pixel(start, 360, 300) == WHITE
+    assert plain == bytes(WHITE) * (720 * 720) and closed == plain
+    # the help whole: every band dimmed, not only the last
+    assert all(sbsim.pixel(help_, 20, y) != WHITE for y in range(4, 720, 40))
+    assert sbsim.pixels(out, 5500) == bytes(RED) * (720 * 720)
+    with open(os.path.join(root, "root/.whyos/config/flashlight/mode")) as f:
+        assert f.read() == "2"
+
+    # ten minutes without a key: the screen stays on
+    _, _, r = run("awake", end=600000)
+    assert r["slept"] == 0 and r["touches"] > 100 and r["refused"] == [], r
+
+    # standby from the user: no touch wakes the badge, no light on a blank screen
+    _, _, r = run("standby", SBSIM_STANDBY="10000-20000", end=30000)
+    assert r["woken"] == 0 and r["touches_in_standby"] == 0 and r["lights_in_standby"] == 0, r
+    # ... also when it starts in the first two seconds: the light comes after it
+    _, _, r = run("standby-early", SBSIM_STANDBY="500-5000", end=8000)
+    assert r["lights_in_standby"] == 0 and r["light"] and r["light"][0][0] >= 5000, r
+
+    # the logo key: SIGTERM from apprun
+    _, _, r = run("term", SBSIM_TERM=3000, end=20000)
+    assert r["status"] == 0 and r["end_ms"] < 4000, r
+
+    # and the two faults of 1.0.0 still show here, or this proves nothing
+    no_wait = os.path.join(tmp, "libwb-no-wait")
+    shutil.copytree(WB, no_wait)
+    with open(os.path.join(no_wait, "wbui.h")) as f:
+        text = f.read()
+    assert "(void)getppid();" in text
+    with open(os.path.join(no_wait, "wbui.h"), "w") as f:
+        f.write(text.replace("(void)getppid();", ""))
+    bad = os.path.join(tmp, "flashlight-no-wait")
+    sbsim.build(bad, [src], include=[O, no_wait])
+    _, _, r = run("no-wait", exe=bad, keys=keys, end=20000)
+    assert r["torn"] > 0, "a torn frame went unseen"
+
+    with open(os.path.join(SANDBOX, "policy.h")) as f:
+        policy = f.read()
+    assert '"/run/active", ' in policy and '"/run/standby", ' in policy
+    old = os.path.join(tmp, "old-policy")
+    os.makedirs(old)
+    with open(os.path.join(old, "policy.h"), "w") as f:
+        f.write(policy.replace('"/run/active", ', "").replace('"/run/standby", ', ""))
+    bad = os.path.join(tmp, "flashlight-old-policy")
+    sbsim.build(bad, [src], flags=["-I" + old], include=inc)
+    _, _, r = run("old-policy", exe=bad, end=600000)
+    assert r["slept"] > 0 and ("write", "/run/active") in r["refused"], "a refused touch went unseen"
+    print("sandbox: ok")
 
 
 def main():
@@ -148,6 +225,8 @@ def main():
             run(exe, keys, tempfile.mkdtemp(dir=tmp), ppm)
             png(ppm, os.path.join(out, name + ".png"))
     print("ok: %d cases" % len(CASES))
+    if os.path.exists(SANDBOX):		# not next to a copy of this in WhyOS-Apps
+        sandboxed(tmp)
 
 
 if __name__ == "__main__":

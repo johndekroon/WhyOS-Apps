@@ -203,18 +203,18 @@
    "author": "WhyOS-Apps contributors",
    "category": "tools",
    "commands": [],
-   "details_sha256": "41bdbe7d1cc8a4d64293d649209848f702e4e56e38107f68c00d51f362b7044b",
+   "details_sha256": "2f44e1dde8fdfca45c6e8e7e6e7a2052adc9d19501232538bb9af788032b0b09",
    "id": "flashlight",
    "install_location": "sd",
    "latest": {
-    "build": 2,
+    "build": 3,
     "package": {
-     "installed_size": 207803,
-     "sha256": "b9e55c32ba14fa33965706801d6359cba998d364ff1bf616787c7ee140f3b177",
-     "size": 89866,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flashlight-1.0.1.wpk"
+     "installed_size": 207771,
+     "sha256": "56117c391a98d492cc2a09c5ec875ebd409502c3ef693ec9f2a5fe6b4c67a02e",
+     "size": 89829,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flashlight-1.0.2.wpk"
     },
-    "version": "1.0.1"
+    "version": "1.0.2"
    },
    "menu_icon": "sun",
    "name": "Flashlight",
@@ -877,7 +877,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-11-06T11:29:22Z",
- "serial": 46,
+ "generated": "2026-11-06T14:16:26Z",
+ "serial": 47,
  "source": "whyos"
 }
