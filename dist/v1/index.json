@@ -4,18 +4,18 @@
    "author": "WhyOS-Apps contributors",
    "category": "tools",
    "commands": [],
-   "details_sha256": "70f517bd4925af2442e15ef1871f38d641ac6e2708094915e727942dcbc0ff1f",
+   "details_sha256": "83b4a71536027b8508886d536a9b4597ead519bef16bc68fcb0b436d745fea66",
    "id": "barbarious",
    "install_location": "sd",
    "latest": {
-    "build": 3,
+    "build": 4,
     "package": {
-     "installed_size": 435751,
-     "sha256": "9e05b07c49f5f27564988f63ac82351024c0d6ce50422a88ac5cd403ae7ac0a9",
-     "size": 204308,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/barbarious-1.1.1.wpk"
+     "installed_size": 435663,
+     "sha256": "e241dbaf5ebdb3709025b52c50911b2b37082e7576294d0415043dd2ab8aaec2",
+     "size": 204226,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/barbarious-1.1.2.wpk"
     },
-    "version": "1.1.1"
+    "version": "1.1.2"
    },
    "menu_icon": "barcode",
    "name": "BARbarious",
@@ -36,7 +36,7 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-10-28"
+   "updated": "2026-11-06"
   },
   {
    "id": "buspirate",
@@ -877,7 +877,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-11-06T11:18:28Z",
- "serial": 45,
+ "generated": "2026-11-06T11:29:22Z",
+ "serial": 46,
  "source": "whyos"
 }

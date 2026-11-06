@@ -87,6 +87,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 4,
+   "changelog": "Full brightness is now really the brightest: the screen gets less bright above the level the app now uses.",
+   "package": {
+    "installed_size": 435663,
+    "sha256": "e241dbaf5ebdb3709025b52c50911b2b37082e7576294d0415043dd2ab8aaec2",
+    "size": 204226,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/barbarious-1.1.2.wpk"
+   },
+   "published": "2026-11-06T11:29:22Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/barbarious-1.1.2-source.tar.gz",
+   "version": "1.1.2"
+  },
+  {
    "build": 3,
    "changelog": "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time.",
    "package": {

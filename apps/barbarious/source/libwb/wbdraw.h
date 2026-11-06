@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * Drawing for the badge's panel in the WhyBadge design's style, the base
+ * Drawing for the badge's panel in the WhyOS design's style, the base
  * of libwb: alpha-blended pixels, boxes with the focus glow, text in the
  * pre-rendered fonts and icons of wb_assets.h, key caps and the hint bar.
  * Integer-only (the toolchain is soft-float).
@@ -10,7 +10,7 @@
  * static.
  *
  * A program may define before including: WB_SQUARE (the largest corner
- * radius: home's canvas has square corners, every radius 4), WB_DIM (the
+ * radius: the design has square corners, every radius 4), WB_DIM (the
  * colour and alpha of a pop-up's backdrop) and the hooks WB_PANEL,
  * WB_CARD and WB_HINT_GLASS (below).
  */
@@ -791,7 +791,7 @@ static void eyebrow(int x, int y, const char *s)
 /* Pop-ups: help (the diamond key), menus and choices                  */
 
 /*
- * The design's key rules (Docs/06-design-system.md 6.6): the left three
+ * The design's key rules (docs/APPS.md): the left three
  * symbol keys are the screen's own (square: the context menu; triangle and
  * cross: frequent actions), the right three are the same everywhere:
  * circle the log, cloud the settings, diamond this help.

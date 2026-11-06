@@ -2,9 +2,8 @@
 /*
  * barbarious (BARbarious) — texts as barcodes and QR Codes on the screen,
  * control characters included, for a scanner to read off it: HIDeous'
- * twin the other way round (sdapps/README.md). Laid out after the design
- * canvas "BARbarious" (2026-10-25), drawn like the menu with libwb in the
- * style of the canvas "Menu's met frontpaneel" (the frontpanel's figures
+ * twin the other way round (sdapps/README.md). Drawn like the menu with
+ * libwb (the frontpanel's figures
  * behind glass cards, frosted pop-ups); a code itself stays black on
  * white, for a scanner.
  *
@@ -22,7 +21,7 @@
  * GS1's FNC1, \xHH any byte; \n, \t and \r read as LF, TAB and CR. Lines
  * starting with # are comments. The settings are in APP_CONFIG/settings.
  *
- * Keys (Docs/06-design-system.md 6.6): Enter shows a code, the square
+ * Keys (docs/APPS.md): Enter shows a code, the square
  * opens its options, the triangle makes a new one (on a code shown: its
  * type), the cross edits it; the circle lists the codes shown this
  * session, the cloud the settings, the diamond the help. In a text Tab
@@ -656,7 +655,7 @@ static void label_of(int i, char *out, int size)
 /* ---- the screen's light ------------------------------------------------- */
 
 #define BL_PATH		"/sys/class/backlight/backlight/brightness"
-#define BL_MAX_PATH	"/sys/class/backlight/backlight/max_brightness"
+#define BL_PEAK		80		/* the panel's brightest; above it, less (home.c) */
 
 #ifndef BB_HOST
 static int bl_saved = -1;
@@ -691,11 +690,9 @@ static void lights(int on)
 	C.lit = on;
 #ifndef BB_HOST
 	if (on) {
-		int max = read_int(BL_MAX_PATH);
-
 		bl_saved = read_int(BL_PATH);
-		if (max > 0 && bl_saved >= 0 && bl_saved < max)
-			write_int(BL_PATH, max);
+		if (bl_saved >= 0 && bl_saved != BL_PEAK)
+			write_int(BL_PATH, BL_PEAK);
 	} else if (bl_saved > 0) {
 		write_int(BL_PATH, bl_saved);
 	}
@@ -749,7 +746,7 @@ static void go(int sc)
 #define E_PREV_Y	(E_TYPE_Y + E_TYPE_H + 16)
 #define E_PREV_H	64
 
-/* the show screen; Tools/usb/hil/test_hil_barbarious.py reads the code
+/* the show screen; a test on the badge reads the code
  * from these places */
 #define SQ_Y		148			/* a square code's area */
 #define SQ		407

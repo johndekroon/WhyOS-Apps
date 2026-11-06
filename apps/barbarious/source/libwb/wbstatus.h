@@ -8,8 +8,7 @@
  * whether it is connected, SIGNAL_POLL for the RSSI. Not connected: no
  * icon at all. Connected: the arcs lit from the dot outwards
  * by signal strength, as the network list in Settings draws them (the
- * same steps: -55, -67, -78 dBm). wlan0's operstate, used before
- * 2026-10-18, stays "up" through a lost connection with esp-hosted.
+ * same steps: -55, -67, -78 dBm). wlan0's operstate stays "up" through a lost connection with esp-hosted.
  */
 #ifndef WBSTATUS_H
 #define WBSTATUS_H
@@ -43,7 +42,7 @@ static char *wifi_num(char *q, unsigned v)
  * request has its own socket name (pid and a count): with one name per
  * process, a reply that came after the timeout landed on the next
  * request's socket, and SIGNAL_POLL's answer read as STATUS's said "not
- * connected" (the icon came and went, 2026-10-18).
+ * connected" (the icon came and went).
  */
 static int wifi_ask(const char *cmd, char *r, int size)
 {
@@ -84,7 +83,7 @@ static int wifi_ask(const char *cmd, char *r, int size)
  * link, the last answer stands, so the icon does not flicker.
  *
  * Asked at most every WIFI_BARS_S: SIGNAL_POLL goes through the driver to
- * the C6 and took ~230 ms, which the menu paid on every key (2026-10-19).
+ * the C6 and takes ~230 ms, which the menu would pay on every key.
  */
 #define WIFI_BARS_S	5
 

@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * Components of the canvas "Menu's met frontpaneel": faint edges, the
+ * Components of the design: faint edges, the
  * switch, the slider's buttons, icons scaled, the loupe, the pop-up list
  * (menu_popup) and the dialog with its keys at its bottom. Part of libwb:
  * include wb.h.
  */
 #pragma once
 
-/* A 1 px edge of colour c at alpha a around x, y, w, h (the canvas's
+/* A 1 px edge of colour c at alpha a around x, y, w, h (the design's
  * faint borders; box() draws its border opaque). */
 static void edge_rect(int x, int y, int w, int h, uint32_t c, unsigned a)
 {
@@ -22,7 +22,7 @@ static void edge_rect(int x, int y, int w, int h, uint32_t c, unsigned a)
 }
 
 
-/* The canvas's switch: 52 x 30, cyan with a dark knob on the right when
+/* The design's switch: 52 x 30, cyan with a dark knob on the right when
  * on; a faint track with a grey knob on the left when off. */
 static void wb_switch(int x, int cy, int on)
 {
@@ -46,22 +46,6 @@ static void step_button(int x, int cy, const char *g)
 	edge_rect(x, cy - 15, 30, 30, 0xFFFFFF, 46);
 	text(&f_ui18, x + (30 - text_w(&f_ui18, g, 0)) / 2, text_top(&f_ui18, cy), g, WB_COLOR_TEXT_HI, 0);
 }
-
-/* A 22 px colour sample centred on cy: kind 1 colour c, 2 a rainbow. */
-static void swatch(int x, int cy, int kind, uint32_t c)
-{
-	static const uint32_t hues[6] = { 0xff0000, 0xffc800, 0x00ff00,
-					  0x00ffff, 0x0000ff, 0xff00c0 };
-
-	if (kind == 1) {
-		box(x, cy - 11, 22, 22, 6, c, 255, WB_COLOR_LINE, 1, 0);
-		return;
-	}
-	for (int i = 0; i < 6; i++)
-		fill(x + 1 + i * 20 / 6, cy - 10, 20 / 6 + 1, 20, hues[i]);
-	box(x, cy - 11, 22, 22, 6, 0, 0, WB_COLOR_LINE, 1, 0);
-}
-
 
 /*
  * An icon scaled to size px (bilinear over its alpha): the app panel's
@@ -135,7 +119,7 @@ static void loupe(int x, int y, uint32_t c)
 #define DLG_W	(W - 2 * DLG_X)
 
 /* A pop-up's keys at its bottom, under a line from x0, w wide, at top
- * (the canvas: in the panel, not in the hint bar). 48 px with the line. */
+ * (the design: in the panel, not in the hint bar). 48 px with the line. */
 static void panel_hints(int x0, int w, int top, const struct hint *hs, int nh)
 {
 	int hx = x0, cy = top + 1 + 10 + 11;
@@ -193,7 +177,7 @@ static int dialog(const char *eb, const char *title, int body_h,
 }
 
 /*
- * A pop-up list (6.6; the canvas's Time zone): the square key's context
+ * A pop-up list (6.6; the design's Time zone): the square key's context
  * menu, or a choice from an enumeration, on a frosted panel over the
  * dimmed screen. Its eyebrow is the list it opens from ("GENERAL ›"), the
  * count on the title's line; a long one filters, in a field with a loupe;
@@ -434,7 +418,7 @@ static int wb_scene_turned(void)
 /*
  * A screen's eyebrow (mono, cyan: where it lies, "SETTINGS ›", or "APP")
  * and title (36 px), 54 px from the left with the eyebrow at 72, as the
- * canvas's lists; title_r (0: none) right of the title in text mid. Rows
+ * design's lists; title_r (0: none) right of the title in text mid. Rows
  * start at WB_ROWS_TOP.
  */
 #define WB_ROWS_TOP	160
@@ -454,7 +438,7 @@ static void wb_header(const char *eb, const char *title, const char *title_r)
 }
 
 /*
- * A list row as the canvas's (68 px; Settings, Connection): a card (glass
+ * A list row as the design's (68 px; Settings, Connection): a card (glass
  * on the scene), the icon (cyan on the focus), the label (22 px) with an
  * optional second line (sub, 16 px), and on the right a value in mono and
  * what Enter does there: WB_ROW_NONE, WB_ROW_OPEN (a chevron) or
