@@ -29,7 +29,7 @@ editor ([write/](write/README.md)), and Files, the file browser
 | [docs/micropython/](docs/micropython/README.md) | Python on the badge: getting started, programming for the badge's text window and keys, sensors, LEDs, network and USB from Python, and the modules MicroPython has |
 | [schema/](schema/) | JSON Schemas for the manifest, the index and the category tree |
 | [categories.json](categories.json) | The category tree |
-| [apps/](apps/) | The apps: gnuboy, NetSurf, Links, nmap, imgview, DOOM, the sensor panel, OHMinous, NetHack, nano, the calculator, HIDeous, BARbarious, the PDF viewer, MicroPython, Flappy, Marble Orbit, the Proxmark3 client, Write, Files, and the store itself |
+| [apps/](apps/) | The apps: gnuboy, NetSurf, Links, nmap, imgview, DOOM, the sensor panel, OHMinous, NetHack, nano, the calculator, the flashlight, HIDeous, BARbarious, the PDF viewer, MicroPython, Flappy, Marble Orbit, the Proxmark3 client, Write, Files, and the store itself |
 | [client/](client/README.md) | The `store` program: CLI and UI, for the badge and the host |
 | [write/](write/README.md) | Write, the text editor: notes in rich text saved as markdown, code with highlighting; a system app in flash like the store |
 | [files/](files/README.md) | Files, the file browser the menu's Files tile starts; a system app in flash like the store |

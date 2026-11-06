@@ -4,7 +4,7 @@
 #
 #   sdapps/build.sh [gnuboy] [netsurf] [nmap] [imgview] [links] [nethack]
 #                   [doom] [sensorpanel] [nano] [calc] [hideous] [barbarious] [pdfview]
-#                   [ohminous]
+#                   [ohminous] [flashlight]
 #                   [micropython]
 #                                                                          default: all
 #
@@ -489,6 +489,18 @@ build_calc() {
 	ls -l "$d"
 }
 
+# The flashlight (flashlight/flashlight.c): drawn as the calculator is.
+build_flashlight() {
+	local d=$DEST/flashlight O=$HERE/../patches/buildroot/overlay-src
+	mkdir -p "$d"
+	flat 16384
+	"$CC" "${CFLAGS[@]}" -Wall -I"$O" -I"$HERE/../libwb" "$HERE/flashlight/flashlight.c" "${LDFLAT[@]}" -o "$d/flashlight"
+	zero_page "$d/flashlight.gdb"
+	rm -f "$d/flashlight.gdb"
+	cp "$HERE/flashlight/app.conf" "$d/"
+	ls -l "$d"
+}
+
 # HIDeous (hideous/hideous.c): saved texts typed on a computer through
 # usbd's keyboard, and its mouse; drawn as the calculator is.
 build_hideous() {
@@ -654,7 +666,7 @@ build_micropython() {
 	ls -l "$d"
 }
 
-for app in "${@:-gnuboy netsurf nmap imgview links nethack doom sensorpanel nano calc hideous barbarious pdfview ohminous micropython}"; do
+for app in "${@:-gnuboy netsurf nmap imgview links nethack doom sensorpanel nano calc flashlight hideous barbarious pdfview ohminous micropython}"; do
 	for a in $app; do
 		case $a in
 		gnuboy) build_gnuboy ;;
@@ -668,6 +680,7 @@ for app in "${@:-gnuboy netsurf nmap imgview links nethack doom sensorpanel nano
 		sensorpanel) build_sensorpanel ;;
 		nano) build_nano ;;
 		calc) build_calc ;;
+		flashlight) build_flashlight ;;
 		hideous) build_hideous ;;
 		barbarious) build_barbarious ;;
 		pdfview) build_pdfview ;;

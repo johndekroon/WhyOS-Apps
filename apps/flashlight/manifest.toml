@@ -1,0 +1,59 @@
+# The flashlight (WhyOS sdapps/flashlight), written for the badge.
+format = 1
+id = "flashlight"
+name = "Flashlight"
+version = "1.0.0"
+build = 1
+summary = "The whole screen as a light: white at full or half brightness, or red."
+description = """
+Three modes: white at 100%, white at 50% and red at 100%. The square,
+triangle and cross choose one and the arrow keys step through them. The
+mode you used last comes back the next time.
+
+For the first two seconds the screen stays at the badge's own brightness
+and shows the keys, so a dark room is not lit at once. Then the keys go
+and the whole screen is the light. The screen stays on until you close
+the app with Esc or the logo key, and the brightness goes back to your
+setting."""
+author = "WhyOS-Apps contributors"
+license = "MIT AND OFL-1.1 AND LGPL-2.1-or-later"
+license_file = "flashlight.txt"
+homepage = "https://github.com/johndekroon/WhyOS-Apps"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/flashlight/source"
+changelog = "The first version."
+
+type = "app"
+category = "utilities"
+tags = ["flashlight", "torch", "light"]
+install_location = "sd"
+
+[launch]
+exec = "flashlight"
+info = "the screen as a white or red light"
+icon = "sun"
+
+[requires]
+os_api = 1
+memory_kb = 300           # estimate: the 0.14 MB program; it draws in bands, no screen buffer
+features = ["display", "keyboard"]
+
+[[bundled]]
+name = "uClibc-ng"
+version = "1.0.57"
+license = "LGPL-2.1-or-later"
+source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
+license_file = "uClibc-ng.txt"
+
+[[bundled]]
+name = "JetBrains Mono (font)"
+version = "2.211"
+license = "OFL-1.1"
+source = "https://github.com/JetBrains/JetBrainsMono"
+license_file = "jetbrains-mono.txt"
+
+[[bundled]]
+name = "Space Grotesk (font)"
+version = "2.000"
+license = "OFL-1.1"
+source = "https://github.com/floriankarsten/space-grotesk"
+license_file = "space-grotesk.txt"
