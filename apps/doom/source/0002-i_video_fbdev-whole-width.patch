@@ -1,0 +1,111 @@
+From: John de Kroon
+Subject: [PATCH] i_video_fbdev: the whole width at 4:3, and less work per pixel
+
+On the 720x720 panel the integer scale gave 640x400 in the middle, with
+what was on the screen before around it. A 16-bit panel now gets its full
+width at the 4:3 DOOM was drawn for, on a black screen, unless -scaling
+asks otherwise. The palette becomes RGB565 when it changes, not per pixel,
+and a line that repeats is copied.
+---
+--- a/fbdoom/i_video_fbdev.c
++++ b/fbdoom/i_video_fbdev.c
+@@ -52,6 +52,12 @@
+ 
+ struct fb_var_screeninfo fb = {};
+ int fb_scaling = 1;
++
++/* On a 16-bit panel: its whole width at DOOM's 4:3, see fit_update(). */
++#define FIT_MAX_WIDTH 1024
++static uint16_t fit_palette[256];
++static uint16_t fit_x[FIT_MAX_WIDTH];
++static int fit_w, fit_h;
+ int usemouse = 0;
+ 
+ struct color {
+@@ -158,6 +164,56 @@
+     }
+ }
+ 
++static void fit_set_palette(void)
++{
++    int i;
++
++    for (i = 0; i < 256; i++)
++        fit_palette[i] = (colors[i].r >> (8 - fb.red.length)) << fb.red.offset |
++                         (colors[i].g >> (8 - fb.green.length)) << fb.green.offset |
++                         (colors[i].b >> (8 - fb.blue.length)) << fb.blue.offset;
++}
++
++/* The picture on a black screen, with no -scaling asked for. */
++static void fit_init(void)
++{
++    int x;
++
++    if (fb.bits_per_pixel != 16 || fb.xres > FIT_MAX_WIDTH || fb.xres * 3 / 4 > fb.yres)
++        return;
++    fit_w = fb.xres;
++    fit_h = fb.xres * 3 / 4;
++    for (x = 0; x < fit_w; x++)
++        fit_x[x] = x * SCREENWIDTH / fit_w;
++    fit_set_palette();
++    memset(I_VideoBuffer_FB, 0, fb.xres * fb.yres * 2);
++    lseek(fd_fb, 0, SEEK_SET);
++    write(fd_fb, I_VideoBuffer_FB, fb.xres * fb.yres * 2);
++    printf("I_InitGraphics: picture %d x %d\n", fit_w, fit_h);
++}
++
++/* One lookup per pixel of a line; a line that repeats is copied. */
++static void fit_update(void)
++{
++    uint16_t *out = (uint16_t *)I_VideoBuffer_FB;
++    int last = -1, x, y;
++
++    for (y = 0; y < fit_h; y++, out += fit_w) {
++        int src = y * SCREENHEIGHT / fit_h;
++        const byte *in = I_VideoBuffer + src * SCREENWIDTH;
++
++        if (src == last) {
++            memcpy(out, out - fit_w, fit_w * 2);
++            continue;
++        }
++        last = src;
++        for (x = 0; x < fit_w; x++)
++            out[x] = fit_palette[in[fit_x[x]]];
++    }
++    lseek(fd_fb, (fb.yres - fit_h) / 2 * fb.xres * 2, SEEK_SET);
++    write(fd_fb, I_VideoBuffer_FB, fit_w * fit_h * 2);
++}
++
+ void I_InitGraphics (void)
+ {
+     int i;
+@@ -199,6 +255,8 @@
+     /* Allocate screen to draw to */
+ 	I_VideoBuffer = (byte*)Z_Malloc (SCREENWIDTH * SCREENHEIGHT, PU_STATIC, NULL);  // For DOOM to draw on
+ 	I_VideoBuffer_FB = (byte*)malloc(fb.xres * fb.yres * (fb.bits_per_pixel/8));     // For a single write() syscall to fbdev
++	if (M_CheckParmWithArgs("-scaling", 1) <= 0)
++		fit_init();
+ 
+ 	screenvisible = true;
+ 
+@@ -406,6 +464,11 @@
+     int x_offset, y_offset, x_offset_end;
+     unsigned char *line_in, *line_out;
+ 
++    if (fit_w) {
++        fit_update();
++        return;
++    }
++
+     /* Offsets in case FB is bigger than DOOM */
+     /* 600 = fb heigt, 200 screenheight */
+     /* 600 = fb heigt, 200 screenheight */
+@@ -488,6 +551,8 @@
+         colors[i].g = gammatable[usegamma][*palette++];
+         colors[i].b = gammatable[usegamma][*palette++];
+     }
++    if (fit_w)
++        fit_set_palette();
+ 
+     /* Set new color map in kernel framebuffer driver */
+     //XXX FIXME ioctl(fd_fb, IOCTL_FB_PUTCMAP, colors);

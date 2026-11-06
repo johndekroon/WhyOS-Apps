@@ -1,0 +1,36 @@
+From: John de Kroon
+Subject: [PATCH] Saved games in the current directory, Backspace only deletes
+
+The configuration and saved games went to /mnt/.fdoom.tar/, a fixed path
+that an app may not reach: saving ended the game with an error. They now
+go to the current directory, which doom makes APP_DATA. Backspace quit the
+game at any moment, also while typing a save's name; it now reaches the
+game, and Quit Game and the logo key end it.
+---
+--- a/fbdoom/i_input_tty.c
++++ b/fbdoom/i_input_tty.c
+@@ -436,11 +436,6 @@
+     
+     while (kbd_read(&pressed, &key))
+     {
+-        if (key == 0x0E) {
+-            kbd_shutdown();
+-            I_Quit();
+-        }
+-
+         UpdateShiftStatus(pressed, key);
+ 
+         // process event
+--- a/fbdoom/m_config.c
++++ b/fbdoom/m_config.c
+@@ -2051,8 +2051,8 @@
+     char *homedir;
+     char *result;
+ 
+-    // frosted HACK - homedir = getenv("HOME");
+-    homedir = "/mnt";
++    /* the current directory, where doom starts us: APP_DATA */
++    return strdup("");
+ 
+     if (homedir != NULL)
+     {

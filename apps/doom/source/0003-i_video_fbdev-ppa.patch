@@ -1,0 +1,62 @@
+From: John de Kroon
+Subject: [PATCH] i_video_fbdev: the picture through /dev/ppa when it is there
+
+On WhyOS's 720 wide panel the PPA blows DOOM's picture up 2.25 times, so
+the game hands over 128 KB instead of drawing and writing 648 KB a frame.
+It falls back on fit_update()'s own drawing when the ioctl says no.
+---
+--- a/fbdoom/i_video_fbdev.c
++++ b/fbdoom/i_video_fbdev.c
+@@ -58,6 +58,17 @@
+ static uint16_t fit_palette[256];
+ static uint16_t fit_x[FIT_MAX_WIDTH];
+ static int fit_w, fit_h;
++
++/*
++ * /dev/ppa, WhyOS's picture scaler: DOOM's picture goes there as it is, a tenth of
++ * what the panel takes, and the engine blows it up. libwb/wbppa.h has this.
++ */
++struct ppa_scale {
++    uint32_t src, stride, w, h, x, y, q, qy;
++};
++#define PPA_SCALE 0x40205001u
++static int ppa_fd = -1;
++static uint16_t *ppa_picture;
+ int usemouse = 0;
+ 
+ struct color {
+@@ -190,6 +201,25 @@
+     lseek(fd_fb, 0, SEEK_SET);
+     write(fd_fb, I_VideoBuffer_FB, fb.xres * fb.yres * 2);
+     printf("I_InitGraphics: picture %d x %d\n", fit_w, fit_h);
++    /* 2.25 times across, at 720 wide, and 43/16 down: 4:3 to within 3 lines */
++    if (fit_w == SCREENWIDTH * 9 / 4) {
++        ppa_picture = malloc(SCREENWIDTH * SCREENHEIGHT * 2);
++        ppa_fd = ppa_picture ? open("/dev/ppa", O_RDONLY | O_CLOEXEC) : -1;
++    }
++}
++
++/* 0: on the panel. The screen off or no PPA: the CPU draws it. */
++static int ppa_update(void)
++{
++    struct ppa_scale s = { (uint32_t)ppa_picture, SCREENWIDTH, SCREENWIDTH, SCREENHEIGHT, 0,
++                           (fb.yres - SCREENHEIGHT * 43 / 16) / 2, 36, 43 };
++    int i;
++
++    if (ppa_fd < 0)
++        return -1;
++    for (i = 0; i < SCREENWIDTH * SCREENHEIGHT; i++)
++        ppa_picture[i] = fit_palette[I_VideoBuffer[i]];
++    return ioctl(ppa_fd, PPA_SCALE, &s);
+ }
+ 
+ /* One lookup per pixel of a line; a line that repeats is copied. */
+@@ -198,6 +228,8 @@
+     uint16_t *out = (uint16_t *)I_VideoBuffer_FB;
+     int last = -1, x, y;
+ 
++    if (!ppa_update())
++        return;
+     for (y = 0; y < fit_h; y++, out += fit_w) {
+         int src = y * SCREENHEIGHT / fit_h;
+         const byte *in = I_VideoBuffer + src * SCREENWIDTH;

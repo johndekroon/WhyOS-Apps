@@ -6,12 +6,10 @@
  * - Zone size: the largest of 4/3/2 MB that fits next to fbdoom's own
  *   image and screen buffer, from /proc/userpool's largest free block
  *   (kernel patch 0046); fbdoom is started once with it.
- * - The logo key: apprun ends us with SIGTERM. fbdoom must not get that
- *   (killed, it skipped its exit functions, and the menu started right
- *   after it hung the badge), so we type its own quit key into the VT it
- *   reads in K_MEDIUMRAW and wait for it; SIGTERM only if it is still
- *   running 2 s later. The keyboard mode and termios are restored
- *   whatever way it ended.
+ * - The logo key: apprun ends us with SIGTERM, and we end fbdoom. Keyboard
+ *   mode and termios are restored here, whatever way it ended.
+ * - Both this and fbdoom run in the sandbox on core 1, as every app does.
+ *   SANDBOX in app.conf limits the heap, above the zone and the screen buffer.
  * - Saved games go to APP_DATA (on the card), the directory fbdoom runs in.
  * - Exit status 3 when there is no room for its zone: the menu says the
  *   app did not start, and /tmp/app-doom.log says why.
@@ -66,13 +64,14 @@ static long pool_largest(void)
 }
 
 /* Zone size in MB: what fits next to fbdoom's ~0.8 MB image and ~1 MB
- * screen buffer; without /proc/userpool, probe with mmap. */
+ * screen buffer, its c1urun and what apprun's memory guard wants left over;
+ * without /proc/userpool, probe with mmap. */
 static int zone_mb(void)
 {
 	long largest = pool_largest();
 
 	if (largest >= 0) {
-		long mb = (largest - (1800L << 10)) >> 20;
+		long mb = (largest - (3000L << 10)) >> 20;
 
 		return mb > 4 ? 4 : mb < 2 ? 0 : (int)mb;
 	}
@@ -88,18 +87,8 @@ static int zone_mb(void)
 	return 0;
 }
 
-/* End DOOM the way its own Backspace does (0x0e down, 0x8e up). */
-static void quit_doom(int tty, int pid)
+static void quit_doom(int pid)
 {
-	static const char bs[2] = { 0x0e, (char)0x8e };
-
-	for (int i = 0; i < 2; i++)
-		ioctl(tty, TIOCSTI, &bs[i]);
-	for (int t = 0; t < 20; t++) {
-		if (waitpid(pid, 0, WNOHANG) == pid)
-			return;
-		usleep(100000);
-	}
 	kill(pid, SIGTERM);
 	waitpid(pid, 0, 0);
 }
@@ -137,7 +126,7 @@ int main(void)
 
 	pid = vfork();
 	if (pid == 0) {		/* exec resets our handlers to the default */
-		execv(argv[0], argv);
+		execv(prog, argv);
 		_exit(127);
 	}
 	while (pid > 0) {
@@ -146,7 +135,7 @@ int main(void)
 		if (r == pid)
 			break;
 		if (quit) {
-			quit_doom(tty, pid);
+			quit_doom(pid);
 			status = 0;
 			break;
 		}

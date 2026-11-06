@@ -85,18 +85,18 @@
    "author": "id Software (DOOM), maximevince (fbDOOM), badge port",
    "category": "action",
    "commands": [],
-   "details_sha256": "bc4ebdc595fafebd7b114e99050bcad1a5077aeafd3c15fe7c8b13e2606a23b5",
+   "details_sha256": "ebc4b0d080b9ed5c0163dd57a748fc2bd13bb0f2eb2fcbbe34f25e3628f802ba",
    "id": "doom",
    "install_location": "sd",
    "latest": {
-    "build": 1,
+    "build": 2,
     "package": {
-     "installed_size": 4787534,
-     "sha256": "bca984288c8797ebf0b88408e4b0c9af1714b09e31184c8b8ecc0447bbe05c6b",
-     "size": 2031633,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/doom-1.9.0.wpk"
+     "installed_size": 4813805,
+     "sha256": "93c7ea5e3ca35ca1c8275f6109c649a37acb0e3832dd0f40fc89028f55927755",
+     "size": 2040988,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/doom-1.9.1.wpk"
     },
-    "version": "1.9.0"
+    "version": "1.9.1"
    },
    "menu_icon": "games",
    "name": "DOOM",
@@ -119,7 +119,7 @@
    ],
    "terminal": false,
    "type": "game",
-   "updated": "2026-10-12"
+   "updated": "2026-11-06"
   },
   {
    "author": "WhyOS-Apps",
@@ -877,7 +877,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-11-06T10:41:31Z",
- "serial": 43,
+ "generated": "2026-11-06T10:59:20Z",
+ "serial": 44,
  "source": "whyos"
 }
