@@ -28,7 +28,7 @@
  ],
  "category": "tools",
  "cover": "screens/flashlight-cover.qoi",
- "description": "Three modes: white at 100%, white at 50% and red at 100%. The square,\ntriangle and cross choose one, the arrow keys step through them and the\ndiamond shows the help. The mode you used last comes back the next time.\n\nFor the first two seconds the screen stays at the badge's own brightness\nand shows the keys, so a dark room is not lit at once. Then the keys go\nand the whole screen is the light. The screen stays on until you close\nthe app with Esc or the logo key, and the brightness goes back to your\nsetting.",
+ "description": "Three modes: white at 100%, white at 50% and red at 100%. The square,\ntriangle and cross choose one, the arrow keys step through them and the\ndiamond shows the help. The mode you used last comes back the next time.\n\nFor the first two seconds the screen stays at the badge's own brightness\nand shows the keys in the bar at the bottom, so a dark room is not lit\nat once. Then the keys go and the whole screen is the light. The screen stays on until you close\nthe app with Esc or the logo key, and the brightness goes back to your\nsetting.",
  "format": 1,
  "homepage": "https://github.com/johndekroon/WhyOS-Apps",
  "icon": null,
@@ -67,6 +67,19 @@
  ],
  "type": "app",
  "versions": [
+  {
+   "build": 2,
+   "changelog": "The keys are in the hint bar at the start, the help shows whole, and white 100% is the panel's brightest.",
+   "package": {
+    "installed_size": 207803,
+    "sha256": "b9e55c32ba14fa33965706801d6359cba998d364ff1bf616787c7ee140f3b177",
+    "size": 89866,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flashlight-1.0.1.wpk"
+   },
+   "published": "2026-11-06T11:18:27Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/flashlight-1.0.1-source.tar.gz",
+   "version": "1.0.1"
+  },
   {
    "build": 1,
    "changelog": "The first version.",

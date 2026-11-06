@@ -8,8 +8,8 @@
  * the diamond opens the help, Esc closes. The mode is kept in APP_CONFIG/mode and comes back next time.
  *
  * For the first START_MS the backlight stays as the system has it, so a
- * dark room is not lit at once, and the screen shows the keys. After that
- * the keys go, the screen is one colour and the backlight goes to the mode's
+ * dark room is not lit at once, and the hint bar shows the keys. After that
+ * the bar goes, the screen is one colour and the backlight goes to the mode's
  * brightness. apprun puts the lights back when the app ends. While it runs
  * it keeps the screen on, as a key would (TOUCH_S), but it does not wake the
  * badge from standby.
@@ -46,16 +46,6 @@
 #define START_MS	2000		/* at the system's brightness, with the keys */
 #define TOUCH_S		5		/* how often the screen is kept on */
 
-/* the keys' panel */
-#define PANEL_X		120
-#define PANEL_W		(W - 2 * PANEL_X)
-#define PANEL_Y		196
-#define PANEL_PAD	32
-#define ROW_H		64
-#define ROWS_Y		(PANEL_Y + 64)
-#define ARROWS_Y	(ROWS_Y + 3 * ROW_H + 12)
-#define PANEL_H		(ARROWS_Y + 16 + PANEL_PAD - PANEL_Y)
-
 /* ---- keys (linux/input-event-codes.h) ----------------------------------- */
 
 #define KEY_ESC		1
@@ -67,14 +57,19 @@
 
 /* ---- the modes ---------------------------------------------------------- */
 
+/* The backlight's duty is no scale of light: about 80 is the brightest and
+ * above that it gets less bright again (home.c). 30 looks like less than half,
+ * which suits a light that should not dazzle. */
+#define BL_PEAK		80
+#define BL_HALF		30
+
 static const struct mode {
-	const char *keys, *name;
 	uint32_t color;
-	int percent;
+	int duty;
 } modes[] = {
-	{ "#1", "White 100%", 0xFFFFFF, 100 },
-	{ "#2", "White 50%", 0xFFFFFF, 50 },
-	{ "#3", "Red 100%", 0xFF0000, 100 },
+	{ 0xFFFFFF, BL_PEAK },
+	{ 0xFFFFFF, BL_HALF },
+	{ 0xFF0000, BL_PEAK },
 };
 
 #define N_MODES		(int)(sizeof(modes) / sizeof(modes[0]))
@@ -136,36 +131,18 @@ static void mode_save(void)
 /* ---- the light ---------------------------------------------------------- */
 
 #define BL_PATH		"/sys/class/backlight/backlight/brightness"
-#define BL_MAX_PATH	"/sys/class/backlight/backlight/max_brightness"
-#define BL_MAX		255		/* if the panel does not say */
 
 #ifdef FL_HOST
 static int bl_level = -1;		/* -1: as the system has it */
 
 static void light(void)
 {
-	bl_level = BL_MAX * modes[S.mode].percent / 100;
+	bl_level = modes[S.mode].duty;
 }
 #else
-static int bl_max(void)
-{
-	char b[16];
-	int fd = open(BL_MAX_PATH, O_RDONLY | O_CLOEXEC), n, max = 0;
-
-	if (fd < 0)
-		return BL_MAX;
-	n = (int)read(fd, b, sizeof(b) - 1);
-	close(fd);
-	if (n > 0) {
-		b[n] = 0;
-		max = atoi(b);
-	}
-	return max > 0 ? max : BL_MAX;
-}
-
 static void light(void)
 {
-	int v = bl_max() * modes[S.mode].percent / 100, n = 0, fd;
+	int v = modes[S.mode].duty, n = 0, fd;
 	char d[12], b[12];
 
 	do
@@ -200,12 +177,20 @@ static void out_rows(const uint16_t *rows, int y0, int y1)
 	memcpy(screen + y0 * W, rows, (size_t)(y1 - y0) * W * 2);
 #else
 	pwrite(fb_fd, rows, (size_t)(y1 - y0) * W * 2, (off_t)y0 * W * 2);
+	/* c1urun answers before it has copied the rows (sandbox/README.md), and
+	 * the next band goes in the same buffer: any other call waits for it */
+	lseek(fb_fd, 0, SEEK_CUR);
 #endif
 }
 
 static void paint(void *arg)
 {
-	static const struct hint close_hint[] = { { "Esc", "close", 1 } };
+	static const struct hint hints[] = {
+		{ "#1", "White 100%", 0 },
+		{ "#2", "White 50%", 0 },
+		{ "#3", "Red 100%", 0 },
+		{ "Esc", "close", 1 },
+	};
 	static const struct help_key help_keys[] = {
 		{ "#1", "White at full brightness" },
 		{ "#2", "White at half brightness" },
@@ -224,20 +209,8 @@ static void paint(void *arg)
 			   help_keys, sizeof(help_keys) / sizeof(help_keys[0]));
 		return;
 	}
-	if (!S.start)
-		return;
-	box_plain(PANEL_X, PANEL_Y, PANEL_W, PANEL_H, 0, WB_COLOR_SURFACE1);
-	eyebrow(PANEL_X + PANEL_PAD, PANEL_Y + PANEL_PAD, "FLASHLIGHT");
-	for (int i = 0; i < N_MODES; i++) {
-		int cy = ROWS_Y + i * ROW_H + ROW_H / 2, on = i == S.mode;
-		int x = keycap(PANEL_X + PANEL_PAD, cy, modes[i].keys);
-
-		text(&f_ui28b, x + 20, text_top(&f_ui28b, cy), modes[i].name,
-		     on ? WB_COLOR_CYAN : WB_COLOR_TEXT_HI, 0);
-	}
-	text(&f_ui16, PANEL_X + PANEL_PAD, ARROWS_Y, "The arrow keys step through them",
-	     WB_COLOR_TEXT_MID, 0);
-	hint_bar(close_hint, 1);
+	if (S.start)
+		hint_bar(hints, sizeof(hints) / sizeof(hints[0]));
 }
 
 static void present(void)
@@ -245,7 +218,7 @@ static void present(void)
 	wb_bands(paint, 0, band, BAND_H, out_rows);
 }
 
-/* the keys go, the light comes */
+/* the bar goes, the light comes */
 static void start_over(void)
 {
 	S.start = 0;

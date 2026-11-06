@@ -31,19 +31,19 @@ SHOTS = [
 # keys pressed -> mode, keys showing, backlight (-1: the system's)
 CASES = [
     ("", 0, 1, -1),
-    ("\\p", 0, 0, 255),
-    ("\\p\\2", 1, 0, 127),
-    ("\\p\\3", 2, 0, 255),
-    ("\\p\\3\\1", 0, 0, 255),
-    ("\\p\\r", 1, 0, 127),
-    ("\\p\\d\\d", 2, 0, 255),
-    ("\\p\\r\\r\\r", 0, 0, 255),
-    ("\\p\\l", 2, 0, 255),
-    ("\\p\\u\\u", 1, 0, 127),
-    ("\\p\\4\\5", 0, 0, 255),
+    ("\\p", 0, 0, 80),
+    ("\\p\\2", 1, 0, 30),
+    ("\\p\\3", 2, 0, 80),
+    ("\\p\\3\\1", 0, 0, 80),
+    ("\\p\\r", 1, 0, 30),
+    ("\\p\\d\\d", 2, 0, 80),
+    ("\\p\\r\\r\\r", 0, 0, 80),
+    ("\\p\\l", 2, 0, 80),
+    ("\\p\\u\\u", 1, 0, 30),
+    ("\\p\\4\\5", 0, 0, 80),
     # a mode chosen in the first two seconds: the colour at once, the light after
     ("\\3", 2, 1, -1),
-    ("\\3\\p", 2, 0, 255),
+    ("\\3\\p", 2, 0, 80),
 ]
 
 
@@ -98,16 +98,16 @@ def main():
     # the diamond opens the help; Esc and the diamond close it, other keys do nothing there
     conf = tempfile.mkdtemp(dir=tmp)
     ppm = os.path.join(tmp, "h.ppm")
-    assert run(exe, "\\p\\6", conf, ppm)[:3] == (0, 0, 255) and run.help == 1
+    assert run(exe, "\\p\\6", conf, ppm)[:3] == (0, 0, 80) and run.help == 1
     assert pixel(pixels(ppm), 360, 360) != WHITE
-    assert run(exe, "\\p\\6\\3\\r", conf)[:3] == (0, 0, 255) and run.help == 1
+    assert run(exe, "\\p\\6\\3\\r", conf)[:3] == (0, 0, 80) and run.help == 1
     got = run(exe, "\\p\\6\\e", conf, ppm)
     assert not got[3] and run.help == 0 and pixels(ppm) == bytes(WHITE) * (720 * 720)
     run(exe, "\\p\\6\\6", conf, ppm)
     assert run.help == 0 and pixels(ppm) == bytes(WHITE) * (720 * 720)
     assert not run(exe, "\\p\\6\\f\\e\\g", conf)[3] and run.help == 1
-    # opened in the first two seconds: the light still comes, the keys' panel is gone after
-    assert run(exe, "\\6\\p\\e", conf, ppm)[:3] == (0, 0, 255)
+    # opened in the first two seconds: the light still comes, the hint bar is gone after
+    assert run(exe, "\\6\\p\\e", conf, ppm)[:3] == (0, 0, 80)
     assert pixels(ppm) == bytes(WHITE) * (720 * 720)
     assert run(exe, "\\6\\e", conf)[:3] == (0, 1, -1)
 
@@ -115,7 +115,7 @@ def main():
     conf = tempfile.mkdtemp(dir=tmp)
     run(exe, "\\p\\3", conf)
     assert run(exe, "", conf)[:3] == (2, 1, -1)
-    assert run(exe, "\\p", conf)[:3] == (2, 0, 255)
+    assert run(exe, "\\p", conf)[:3] == (2, 0, 80)
     run(exe, "\\u", conf)
     assert run(exe, "", conf)[0] == 1
 
@@ -126,14 +126,14 @@ def main():
     assert run(exe, "", conf)[0] == 0
 
     # without a place to keep it, it still works
-    assert run(exe, "\\p\\2", os.path.join(tmp, "missing"))[:3] == (1, 0, 127)
+    assert run(exe, "\\p\\2", os.path.join(tmp, "missing"))[:3] == (1, 0, 30)
 
     # the keys show for the first two seconds, then the screen is one colour
     conf = tempfile.mkdtemp(dir=tmp)
     ppm = os.path.join(tmp, "s.ppm")
     run(exe, "", conf, ppm)
     d = pixels(ppm)
-    assert pixel(d, 10, 10) == WHITE and pixel(d, 360, 210) != WHITE
+    assert pixel(d, 10, 10) == WHITE and pixel(d, 360, 690) != WHITE
     run(exe, "\\p", conf, ppm)
     assert pixels(ppm) == bytes(WHITE) * (720 * 720)
     run(exe, "\\p\\3", conf, ppm)

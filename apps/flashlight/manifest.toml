@@ -2,8 +2,8 @@
 format = 1
 id = "flashlight"
 name = "Flashlight"
-version = "1.0.0"
-build = 1
+version = "1.0.1"
+build = 2
 summary = "The whole screen as a light: white at full or half brightness, or red."
 description = """
 Three modes: white at 100%, white at 50% and red at 100%. The square,
@@ -11,8 +11,8 @@ triangle and cross choose one, the arrow keys step through them and the
 diamond shows the help. The mode you used last comes back the next time.
 
 For the first two seconds the screen stays at the badge's own brightness
-and shows the keys, so a dark room is not lit at once. Then the keys go
-and the whole screen is the light. The screen stays on until you close
+and shows the keys in the bar at the bottom, so a dark room is not lit
+at once. Then the keys go and the whole screen is the light. The screen stays on until you close
 the app with Esc or the logo key, and the brightness goes back to your
 setting."""
 author = "WhyOS-Apps contributors"
@@ -20,7 +20,7 @@ license = "MIT AND OFL-1.1 AND LGPL-2.1-or-later"
 license_file = "flashlight.txt"
 homepage = "https://github.com/johndekroon/WhyOS-Apps"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/flashlight/source"
-changelog = "The first version."
+changelog = "The keys are in the hint bar at the start, the help shows whole, and white 100% is the panel's brightest."
 
 type = "app"
 category = "utilities"
