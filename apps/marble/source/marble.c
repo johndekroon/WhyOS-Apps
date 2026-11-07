@@ -1205,14 +1205,66 @@ static void disk_a(int cx, int cy, int r, uint32_t c, unsigned a)
 	}
 }
 
+/* box() without its glow and with any radius: libwb's box() keeps every
+ * corner at WB_SQUARE (4 px, the canvas's square look), which made the
+ * marble, the bumpers and every circle of the game a square. The game's
+ * shapes are drawn with this; the cards and pop-ups keep box(). */
+static void rbox(int x, int y, int w, int h, int r, uint32_t fill_c, unsigned fill_a, uint32_t border_c, int bw)
+{
+	int m0 = x + r + 1, m1 = x + w - r - 1, uni = r >= 2 * bw && m0 < m1;
+
+	for (int py = y - 1; py < y + h + 1; py++) {
+		unsigned fa = 0, ba = 0;
+
+		if (py < fb_y0 || py >= fb_y1)
+			continue;
+		if (uni) {	/* between the corner arcs a row is the same everywhere */
+			int d = rr_dist(x + w / 2, py, x, y, w, h, r);
+			unsigned ao = cover(d);
+
+			if (d < 8 + 16) {
+				fa = fill_a ? ao * fill_a / 255 : 0;
+				if (bw) {
+					unsigned ai = cover(rr_dist(x + w / 2, py, x + bw, y + bw, w - 2 * bw,
+								    h - 2 * bw, r > bw ? r - bw : 0));
+					ba = ao > ai ? ao - ai : 0;
+				}
+			}
+		}
+		for (int px = x - 1; px < x + w + 1; px++) {
+			int d;
+			unsigned ao;
+
+			if (uni && px == m0) {
+				put_span(m0, m1, py, fill_c, fa);
+				put_span(m0, m1, py, border_c, ba);
+				px = m1 - 1;
+				continue;
+			}
+			d = rr_dist(px, py, x, y, w, h, r);
+			if (d >= 8 + 16)
+				continue;
+			ao = cover(d);
+			if (fill_a)
+				put(px, py, fill_c, ao * fill_a / 255);
+			if (bw) {
+				unsigned ai = cover(rr_dist(px, py, x + bw, y + bw, w - 2 * bw, h - 2 * bw,
+							    r > bw ? r - bw : 0));
+				if (ao > ai)
+					put(px, py, border_c, ao - ai);
+			}
+		}
+	}
+}
+
 static void circle(int cx, int cy, int r, uint32_t c)
 {
-	box(cx - r, cy - r, 2 * r, 2 * r, r, c, 255, 0, 0, 0);
+	rbox(cx - r, cy - r, 2 * r, 2 * r, r, c, 255, 0, 0);
 }
 
 static void ring(int cx, int cy, int r, int bw, uint32_t c)
 {
-	box(cx - r, cy - r, 2 * r, 2 * r, r, 0, 0, c, bw, 0);
+	rbox(cx - r, cy - r, 2 * r, 2 * r, r, 0, 0, c, bw);
 }
 
 /* a four-pointed sparkle: the stars */
@@ -1376,9 +1428,9 @@ static void draw_cache_tile(int i)
 				fill(k, 0, 1, T, 0x6E4524);
 	} else if (i < CF_GATE) {		/* a button, up and down */
 		draw_floor(0);
-		box(6, 6, 28, 28, 6, C_GOLD_LO, 255, 0, 0, 0);
-		box(9, i == CF_BUTTON ? 7 : 10, 22, 22, 11, i == CF_BUTTON ? C_GOLD : C_GOLD_LO, 255,
-		    i == CF_BUTTON ? 0xFFF0A0 : C_GOLD, 2, 0);
+		rbox(6, 6, 28, 28, 6, C_GOLD_LO, 255, 0, 0);
+		rbox(9, i == CF_BUTTON ? 7 : 10, 22, 22, 11, i == CF_BUTTON ? C_GOLD : C_GOLD_LO, 255,
+		    i == CF_BUTTON ? 0xFFF0A0 : C_GOLD, 2);
 	} else if (i == CF_GATE) {
 		draw_floor(0);
 		fill(0, 4, T, 4, C_GATE);
@@ -1614,9 +1666,9 @@ static void draw_things(void)
 
 		ring(cx, cy, 30, 1, mix(C_MAGNET, w->floor, 90));
 		ring(cx, cy, 50, 1, mix(C_MAGNET, w->floor, 50));
-		box(cx - 15, cy - 15, 30, 30, 15, mix(C_MAGNET, w->floor, 110), 255, C_MAGNET, 2, 0);
-		box(cx - 9, cy - 6, 18, 15, 8, C_BUMPER, 255, 0, 0, 0);	/* a horseshoe */
-		box(cx - 4, cy - 6, 8, 10, 4, mix(C_MAGNET, w->floor, 110), 255, 0, 0, 0);
+		rbox(cx - 15, cy - 15, 30, 30, 15, mix(C_MAGNET, w->floor, 110), 255, C_MAGNET, 2);
+		rbox(cx - 9, cy - 6, 18, 15, 8, C_BUMPER, 255, 0, 0);	/* a horseshoe */
+		rbox(cx - 4, cy - 6, 8, 10, 4, mix(C_MAGNET, w->floor, 110), 255, 0, 0);
 		fill(cx - 9, cy - 9, 5, 9, C_BUMPER);
 		fill(cx + 4, cy - 9, 5, 9, C_BUMPER);
 		fill(cx - 9, cy - 10, 5, 4, 0xE6E8EE);
@@ -1645,8 +1697,8 @@ static void draw_things(void)
 	for (int i = 0; i < L.n_block; i++) {
 		int x = L.block[i].x / FP, y = L.block[i].y / FP;
 
-		box(x + 1, y + 3, T - 2, T - 2, 6, 0x000000, 90, 0, 0, 0);
-		box(x + 1, y + 1, T - 2, T - 4, 6, w->wall, 255, w->wall_hi, 2, 0);
+		rbox(x + 1, y + 3, T - 2, T - 2, 6, 0x000000, 90, 0, 0);
+		rbox(x + 1, y + 1, T - 2, T - 4, 6, w->wall, 255, w->wall_hi, 2);
 		fill(x + 8, y + 12, T - 16, 2, w->wall_lo);
 		fill(x + 8, y + 24, T - 16, 2, w->wall_lo);
 	}
@@ -1680,8 +1732,7 @@ static void draw_marble(void)
 	if (G.mode != FALL)
 		disk_a(x + 3 + up / 3, y + 4 + up / 2, r, w->shadow, up ? 70 : 110);
 	y -= up;
-	box(x - r, y - r, 2 * r, 2 * r, r, G.mode == FALL ? mix(w->ball, 0, 160) : w->ball, 255, w->ball_rim, 2,
-	    0);
+	rbox(x - r, y - r, 2 * r, 2 * r, r, G.mode == FALL ? mix(w->ball, 0, 160) : w->ball, 255, w->ball_rim, 2);
 	if (r > 4) {
 		circle(x - r / 3, y - r / 3, r / 3, w->ball_hi);
 		circle(x - r / 3 - 1, y - r / 3 - 1, r / 8 + 1, 0xFFFFFF);
@@ -1763,8 +1814,8 @@ static void hud(void)
 		sparkle(x - 10, cy, 10, L.star[i].got ? C_STAR : WB_COLOR_LINE);
 	x -= 14;
 	for (int i = LIVES - 1; i >= 0; i--, x -= 22)
-		box(x - 18, cy - 8, 16, 16, 8, i < G.lives ? w->ball : WB_COLOR_SURFACE2, 255,
-		    i < G.lives ? w->ball_rim : WB_COLOR_LINE, 1, 0);
+		rbox(x - 18, cy - 8, 16, 16, 8, i < G.lives ? w->ball : WB_COLOR_SURFACE2, 255,
+		    i < G.lives ? w->ball_rim : WB_COLOR_LINE, 1);
 }
 
 /*
