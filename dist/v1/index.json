@@ -396,18 +396,18 @@
    "author": "WhyOS-Apps contributors",
    "category": "puzzle",
    "commands": [],
-   "details_sha256": "fcb415563aec7d822a41b5dd62773fe9e1e08294899ba1dbc4d6fcec896f6fed",
+   "details_sha256": "40cce70e44a64f9c62641a23ce1a42ce9403d3647bd8c0275c90aa3e5e4db35e",
    "id": "marble",
    "install_location": "sd",
    "latest": {
-    "build": 3,
+    "build": 4,
     "package": {
-     "installed_size": 359331,
-     "sha256": "4d1d62026e57099282db0a52bddd6941b1024e1fb5305a78e835b374e7d4a2cd",
-     "size": 160595,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/marble-1.1.1.wpk"
+     "installed_size": 359959,
+     "sha256": "c914d2112c4517760f5de9ce7a706e9a32b6648e4a2bb55b90774a1405c3d57a",
+     "size": 160983,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/marble-1.1.2.wpk"
     },
-    "version": "1.1.1"
+    "version": "1.1.2"
    },
    "menu_icon": "games",
    "name": "Marble Orbit",
@@ -429,7 +429,7 @@
    ],
    "terminal": false,
    "type": "game",
-   "updated": "2026-10-28"
+   "updated": "2026-11-07"
   },
   {
    "author": "Damien P. George and the MicroPython contributors, badge port",
@@ -877,7 +877,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-11-06T14:16:26Z",
- "serial": 47,
+ "generated": "2026-11-07T17:27:00Z",
+ "serial": 48,
  "source": "whyos"
 }
