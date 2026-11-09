@@ -85,10 +85,10 @@ static void wos_line(const struct wb_font *f, int x, int w, int cy, const char *
 	int dots = text_w(f, "\xe2\x80\xa6", 0);
 	char vis[256];
 
-	while (a < cur && wos_span_w(f, s, a, b) > w - dots)
-		a++;
+	while (a < cur && wos_span_w(f, s, a, b) > w - dots)	/* whole characters */
+		a = wos_next_char(s, a);
 	while (b > cur && wos_span_w(f, s, a, b) > w - dots)
-		b--;
+		b = wos_prev_char(s, b);
 	memcpy(vis, s + a, (size_t)(b - a < 255 ? b - a : 255));
 	vis[b - a < 255 ? b - a : 255] = 0;
 	tx = right ? x + w - text_w(f, vis, 0) : x;

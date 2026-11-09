@@ -118,3 +118,24 @@ whyos.run("Notes", home)
     app.press("Enter")
     assert app.screen["text"] == "one\ntwo"
     app.check()
+
+
+def test_rows_that_are_not_text_and_many_screens_with_actions(tmp_path):
+    script = tmp_path / "rows.py"
+    script.write_text('''import whyos
+def detail(i):
+    d = whyos.List(title="Detail", rows=["one"])
+    d.action(whyos.MAIN, "go", "Go", lambda: whyos.log("go"))
+    d.action(whyos.SECOND, "back", "Back", whyos.pop)
+    whyos.push(d)
+home = whyos.List(rows=[("Temp", 21), ("Hum", 41.5, None), 7], choose=detail)
+whyos.run("Rows", home)
+''')
+    app = PyApp(str(script), "rows", tmp=tmp_path)
+    s = app.screen
+    assert [(r["label"], r.get("value")) for r in s["rows"]] == [("Temp", "21"), ("Hum", "41.5"), ("7", None)]
+    for i in range(70):                     # 140 actions made in all: no table runs out
+        app.press("Enter", "✕")
+    app.press("Enter", "▲")
+    assert app.screen["title"] == "Detail" and app.screen["log"] == ["go"]
+    assert "Error" not in app.report["stderr"], app.report["stderr"]

@@ -70,6 +70,25 @@ static char *wos_add_int(char *d, long v, int size)
 	}
 }
 
+/* the byte where the UTF-8 character before i starts, and after i */
+static int wos_prev_char(const char *s, int i)
+{
+	if (i <= 0)
+		return 0;
+	while (--i > 0 && ((unsigned char)s[i] & 0xc0) == 0x80)
+		;
+	return i;
+}
+
+static int wos_next_char(const char *s, int i)
+{
+	if (!s[i])
+		return i;
+	while (((unsigned char)s[++i] & 0xc0) == 0x80)
+		;
+	return i;
+}
+
 /* the number at the start of s, or def when there is none */
 static long wos_int(const char *s, long def)
 {

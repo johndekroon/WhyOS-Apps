@@ -109,7 +109,7 @@
      "assets": [],
      "executable": "calc",
      "external_only": true,
-     "revision": 7,
+     "revision": 8,
      "targets": [
       "why2025-whyos"
      ],
@@ -130,7 +130,7 @@
    "license_type": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
    "name": "Calculator",
    "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
-   "version": "1.3.0",
+   "version": "1.3.1",
    "whyos": {
     "bundled": [
      {
@@ -156,7 +156,7 @@
      }
     ],
     "category": "utilities",
-    "changelog": "Built on the WhyOS SDK: the drawn keypad is gone, the line and its result sit under the roll of earlier sums, the angle unit is kept, and the circle, clover and diamond work as in every app.",
+    "changelog": "The SDK's fixes of WhyOS 59c4625: Left, Right and Backspace move and erase by character.",
     "description": "Type a sum on the keyboard; its result shows as you type, and Enter (or =)\nworks it out and puts it on the roll above. Up and Down bring earlier sums\nback to change them. Starting with + * / ^ % or ! goes on from the last\nanswer, and an x after a number means times.\n\nIt knows + - * / ^, brackets, n% (n/100), n! and mod; pi, e and ans\n(the last answer); sqrt, cbrt, abs, exp, ln, log, log2, sin, cos, tan,\nasin, acos, atan, sinh, cosh, tanh, round, floor and ceil. 2pi and\n3(4+5) multiply. Numbers can be written as 0xff, 0b1010 or 1.5e3, and a\nwhole-number answer also shows in hexadecimal and binary.\n\nAngles are in degrees; Tab switches to radians, as the setting (the clover\nkey) does, and the choice is kept. The circle key shows the sums worked\nout, the diamond the keys. Esc clears the line, and on an empty line\ncloses the calculator, as the logo key does.",
     "format": 2,
     "id": "calc",
@@ -165,10 +165,10 @@
      "info": "sums, functions, hex and binary"
     },
     "package": {
-     "installed_size": 406515,
-     "sha256": "f9d04dec80957e7f717617790bc28b2d69acc32978df5354cbeb6d4c292c3a10",
-     "size": 191095,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.3.0.wpk"
+     "installed_size": 414083,
+     "sha256": "9378c4362e5528b233fdaf8087d66e5c8b30bb2e4b3a9983c5f27b8699181c2e",
+     "size": 195842,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.3.1.wpk"
     },
     "requires": {
      "features": [
@@ -497,7 +497,7 @@
      "assets": [],
      "executable": "flashlight",
      "external_only": true,
-     "revision": 5,
+     "revision": 6,
      "targets": [
       "why2025-whyos"
      ],
@@ -518,7 +518,7 @@
    "license_type": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
    "name": "Flashlight",
    "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
-   "version": "1.1.0",
+   "version": "1.1.1",
    "whyos": {
     "bundled": [
      {
@@ -544,7 +544,7 @@
      }
     ],
     "category": "utilities",
-    "changelog": "Built on the WhyOS SDK: the circle and clover open the log and settings screens as in every app, and the help lists the keys from the same table as the key bar.",
+    "changelog": "The SDK's fixes of WhyOS 59c4625: standby in the first two seconds no longer keeps the badge busy, and the help always lists Esc and the logo key.",
     "description": "Three modes: white at 100%, white at 50% and red at 100%. The square,\ntriangle and cross choose one, the arrow keys step through them and the\ndiamond shows the help. The mode you used last comes back the next time.\n\nFor the first two seconds the screen stays at the badge's own brightness\nand shows the keys in the bar at the bottom, so a dark room is not lit\nat once. Then the keys go and the whole screen is the light. The screen stays on until you close\nthe app with Esc or the logo key, and the brightness goes back to your\nsetting.",
     "format": 2,
     "id": "flashlight",
@@ -554,10 +554,10 @@
      "statusbar": "hidden"
     },
     "package": {
-     "installed_size": 345223,
-     "sha256": "3b0bd17df7c2b42f2e97cb3643e01696054fae088ae2e1053538d8dc314c2ed1",
-     "size": 152625,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flashlight-1.1.0.wpk"
+     "installed_size": 352795,
+     "sha256": "69a276044c8dadb8f1d51770372d58d7d4dd9a3bb55485326933f7c5c88fc091",
+     "size": 157031,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flashlight-1.1.1.wpk"
     },
     "requires": {
      "features": [
@@ -1140,7 +1140,7 @@
      "assets": [],
      "executable": "start",
      "external_only": true,
-     "revision": 4,
+     "revision": 5,
      "targets": [
       "why2025-whyos"
      ],
@@ -1161,7 +1161,7 @@
    "license_type": "MIT AND (Apache-2.0 OR GPL-2.0-or-later) AND BSD-3-Clause AND Zlib AND OFL-1.1 AND LGPL-2.1-or-later",
    "name": "MicroPython",
    "repository_url": "https://micropython.org",
-   "version": "1.29.3",
+   "version": "1.29.4",
    "whyos": {
     "bundled": [
      {
@@ -1169,7 +1169,7 @@
       "license_file": "whyos-sdk.txt",
       "name": "WhyOS SDK and libwb (the module whyos)",
       "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/micropython/source/sdk",
-      "version": "392b2e7"
+      "version": "59c4625"
      },
      {
       "license": "OFL-1.1",
@@ -1236,7 +1236,7 @@
      }
     ],
     "category": "development",
-    "changelog": "The module whyos: the WhyOS SDK in Python, for scripts with the badge's own screens (sdk/python/README.md in WhyOS). A script that asks for more memory than the heap has fails with MemoryError instead of ending MicroPython.",
+    "changelog": "The module whyos (the WhyOS SDK, 59c4625): forms, an editor, dialogs and a running action besides lists, entry lines and one colour; rows that are not text show as text; actions are no longer counted across screens. A script that asks for more memory than the heap has fails with MemoryError instead of ending MicroPython.",
     "commands": [
      {
       "exec": "start",
@@ -1260,10 +1260,10 @@
      "terminal": "close"
     },
     "package": {
-     "installed_size": 1235020,
-     "sha256": "c7f61fdb42a506e36d193f0e6388a2d3b07912aea8518452a4715554e93ec1aa",
-     "size": 661118,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/micropython-1.29.3.wpk"
+     "installed_size": 1236068,
+     "sha256": "e8052031c011678cd8429966b2dcf31626a79e927f1a9db7ffc5511c00e057fc",
+     "size": 661900,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/micropython-1.29.4.wpk"
     },
     "permissions": [
      "system"
@@ -2301,7 +2301,7 @@
      "assets": [],
      "executable": "sensorpanel",
      "external_only": true,
-     "revision": 6,
+     "revision": 7,
      "targets": [
       "why2025-whyos"
      ],
@@ -2322,7 +2322,7 @@
    "license_type": "GPL-2.0-only AND MIT AND OFL-1.1 AND LGPL-2.1-or-later",
    "name": "Sensor panel",
    "repository_url": "https://github.com/mrbreaker/why2025-linux",
-   "version": "1.2.1",
+   "version": "1.2.2",
    "whyos": {
     "bundled": [
      {
@@ -2337,7 +2337,7 @@
       "license_file": "whyos-sdk.txt",
       "name": "WhyOS SDK and libwb (the screens' drawing library)",
       "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/sensorpanel/source/sdk",
-      "version": "1ed3f59"
+      "version": "59c4625"
      },
      {
       "license": "OFL-1.1",
@@ -2355,7 +2355,7 @@
      }
     ],
     "category": "sensors",
-    "changelog": "Its help opens and closes at once: the readings no longer redraw under it. It says it reads about once a second, as it does.",
+    "changelog": "The SDK's fixes of WhyOS 59c4625: the help always lists Esc and the logo key.",
     "description": "Shows the BME680's temperature, humidity and pressure and the BMI270's\nacceleration on all three axes, about once a second (the BME680 takes 0.6 s for its three values), with a graph\nof the last 20 temperatures. The BME680 sits on the board, so it reads\nwarmer than the room.\n\nThe diamond key shows the help, the circle and clover the log and\nsettings screens, as in every app; Esc or the logo key closes it.",
     "format": 2,
     "id": "sensorpanel",
@@ -2364,10 +2364,10 @@
      "info": "temperature, humidity, motion"
     },
     "package": {
-     "installed_size": 373544,
-     "sha256": "17fceedc560505f29ffd3a0cbbc65d1964126e758644f1d80873000240aff986",
-     "size": 163754,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/sensorpanel-1.2.1.wpk"
+     "installed_size": 374164,
+     "sha256": "51313af680e4f5ccca2f53e2ebd3a06469102ad17389a6e345fb0b839055d85b",
+     "size": 163970,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/sensorpanel-1.2.2.wpk"
     },
     "requires": {
      "features": [

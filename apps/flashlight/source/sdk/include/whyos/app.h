@@ -26,6 +26,8 @@ typedef struct wos_action {
 	int arg;
 } wos_action;
 
+struct wos_setting;
+
 /* A list's row, as row() fills it in (the design's list row, 6.5). */
 enum { WOS_ROW_OPEN, WOS_ROW_PLAIN, WOS_ROW_SWITCH, WOS_ROW_INFO };
 
@@ -37,7 +39,7 @@ typedef struct wos_row {
 } wos_row;
 
 /* the kinds of ready-made screen */
-enum { WOS_COLOUR = 1, WOS_ENTRY, WOS_LIST, WOS_CANVAS, WOS_LOGVIEW };
+enum { WOS_COLOUR = 1, WOS_ENTRY, WOS_LIST, WOS_CANVAS, WOS_LOGVIEW, WOS_EDITOR };
 
 typedef struct wos_screen {
 	int kind;
@@ -68,11 +70,23 @@ typedef struct wos_screen {
 	void (*choose)(int i);	/* Enter on a row */
 	int (*adjust)(int i, int step);	/* left and right on a row: 1 if it did */
 	const wos_action *menu;	/* the square key's pop-up: fn gets the row */
+	const struct wos_setting *fields;	/* a form: these rows, kept as settings are */
+
+	/* WOS_EDITOR: text over several lines, edited in place in the app's
+	 * buffer (max bytes with its 0); a change marks the screen dirty */
+	char *text;
+	int max;
 
 	/* WOS_CANVAS: the app draws (libwb) in the content area */
 	void (*paint)(int x, int y, int w, int h);
 	int (*key)(int code, int ch);	/* 1: it used the key */
+	void (*release)(int code);	/* a key let go (a held key: a mouse button, a fast move) */
 	int scene;		/* the frontpanel's figures behind it */
+
+	int dirty;		/* unsaved work: Esc asks "Discard changes?" first (6.7) */
+	const char *busy;	/* an action running ("Typing"): a progress pop-up, Esc aborts it */
+	int progress;		/* of busy, 0..1000; -1: no bar */
+	void (*abort)(void);	/* Esc while busy (6.7 step 1); busy goes when the app clears it */
 
 	/* the SDK's own */
 	int focus, scroll;
@@ -80,7 +94,7 @@ typedef struct wos_screen {
 } wos_screen;
 
 /* A setting the clover's screen shows and APP_CONFIG/settings keeps. */
-enum { WOS_SWITCH = 1, WOS_CHOICE, WOS_SLIDER };
+enum { WOS_SWITCH = 1, WOS_CHOICE, WOS_SLIDER, WOS_TEXT };
 
 typedef struct wos_setting {
 	const char *key, *label, *sub;
@@ -105,6 +119,11 @@ static int wos_run(const wos_app *app, wos_screen *first);
 static void wos_push(wos_screen *s);
 static void wos_pop(void);
 static void wos_quit(void);
+static void wos_ask(const char *title, const char *body, const char *choices, int safe, int danger,
+		    void (*done)(int choice));
+static void wos_ask_text(const char *title, const char *explain, const char *text,
+			 const char *(*done)(const char *text));
+static void wos_message(const char *text);
 
 /* ---- the SDK's state ------------------------------------------------------ */
 
@@ -115,7 +134,7 @@ static void wos_quit(void);
 #define WOS_BAND_H	40
 #define WOS_POP_ITEMS	24
 
-enum { WOS_POP_NONE, WOS_POP_HELP, WOS_POP_CHOICE, WOS_POP_MENU };
+enum { WOS_POP_NONE, WOS_POP_HELP, WOS_POP_CHOICE, WOS_POP_MENU, WOS_POP_ASK, WOS_POP_TEXT };
 
 static struct {
 	const wos_app *app;
@@ -136,6 +155,19 @@ static struct {
 	char result[WOS_RES];
 	struct { char line[WOS_LINE + 1], res[WOS_RES]; } hist[WOS_HIST];
 	int n_hist;
+	/* a question (WOS_POP_ASK) or a text being typed (WOS_POP_TEXT) */
+	char ask_title[64], ask_body[160];
+	int ask_danger;
+	void (*ask_done)(int choice);
+	char text[WOS_LINE + 1];
+	int text_len, text_cur;
+	const char *text_err;
+	const char *(*text_done)(const char *text);
+	/* WOS_EDITOR: the cursor (bytes in) and the first line shown */
+	int ed_cur, ed_top;
+	/* a short message over the key bar */
+	char msg[64];
+	long msg_until;
 	/* the test channel (test.h) */
 	char test_dir[128];
 } wos;
@@ -159,8 +191,19 @@ static int wos_n_settings(void)
 	return n;
 }
 
+/* the rows of the form on top: the app's settings on the clover's screen */
+static const wos_setting *wos_fields(void)
+{
+	return wos.stack[wos.depth - 1]->fields;
+}
+
 static const char *wos_schema_default(const char *key)
 {
+	/* the forms on the stack, then the app's settings */
+	for (int d = wos.depth - 1; d >= 0; d--)
+		for (const wos_setting *f = wos.stack[d]->fields; f && f->key; f++)
+			if (!strcmp(f->key, key))
+				return f->def;
 	for (int i = 0; i < wos_n_settings(); i++)
 		if (!strcmp(wos.app->settings[i].key, key))
 			return wos.app->settings[i].def;
@@ -185,6 +228,8 @@ static int wos_choice(const char *choices, int i, char *v, int vn, char *l, int 
 		char item[WOS_VAL_LEN * 2];
 
 		wos_copy(item, p, len + 1 < (int)sizeof(item) ? len + 1 : (int)sizeof(item));
+		if (eq && eq - p >= (int)sizeof(item) - 1)	/* a value too long: no label of its own */
+			eq = 0;
 		if (eq) {
 			item[eq - p] = 0;
 			wos_copy(v, item, vn);
@@ -212,7 +257,7 @@ static const char *wos_choice_label(const wos_setting *s, char *l, int ln)
 static void wos_settings_row(int i, wos_row *r)
 {
 	static char value[WOS_VAL_LEN];
-	const wos_setting *s = &wos.app->settings[i];
+	const wos_setting *s = &wos_fields()[i];
 
 	r->label = s->label;
 	r->sub = s->sub;
@@ -221,6 +266,8 @@ static void wos_settings_row(int i, wos_row *r)
 		r->on = wos_get_int(s->key, 0) != 0;
 	} else if (s->kind == WOS_CHOICE) {
 		r->value = wos_choice_label(s, value, sizeof(value));
+	} else if (s->kind == WOS_TEXT) {
+		r->value = wos_copy(value, wos_get(s->key, 0), sizeof(value));
 	} else {
 		r->kind = WOS_ROW_PLAIN;
 		r->value = wos_copy(value, wos_get(s->key, 0), sizeof(value));
@@ -228,12 +275,29 @@ static void wos_settings_row(int i, wos_row *r)
 }
 
 static void wos_open_choice(int i);
+static int wos_text_setting;
+
+/* a text setting typed in the text pop-up: kept on Enter */
+static const char *wos_text_set(const char *text)
+{
+	const wos_setting *s = &wos_fields()[wos_text_setting];
+
+	if (strchr(text, '\n') || (int)strlen(text) >= WOS_VAL_LEN)
+		return "Too long";
+	wos_set(s->key, text);
+	if (s->changed)
+		s->changed();
+	return 0;
+}
 
 static void wos_settings_open(int i)
 {
-	const wos_setting *s = &wos.app->settings[i];
+	const wos_setting *s = &wos_fields()[i];
 
-	if (s->kind == WOS_SWITCH) {
+	if (s->kind == WOS_TEXT) {
+		wos_text_setting = i;
+		wos_ask_text(s->label, s->sub, wos_get(s->key, 0), wos_text_set);
+	} else if (s->kind == WOS_SWITCH) {
 		wos_set(s->key, wos_get_int(s->key, 0) ? "0" : "1");
 		if (s->changed)
 			s->changed();
@@ -244,7 +308,7 @@ static void wos_settings_open(int i)
 
 static int wos_settings_adjust(int i, int step)
 {
-	const wos_setting *s = &wos.app->settings[i];
+	const wos_setting *s = &wos_fields()[i];
 	long v;
 
 	if (s->kind != WOS_SLIDER)
@@ -259,7 +323,7 @@ static int wos_settings_adjust(int i, int step)
 /* a choice's pop-up list, the present one ticked and focused */
 static void wos_open_choice(int i)
 {
-	const wos_setting *s = &wos.app->settings[i];
+	const wos_setting *s = &wos_fields()[i];
 	const char *now = wos_get(s->key, 0);
 	char v[WOS_VAL_LEN];
 	static char labels[WOS_POP_ITEMS][48];
@@ -281,7 +345,7 @@ static void wos_open_choice(int i)
 
 static void wos_pick_choice(void)
 {
-	const wos_setting *s = &wos.app->settings[wos.pop_setting];
+	const wos_setting *s = &wos_fields()[wos.pop_setting];
 	char v[WOS_VAL_LEN], l[48];
 
 	if (wos_choice(s->choices, wos.pop_focus, v, sizeof(v), l, sizeof(l))) {
@@ -298,6 +362,16 @@ static const char *wos_title(const wos_screen *s)
 	return s->title ? s->title : wos.app->name;
 }
 
+/* s in upper case into buf: an eyebrow */
+static const char *wos_upper(const char *s, char *buf, int size)
+{
+	wos_copy(buf, s, size);
+	for (char *p = buf; *p; p++)
+		if (*p >= 'a' && *p <= 'z')
+			*p = (char)(*p - 32);
+	return buf;
+}
+
 static const char *wos_eyebrow(const wos_screen *s, char *buf, int size)
 {
 	if (s->eyebrow)
@@ -305,10 +379,7 @@ static const char *wos_eyebrow(const wos_screen *s, char *buf, int size)
 	if (s == wos.stack[0])
 		return "APP";
 	/* the app's name, upper case, and a chevron: where the screen lies */
-	wos_copy(buf, wos.app->name, size - 4);
-	for (char *p = buf; *p; p++)
-		if (*p >= 'a' && *p <= 'z')
-			*p = (char)(*p - 32);
+	wos_upper(wos.app->name, buf, size - 4);
 	return wos_add(buf, " \xe2\x80\xba", size);
 }
 
@@ -321,6 +392,8 @@ static int wos_esc_clears(const wos_screen *s)
 /* Esc's word on the screen on top (6.8) */
 static const char *wos_esc_word(const wos_screen *s)
 {
+	if (s->busy)
+		return "cancel";
 	if (wos_esc_clears(s))
 		return "clear";
 	if (s->esc)
@@ -358,8 +431,8 @@ static int wos_bar_items(const wos_screen *s, struct hint *hs, int max)
 
 	if (en && en->word)
 		hs[n++] = (struct hint){ "Enter", en->word, 0 };
-	else if (s->kind == WOS_LIST && (s->choose || s == &wos_settings_screen) && s->n)
-		hs[n++] = (struct hint){ "Enter", s == &wos_settings_screen ? "change" : "open", 0 };
+	else if (s->kind == WOS_LIST && s->n && (s->choose || s->fields))
+		hs[n++] = (struct hint){ "Enter", s->fields ? "change" : "open", 0 };
 	else if (s->kind == WOS_ENTRY)
 		hs[n++] = (struct hint){ "Enter", "enter", 0 };
 	if (s->menu && s->n && n < max)
@@ -380,36 +453,38 @@ static int wos_help_keys(const wos_screen *s, struct help_key *k, int max)
 {
 	static char esc[64];
 	const wos_action *en = wos_enter_action(s);
-	int n = 0;
+	int n = 0, room = max - 5;	/* Esc, the circle, clover, diamond and logo always fit */
 
 	if (en && en->help)
 		k[n++] = (struct help_key){ "Enter", en->help };
-	else if (s->kind == WOS_LIST && s == &wos_settings_screen && s->n)
+	else if (s->kind == WOS_LIST && s->fields && s->n)
 		k[n++] = (struct help_key){ "Enter", "Change the setting" };
 	else if (s->kind == WOS_LIST && s->choose && s->n)
 		k[n++] = (struct help_key){ "Enter", "Open the row" };
 	if (s->menu && s->n)
 		k[n++] = (struct help_key){ "#1", "Options for the row" };
-	for (const wos_action *a = s->actions; a && a->key && n < max; a++)
+	/* the app's actions, then the screen's own keys, as far as they fit */
+	for (const wos_action *a = s->actions; a && a->key && n < room; a++)
 		if (a->help && a->key != WOS_KEY_ENTER)
 			k[n++] = (struct help_key){ wos_key_cap(a->key), a->help };
-	if (s->kind == WOS_LIST && s->n > 1 && n < max)
+	if (s->kind == WOS_LIST && s->n > 1 && n < room)
 		k[n++] = (struct help_key){ wos_key_cap(WOS_KEY_UPDOWN), "Move the focus" };
-	if (s->kind == WOS_LOGVIEW && n < max)
+	if (s->kind == WOS_LOGVIEW && n < room)
 		k[n++] = (struct help_key){ wos_key_cap(WOS_KEY_UPDOWN), "Scroll" };
-	if (s->kind == WOS_ENTRY && n + 3 < max) {
+	if (s->kind == WOS_EDITOR && n + 2 <= room) {
+		k[n++] = (struct help_key){ wos_key_cap(WOS_KEY_ARROWS), "Move the cursor (with Fn: to a line's end)" };
+		k[n++] = (struct help_key){ "Enter", "A new line" };
+	}
+	if (s->kind == WOS_ENTRY && n + 3 <= room) {
 		k[n++] = (struct help_key){ wos_key_cap(WOS_KEY_UPDOWN), "Bring back earlier lines" };
 		k[n++] = (struct help_key){ wos_key_cap(WOS_KEY_LEFTRIGHT), "Move the cursor (with Fn: to an end)" };
 		k[n++] = (struct help_key){ "Backspace", "Erase before the cursor" };
 	}
-	if (n < max)
-		k[n++] = (struct help_key){ "Esc", wos_esc_help(s, esc, sizeof(esc)) };
-	if (n + 4 <= max) {
-		k[n++] = (struct help_key){ "#4", "The log" };
-		k[n++] = (struct help_key){ "#5", "Settings" };
-		k[n++] = (struct help_key){ "#6", "This help" };
-		k[n++] = (struct help_key){ "Logo", "Back to the menu" };
-	}
+	k[n++] = (struct help_key){ "Esc", wos_esc_help(s, esc, sizeof(esc)) };
+	k[n++] = (struct help_key){ "#4", "The log" };
+	k[n++] = (struct help_key){ "#5", "Settings" };
+	k[n++] = (struct help_key){ "#6", "This help" };
+	k[n++] = (struct help_key){ "Logo", "Back to the menu" };
 	return n;
 }
 
@@ -424,16 +499,23 @@ static int wos_keys_showing(const wos_screen *s)
 	return s->kind != WOS_COLOUR || !wos.keys_gone;
 }
 
+/* A list: its rows from a window of 64 around the focus (all of them when
+ * fewer), scrolled as libwb's lists are. */
+#define WOS_PITCH	(WB_LIST_ROW_H + WB_SPACE_2)
+
 static void wos_paint_list(wos_screen *s)
 {
-	int ys[64], hs[64], n = s->n < 64 ? s->n : 64, cut, scroll, top = WB_ROWS_TOP;
-	int avail = H - WB_HINT_BAR_H - 16 - top;
+	int ys[64], hs[64], cut, scroll, top = WB_ROWS_TOP, avail = H - WB_HINT_BAR_H - 16 - top;
+	int base = s->focus - 32, n;
 
+	base = base > s->n - 64 ? s->n - 64 : base;
+	base = base < 0 ? 0 : base;
+	n = s->n - base < 64 ? s->n - base : 64;
 	for (int i = 0; i < n; i++) {
-		ys[i] = i * (WB_LIST_ROW_H + WB_SPACE_2);
+		ys[i] = i * WOS_PITCH;
 		hs[i] = WB_LIST_ROW_H;
 	}
-	scroll = list_scroll(ys, hs, n, s->focus, -1, avail, &cut);
+	scroll = list_scroll(ys, hs, n, s->focus - base, -1, avail, &cut);
 	clip_rows(top, top + cut);
 	for (int i = 0; i < n; i++) {
 		wos_row r = { 0 };
@@ -441,14 +523,14 @@ static void wos_paint_list(wos_screen *s)
 
 		if (y + hs[i] < top || y >= top + cut)
 			continue;
-		s->row(i, &r);
+		s->row(base + i, &r);
 		wb_row(WB_CONTENT_PAD, y, W - 2 * WB_CONTENT_PAD, WB_LIST_ROW_H, r.icon, r.label, r.sub, r.value,
 		       r.kind == WOS_ROW_OPEN ? WB_ROW_OPEN : r.kind == WOS_ROW_SWITCH ? WB_ROW_SWITCH : WB_ROW_NONE,
-		       r.on, i == s->focus && r.kind != WOS_ROW_INFO);
+		       r.on, base + i == s->focus && r.kind != WOS_ROW_INFO);
 	}
 	clip_end();
 	if (n)
-		scrollbar(W - WB_CONTENT_PAD + 9, top, cut, ys[n - 1] + hs[n - 1], cut, scroll);
+		scrollbar(W - WB_CONTENT_PAD + 9, top, cut, s->n * WOS_PITCH - WB_SPACE_2, cut, base * WOS_PITCH + scroll);
 }
 
 static void wos_paint_entry(wos_screen *s)
@@ -493,6 +575,225 @@ static void wos_paint_entry(wos_screen *s)
 	}
 }
 
+/* ---- WOS_EDITOR ---------------------------------------------------------- */
+
+#define WOS_ED_LINES	200
+#define WOS_ED_ROW	30
+#define WOS_ED_X	(WB_CONTENT_PAD + 20)
+#define WOS_ED_W	(W - 2 * WB_CONTENT_PAD - 40)
+
+/* the width of the character at s (a tab as an arrow) */
+static int wos_ed_cw(const char *s, int *len)
+{
+	char one[5];
+	int n = 1;
+
+	if (*s == '\t') {
+		*len = 1;
+		return text_w(&f_ui20, "\xe2\x86\x92", 0);
+	}
+	while (n < 4 && ((unsigned char)s[n] & 0xc0) == 0x80)
+		n++;
+	memcpy(one, s, (size_t)n);
+	one[n] = 0;
+	*len = n;
+	return text_w(&f_ui20, one, 0);
+}
+
+/* where each line starts, wrapped at word ends to WOS_ED_W; the count */
+static int wos_ed_layout(const char *t, int *starts)
+{
+	int n = 0, i = 0;
+
+	starts[n++] = 0;
+	while (t[i] && n < WOS_ED_LINES) {
+		int x = 0, brk = -1, j = i, len;
+
+		while (t[j] && t[j] != '\n') {
+			int w = wos_ed_cw(t + j, &len);
+
+			if (x + w > WOS_ED_W && j > i)
+				break;
+			x += w;
+			if (t[j] == ' ')
+				brk = j + 1;
+			j += len;
+		}
+		if (t[j] == '\n') {
+			i = j + 1;
+		} else if (!t[j]) {
+			break;
+		} else {
+			i = brk > i ? brk : j;
+		}
+		starts[n++] = i;
+	}
+	return n;
+}
+
+static int wos_ed_line_of(const int *starts, int n, int cur)
+{
+	int l = 0;
+
+	while (l + 1 < n && starts[l + 1] <= cur)
+		l++;
+	return l;
+}
+
+/* the x of byte cur in its line */
+static int wos_ed_x(const char *t, int from, int cur)
+{
+	int x = 0, len;
+
+	for (int i = from; i < cur && t[i] && t[i] != '\n'; i += len)
+		x += wos_ed_cw(t + i, &len);
+	return x;
+}
+
+static void wos_paint_editor(wos_screen *s)
+{
+	int starts[WOS_ED_LINES], n, top = WB_ROWS_TOP, h = H - WB_HINT_BAR_H - 16 - top;
+	int rows = (h - 24) / WOS_ED_ROW, cl;
+	const char *t = s->text ? s->text : "";
+	int cur = wos.ed_cur < (int)strlen(t) ? wos.ed_cur : (int)strlen(t), first;
+
+	n = wos_ed_layout(t, starts);
+	first = wos.ed_top < n ? wos.ed_top : n - 1;
+	cl = wos_ed_line_of(starts, n, cur);
+	wb_card(WB_CONTENT_PAD, top, W - 2 * WB_CONTENT_PAD, h, WB_SQUARE, 1, &GLOW_FOCUS);
+	if (!t[0] && s->placeholder)
+		text(&f_ui20, WOS_ED_X, top + 12, s->placeholder, WB_COLOR_PLACEHOLDER, 0);
+	for (int l = first; l < n && l < first + rows; l++) {
+		int y = top + 12 + (l - first) * WOS_ED_ROW, x = WOS_ED_X, end = l + 1 < n ? starts[l + 1] : (int)strlen(t);
+		char run[256];
+		int k = 0, len;
+
+		for (int i = starts[l]; i < end && t[i] && t[i] != '\n'; i += len) {
+			wos_ed_cw(t + i, &len);
+			if (t[i] == '\t') {
+				run[k] = 0;
+				x = text(&f_ui20, x, y, run, WB_COLOR_TEXT_HI, 0);
+				x = text(&f_ui20, x, y, "\xe2\x86\x92", WB_COLOR_TEXT_LOW, 0);
+				k = 0;
+			} else if (k + len < (int)sizeof(run)) {
+				memcpy(run + k, t + i, (size_t)len);
+				k += len;
+			}
+		}
+		run[k] = 0;
+		text(&f_ui20, x, y, run, WB_COLOR_TEXT_HI, 0);
+		if (l == cl)
+			fill(WOS_ED_X + wos_ed_x(t, starts[l], cur), y + 2, 2, f_ui20.ascent + f_ui20.descent - 2,
+			     WB_COLOR_CYAN);
+	}
+	if (n > rows)
+		scrollbar(W - WB_CONTENT_PAD + 9, top, h, n * WOS_ED_ROW, rows * WOS_ED_ROW, first * WOS_ED_ROW);
+}
+
+/* where the cursor goes at the end of line l: before its new line, or
+ * before the last character of a line wrapped mid-text (on a character's
+ * first byte) */
+static int wos_ed_end(const char *t, const int *starts, int n, int l, int len)
+{
+	int k;
+
+	if (l + 1 >= n)
+		return len;
+	k = starts[l + 1] - 1;
+	while (k > starts[l] && ((unsigned char)t[k] & 0xc0) == 0x80)
+		k--;
+	return k;
+}
+
+/* 1 when the editor used the key */
+static int wos_editor_key(wos_screen *s, int code)
+{
+	int starts[WOS_ED_LINES], n, l, len = s->text ? (int)strlen(s->text) : 0, fn = wos.mods & WOS_FN, ch, at = -1;
+	int rows = (H - WB_HINT_BAR_H - 16 - WB_ROWS_TOP - 24) / WOS_ED_ROW;
+	char *t = s->text;
+
+	if (!t)
+		return 0;
+	if (wos.ed_cur > len)		/* the app changed the text meanwhile */
+		wos.ed_cur = len;
+	n = wos_ed_layout(t, starts);
+	l = wos_ed_line_of(starts, n, wos.ed_cur);
+	switch (code) {
+	case WOS_KEY_LEFT:
+		if (fn)
+			wos.ed_cur = starts[l];
+		else
+			while (wos.ed_cur > 0 && ((unsigned char)t[--wos.ed_cur] & 0xc0) == 0x80)
+				;
+		break;
+	case WOS_KEY_RIGHT:
+		if (fn)
+			wos.ed_cur = wos_ed_end(t, starts, n, l, len);
+		else if (wos.ed_cur < len)
+			for (wos.ed_cur++; ((unsigned char)t[wos.ed_cur] & 0xc0) == 0x80; wos.ed_cur++)
+				;
+		break;
+	case WOS_KEY_UP:
+	case WOS_KEY_DOWN: {
+		int to = code == WOS_KEY_UP ? l - 1 : l + 1, x = wos_ed_x(t, starts[l], wos.ed_cur), i, cw, cl, end;
+
+		if (to < 0 || to >= n)
+			break;
+		i = starts[to];
+		end = wos_ed_end(t, starts, n, to, len);
+		while (i < end && t[i] != '\n' && (cw = wos_ed_cw(t + i, &cl)) / 2 <= x) {
+			x -= cw;
+			i += cl;
+		}
+		wos.ed_cur = i;
+		break;
+	}
+	case WOS_KEY_HOME:
+		wos.ed_cur = starts[l];
+		break;
+	case WOS_KEY_END:
+		wos.ed_cur = wos_ed_end(t, starts, n, l, len);
+		break;
+	case WOS_KEY_BACKSPACE:
+		if (wos.ed_cur > 0) {
+			at = wos.ed_cur;
+			while (at > 0 && ((unsigned char)t[--at] & 0xc0) == 0x80)
+				;
+		}
+		break;
+	case WOS_KEY_DELETE:
+		if (wos.ed_cur < len)
+			at = wos.ed_cur;
+		break;
+	default:
+		ch = code == WOS_KEY_ENTER ? '\n' : code == WOS_KEY_TAB ? '\t' : wos_key_char(code, wos.mods);
+		if (!ch)
+			return 0;
+		if (len + 1 < s->max) {
+			memmove(t + wos.ed_cur + 1, t + wos.ed_cur, (size_t)(len - wos.ed_cur + 1));
+			t[wos.ed_cur++] = (char)ch;
+			s->dirty = 1;
+		}
+	}
+	if (at >= 0) {
+		int k = at + 1;
+
+		while (((unsigned char)t[k] & 0xc0) == 0x80)
+			k++;
+		memmove(t + at, t + k, (size_t)(len - k + 1));
+		wos.ed_cur = at;
+		s->dirty = 1;
+	}
+	/* the cursor's line in view */
+	n = wos_ed_layout(t, starts);
+	l = wos_ed_line_of(starts, n, wos.ed_cur);
+	if (l < wos.ed_top)
+		wos.ed_top = l;
+	if (l >= wos.ed_top + rows)
+		wos.ed_top = l - rows + 1;
+	return 1;
+}
+
 static void wos_paint_logview(wos_screen *s)
 {
 	int n = wos_log_count < WOS_LOG_N ? wos_log_count : WOS_LOG_N;
@@ -530,24 +831,75 @@ static void wos_paint(void *arg)
 			wos_paint_entry(s);
 		else if (s->kind == WOS_LOGVIEW)
 			wos_paint_logview(s);
+		else if (s->kind == WOS_EDITOR)
+			wos_paint_editor(s);
 		else if (s->kind == WOS_CANVAS && s->paint)
 			s->paint(0, WB_ROWS_TOP, W, H - WB_HINT_BAR_H - WB_ROWS_TOP);
 	}
 	if (wos_keys_showing(s))
 		wos_keybar(hs, wos_bar_items(s, hs, 10), wos_esc_word(s), 1);
-	if (wos.pop == WOS_POP_HELP) {
+	if (s->busy) {			/* the running action: its name, a bar, Esc to cancel */
+		static const struct hint bh[] = { { "Esc", "cancel", 1 } };
+		int x = POP_X + 32, w = POP_W - 64, h = 32 + 18 + 6 + 36 + 24 + 12 + 24 + 48 + 16, y = (H - h) / 2;
+
+		pop_frame(y, h);
+		eyebrow(x, y + 32, wos_upper(wos_title(s), eb, sizeof(eb)));
+		text(&f_ui28b, x, y + 32 + 18 + 6 + 2, s->busy, WB_COLOR_TEXT_HI, 0);
+		if (s->progress >= 0) {
+			int p = s->progress > 1000 ? 1000 : s->progress;
+
+			box(x, y + 32 + 18 + 6 + 36 + 24, w, 12, 6, 0xFFFFFF, 26, 0, 0, 0);
+			if (p)
+				box(x, y + 32 + 18 + 6 + 36 + 24, w * p / 1000 < 12 ? 12 : w * p / 1000, 12, 6, WB_COLOR_CYAN,
+				    255, 0, 0, 0);
+		}
+		panel_hints(x, w, y + h - 16 - 48 + 14, s->abort ? bh : 0, s->abort ? 1 : 0);
+	} else if (wos.pop == WOS_POP_HELP) {
 		struct help_key k[14];
 		const char *about = s->about ? s->about : s == wos.stack[0] ? wos.app->about : 0;
 
-		help_popup(wos_title(s), about, k, wos_help_keys(s, k, 14));
+		help_popup(wos_title(s), about, k, wos_help_keys(s, k, 12));
 	} else if (wos.pop == WOS_POP_CHOICE) {
 		static const struct hint ch[] = { { "Enter", "choose", 0 }, { "Esc", "cancel", 1 } };
 		char count[24] = "";
 
 		wos_add_int(count, wos.pop_n, sizeof(count));
 		wos_add(count, wos.pop_n == 1 ? " option" : " options", sizeof(count));
-		menu_popup("SETTINGS", wos.app->settings[wos.pop_setting].label, count, wos.pop_items, 0, wos.pop_n,
+		menu_popup(s == &wos_settings_screen ? "SETTINGS" : wos_upper(wos_title(s), eb, sizeof(eb)),
+			   wos_fields()[wos.pop_setting].label, count, wos.pop_items, 0, wos.pop_n,
 			   wos.pop_focus, wos.pop_cur, 0, 0, ch, 2);
+	} else if (wos.pop == WOS_POP_ASK) {
+		static const struct hint ah[] = { { "Enter", "choose", 0 }, { "Esc", "cancel", 1 } };
+		const char *labels[8];
+		const struct wb_icon *ics[8];
+		int n = wos.pop_n < 8 ? wos.pop_n : 8, lines = wos.ask_body[0] ?
+			text_wrap(&f_ui20, 0, 0, DLG_W - 64, 28, wos.ask_body, 0, 3, 0) : 0, y;
+
+		for (int i = 0; i < n; i++) {
+			labels[i] = wos.pop_items[i].label;
+			ics[i] = i == wos.ask_danger ? &r_trash : &r_chevron;
+		}
+		y = dialog(wos_upper(wos_title(s), eb, sizeof(eb)), wos.ask_title, lines * 28, labels, ics, n, wos.pop_focus,
+			   wos.ask_danger);
+		if (lines)
+			text_wrap(&f_ui20, DLG_X + 32, y, DLG_W - 64, 28, wos.ask_body, WB_COLOR_TEXT_MID, 3, 1);
+		dlg_hints(ah, 2);
+	} else if (wos.pop == WOS_POP_TEXT) {
+		static const struct hint th[] = { { "Enter", "save", 0 }, { "Esc", "cancel", 1 } };
+		int x = POP_X + 32, w = POP_W - 64, h = 32 + 18 + 6 + 36 + 20 + 56 + 14 + 2 * 26 + 14 + 48 + 16;
+		int y = (H - h) / 2, fy;
+		const char *under = wos.text_err ? wos.text_err : wos.ask_body;
+
+		pop_frame(y, h);
+		eyebrow(x, y + 32, wos_upper(wos_title(s), eb, sizeof(eb)));
+		text(&f_ui28b, x, y + 32 + 18 + 6 + 2, wos.ask_title, WB_COLOR_TEXT_HI, 0);
+		fy = y + 32 + 18 + 6 + 36 + 20;
+		box(x, fy, w, 56, 10, WB_COLOR_VOID, 160, WB_COLOR_CYAN, 2, 0);
+		wos_line(&f_ui22, x + 16, w - 32, fy + 28, wos.text, wos.text_cur, 0, 0, WB_COLOR_TEXT_HI);
+		if (under[0])
+			text_wrap(&f_ui18, x, fy + 56 + 14, w, 26, under, wos.text_err ? WB_COLOR_ERROR : WB_COLOR_TEXT_MID,
+				  2, 1);
+		panel_hints(x, w, y + h - 16 - 48 + 14, th, 2);
 	} else if (wos.pop == WOS_POP_MENU) {
 		static const struct hint mh[] = { { "Enter", "choose", 0 }, { "Esc", "cancel", 1 } };
 		wos_row r = { 0 };
@@ -555,6 +907,12 @@ static void wos_paint(void *arg)
 		s->row(s->focus, &r);
 		menu_popup("OPTIONS", r.label ? r.label : wos_title(s), 0, wos.pop_items, 0, wos.pop_n,
 			   wos.pop_focus, -2, 0, 0, mh, 2);
+	}
+	if (wos.msg[0]) {		/* a message: a pill over the key bar */
+		int mw = text_w(&f_ui18, wos.msg, 0) + 48, my = H - WB_HINT_BAR_H - 16 - 44;
+
+		box((W - mw) / 2, my, mw, 44, 22, WB_COLOR_SURFACE2, 245, WB_COLOR_CYAN, 1, 0);
+		text(&f_ui18, (W - mw) / 2 + 24, text_top(&f_ui18, my + 22), wos.msg, WB_COLOR_TEXT_HI, 0);
 	}
 }
 
@@ -575,6 +933,14 @@ static void wos_present(void)
 
 	if (s->update)
 		s->update(s);
+	if (s->fields) {		/* a form: its rows are its fields */
+		s->n = 0;
+		while (s->fields[s->n].key)
+			s->n++;
+		s->row = wos_settings_row;
+		s->choose = wos_settings_open;
+		s->adjust = wos_settings_adjust;
+	}
 	if (s->kind == WOS_ENTRY && !wos.err)	/* a setting may have changed it */
 		wos_entry_preview(s);
 	if (s->kind == WOS_LIST && s->focus >= s->n)
@@ -608,10 +974,15 @@ static void wos_push(wos_screen *s)
 	if (wos.depth == WOS_DEPTH)
 		return;
 	wos.stack[wos.depth++] = s;
+	if (s->kind == WOS_EDITOR && s->text) {	/* the cursor at the end, the text from its top */
+		wos.ed_cur = (int)strlen(s->text);
+		wos.ed_top = 0;
+	}
 	wos_shown();
 }
 
-/* Back to the screen under this one; the last one ends the app. */
+/* Back to the screen under this one; the last one ends the app. A screen
+ * with unsaved work asks first (wos_esc_pop). */
 static void wos_pop(void)
 {
 	if (wos.depth <= 1) {
@@ -661,14 +1032,18 @@ static void wos_entry_insert(const wos_screen *s, const char *t)
 	wos_entry_preview(s);
 }
 
+/* the character that starts at byte at goes, all its bytes */
 static void wos_entry_erase(const wos_screen *s, int at)
 {
+	int k;
+
 	if (at < 0 || at >= wos.len)
 		return;
-	memmove(wos.line + at, wos.line + at + 1, (size_t)(wos.len - at));
-	wos.len--;
+	k = wos_next_char(wos.line, at);
+	memmove(wos.line + at, wos.line + k, (size_t)(wos.len - k + 1));
+	wos.len -= k - at;
 	if (wos.cur > at)
-		wos.cur--;
+		wos.cur = wos.cur >= k ? wos.cur - (k - at) : at;
 	wos.err = 0;
 	wos.back = 0;
 	wos_entry_preview(s);
@@ -723,16 +1098,16 @@ static int wos_entry_key(const wos_screen *s, int code)
 		wos_entry_enter(s);
 		return 1;
 	case WOS_KEY_BACKSPACE:
-		wos_entry_erase(s, fn ? wos.cur : wos.cur - 1);
+		wos_entry_erase(s, fn ? wos.cur : wos.cur ? wos_prev_char(wos.line, wos.cur) : -1);
 		return 1;
 	case WOS_KEY_DELETE:
 		wos_entry_erase(s, wos.cur);
 		return 1;
 	case WOS_KEY_LEFT:
-		wos.cur = fn ? 0 : wos.cur > 0 ? wos.cur - 1 : 0;
+		wos.cur = fn ? 0 : wos_prev_char(wos.line, wos.cur);
 		return 1;
 	case WOS_KEY_RIGHT:
-		wos.cur = fn ? wos.len : wos.cur < wos.len ? wos.cur + 1 : wos.len;
+		wos.cur = fn ? wos.len : wos_next_char(wos.line, wos.cur);
 		return 1;
 	case WOS_KEY_HOME:
 		wos.cur = 0;
@@ -762,9 +1137,23 @@ static int wos_entry_key(const wos_screen *s, int code)
 
 /* ---- keys ------------------------------------------------------------------ */
 
+static int wos_text_key(int code);
+
 /* the key on the pop-up over the screen */
 static void wos_pop_key(wos_screen *s, int code)
 {
+	if (wos.pop == WOS_POP_TEXT) {
+		wos_text_key(code);
+		return;
+	}
+	if (wos.pop == WOS_POP_ASK && (code == WOS_KEY_ENTER || code == WOS_KEY_ESC)) {
+		void (*done)(int) = wos.ask_done;
+
+		wos.pop = WOS_POP_NONE;
+		if (done)
+			done(code == WOS_KEY_ENTER ? wos.pop_focus : -1);
+		return;
+	}
 	if (wos.pop == WOS_POP_HELP) {	/* only an explanation */
 		if (code == WOS_KEY_ESC || code == WOS_KEY_HELP)
 			wos.pop = WOS_POP_NONE;
@@ -798,6 +1187,121 @@ static void wos_open_menu(wos_screen *s)
 	wos.pop = WOS_POP_MENU;
 }
 
+/*
+ * A question over the screen (the design's dialog, 6.5): choices as
+ * "Keep editing|Discard", the focus on the safe one; done(i) with the one
+ * chosen, or -1 on Esc. danger: the destructive choice, in red (-1: none).
+ */
+static void wos_ask(const char *title, const char *body, const char *choices, int safe, int danger,
+		    void (*done)(int choice))
+{
+	static char labels[8][48];
+	char v[48];
+
+	wos_copy(wos.ask_title, title, sizeof(wos.ask_title));
+	wos_copy(wos.ask_body, body ? body : "", sizeof(wos.ask_body));
+	wos.pop_n = 0;
+	while (wos.pop_n < 8 && wos_choice(choices, wos.pop_n, v, sizeof(v), labels[wos.pop_n], sizeof(labels[0]))) {
+		memset(&wos.pop_items[wos.pop_n], 0, sizeof(wos.pop_items[0]));
+		wos.pop_items[wos.pop_n].label = labels[wos.pop_n];
+		wos.pop_n++;
+	}
+	wos.pop_focus = safe >= 0 && safe < wos.pop_n ? safe : 0;
+	wos.ask_danger = danger;
+	wos.ask_done = done;
+	wos.pop = WOS_POP_ASK;
+}
+
+/*
+ * Text typed in a pop-up (6.5 Text input): a title, the field with text in
+ * it, an explanation under it. Enter calls done(text): 0 closes it, a
+ * message keeps it open with the message in red. Esc cancels.
+ */
+static void wos_ask_text(const char *title, const char *explain, const char *text,
+			 const char *(*done)(const char *text))
+{
+	wos_copy(wos.ask_title, title, sizeof(wos.ask_title));
+	wos_copy(wos.ask_body, explain ? explain : "", sizeof(wos.ask_body));
+	wos_copy(wos.text, text ? text : "", sizeof(wos.text));
+	wos.text_len = wos.text_cur = (int)strlen(wos.text);
+	wos.text_err = 0;
+	wos.text_done = done;
+	wos.pop = WOS_POP_TEXT;
+}
+
+/* 1 when the text pop-up used the key */
+static int wos_text_key(int code)
+{
+	int fn = wos.mods & WOS_FN, ch, at = -1;
+
+	switch (code) {
+	case WOS_KEY_ESC:
+		wos.pop = WOS_POP_NONE;
+		return 1;
+	case WOS_KEY_ENTER: {
+		/* closed first: done() may open another pop-up (a password after
+		 * a name); an answer that is wrong opens this one again */
+		const char *(*done)(const char *) = wos.text_done, *err;
+		char text[WOS_LINE + 1];
+
+		wos_copy(text, wos.text, sizeof(text));
+		wos.pop = WOS_POP_NONE;
+		err = done ? done(text) : 0;
+		if (err) {
+			wos.text_err = err;
+			wos.text_done = done;
+			wos.pop = WOS_POP_TEXT;
+		}
+		return 1;
+	}
+	case WOS_KEY_BACKSPACE:
+		at = fn ? wos.text_cur : wos.text_cur ? wos_prev_char(wos.text, wos.text_cur) : -1;
+		break;
+	case WOS_KEY_DELETE:
+		at = wos.text_cur;
+		break;
+	case WOS_KEY_LEFT:
+		wos.text_cur = fn ? 0 : wos_prev_char(wos.text, wos.text_cur);
+		return 1;
+	case WOS_KEY_RIGHT:
+		wos.text_cur = fn ? wos.text_len : wos_next_char(wos.text, wos.text_cur);
+		return 1;
+	case WOS_KEY_HOME:
+		wos.text_cur = 0;
+		return 1;
+	case WOS_KEY_END:
+		wos.text_cur = wos.text_len;
+		return 1;
+	}
+	if (at >= 0) {
+		if (at < wos.text_len) {
+			int k = wos_next_char(wos.text, at);
+
+			memmove(wos.text + at, wos.text + k, (size_t)(wos.text_len - k + 1));
+			wos.text_len -= k - at;
+			if (wos.text_cur > at)
+				wos.text_cur = wos.text_cur >= k ? wos.text_cur - (k - at) : at;
+		}
+		wos.text_err = 0;
+		return 1;
+	}
+	ch = wos_key_char(code, wos.mods);
+	if (!ch || wos.text_len >= WOS_LINE)
+		return 0;
+	memmove(wos.text + wos.text_cur + 1, wos.text + wos.text_cur, (size_t)(wos.text_len - wos.text_cur + 1));
+	wos.text[wos.text_cur++] = (char)ch;
+	wos.text_len++;
+	wos.text_err = 0;
+	return 1;
+}
+
+/* A short line over the key bar for two seconds: "Saved", "Copied". */
+static void wos_message(const char *text)
+{
+	wos_copy(wos.msg, text, sizeof(wos.msg));
+	wos.msg_until = wos_ms() + 2000;
+}
+
 /* a list's focus to the next row that can take it, i from it, by step */
 static void wos_list_move(wos_screen *s, int step)
 {
@@ -819,6 +1323,8 @@ static int wos_screen_key(wos_screen *s, int code)
 
 	if (s->kind == WOS_ENTRY)
 		return wos_entry_key(s, code);
+	if (s->kind == WOS_EDITOR)
+		return wos_editor_key(s, code);
 	if (s->kind == WOS_CANVAS)
 		return s->key && s->key(code, ch);
 	if (s->kind == WOS_LOGVIEW) {
@@ -860,10 +1366,23 @@ static int wos_screen_key(wos_screen *s, int code)
 	return 0;
 }
 
+static void wos_discard(int choice)
+{
+	if (choice == 1) {
+		wos_top()->dirty = 0;
+		wos_pop();
+	}
+}
+
 static void wos_key(int code)
 {
 	wos_screen *s = wos_top();
 
+	if (s->busy) {			/* a running action: only Esc, which aborts it (6.7 step 1) */
+		if (code == WOS_KEY_ESC && s->abort)
+			s->abort();
+		return;
+	}
 	if (wos.pop) {
 		wos_pop_key(s, code);
 		return;
@@ -891,6 +1410,9 @@ static void wos_key(int code)
 		if (wos_esc_clears(s)) {
 			wos.back = 0;
 			wos_entry_set(s, "");
+		} else if (s->dirty) {
+			wos_ask("Discard changes?", "What you changed here is not saved.", "Keep editing|Discard", 0, 1,
+				wos_discard);
 		} else {
 			wos_pop();
 		}
@@ -946,6 +1468,15 @@ static int wos_event(int code, int value)
 		wos_mod(code, value != 0);
 		return 0;
 	}
+	if (!value) {			/* a release: only a canvas that asks for them */
+		wos_screen *s = wos_top();
+
+		if (s->kind == WOS_CANVAS && s->release && !wos.pop && !s->busy) {
+			s->release(code);
+			return 1;
+		}
+		return 0;
+	}
 	if (!key_acts(code, value))
 		return 0;
 	if (code == WOS_KEY_ESC && (wos.mods & WOS_FN))	/* Fn+Esc is standby: sleepd's */
@@ -972,10 +1503,8 @@ static int wos_run(const wos_app *app, wos_screen *first)
 	wos.stack[0] = first;
 	wos.depth = 1;
 	wos_kv_default = wos_schema_default;
-	wos_settings_screen.n = wos_n_settings();
-	wos_settings_screen.row = wos_settings_row;
-	wos_settings_screen.choose = wos_settings_open;
-	wos_settings_screen.adjust = wos_settings_adjust;
+	if (app->settings)
+		wos_settings_screen.fields = app->settings;
 	wos_signals();
 	wos.fb = open("/dev/fb0", O_RDWR | O_CLOEXEC);
 	wos.ev = open("/dev/input/event0", O_RDONLY | O_CLOEXEC);
@@ -985,6 +1514,8 @@ static int wos_run(const wos_app *app, wos_screen *first)
 	wos_test_open();
 	wb_init();
 	wos_shown();
+	if (first->kind == WOS_EDITOR && first->text)
+		wos.ed_cur = (int)strlen(first->text);
 	ticked = wos.t0;
 	wos_present();
 	p[0].fd = wos.ev;
@@ -996,10 +1527,13 @@ static int wos_run(const wos_app *app, wos_screen *first)
 		long now = wos_ms(), wait = 250;
 		int standby, draw = 0, k;
 
-		if (s->kind == WOS_COLOUR && !wos.keys_gone && s->keys_ms - (now - wos.t0) < wait)
+		/* (in standby the keys wait for it to end: no spin on a time gone by) */
+		if (s->kind == WOS_COLOUR && !wos.keys_gone && !wos_standby() && s->keys_ms - (now - wos.t0) < wait)
 			wait = s->keys_ms - (now - wos.t0);
 		if (app->tick && app->tick_ms && app->tick_ms - (now - ticked) < wait)
 			wait = app->tick_ms - (now - ticked);
+		if (wos.msg[0] && wos.msg_until - now < wait)
+			wait = wos.msg_until - now;
 		k = poll(p, wos.fifo >= 0 ? 2 : 1, wait < 0 ? 0 : (int)wait);
 		now = wos_ms();
 		standby = wos_standby();
@@ -1014,6 +1548,10 @@ static int wos_run(const wos_app *app, wos_screen *first)
 			wos.keys_gone = 1;
 			draw = 1;
 		}
+		if (wos.msg[0] && now >= wos.msg_until) {
+			wos.msg[0] = 0;
+			draw = 1;
+		}
 		if (app->keep_on && !standby && now - touched >= 5000) {
 			wos_keep_on();
 			touched = now;
@@ -1021,7 +1559,9 @@ static int wos_run(const wos_app *app, wos_screen *first)
 		if (app->tick && app->tick_ms && now - ticked >= app->tick_ms) {
 			ticked = now;
 			app->tick();
-			draw = 1;
+			/* under a pop-up the screen is dimmed: what the tick changed
+			 * waits for it to close, and the pop-up answers its keys at once */
+			draw |= !wos.pop;
 		}
 		/* the badge turned: the scene and the screen again (four times a second) */
 		if (now - turned_check >= 250) {

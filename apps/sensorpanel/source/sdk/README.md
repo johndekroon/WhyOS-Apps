@@ -244,6 +244,9 @@ riscv32-buildroot-linux-uclibc-gcc -Os -fPIC -static -ffunction-sections -fdata-
   soft-float (`../sdapps/README.md`, "Building").
 - One entry screen per app: its line and earlier lines are the SDK's.
 - One question or text pop-up at a time; a text is one line of up to 120 bytes.
+- The editor wraps and reaches the first 200 lines of a text.
+- The help lists up to 12 keys: the screen's actions and own keys as far as they fit, then always
+  Esc, the circle, clover, diamond and the logo key.
 - A list shows up to 64 rows; a pop-up list up to 24 items, without a filter.
 - 32 settings of up to 71 characters; 40 log lines of up to 95.
 - Pop-ups are drawn in bands, so their glass is not blurred (`../libwb/README.md`).

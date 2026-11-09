@@ -48,7 +48,7 @@ starting points.
 | `python/` | The SDK in MicroPython: the module `whyos`, its guide (`python/README.md`), examples and tests |
 | `testing/whyos_testing.py` | The test framework (pytest) |
 | `templates/` | Starting points: a list app, an entry app, a canvas app in C, and a list app in Python |
-| `tools/whyos-sdk` | New app from a template, test, screenshots |
+| `tools/whyos-sdk` | New app from a template, test, screenshots, build for the badge |
 | `tools/micropython-sbsim.sh` | MicroPython for this computer, to test Python apps |
 | `test/` | The SDK's own tests |
 
@@ -235,7 +235,8 @@ riscv32-buildroot-linux-uclibc-gcc -Os -fPIC -static -ffunction-sections -fdata-
     -I sdk/include -I libwb app.c -Wl,--gc-sections -Wl,--no-relax '-Wl,-elf2flt=-r -s 16384' -o app
 ```
 
-`sdapps/build.sh` does this for the apps in this repository (`sdk_app` in it).
+`sdk/tools/whyos-sdk build <dir>` does this with the toolchain of a badge build (`BR_OUT`), and
+`sdapps/build.sh` for the apps in this repository (`sdk_app` in it).
 
 ## Limits
 
@@ -243,6 +244,9 @@ riscv32-buildroot-linux-uclibc-gcc -Os -fPIC -static -ffunction-sections -fdata-
   soft-float (`../sdapps/README.md`, "Building").
 - One entry screen per app: its line and earlier lines are the SDK's.
 - One question or text pop-up at a time; a text is one line of up to 120 bytes.
+- The editor wraps and reaches the first 200 lines of a text.
+- The help lists up to 12 keys: the screen's actions and own keys as far as they fit, then always
+  Esc, the circle, clover, diamond and the logo key.
 - A list shows up to 64 rows; a pop-up list up to 24 items, without a filter.
 - 32 settings of up to 71 characters; 40 log lines of up to 95.
 - Pop-ups are drawn in bands, so their glass is not blurred (`../libwb/README.md`).

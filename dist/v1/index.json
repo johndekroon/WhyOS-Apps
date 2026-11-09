@@ -47,18 +47,18 @@
    "author": "WhyOS-Apps contributors",
    "category": "tools",
    "commands": [],
-   "details_sha256": "6cd610518907663c9c8a213f5d6e99691fca0711c0848934f0ce3b4a4001abbf",
+   "details_sha256": "fb8fea974ed17830d2300f062770efbf2d33c088e57b0c6df6003f91c628c782",
    "id": "calc",
    "install_location": "sd",
    "latest": {
-    "build": 7,
+    "build": 8,
     "package": {
-     "installed_size": 406515,
-     "sha256": "f9d04dec80957e7f717617790bc28b2d69acc32978df5354cbeb6d4c292c3a10",
-     "size": 191095,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.3.0.wpk"
+     "installed_size": 414083,
+     "sha256": "9378c4362e5528b233fdaf8087d66e5c8b30bb2e4b3a9983c5f27b8699181c2e",
+     "size": 195842,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.3.1.wpk"
     },
-    "version": "1.3.0"
+    "version": "1.3.1"
    },
    "menu_icon": "count",
    "name": "Calculator",
@@ -203,18 +203,18 @@
    "author": "WhyOS-Apps contributors",
    "category": "tools",
    "commands": [],
-   "details_sha256": "df828d12a366897898253b24a02cd015a472bae50bd1056ce6a67e819382f009",
+   "details_sha256": "71614b254a62e2f56a59ea2bc7e41b5fe059e65cb4b5f023cbc10c43c358d3b5",
    "id": "flashlight",
    "install_location": "sd",
    "latest": {
-    "build": 5,
+    "build": 6,
     "package": {
-     "installed_size": 345223,
-     "sha256": "3b0bd17df7c2b42f2e97cb3643e01696054fae088ae2e1053538d8dc314c2ed1",
-     "size": 152625,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flashlight-1.1.0.wpk"
+     "installed_size": 352795,
+     "sha256": "69a276044c8dadb8f1d51770372d58d7d4dd9a3bb55485326933f7c5c88fc091",
+     "size": 157031,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flashlight-1.1.1.wpk"
     },
-    "version": "1.1.0"
+    "version": "1.1.1"
    },
    "menu_icon": "sun",
    "name": "Flashlight",
@@ -438,18 +438,18 @@
     "micropython",
     "python"
    ],
-   "details_sha256": "0be3275a939263b4100203e920cda55ae513158c5534a5a04788e720dd90e6ff",
+   "details_sha256": "45a99a0efaa14adef136673dff5a2d66a4549cd8c5e02b651de31793122e6b8a",
    "id": "micropython",
    "install_location": "sd",
    "latest": {
-    "build": 4,
+    "build": 5,
     "package": {
-     "installed_size": 1235020,
-     "sha256": "c7f61fdb42a506e36d193f0e6388a2d3b07912aea8518452a4715554e93ec1aa",
-     "size": 661118,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/micropython-1.29.3.wpk"
+     "installed_size": 1236068,
+     "sha256": "e8052031c011678cd8429966b2dcf31626a79e927f1a9db7ffc5511c00e057fc",
+     "size": 661900,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/micropython-1.29.4.wpk"
     },
-    "version": "1.29.3"
+    "version": "1.29.4"
    },
    "menu_icon": "terminal",
    "name": "MicroPython",
@@ -759,18 +759,18 @@
    "author": "why2025-linux contributors",
    "category": "hardware",
    "commands": [],
-   "details_sha256": "60156fb02c108ae41a3254d90d8a420a5ef6bcb35020db9c486ec96ae2edbd27",
+   "details_sha256": "c845ba2436de0cbe4cd9ae7fdb9096f724631b0246c9900637212764073c89e6",
    "id": "sensorpanel",
    "install_location": "sd",
    "latest": {
-    "build": 6,
+    "build": 7,
     "package": {
-     "installed_size": 373544,
-     "sha256": "17fceedc560505f29ffd3a0cbbc65d1964126e758644f1d80873000240aff986",
-     "size": 163754,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/sensorpanel-1.2.1.wpk"
+     "installed_size": 374164,
+     "sha256": "51313af680e4f5ccca2f53e2ebd3a06469102ad17389a6e345fb0b839055d85b",
+     "size": 163970,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/sensorpanel-1.2.2.wpk"
     },
-    "version": "1.2.1"
+    "version": "1.2.2"
    },
    "menu_icon": "sensors",
    "name": "Sensor panel",
@@ -914,7 +914,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-11-09T23:18:16Z",
- "serial": 53,
+ "generated": "2026-11-09T23:50:13Z",
+ "serial": 54,
  "source": "whyos"
 }

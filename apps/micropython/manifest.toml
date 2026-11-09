@@ -7,8 +7,8 @@
 format = 1
 id = "micropython"
 name = "MicroPython"
-version = "1.29.3"
-build = 4
+version = "1.29.4"
+build = 5
 summary = "Python 3 on the badge: an interactive prompt and your own scripts"
 description = """
 MicroPython is a lean implementation of Python 3. From the menu it opens
@@ -42,7 +42,7 @@ license_file = "micropython.txt"
 homepage = "https://micropython.org"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/micropython/source"
 upstream_version = "1.29.0"
-changelog = "The module whyos: the WhyOS SDK in Python, for scripts with the badge's own screens (sdk/python/README.md in WhyOS). A script that asks for more memory than the heap has fails with MemoryError instead of ending MicroPython."
+changelog = "The module whyos (the WhyOS SDK, 59c4625): forms, an editor, dialogs and a running action besides lists, entry lines and one colour; rows that are not text show as text; actions are no longer counted across screens. A script that asks for more memory than the heap has fails with MemoryError instead of ending MicroPython."
 
 type = "app"
 category = "development"
@@ -77,7 +77,7 @@ folders = ["lib"]
 
 [[bundled]]
 name = "WhyOS SDK and libwb (the module whyos)"
-version = "392b2e7"
+version = "59c4625"
 license = "MIT"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/micropython/source/sdk"
 license_file = "whyos-sdk.txt"

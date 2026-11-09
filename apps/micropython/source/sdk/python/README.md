@@ -92,25 +92,24 @@ message is shown as what is wrong with the line. `SystemExit` ends the app.
 
 ## A Python app in the menu
 
-`/mnt/sd/badge/apps/<id>/` with the program as `main.py`, an `app.conf` without `TERMINAL` (the
-app draws the panel), and a `start` that runs it with the store's MicroPython:
+`/mnt/sd/badge/apps/<id>/` with the program as `main.py` and an `app.conf` without `TERMINAL`
+(the app draws the panel) that runs it with the store's MicroPython:
 
 ```
 NAME="Flashlight (Python)"
 INFO="a white or red light"
 CATEGORY=apps
 ICON=sun
-EXEC=start
+EXEC=/mnt/sd/badge/apps/micropython/micropython
+ARGS="-X heapsize=512K %d/main.py"
 ```
 
-```sh
-#!/bin/sh
-exec /mnt/sd/badge/apps/micropython/micropython -X heapsize=512K "$APP_DIR/main.py"
-```
-
-The program itself, not the `python` command: that one runs as the MicroPython app, with its
-`APP_ID` and places, so the settings and the log would be MicroPython's. `templates/python` in
-the SDK has all three files and a test; `sdk/tools/whyos-sdk new python <dir>` copies it.
+`%d` is the app's folder. MicroPython itself, not the `python` command or a start script: the
+command runs as the MicroPython app, with its `APP_ID` and places, so the settings and the log
+would be MicroPython's; and a start script is one more program to load (a 636 KB busybox), which
+on a badge with little kernel memory left was once ended by the OOM killer while it loaded
+MicroPython. `templates/python` has both files and a test; `sdk/tools/whyos-sdk new python <dir>`
+copies it.
 
 ## Testing
 

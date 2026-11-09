@@ -5,7 +5,7 @@
   "categories": [
     "tools"
   ],
-  "version": "1.1.0",
+  "version": "1.1.1",
   "icon": {
     "16x16": "icon16.png",
     "32x32": "icon32.png",
@@ -20,7 +20,7 @@
         "why2025-whyos"
       ],
       "type": "whyos",
-      "revision": 5,
+      "revision": 6,
       "executable": "flashlight",
       "external_only": true,
       "assets": []
@@ -31,7 +31,7 @@
     "summary": "The whole screen as a light: white at full or half brightness, or red.",
     "description": "Three modes: white at 100%, white at 50% and red at 100%. The square,\ntriangle and cross choose one, the arrow keys step through them and the\ndiamond shows the help. The mode you used last comes back the next time.\n\nFor the first two seconds the screen stays at the badge's own brightness\nand shows the keys in the bar at the bottom, so a dark room is not lit\nat once. Then the keys go and the whole screen is the light. The screen stays on until you close\nthe app with Esc or the logo key, and the brightness goes back to your\nsetting.",
     "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/flashlight/source",
-    "changelog": "Built on the WhyOS SDK: the circle and clover open the log and settings screens as in every app, and the help lists the keys from the same table as the key bar.",
+    "changelog": "The SDK's fixes of WhyOS 59c4625: standby in the first two seconds no longer keeps the badge busy, and the help always lists Esc and the logo key.",
     "type": "app",
     "category": "utilities",
     "tags": [

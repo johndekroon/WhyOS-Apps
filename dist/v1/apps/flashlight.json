@@ -69,6 +69,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 6,
+   "changelog": "The SDK's fixes of WhyOS 59c4625: standby in the first two seconds no longer keeps the badge busy, and the help always lists Esc and the logo key.",
+   "package": {
+    "installed_size": 352795,
+    "sha256": "69a276044c8dadb8f1d51770372d58d7d4dd9a3bb55485326933f7c5c88fc091",
+    "size": 157031,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flashlight-1.1.1.wpk"
+   },
+   "published": "2026-11-09T23:50:07Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/flashlight-1.1.1-source.tar.gz",
+   "version": "1.1.1"
+  },
+  {
    "build": 5,
    "changelog": "Built on the WhyOS SDK: the circle and clover open the log and settings screens as in every app, and the help lists the keys from the same table as the key bar.",
    "package": {

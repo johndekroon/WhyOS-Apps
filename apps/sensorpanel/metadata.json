@@ -5,7 +5,7 @@
   "categories": [
     "hardware"
   ],
-  "version": "1.2.1",
+  "version": "1.2.2",
   "icon": {
     "16x16": "icon16.png",
     "32x32": "icon32.png",
@@ -20,7 +20,7 @@
         "why2025-whyos"
       ],
       "type": "whyos",
-      "revision": 6,
+      "revision": 7,
       "executable": "sensorpanel",
       "external_only": true,
       "assets": []
@@ -31,7 +31,7 @@
     "summary": "Live readings of the badge's environment and motion sensors",
     "description": "Shows the BME680's temperature, humidity and pressure and the BMI270's\nacceleration on all three axes, about once a second (the BME680 takes 0.6 s for its three values), with a graph\nof the last 20 temperatures. The BME680 sits on the board, so it reads\nwarmer than the room.\n\nThe diamond key shows the help, the circle and clover the log and\nsettings screens, as in every app; Esc or the logo key closes it.",
     "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/sensorpanel/source",
-    "changelog": "Its help opens and closes at once: the readings no longer redraw under it. It says it reads about once a second, as it does.",
+    "changelog": "The SDK's fixes of WhyOS 59c4625: the help always lists Esc and the logo key.",
     "type": "app",
     "category": "sensors",
     "tags": [
@@ -59,7 +59,7 @@
       },
       {
         "name": "WhyOS SDK and libwb (the screens' drawing library)",
-        "version": "1ed3f59",
+        "version": "59c4625",
         "license": "MIT",
         "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/sensorpanel/source/sdk",
         "license_file": "whyos-sdk.txt"

@@ -108,7 +108,8 @@ class App:
     """
 
     def __init__(self, sources, app_id, tmp, settings=None, files=None, env=None, flags=()):
-        self.exe = build(sources, flags)
+        self.exe = build(sources, flags) if sources else None
+        self.args = []
         self.id = app_id
         self.tmp = str(tmp)
         self.settings_before = dict(settings or {})
@@ -147,6 +148,8 @@ class App:
         """The app run to the virtual ms `at` (now by default): (report, out dir, root)."""
         at = self.t if at is None else at
         key = (tuple(self.keys), at)
+        # sbsim keeps 4096 key events (a press and a release each)
+        assert len(self.keys) * 2 < 4000, "%d key presses: too many for one run" % len(self.keys)
         if key not in self._runs:
             n = len(self._runs)
             root = os.path.join(self.tmp, "%s-%d" % (self.id, n))
@@ -165,7 +168,8 @@ class App:
                 os.makedirs(os.path.dirname(p), exist_ok=True)
                 with open(p, "wb" if isinstance(data, bytes) else "w") as f:
                     f.write(data)
-            r = sbsim.run(self.exe, root, out, self.id, end=at, keys=self.keys, shots=[at], **self.env)
+            r = sbsim.run(self.exe, root, out, self.id, args=self.args, end=at, keys=self.keys, shots=[at],
+                          **self.env)
             self._runs[key] = (r, out, root, at)
         return self._runs[key]
 
@@ -234,11 +238,37 @@ class App:
         r = self.report
         assert r["refused"] == [] and r["ioctls_refused"] == 0, "refused: %r" % (r["refused"],)
         assert r["torn"] == 0, "torn frame: %s" % r.get("first_torn")
-        whole = App.__new__(App)
+        if self.closed:         # no panel left to compare
+            return
+        whole = App.__new__(type(self))
         whole.__dict__.update(self.__dict__)
         whole.env = dict(self.env, WB_FULL="1")
         whole._runs = {}
         assert whole.pixels == self.pixels, "drawn in bands, the screen differs from it drawn whole"
+
+
+_micropython = []
+
+
+def micropython():
+    """MicroPython for this computer with the whyos module under sbsim (sdk/tools/micropython-sbsim.sh),
+    built once."""
+    if not _micropython:
+        out = subprocess.run([os.path.join(WHYOS, "sdk", "tools", "micropython-sbsim.sh")], check=True,
+                             capture_output=True, text=True).stdout
+        _micropython.append(out.strip().splitlines()[-1])
+    return _micropython[0]
+
+
+class PyApp(App):
+    """A Python app (the whyos module) on this computer: the script under MicroPython, whose whyos
+    module meets what it meets on the badge (sbsim). The same questions as App."""
+
+    def __init__(self, script, app_id, tmp, **kw):
+        super().__init__(None, app_id, tmp, **kw)
+        self.exe = micropython()
+        self.args = [os.path.abspath(script)]
+        self.env.setdefault("MICROPYPATH", os.path.dirname(os.path.abspath(script)))
 
 
 def unit(test_c, logic, tmp, flags=("-lm",)):

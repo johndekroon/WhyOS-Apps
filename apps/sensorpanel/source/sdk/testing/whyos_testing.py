@@ -148,6 +148,8 @@ class App:
         """The app run to the virtual ms `at` (now by default): (report, out dir, root)."""
         at = self.t if at is None else at
         key = (tuple(self.keys), at)
+        # sbsim keeps 4096 key events (a press and a release each)
+        assert len(self.keys) * 2 < 4000, "%d key presses: too many for one run" % len(self.keys)
         if key not in self._runs:
             n = len(self._runs)
             root = os.path.join(self.tmp, "%s-%d" % (self.id, n))

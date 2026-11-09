@@ -23,7 +23,7 @@ https://github.com/smlng/pycayennelpp).
 | `0001-int-from_bytes-signed.patch` | MicroPython: `int.from_bytes()` takes `signed=`, which meshcore_py uses |
 | `0002-getaddrinfo-addrconfig.patch` | MicroPython: `socket.getaddrinfo()` returns only the address families the badge has (no IPv6) |
 | `0003-heap-that-does-not-fit.patch` | MicroPython: a heap larger than the memory the badge can give fails with a message instead of ending it |
-| `sdk/` | The WhyOS SDK from WhyOS `sdk/` at `392b2e7`: `python/whyos/` the module whyos (built in as a user C module, `USER_C_MODULES`), `include/` the SDK it is made of, `README.md` |
+| `sdk/` | The WhyOS SDK from WhyOS `sdk/` at `59c4625`: `python/whyos/` the module whyos (built in as a user C module, `USER_C_MODULES`), `include/` the SDK it is made of, `README.md` |
 | `libwb/` | WhyOS's drawing library `libwb/`, which the SDK draws with; `gen/` the scripts that made its data, with the fonts' licences (the fonts themselves: WhyOS `libwb/gen/fonts/`) |
 | `meshcore-py/` | meshcore_py 2.3.17 and pycayennelpp as frozen in: `upstream/`, our `patches/` and `port/` (the MicroPython glue), `stage.sh` that puts them together, `examples/ping_bot.py` |
 | `modules/` | Our own modules, frozen in: `setting.py` (the badge's settings), `ics.py` (calendars), `xml/` (`xml.etree.ElementTree`) |

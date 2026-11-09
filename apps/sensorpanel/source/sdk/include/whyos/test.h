@@ -63,18 +63,22 @@ static int wos_test_keys(void)
 
 /* ---- the screen as JSON ------------------------------------------------- */
 
-#define WOS_JSON	12288
+#define WOS_JSON	24576		/* 50 history lines and 40 log lines fit */
 
 static char *wos_json;
 static int wos_jn;
+
+static int wos_jfull;		/* it did not fit: a short object instead */
 
 static void wos_j(const char *s)
 {
 	int n = (int)strlen(s);
 
-	if (wos_jn + n < WOS_JSON - 1) {
+	if (wos_jn + n < WOS_JSON - 64) {
 		memcpy(wos_json + wos_jn, s, (size_t)n);
 		wos_jn += n;
+	} else {
+		wos_jfull = 1;
 	}
 }
 
@@ -197,7 +201,10 @@ static void wos_test_screen(void)
 		{
 			int starts[WOS_ED_LINES];
 
-			wos_jki("lines", wos_ed_layout(s->text ? s->text : "", starts));
+			int n = wos_ed_layout(s->text ? s->text : "", starts);
+
+			wos_jki("lines", n);
+			wos_jki("line", wos_ed_line_of(starts, n, wos.ed_cur));
 			wos_jki("top", wos.ed_top);
 		}
 	}
@@ -251,7 +258,7 @@ static void wos_test_screen(void)
 	if (wos.pop == WOS_POP_HELP) {
 		struct help_key k[14];
 
-		n = wos_help_keys(s, k, 14);
+		n = wos_help_keys(s, k, 12);	/* as many as the pop-up shows */
 		wos_j("{");
 		wos_jkv("kind", "help");
 		wos_jkv("title", wos_title(s));
@@ -307,6 +314,11 @@ static void wos_test_screen(void)
 	wos_jend("}");
 	wos_jend("}");
 	wos_jn--;		/* the "," after the whole */
+	if (wos_jfull) {	/* valid JSON that says so, rather than a cut one */
+		wos_jn = 0;
+		wos_jfull = 0;
+		wos_j("{\"overflow\":true}");
+	}
 	wos_j("\n");
 	wos_copy(path, wos.test_dir, sizeof(path));
 	wos_add(path, "/screen", sizeof(path));

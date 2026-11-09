@@ -21,7 +21,6 @@
 #include "whyos.h"
 
 #define PY_ACTIONS	16		/* per screen */
-#define PY_SLOTS	128		/* actions of all screens */
 #define PY_SETTINGS	16
 
 typedef struct {
@@ -37,9 +36,6 @@ typedef struct {
 
 static const mp_obj_type_t py_screen_type;
 
-/* callables by slot: the actions of every screen (also kept in its list) */
-static mp_obj_t py_slot[PY_SLOTS];
-static int py_n_slot;
 
 static mp_obj_t py_app_tick, py_app_quit;
 static wos_setting py_settings[PY_SETTINGS + 1];
@@ -101,9 +97,19 @@ static const char *py_str(mp_obj_t o)
 
 /* ---- the trampolines: the SDK's C callbacks into Python ------------------ */
 
-static void py_action(int slot)
+/* the screen's action i: the function in its i-th (key, word, help, fn) */
+static void py_action(int i)
 {
-	py_call(py_slot[slot], 0, 0, 0, 0);
+	py_screen_t *o = py_of(wos_top());
+	size_t n, k;
+	mp_obj_t *items, *t;
+
+	mp_obj_get_array(o->keep, &n, &items);
+	if ((size_t)i >= n)
+		return;
+	mp_obj_get_array(items[i], &k, &t);
+	if (k > 3)
+		py_call(t[3], 0, 0, 0, 0);
 }
 
 static void py_group(int k, int step)
@@ -126,8 +132,10 @@ static void py_menu_action(int row)
 	size_t n, k;
 	mp_obj_t *items, *pair;
 
+	if (menu == MP_OBJ_NULL || !mp_obj_is_type(menu, &mp_type_list))
+		return;
 	mp_obj_get_array(menu, &n, &items);
-	if (wos.pop_focus < 0 || (size_t)wos.pop_focus >= n)
+	if (wos.pop_focus < 0 || (size_t)wos.pop_focus >= n || !mp_obj_is_type(items[wos.pop_focus], &mp_type_tuple))
 		return;
 	mp_obj_get_array(items[wos.pop_focus], &k, &pair);	/* (word, fn(row)) */
 	if (k > 1)
@@ -141,6 +149,21 @@ static mp_obj_t py_attr_get(py_screen_t *o, qstr q)
 	return e ? e->value : MP_OBJ_NULL;
 }
 
+/* a row's part as text: a str as it is, anything else as str() would
+ * write it, in one of three buffers (a row is drawn before the next) */
+static const char *py_part(mp_obj_t o, int which)
+{
+	static char buf[3][64];
+
+	if (o == mp_const_none)
+		return 0;
+	if (mp_obj_is_str(o))
+		return mp_obj_str_get_str(o);
+	return py_message(o, buf[which], sizeof(buf[0]));
+}
+
+/* Drawn in C: a row that is not what it should be shows as text and never
+ * raises into the SDK's loop. */
 static void py_row(int i, wos_row *r)
 {
 	py_screen_t *o = py_of(wos_top());
@@ -148,21 +171,21 @@ static void py_row(int i, wos_row *r)
 	size_t n, k;
 	mp_obj_t *items, *parts;
 
-	if (rows == MP_OBJ_NULL)
+	if (rows == MP_OBJ_NULL || !(mp_obj_is_type(rows, &mp_type_list) || mp_obj_is_type(rows, &mp_type_tuple)))
 		return;
 	mp_obj_get_array(rows, &n, &items);
 	if (i < 0 || (size_t)i >= n)
 		return;
 	item = items[i];
 	r->kind = py_attr_get(o, MP_QSTR_choose) ? WOS_ROW_OPEN : WOS_ROW_PLAIN;
-	if (mp_obj_is_str(item)) {
-		r->label = mp_obj_str_get_str(item);
+	if (!mp_obj_is_type(item, &mp_type_tuple) && !mp_obj_is_type(item, &mp_type_list)) {
+		r->label = py_part(item, 0);
 		return;
 	}
 	mp_obj_get_array(item, &k, &parts);	/* (label, value, sub) */
-	r->label = k > 0 ? py_str(parts[0]) : "";
-	r->value = k > 1 ? py_str(parts[1]) : 0;
-	r->sub = k > 2 ? py_str(parts[2]) : 0;
+	r->label = k > 0 ? py_part(parts[0], 0) : "";
+	r->value = k > 1 ? py_part(parts[1], 1) : 0;
+	r->sub = k > 2 ? py_part(parts[2], 2) : 0;
 }
 
 static void py_choose(int i)
@@ -175,12 +198,20 @@ static void py_choose(int i)
 static void py_update(wos_screen *s)
 {
 	py_screen_t *o = py_of(s);
-	mp_obj_t rows = py_attr_get(o, MP_QSTR_rows);
+	mp_obj_t rows;
 
 	py_call(py_attr_get(o, MP_QSTR_update), 0, 0, 0, 0);
-	/* the fields from their Python values, which the app may have changed */
-	if (rows != MP_OBJ_NULL)
-		s->n = (int)mp_obj_get_int(mp_obj_len(rows));
+	/* the row count from the rows now (update() may have put new ones) */
+	rows = py_attr_get(o, MP_QSTR_rows);
+	if (rows != MP_OBJ_NULL && (mp_obj_is_type(rows, &mp_type_list) || mp_obj_is_type(rows, &mp_type_tuple))) {
+		size_t n;
+		mp_obj_t *items;
+
+		mp_obj_get_array(rows, &n, &items);
+		s->n = (int)n;
+	} else {
+		s->n = 0;
+	}
 }
 
 /* the line's result, or what is wrong: the function's return value, or the
@@ -267,7 +298,12 @@ static void py_field(py_screen_t *o, qstr q, mp_obj_t v)
 	case MP_QSTR_max: break;
 	case MP_QSTR_progress: s->progress = (int)mp_obj_get_int(v); break;
 	case MP_QSTR_abort: s->abort = v == mp_const_none ? 0 : py_abort; break;
-	case MP_QSTR_rows: s->n = (int)mp_obj_get_int(mp_obj_len(v)); s->row = py_row; break;
+	case MP_QSTR_rows:
+		if (!mp_obj_is_type(v, &mp_type_list) && !mp_obj_is_type(v, &mp_type_tuple))
+			mp_raise_TypeError(MP_ERROR_TEXT("rows: a list"));
+		s->n = (int)mp_obj_get_int(mp_obj_len(v));
+		s->row = py_row;
+		break;
 	case MP_QSTR_choose: s->choose = v == mp_const_none ? 0 : py_choose; break;
 	case MP_QSTR_evaluate: s->evaluate = v == mp_const_none ? 0 : py_evaluate; break;
 	case MP_QSTR_preview: s->preview = v == mp_const_none ? 0 : py_preview; break;
@@ -280,6 +316,10 @@ static void py_field(py_screen_t *o, qstr q, mp_obj_t v)
 		size_t n;
 		mp_obj_t *items;
 
+		if (!mp_obj_is_type(v, &mp_type_list))
+			mp_raise_TypeError(MP_ERROR_TEXT("menu: a list of (word, fn)"));
+		if (wos.pop == WOS_POP_MENU && wos.depth && wos_top() == s)
+			wos.pop = WOS_POP_NONE;	/* its items' words were the old list's */
 		mp_obj_get_array(v, &n, &items);
 		memset(o->menu, 0, sizeof(o->menu));
 		for (size_t i = 0; i < n && i < PY_ACTIONS; i++) {
@@ -363,7 +403,7 @@ static mp_obj_t py_screen_action(size_t n_args, const mp_obj_t *args)
 
 	while (o->acts[n].key)
 		n++;
-	if (n == PY_ACTIONS || py_n_slot == PY_SLOTS)
+	if (n == PY_ACTIONS)
 		mp_raise_ValueError(MP_ERROR_TEXT("too many actions"));
 	mp_obj_list_append(o->keep, mp_obj_new_tuple(n_args - 1, args + 1));
 	o->acts[n] = (wos_action){ key, py_str(args[2]), n_args > 3 ? py_str(args[3]) : 0, 0, 0 };
@@ -372,9 +412,8 @@ static mp_obj_t py_screen_action(size_t n_args, const mp_obj_t *args)
 			o->group[-key - 1] = fn;
 			o->acts[n].fn = key == WOS_KEY_ARROWS ? py_arrows : key == WOS_KEY_LEFTRIGHT ? py_leftright : py_updown;
 		} else {
-			py_slot[py_n_slot] = fn;
 			o->acts[n].fn = py_action;
-			o->acts[n].arg = py_n_slot++;
+			o->acts[n].arg = n;	/* its place in keep */
 		}
 	}
 	return mp_const_none;

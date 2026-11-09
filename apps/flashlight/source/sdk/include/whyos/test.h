@@ -63,18 +63,22 @@ static int wos_test_keys(void)
 
 /* ---- the screen as JSON ------------------------------------------------- */
 
-#define WOS_JSON	12288
+#define WOS_JSON	24576		/* 50 history lines and 40 log lines fit */
 
 static char *wos_json;
 static int wos_jn;
+
+static int wos_jfull;		/* it did not fit: a short object instead */
 
 static void wos_j(const char *s)
 {
 	int n = (int)strlen(s);
 
-	if (wos_jn + n < WOS_JSON - 1) {
+	if (wos_jn + n < WOS_JSON - 64) {
 		memcpy(wos_json + wos_jn, s, (size_t)n);
 		wos_jn += n;
+	} else {
+		wos_jfull = 1;
 	}
 }
 
@@ -138,7 +142,7 @@ static void wos_jend(const char *close)
 	wos_j(",");
 }
 
-static const char *const wos_kind_names[] = { "", "colour", "entry", "list", "canvas", "log" };
+static const char *const wos_kind_names[] = { "", "colour", "entry", "list", "canvas", "log", "editor" };
 
 static void wos_test_screen(void)
 {
@@ -190,6 +194,20 @@ static void wos_test_screen(void)
 		}
 		wos_jend("]");
 	}
+	if (s->kind == WOS_EDITOR) {
+		wos_jkv("text", s->text);
+		wos_jki("cursor", wos.ed_cur);
+		wos_jki("dirty", s->dirty);
+		{
+			int starts[WOS_ED_LINES];
+
+			int n = wos_ed_layout(s->text ? s->text : "", starts);
+
+			wos_jki("lines", n);
+			wos_jki("line", wos_ed_line_of(starts, n, wos.ed_cur));
+			wos_jki("top", wos.ed_top);
+		}
+	}
 	if (s->kind == WOS_LIST) {
 		wos_jki("focus", s->focus);
 		wos_js("rows");
@@ -240,7 +258,7 @@ static void wos_test_screen(void)
 	if (wos.pop == WOS_POP_HELP) {
 		struct help_key k[14];
 
-		n = wos_help_keys(s, k, 14);
+		n = wos_help_keys(s, k, 12);	/* as many as the pop-up shows */
 		wos_j("{");
 		wos_jkv("kind", "help");
 		wos_jkv("title", wos_title(s));
@@ -256,9 +274,21 @@ static void wos_test_screen(void)
 		}
 		wos_jend("]");
 		wos_jend("}");
+	} else if (wos.pop == WOS_POP_TEXT) {
+		wos_j("{");
+		wos_jkv("kind", "text");
+		wos_jkv("title", wos.ask_title);
+		wos_jkv("text", wos.text);
+		wos_jki("cursor", wos.text_cur);
+		wos_jkv("error", wos.text_err);
+		wos_jend("}");
 	} else if (wos.pop) {
 		wos_j("{");
-		wos_jkv("kind", wos.pop == WOS_POP_CHOICE ? "choice" : "menu");
+		wos_jkv("kind", wos.pop == WOS_POP_CHOICE ? "choice" : wos.pop == WOS_POP_ASK ? "ask" : "menu");
+		if (wos.pop == WOS_POP_ASK) {
+			wos_jkv("title", wos.ask_title);
+			wos_jkv("body", wos.ask_body);
+		}
 		wos_jki("focus", wos.pop_focus);
 		wos_jki("current", wos.pop == WOS_POP_CHOICE ? wos.pop_cur : -1);
 		wos_js("items");
@@ -272,6 +302,11 @@ static void wos_test_screen(void)
 	} else {
 		wos_j("null,");
 	}
+	wos_jkv("message", wos.msg[0] ? wos.msg : 0);
+	if (s->busy) {
+		wos_jkv("busy", s->busy);
+		wos_jki("progress", s->progress);
+	}
 	wos_js("settings");
 	wos_j(":{");
 	for (int i = 0; i < wos_n_kv; i++)
@@ -279,6 +314,11 @@ static void wos_test_screen(void)
 	wos_jend("}");
 	wos_jend("}");
 	wos_jn--;		/* the "," after the whole */
+	if (wos_jfull) {	/* valid JSON that says so, rather than a cut one */
+		wos_jn = 0;
+		wos_jfull = 0;
+		wos_j("{\"overflow\":true}");
+	}
 	wos_j("\n");
 	wos_copy(path, wos.test_dir, sizeof(path));
 	wos_add(path, "/screen", sizeof(path));

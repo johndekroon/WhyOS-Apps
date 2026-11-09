@@ -5,7 +5,7 @@
   "categories": [
     "tools"
   ],
-  "version": "1.3.0",
+  "version": "1.3.1",
   "icon": {
     "16x16": "icon16.png",
     "32x32": "icon32.png",
@@ -20,7 +20,7 @@
         "why2025-whyos"
       ],
       "type": "whyos",
-      "revision": 7,
+      "revision": 8,
       "executable": "calc",
       "external_only": true,
       "assets": []
@@ -31,7 +31,7 @@
     "summary": "Type a sum, get the answer: functions, hex and binary",
     "description": "Type a sum on the keyboard; its result shows as you type, and Enter (or =)\nworks it out and puts it on the roll above. Up and Down bring earlier sums\nback to change them. Starting with + * / ^ % or ! goes on from the last\nanswer, and an x after a number means times.\n\nIt knows + - * / ^, brackets, n% (n/100), n! and mod; pi, e and ans\n(the last answer); sqrt, cbrt, abs, exp, ln, log, log2, sin, cos, tan,\nasin, acos, atan, sinh, cosh, tanh, round, floor and ceil. 2pi and\n3(4+5) multiply. Numbers can be written as 0xff, 0b1010 or 1.5e3, and a\nwhole-number answer also shows in hexadecimal and binary.\n\nAngles are in degrees; Tab switches to radians, as the setting (the clover\nkey) does, and the choice is kept. The circle key shows the sums worked\nout, the diamond the keys. Esc clears the line, and on an empty line\ncloses the calculator, as the logo key does.",
     "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/calc/source",
-    "changelog": "Built on the WhyOS SDK: the drawn keypad is gone, the line and its result sit under the roll of earlier sums, the angle unit is kept, and the circle, clover and diamond work as in every app.",
+    "changelog": "The SDK's fixes of WhyOS 59c4625: Left, Right and Backspace move and erase by character.",
     "type": "app",
     "category": "utilities",
     "tags": [

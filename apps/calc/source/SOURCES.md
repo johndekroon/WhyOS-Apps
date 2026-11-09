@@ -1,7 +1,7 @@
 # Corresponding source: Calculator
 
 The calculator is our own program, written for the badge on the WhyOS SDK.
-The files are copied from WhyOS at commit `3cb2349`:
+The files are copied from WhyOS at commit `59c4625`:
 
 | File | What |
 |---|---|
