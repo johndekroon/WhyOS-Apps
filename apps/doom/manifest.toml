@@ -3,8 +3,8 @@
 format = 1
 id = "doom"
 name = "DOOM"
-version = "1.9.1"
-build = 2
+version = "1.9.2"
+build = 3
 summary = "The shareware episode of DOOM (1993), Knee-Deep in the Dead"
 description = """
 The first episode of DOOM, from id Software's shareware release 1.9, on
@@ -13,17 +13,18 @@ fbDOOM, a port of the DOOM source code to the Linux framebuffer.
 Keys: arrows move and turn, Ctrl fires, Space opens doors, Enter selects
 in the menus, Esc opens the menu, Quit Game ends it, and the logo key
 goes back to the start menu. Saved games go to the app's folder on the
-SD card. There is no sound.
+SD card. The sound effects play on the output chosen in Settings > Sound;
+there is no music.
 
 DOOM needs a free block of at least 2 MB of memory for its zone: close
 other apps first if it does not start."""
 author = "id Software (DOOM), maximevince (fbDOOM), badge port"
-license = "GPL-2.0-or-later AND MIT AND LicenseRef-DOOM-shareware AND LGPL-2.1-or-later"
+license = "GPL-2.0-or-later AND MIT AND BSD-3-Clause AND LicenseRef-DOOM-shareware AND LGPL-2.1-or-later"
 license_file = "fbdoom.txt"
 homepage = "https://github.com/maximevince/fbDOOM"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/doom/source"
 upstream_version = "fbDOOM git 1728016"
-changelog = "Saving works, and Backspace no longer quits the game: it deletes while you type a save's name. The whole width of the screen, and smoother where the badge can scale the picture itself."
+changelog = "Sound effects, on the output chosen in Settings > Sound (there is no music)."
 
 type = "game"
 category = "action"
@@ -53,6 +54,20 @@ version = "2ce6a3b"
 license = "MIT"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/doom/source"
 license_file = "doom-launcher.txt"
+
+[[bundled]]
+name = "bsound (the badge's game sound)"
+version = "WhyOS 3ef5aae"
+license = "MIT"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/doom/source"
+license_file = "bsound.txt"
+
+[[bundled]]
+name = "tinyalsa"
+version = "2.0.0"
+license = "BSD-3-Clause"
+source = "https://github.com/tinyalsa/tinyalsa/archive/v2.0.0/tinyalsa-2.0.0.tar.gz"
+license_file = "tinyalsa.txt"
 
 [[bundled]]
 name = "uClibc-ng"

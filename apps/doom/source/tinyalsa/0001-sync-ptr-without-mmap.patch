@@ -1,0 +1,22 @@
+tinyalsa 2.0.0 without mmap of the PCM's status and control (the badge has no MMU):
+pcm_state() and others synced with flags 0, which hands the kernel tinyalsa's own
+copy of appl_ptr. That copy only moves on the mmap path, so after every read or
+write the kernel's pointer went back: writes never waited (tinyplay finished at
+once) and reads returned the same data again. A PCM without PCM_MMAP now only
+reads the pointers back.
+
+diff -urN a/src/pcm.c b/src/pcm.c
+--- a/src/pcm.c
++++ b/src/pcm.c
+@@ -605,6 +605,11 @@
+             }
+         }
+     } else {
++        /* Without PCM_MMAP the read and write ioctls move appl_ptr in the
++         * kernel, and our copy of it is stale: never hand that back (it
++         * rewound every write and read: tinyplay finished at once). */
++        if (!(pcm->flags & PCM_MMAP))
++            flags |= SNDRV_PCM_SYNC_PTR_APPL | SNDRV_PCM_SYNC_PTR_AVAIL_MIN;
+         pcm->sync_ptr->flags = flags;
+         if (pcm->ops->ioctl(pcm->data, SNDRV_PCM_IOCTL_SYNC_PTR,
+                             pcm->sync_ptr) < 0) {

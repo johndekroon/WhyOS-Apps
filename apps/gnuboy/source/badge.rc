@@ -16,3 +16,6 @@ bind f3 +start
 bind x +start
 bind f4 +select
 bind o +select
+
+# Sound: on, mono at 22050 Hz. "set sound 0" turns it off; "set samplerate
+# 11025" halves what mixing it costs.

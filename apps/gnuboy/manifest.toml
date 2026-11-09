@@ -4,28 +4,29 @@
 format = 1
 id = "gnuboy"
 name = "Game Boy"
-version = "1.3.1"
-build = 6
+version = "1.4.0"
+build = 7
 summary = "Game Boy and Game Boy Color emulator"
 description = """
-Plays Game Boy and Game Boy Color games, scaled 4x to 640x576 in the
-middle of the panel. The emulation runs at full speed; the screen is drawn
-up to 30 times a second, less often while the whole screen scrolls. There
-is no sound.
+Plays Game Boy and Game Boy Color games, scaled to the panel's whole
+width (720x648). The emulation runs at full speed; fewer frames are shown
+while the whole screen scrolls. The sound plays on the output chosen in
+Settings > Sound.
 
 Put your .gb and .gbc files in the roms folder of this app: on the SD card
 in badge/appdata/gnuboy/roms. Battery saves go to roms/saves.
 
 Keys: arrows are the D-pad, square or Enter is A, triangle or Backspace
 is B, cross or X is Start, circle or O is Select. Esc pauses: save or load
-the state there, or quit. Diamond shows the keys."""
+the state there (saving over a state asks first and keeps a backup), or
+quit. Diamond shows the keys."""
 author = "gnuboy authors (rofl0r/gnuboy), badge port"
-license = "GPL-2.0-or-later AND LGPL-2.1-or-later"
+license = "GPL-2.0-or-later AND MIT AND BSD-3-Clause AND LGPL-2.1-or-later"
 license_file = "gnuboy.txt"
 homepage = "https://github.com/rofl0r/gnuboy"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/gnuboy/source"
 upstream_version = "git c367bb4"
-changelog = "The pause screen dims what is behind it less, as every pop-up in WhyOS now does."
+changelog = "The Game Boy's sound plays on the output chosen in Settings > Sound; the picture fills the screen's width, and saving a state over another asks first and keeps a backup. Uses the whole screen; hold the logo key to see WhyOS's status bar."
 
 type = "game"
 category = "emulators"
@@ -50,6 +51,20 @@ features = ["sd-card", "display", "keyboard"]
 [storage.data]
 folders = ["roms", "roms/saves"]
 user_folders = ["roms"]
+
+[[bundled]]
+name = "bsound (the badge's game sound)"
+version = "WhyOS 3ef5aae"
+license = "MIT"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/gnuboy/source"
+license_file = "bsound.txt"
+
+[[bundled]]
+name = "tinyalsa"
+version = "2.0.0"
+license = "BSD-3-Clause"
+source = "https://github.com/tinyalsa/tinyalsa/archive/v2.0.0/tinyalsa-2.0.0.tar.gz"
+license_file = "tinyalsa.txt"
 
 [[bundled]]
 name = "uClibc-ng"

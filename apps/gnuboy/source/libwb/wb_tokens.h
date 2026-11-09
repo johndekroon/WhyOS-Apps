@@ -1,6 +1,5 @@
 /*
- * WhyBadge "Neon Orbit" design tokens.
- * Generated from design/tokens.json. Colours are 0xRRGGBB.
+ * WhyOS "Neon Orbit" design tokens. Colours are 0xRRGGBB.
  */
 #pragma once
 
@@ -22,7 +21,7 @@
 
 /* Text */
 #define WB_COLOR_TEXT_HI     0xF2F2FA
-#define WB_COLOR_TEXT_MID    0xC8C8DC  /* 2026-10-27 (was A6A6C0) */
+#define WB_COLOR_TEXT_MID    0xC8C8DC
 #define WB_COLOR_PLACEHOLDER 0x9A9AB6  /* a field's hint */
 #define WB_COLOR_TEXT_LOW    0x7C7C99
 

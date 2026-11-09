@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 /*
- * The pause screen of a full-screen app on the badge (Docs/06-design-system.md
- * 6.9): such an app may use the symbol keys as controls, and gets Esc as
+ * The pause screen of a full-screen app on the badge (docs/APPS.md):
+ * such an app may use the symbol keys as controls, and gets Esc as
  * "pause", not as "quit". The pause is a pop-up over the app in the menu's
- * style (libwb, the canvas "Menu's met frontpaneel"): the app's last picture
+ * style (libwb, the design): the app's last picture
  * dimmed, a frosted panel over it with the choices as rows, Resume (the
  * default), the app's own choices, a key overview, Quit under a line, and
  * the keys inside the panel at its bottom. Used by gnuboy and NetSurf
@@ -67,7 +67,7 @@ static int game_row(const struct pause_screen *s, int y)
  * The key overview (the diamond key, or Keys): as wbdraw.h's help_popup,
  * "HELP" with the diamond, the app's name and sentence, every key with a
  * line, but its own key (Esc) inside the panel at the bottom, as the
- * canvas's pop-ups have them, not in a hint bar over the game.
+ * design's pop-ups have them, not in a hint bar over the game.
  */
 #define KEYS_ROW	36
 

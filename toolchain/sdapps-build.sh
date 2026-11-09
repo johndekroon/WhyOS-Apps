@@ -4,8 +4,8 @@
 #
 #   sdapps/build.sh [gnuboy] [netsurf] [nmap] [imgview] [links] [nethack]
 #                   [doom] [sensorpanel] [nano] [calc] [hideous] [barbarious] [pdfview]
-#                   [ohminous] [flashlight]
-#                   [micropython]
+#                   [ohminous] [flashlight] [opentyrian] [duke3d] [keen4]
+#                   [micropython] [tinyalsa] [airplay] [vnc]
 #                                                                          default: all
 #
 # Sources are fetched at pinned versions into ~/sdapps/src; the result is
@@ -107,18 +107,24 @@ build_gnuboy() {
 	local s=$SRC/gnuboy d=$DEST/gnuboy objs=()
 	fetch gnuboy "$GNUBOY_REPO" "$GNUBOY_REV"
 	mkdir -p "$s/sys/badge" "$d"
+	sed -i 's/^static char \*saveprefix;/char *saveprefix;/' "$s/loader.c"	# for badge.c's backup
 	cp "$HERE/gnuboy/badge.c" "$HERE/pause/pause.c" "$HERE/pause/pause.h" "$s/sys/badge/"
 	for f in lcd refresh lcdc palette cpu mem rtc hw sound events keytable menu \
 		 loader save debug emu main rccmds rckeys rcvars rcfile exports split \
 		 path inflate miniz_tinfl xz/xz_crc32 xz/xz_crc64 xz/xz_dec_lzma2 \
-		 xz/xz_dec_stream xz/xz_dec_bcj sys/nix/nix sys/dummy/nosound \
+		 xz/xz_dec_stream xz/xz_dec_bcj sys/nix/nix \
 		 sys/dummy/nojoy sys/badge/badge sys/badge/pause; do
 		objs+=("$s/$f.c")
 	done
 	flat 65536
-	# pause.c (sdapps/pause) draws with libwb, the menu's drawing library
-	"$CC" "${CFLAGS[@]}" -O2 -DIS_LITTLE_ENDIAN -DIS_LINUX -I"$s" -I"$s/sys/nix" \
-		-I"$HERE/../patches/buildroot/overlay-src" -I"$HERE/../libwb" "${objs[@]}" "${LDFLAT[@]}" -o "$d/gnuboy"
+	# pause.c (sdapps/pause) draws with libwb, the menu's drawing library;
+	# badge.c plays the sound through bsound (sound/bsound.h), whose
+	# tinyalsa has a pcm_close of its own
+	bsound
+	"$CC" "${CFLAGS[@]}" -O2 -DIS_LITTLE_ENDIAN -DIS_LINUX -Dpcm_close=gnuboy_pcm_close \
+		-I"$s" -I"$s/sys/nix" -I"$HERE/sound" \
+		-I"$HERE/../patches/buildroot/overlay-src" -I"$HERE/../libwb" "${objs[@]}" "$SRC/bsound.o" \
+		"${LDFLAT[@]}" $BSOUND_LIBS -o "$d/gnuboy"
 	zero_page "$d/gnuboy.gdb"
 	cp "$HERE/gnuboy/badge.rc" "$HERE/gnuboy/app.conf" "$d/"
 	ls -l "$d"
@@ -464,6 +470,115 @@ build_nano() {
 	ls -l "$d"
 }
 
+TINYALSA_URL=https://github.com/tinyalsa/tinyalsa/archive/v2.0.0/tinyalsa-2.0.0.tar.gz
+TINYALSA_SHA=573ae0b2d3480851c1d2a12503ead2beea27f92d44ed47b74b553ba947994ef1
+
+# tinyalsa's tools (tinyplay, tinypcminfo, tinymix) for the speaker: ALSA's
+# own alsa-utils need fork, and alsa-lib does not fit in the rootfs. Plain
+# ioctls on /dev/snd, no plugins (no dlopen). Into $BR_OUT/sdapps/tinyalsa.
+build_tinyalsa() {
+	local s d=$BR_OUT/sdapps/tinyalsa t
+	s=$SRC/$(get "$TINYALSA_URL" "$TINYALSA_SHA")
+	patch -s -d "$s" -p1 < "$HERE/tinyalsa/0001-sync-ptr-without-mmap.patch"
+	mkdir -p "$d" "$SRC/nodl"
+	: > "$SRC/nodl/dlfcn.h"	# included even without plugins, and unused
+	flat 16384
+	for t in tinyplay tinypcminfo tinymix; do
+		"$CC" "${CFLAGS[@]}" -I"$s/include" -I"$SRC/nodl" "$s/utils/$t.c" "$s"/src/{pcm,pcm_hw,mixer,mixer_hw,limits}.c \
+			"$HERE/tinyalsa/noplugins.c" \
+			"${LDFLAT[@]}" -o "$d/$t"
+		zero_page "$d/$t.gdb"
+		rm -f "$d/$t.gdb"
+	done
+	cp "$s/NOTICE" "$d/"
+	ls -l "$d"
+}
+
+# tinyalsa as a library in the prefix, for the programs that play sound
+libtinyalsa() {
+	local s
+	[ -f "$P/lib/libtinyalsa.a" ] && return
+	mkdir -p "$P/lib"
+	s=$SRC/$(get "$TINYALSA_URL" "$TINYALSA_SHA")
+	patch -s -d "$s" -p1 < "$HERE/tinyalsa/0001-sync-ptr-without-mmap.patch"
+	mkdir -p "$SRC/nodl" "$P/include/tinyalsa" && : > "$SRC/nodl/dlfcn.h"
+	for t in pcm pcm_hw mixer mixer_hw limits; do
+		"$CC" $LIBCFLAGS -I"$s/include" -I"$SRC/nodl" -c "$s/src/$t.c" -o "$SRC/nodl/$t.o"
+	done
+	"$CC" $LIBCFLAGS -c "$HERE/tinyalsa/noplugins.c" -I"$s/include" -o "$SRC/nodl/noplugins.o"
+	"$T-ar" rcs "$P/lib/libtinyalsa.a" "$SRC"/nodl/*.o
+	cp "$s"/include/tinyalsa/*.h "$P/include/tinyalsa/"
+}
+
+# A game's sound (sound/bsound.h): $SRC/bsound.o, to link with
+# BSOUND_LIBS; its header is in $HERE/sound
+BSOUND_LIBS="-L$P/lib -ltinyalsa -lpthread"
+bsound() {
+	libtinyalsa
+	"$CC" $LIBCFLAGS -Wall -I"$P/include" -c "$HERE/sound/bsound.c" -o "$SRC/bsound.o"
+}
+
+# AirPlay 1 to the speaker: Shairport Sync with a tinyalsa back end of our own
+# (airplay/audio_tinyalsa.c) instead of alsa-lib, its own mDNS (tinysvcmdns),
+# mbedtls from build_deps, and libconfig and popt at Buildroot's versions.
+SHAIRPORT_URL=https://github.com/mikebrady/shairport-sync/archive/4.3.7/shairport-sync-4.3.7.tar.gz
+SHAIRPORT_SHA=a1242d100b61fe1fffbbf706e919ed51d6a341c9fb8293fb42046e32ae2b3338
+LIBCONFIG_URL=https://github.com/hyperrealm/libconfig/releases/download/v1.7.3/libconfig-1.7.3.tar.gz
+LIBCONFIG_SHA=545166d6cac037744381d1e9cc5a5405094e7bfad16a411699bcff40bbb31ee7
+POPT_URL=http://ftp.rpm.org/popt/releases/popt-1.x/popt-1.19.tar.gz
+POPT_SHA=c25a4838fc8e4c1c8aacb8bd620edb3084a3d63bf8987fdad3ca2758c63240f9
+# raopsend's Ed25519 and X25519 (pairing with a code), which mbedtls lacks:
+# Monocypher, small, audited, BSD-2-Clause or CC0
+MONOCYPHER_URL=https://monocypher.org/download/monocypher-4.0.2.tar.gz
+MONOCYPHER_SHA=38d07179738c0c90677dba3ceb7a7b8496bcfea758ba1a53e803fed30ae0879c
+
+build_airplay() {
+	local s d=$DEST/airplay t
+	build_deps
+	if [ ! -f "$P/lib/libconfig.a" ]; then
+		s=$SRC/$(get "$LIBCONFIG_URL" "$LIBCONFIG_SHA")
+		# its config.sub predates riscv32
+		cp "$BR_OUT"/host/share/automake-*/config.sub "$s/aux-build/"
+		(cd "$s" && cfg --disable-cxx --disable-examples --disable-tests && make -s -C lib install)
+	fi
+	if [ ! -f "$P/lib/libpopt.a" ]; then
+		s=$SRC/$(get "$POPT_URL" "$POPT_SHA")
+		(cd "$s" && cfg --disable-nls && make -s -C src install && install -m 644 popt.pc "$P/lib/pkgconfig/")
+	fi
+	libtinyalsa
+	s=$SRC/$(get "$SHAIRPORT_URL" "$SHAIRPORT_SHA")
+	patch -s -d "$s" -p1 < "$HERE/airplay/0001-tinyalsa-backend-badge.patch"
+	cp "$HERE/airplay/audio_tinyalsa.c" "$s/"
+	"$CC" $LIBCFLAGS -c "$HERE/airplay/threadstack.c" -o "$SRC/airplay-threadstack.o"
+	(cd "$s" && PATH=$BR_OUT/host/bin:$PATH autoreconf -fi >/dev/null 2>&1 && \
+		PKG_CONFIG_LIBDIR=$P/lib/pkgconfig PKG_CONFIG=$BR_OUT/host/bin/pkg-config CC="$CC" \
+		CFLAGS="$LIBCFLAGS -I$P/include -w" CPPFLAGS="-I$P/include" \
+		LDFLAGS="-static -L$P/lib -Wl,--wrap=pthread_create -Wl,--gc-sections -Wl,--no-relax -Wl,-elf2flt=-r" \
+		LIBS="$SRC/airplay-threadstack.o -ltinyalsa -lpthread" ./configure --host=riscv32-buildroot-linux-uclibc \
+		--with-tinyalsa --with-pipe --with-stdout --with-tinysvcmdns --with-ssl=mbedtls \
+		--without-alsa --without-avahi --without-libdaemon --without-soxr --without-airplay-2 \
+		>/dev/null)
+	# automake links with C++ for a C++ source that is not built here
+	make -s -C "$s" -j"$(nproc)" CXXLD="$CC"
+	"$T-flthdr" -s 131072 "$s/shairport-sync"	# its stack, logging takes 16 KB (configure splits -s N)
+	zero_page "$s/shairport-sync.gdb"
+	rm -rf "$d"
+	mkdir -p "$d"
+	cp "$s/shairport-sync" "$d/"
+	# and the other way: the badge's sound to an AirPlay speaker
+	t=$SRC/$(get "$MONOCYPHER_URL" "$MONOCYPHER_SHA")
+	flat 32768
+	"$CC" "${CFLAGS[@]}" -DRAOP_CRYPTO -I"$P/include" -I"$t/src" -I"$t/src/optional" "$HERE/airplay/raopsend.c" \
+		"$t/src/monocypher.c" "$t/src/optional/monocypher-ed25519.c" -L"$P/lib" \
+		-ltinyalsa -lmbedtls -lmbedx509 -lmbedcrypto -lpthread "${LDFLAT[@]}" -o "$d/raopsend"
+	zero_page "$d/raopsend.gdb"
+	rm -f "$d/raopsend.gdb"
+	cp "$s/LICENSES" "$d/LICENSE"
+	{ printf '\n\nraopsend uses Monocypher 4.0.2:\n\n'; cat "$t/LICENCE.md"; } >> "$d/LICENSE"
+	cp "$HERE/airplay/start" "$HERE/airplay/app.conf" "$HERE/airplay/shairport-sync.conf" "$d/"
+	ls -l "$d"
+}
+
 # The sensor panel: BME680 and BMI270 readings, live (it was in the image).
 build_sensorpanel() {
 	local d=$DEST/sensorpanel
@@ -571,9 +686,9 @@ build_pdfview() {
 	ls -l "$d"
 }
 
-# DOOM: fbDOOM (no SDL, the framebuffer and the VT's keys) with our patch
-# (global-patches/fbdoom), the shareware WAD, and doom.c to start it. Was
-# a Buildroot package in the image (buildroot-tree/0002) until 2026-10-12.
+# DOOM: fbDOOM (no SDL, the framebuffer and the VT's keys) with our patches
+# (global-patches/fbdoom), its sound effects through bsound (doom/i_badgesound.c,
+# doom/0001-badge-sound.patch), the shareware WAD, and doom.c to start it.
 FBDOOM_REV=17280163bc95e5d954d2efaa0633489b763b4cd1
 FBDOOM_SHA=77f57cee68fed438dffdba96f6070b8975c16652a63ddf4fb967994e5585a38a
 WAD_URL=http://www.jbserver.com/downloads/games/doom/misc/shareware/doom19s.zip
@@ -586,13 +701,16 @@ build_doom() {
 	echo "$FBDOOM_SHA  $f" | sha256sum -c --quiet -
 	rm -rf "$s"
 	tar -C "$SRC" -xzf "$f"
-	for p in "$HERE"/../patches/buildroot/global-patches/fbdoom/*.patch; do
+	for p in "$HERE"/../patches/buildroot/global-patches/fbdoom/*.patch "$HERE/doom/0001-badge-sound.patch"; do
 		patch -s -d "$s" -p1 < "$p"
 	done
+	cp "$HERE/doom/i_badgesound.c" "$s/fbdoom/"
+	bsound
 	# its Makefile takes link flags only through CC, where "-s N" would
 	# split: the stack (DOOM recurses; 64 KB as the package had) via flthdr
 	make -s -C "$s/fbdoom" CC="$CC ${CFLAGS[*]} -Wl,--gc-sections -Wl,--no-relax -Wl,-elf2flt=-r" \
-		NOSDL=1 fbdoom
+		NOSDL=1 BADGE_SOUND=1 BADGE_SOUND_CFLAGS="-I$HERE/sound" \
+		BADGE_SOUND_LIBS="$SRC/bsound.o $BSOUND_LIBS" fbdoom
 	zero_page "$s/fbdoom/fbdoom.gdb"
 	"$T-flthdr" -s 65536 "$s/fbdoom/fbdoom"
 	cp "$s/fbdoom/fbdoom" "$d/"
@@ -609,6 +727,141 @@ build_doom() {
 	cp "$s/README.TXT" "$d/README-fbdoom.txt"
 	cp "$SRC/wad/README.TXT" "$d/README-shareware.txt"
 	cp "$HERE/doom/app.conf" "$d/"
+	ls -l "$d"
+}
+
+# OpenTyrian with our SDL for the panel, keypad and sound (opentyrian/sdl, bsound),
+# and the freeware Tyrian 2.1 data without its DOS programs.
+OPENTYRIAN_VER=2.1.20260913
+OPENTYRIAN_SHA=dbcd96383d4fa571137242c36bd7eca054cf5a08a9bf2eec15ef230d6e60680d
+TYRIAN_URL=https://www.camanis.net/tyrian/tyrian21.zip
+TYRIAN_SHA=7790d09a2a3addcd33c66ef063d5900eb81cc9c342f4807eb8356364dd1d9277
+
+build_opentyrian() {
+	local d=$DEST/opentyrian s=$SRC/opentyrian-$OPENTYRIAN_VER f=$SRC/dl/opentyrian-$OPENTYRIAN_VER.tar.gz w=$SRC/dl/tyrian21.zip
+	mkdir -p "$SRC/dl" "$d"
+	[ -f "$f" ] || curl -sSfL -o "$f" "https://github.com/opentyrian/opentyrian/archive/refs/tags/v$OPENTYRIAN_VER.tar.gz"
+	echo "$OPENTYRIAN_SHA  $f" | sha256sum -c --quiet -
+	[ -f "$w" ] || curl -sSfL -o "$w" "$TYRIAN_URL"
+	echo "$TYRIAN_SHA  $w" | sha256sum -c --quiet -
+	rm -rf "$s"
+	tar -C "$SRC" -xzf "$f"
+	for p in "$HERE"/opentyrian/patches/*.patch; do
+		patch -s -d "$s" -p1 < "$p"
+	done
+	cp "$HERE/opentyrian/sdl/sdl_badge.c" "$s/src/"
+	bsound
+	make -s -j"$(nproc)" -C "$s" CC="$CC" PKG_CONFIG=false PLATFORM=UNIX WITH_NETWORK=false TYRIAN_DIR=/nonexistent \
+		VCS_IDREV="echo v$OPENTYRIAN_VER" CFLAGS="${CFLAGS[*]}" \
+		CPPFLAGS="-D_GNU_SOURCE -I$HERE/opentyrian/sdl -I$HERE/sound -I$HERE/../libwb" \
+		LDFLAGS="-Wl,--gc-sections -Wl,--no-relax -Wl,-elf2flt=-r" LDLIBS="$SRC/bsound.o $BSOUND_LIBS"
+	zero_page "$s/opentyrian.gdb"
+	"$T-flthdr" -s 131072 "$s/opentyrian"	# JE_loadMap alone takes 75 KB
+	cp "$s/opentyrian" "$d/"
+	rm -rf "$d/data" "$SRC/tyrian21"
+	unzip -q -o -d "$SRC" "$w"
+	mkdir -p "$d/data"
+	find "$SRC/tyrian21" -type f ! -iname '*.exe' -exec cp {} "$d/data/" \;
+	cp "$HERE/opentyrian/app.conf" "$d/"
+	ls -l "$d"
+}
+
+# Duke Nukem 3D: the port to the ESP32-P4 in RetroESP32-P4 (Chocolate Duke3D with its
+# SDL compat headers and the game's data), with our SDL for the panel, keypad and sound
+# (duke3d/sdl, on bsound). Only those paths of that repository are fetched.
+DUKE3D_REPO=https://github.com/giltal/RetroESP32-P4
+DUKE3D_REF=339f17ff74eea4fe250d749fdcf0b5e544519c2a
+DUKE3D_GRP_SHA=89a60aa26333bd659a9aa1aff77666e061da64317349a6a742c1d92754836f2c
+
+duke3d_source() {
+	local r=$SRC/dl/RetroESP32-P4-$DUKE3D_REF s=$SRC/duke3d
+	mkdir -p "$SRC/dl"
+	if [ ! -d "$r/.git" ]; then
+		git init -q "$r"
+		git -C "$r" remote add origin "$DUKE3D_REPO"
+		git -C "$r" sparse-checkout set components/duke3d apps/psram_duke3d/compat SDcard/roms/duke3d
+		git -C "$r" fetch -q --depth 1 --filter=blob:none origin "$DUKE3D_REF"
+		git -C "$r" checkout -q FETCH_HEAD
+	fi
+	echo "$DUKE3D_GRP_SHA  $r/SDcard/roms/duke3d/duke3d.grp" | sha256sum -c --quiet -
+	rm -rf "$s"
+	mkdir -p "$s"
+	cp -R "$r/components/duke3d/Engine" "$r/components/duke3d/Game" "$r/components/duke3d/audiolib" "$s/"
+	cp -R "$r/apps/psram_duke3d/compat" "$s/"
+	for p in "$HERE"/duke3d/patches/*.patch; do
+		patch -s -d "$s" -p1 < "$p"
+	done
+}
+
+build_duke3d() {
+	local d=$DEST/duke3d s=$SRC/duke3d o=$SRC/duke3d/obj f flags=() objs=()
+	duke3d_source
+	mkdir -p "$d" "$o"
+	while read -r -a line; do flags+=("${line[@]}"); done < "$HERE/duke3d/flags"
+	flags+=(-O2 -fPIC -static -ffunction-sections -fdata-sections -w "-I$HERE/duke3d/sdl" "-I$HERE/../libwb"
+		"-I$s/compat" "-I$s/Engine" "-I$s/Game" "-I$s/audiolib")
+	for f in $(cat "$HERE/duke3d/sources") ; do
+		"$CC" "${flags[@]}" -c "$s/$f" -o "$o/$(basename "$f").o" &
+		objs+=("$o/$(basename "$f").o")
+		[ "$(jobs -r | wc -l)" -lt "$(nproc)" ] || wait -n
+	done
+	wait
+	bsound
+	"$CC" "${flags[@]}" "-I$HERE/sound" -c "$HERE/duke3d/sdl/sdl_badge.c" -o "$o/sdl_badge.o"
+	flat 262144
+	"$CC" -static "${objs[@]}" "$o/sdl_badge.o" "$SRC/bsound.o" "${LDFLAT[@]}" $BSOUND_LIBS -o "$d/duke3d"
+	zero_page "$d/duke3d.gdb"
+	rm -f "$d/duke3d.gdb"
+	cp "$SRC/dl/RetroESP32-P4-$DUKE3D_REF/SDcard/roms/duke3d/duke3d.grp" "$d/"
+	cp "$HERE/duke3d/app.conf" "$d/"
+	ls -l "$d"
+}
+
+# Commander Keen 4: Omnispeak, the reimplementation of its engine, with the panel, keypad
+# and clock of keen4/badge.c, its AdLib and PC speaker through bsound (keen4/sound.c), and
+# the shareware data its site offers, without the DOS game.
+OMNISPEAK_REF=46cefb33b5f604448da9b81d67368aed82b4c3da
+OMNISPEAK_SHA=b74bf6e46b1aa08fb14ea3d81760ab1a8e06688b6e07febccdb5f04e5ee2258c
+KEEN4_URL=https://davidgow.net/keen/4keen14.zip
+KEEN4_SHA=f92e2d02d3779a2e717a50287ef3ed116c22fdf7bcc12ccf676a412e97195cfe
+
+keen4_source() {
+	local s=$SRC/omnispeak-$OMNISPEAK_REF f=$SRC/dl/omnispeak-$OMNISPEAK_REF.tar.gz w=$SRC/dl/4keen14.zip
+	mkdir -p "$SRC/dl"
+	[ -f "$f" ] || curl -sSfL -o "$f" "https://github.com/sulix/omnispeak/archive/$OMNISPEAK_REF.tar.gz"
+	echo "$OMNISPEAK_SHA  $f" | sha256sum -c --quiet -
+	[ -f "$w" ] || curl -sSfL -o "$w" "$KEEN4_URL"
+	echo "$KEEN4_SHA  $w" | sha256sum -c --quiet -
+	rm -rf "$s"
+	tar -C "$SRC" -xzf "$f"
+	for p in "$HERE"/keen4/patches/*.patch; do
+		patch -s -d "$s" -p1 < "$p"
+	done
+}
+
+build_keen4() {
+	local d=$DEST/keen4 s=$SRC/omnispeak-$OMNISPEAK_REF o=$SRC/omnispeak-$OMNISPEAK_REF/obj f objs=()
+	local flags=(-std=gnu99 -O2 -fPIC -static -ffunction-sections -fdata-sections -w -DWITH_KEEN4 -DWHYOS
+		"-I$s/src" "-I$HERE/../libwb")
+	keen4_source
+	mkdir -p "$d" "$o/opl"
+	for f in $(cat "$HERE/keen4/sources") ; do
+		"$CC" "${flags[@]}" -c "$s/src/$f" -o "$o/$f.o" &
+		objs+=("$o/$f.o")
+		[ "$(jobs -r | wc -l)" -lt "$(nproc)" ] || wait -n
+	done
+	wait
+	bsound
+	"$CC" "${flags[@]}" -c "$HERE/keen4/badge.c" -o "$o/badge.o"
+	"$CC" "${flags[@]}" "-I$HERE/sound" -c "$HERE/keen4/sound.c" -o "$o/sound.o"
+	flat 65536
+	"$CC" -static "${objs[@]}" "$o/badge.o" "$o/sound.o" "$SRC/bsound.o" "${LDFLAT[@]}" $BSOUND_LIBS -lm -o "$d/keen4"
+	zero_page "$d/keen4.gdb"
+	rm -f "$d/keen4.gdb"
+	unzip -q -o -d "$d" "$SRC/dl/4keen14.zip" -x '*.exe'
+	cp "$s/data/keen4/"* "$d/"
+	cp "$s/LICENSE" "$d/LICENSE-omnispeak"
+	cp "$HERE/keen4/app.conf" "$d/"
 	ls -l "$d"
 }
 
@@ -666,7 +919,24 @@ build_micropython() {
 	ls -l "$d"
 }
 
-for app in "${@:-gnuboy netsurf nmap imgview links nethack doom sensorpanel nano calc flashlight hideous barbarious pdfview ohminous micropython}"; do
+# The VNC server (vnc/vncd.c): the screen and the keypad over the
+# network, a service that runs as root beside the apps (SERVICE in
+# app.conf); its DES is mbedtls's. The app itself is vnc/info.
+build_vnc() {
+	local d=$DEST/vnc
+	build_deps
+	rm -rf "$d"
+	mkdir -p "$d"
+	flat 32768
+	"$CC" "${CFLAGS[@]}" -I"$P/include" "$HERE/vnc/vncd.c" -L"$P/lib" -lmbedcrypto -lz \
+		"${LDFLAT[@]}" -o "$d/vncd"
+	zero_page "$d/vncd.gdb"
+	rm -f "$d/vncd.gdb"
+	cp "$HERE/vnc/app.conf" "$d/"
+	ls -l "$d"
+}
+
+for app in "${@:-gnuboy netsurf nmap imgview links nethack doom sensorpanel nano calc flashlight hideous barbarious pdfview ohminous duke3d opentyrian keen4 micropython vnc}"; do
 	for a in $app; do
 		case $a in
 		gnuboy) build_gnuboy ;;
@@ -685,7 +955,13 @@ for app in "${@:-gnuboy netsurf nmap imgview links nethack doom sensorpanel nano
 		barbarious) build_barbarious ;;
 		pdfview) build_pdfview ;;
 		ohminous) build_ohminous ;;
+		opentyrian) build_opentyrian ;;
+		duke3d) build_duke3d ;;
+		keen4) build_keen4 ;;
 		micropython) build_micropython ;;
+		tinyalsa) build_tinyalsa ;;
+		airplay) build_airplay ;;
+		vnc) build_vnc ;;
 		*) echo "unknown app $a" >&2; exit 2 ;;
 		esac
 	done
