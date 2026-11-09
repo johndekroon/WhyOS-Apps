@@ -91,6 +91,9 @@
  "license": "MIT AND (Apache-2.0 OR GPL-2.0-or-later) AND BSD-3-Clause AND Zlib AND LGPL-2.1-or-later",
  "license_url": "licenses/micropython/micropython.txt",
  "name": "MicroPython",
+ "permissions": [
+  "system"
+ ],
  "requires": {
   "features": [
    "sd-card",
@@ -123,6 +126,19 @@
  "type": "app",
  "upstream_version": "1.29.0",
  "versions": [
+  {
+   "build": 3,
+   "changelog": "Scripts may do what they can in a shell: MicroPython asks for the system permission, which the sandbox gives it.",
+   "package": {
+    "installed_size": 965977,
+    "sha256": "6a6e5368e0ff2eb5d2a8ca481d195a2a9abb9a4010000e6f34a88e6c3c759a25",
+    "size": 535081,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/micropython-1.29.2.wpk"
+   },
+   "published": "2026-11-09T15:03:20Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/micropython-1.29.2-source.tar.gz",
+   "version": "1.29.2"
+  },
   {
    "build": 2,
    "changelog": "Built in: meshcore for LoRa messages and bots (with an example bot), setting for the badge's settings, ics for calendars from an .ics link, and xml.etree.ElementTree for XML. Sites that also have an IPv6 address, such as Google, now work.",

@@ -71,7 +71,7 @@
  "license_url": "licenses/write/write.txt",
  "name": "Write",
  "permissions": [
-  "files-all"
+  "system"
  ],
  "requires": {
   "features": [
@@ -103,6 +103,19 @@
  ],
  "type": "system",
  "versions": [
+  {
+   "build": 5,
+   "changelog": "The status bar comes from WhyOS now, so the app no longer draws its own.",
+   "package": {
+    "installed_size": 713817,
+    "sha256": "de6c716cf6059607258c815005128d22b3256d9fd897f8ce1cc917b060f07945",
+    "size": 307727,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/write-1.2.2.wpk"
+   },
+   "published": "2026-11-09T15:03:23Z",
+   "source_archive": null,
+   "version": "1.2.2"
+  },
   {
    "build": 4,
    "changelog": "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time.",

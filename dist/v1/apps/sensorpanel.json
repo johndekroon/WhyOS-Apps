@@ -67,6 +67,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 4,
+   "changelog": "The status bar comes from WhyOS now, so the app no longer draws its own.",
+   "package": {
+    "installed_size": 311147,
+    "sha256": "ca0ae783e8da7ff80e2d21ecfb9bc37313eae8b53f40adcbba97774128af66f6",
+    "size": 129026,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/sensorpanel-1.1.2.wpk"
+   },
+   "published": "2026-11-09T15:03:23Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/sensorpanel-1.1.2-source.tar.gz",
+   "version": "1.1.2"
+  },
+  {
    "build": 3,
    "changelog": "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time.",
    "package": {

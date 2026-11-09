@@ -68,6 +68,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 6,
+   "changelog": "The status bar comes from WhyOS now, so the app no longer draws its own.",
+   "package": {
+    "installed_size": 392731,
+    "sha256": "6b54ea771e192bb5829661b6f146725aeb7e82db14fc44d941163ad5e3d853a9",
+    "size": 182676,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.2.2.wpk"
+   },
+   "published": "2026-11-09T15:01:37Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/calc-1.2.2-source.tar.gz",
+   "version": "1.2.2"
+  },
+  {
    "build": 5,
    "changelog": "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time.",
    "package": {

@@ -69,6 +69,7 @@
   ],
   "rotation": "auto",
   "stack_kb": 64,
+  "statusbar": "hidden",
   "terminal": false
  },
  "license": "MIT AND IJG AND libpng-2.0 AND Zlib AND OFL-1.1 AND LGPL-2.1-or-later",
@@ -94,6 +95,19 @@
  ],
  "type": "app",
  "versions": [
+  {
+   "build": 6,
+   "changelog": "The viewer keeps the whole screen and no longer draws a status bar of its own; hold the logo key to see WhyOS's status bar.",
+   "package": {
+    "installed_size": 557653,
+    "sha256": "0f09b77e9eed5c79a2e7fbd482c7b5916b598292060734ec95c108eb18347348",
+    "size": 289537,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/imgview-1.2.2.wpk"
+   },
+   "published": "2026-11-09T15:01:39Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/imgview-1.2.2-source.tar.gz",
+   "version": "1.2.2"
+  },
   {
    "build": 5,
    "changelog": "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time.",

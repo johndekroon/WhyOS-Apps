@@ -4,18 +4,18 @@
    "author": "WhyOS-Apps contributors",
    "category": "tools",
    "commands": [],
-   "details_sha256": "83b4a71536027b8508886d536a9b4597ead519bef16bc68fcb0b436d745fea66",
+   "details_sha256": "6de4bd98bfb010a67addca79953337ca9a4adc9d377cf43e2bfd3575c8160058",
    "id": "barbarious",
    "install_location": "sd",
    "latest": {
-    "build": 4,
+    "build": 5,
     "package": {
-     "installed_size": 435663,
-     "sha256": "e241dbaf5ebdb3709025b52c50911b2b37082e7576294d0415043dd2ab8aaec2",
-     "size": 204226,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/barbarious-1.1.2.wpk"
+     "installed_size": 416075,
+     "sha256": "0cc6c56b40ff224aaec009b3b2576fae9d784409ef2d0484b98c485a2cea1779",
+     "size": 195275,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/barbarious-1.1.3.wpk"
     },
-    "version": "1.1.2"
+    "version": "1.1.3"
    },
    "menu_icon": "barcode",
    "name": "BARbarious",
@@ -36,7 +36,7 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-11-06"
+   "updated": "2026-11-09"
   },
   {
    "id": "buspirate",
@@ -47,18 +47,18 @@
    "author": "WhyOS-Apps contributors",
    "category": "tools",
    "commands": [],
-   "details_sha256": "6f0b65e71675f79228aa4ddeee53092924e98060c044eead1372b2ca6cc943da",
+   "details_sha256": "adc4c0987fa9ba22f6a02b68b00bffc38cbee7dc12a0c03aebe47831f5af86f5",
    "id": "calc",
    "install_location": "sd",
    "latest": {
-    "build": 5,
+    "build": 6,
     "package": {
-     "installed_size": 417615,
-     "sha256": "4a52a12351e30e3fe731490b4a00d72dc37bbece1fb151ba9a317480545c8f1b",
-     "size": 195594,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.2.1.wpk"
+     "installed_size": 392731,
+     "sha256": "6b54ea771e192bb5829661b6f146725aeb7e82db14fc44d941163ad5e3d853a9",
+     "size": 182676,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.2.2.wpk"
     },
-    "version": "1.2.1"
+    "version": "1.2.2"
    },
    "menu_icon": "count",
    "name": "Calculator",
@@ -79,24 +79,24 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-10-28"
+   "updated": "2026-11-09"
   },
   {
    "author": "id Software (DOOM), maximevince (fbDOOM), badge port",
    "category": "action",
    "commands": [],
-   "details_sha256": "ebc4b0d080b9ed5c0163dd57a748fc2bd13bb0f2eb2fcbbe34f25e3628f802ba",
+   "details_sha256": "835c1f538ecbd2dc162467264f993a5f3d054ba543027e0362708f6f230e7fc3",
    "id": "doom",
    "install_location": "sd",
    "latest": {
-    "build": 2,
+    "build": 3,
     "package": {
-     "installed_size": 4813805,
-     "sha256": "93c7ea5e3ca35ca1c8275f6109c649a37acb0e3832dd0f40fc89028f55927755",
-     "size": 2040988,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/doom-1.9.1.wpk"
+     "installed_size": 4831103,
+     "sha256": "7a0952aa372e20cb0f188ba116f2db1c2382a8c8b3d72e2b6cb6f7acbd12138c",
+     "size": 2051618,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/doom-1.9.2.wpk"
     },
-    "version": "1.9.1"
+    "version": "1.9.2"
    },
    "menu_icon": "games",
    "name": "DOOM",
@@ -119,24 +119,24 @@
    ],
    "terminal": false,
    "type": "game",
-   "updated": "2026-11-06"
+   "updated": "2026-11-09"
   },
   {
    "author": "WhyOS-Apps",
    "category": "other",
    "commands": [],
-   "details_sha256": "3fb1985ecd4b6b612ee6489325744fce67422451d61a75c78d4784486d4adcae",
+   "details_sha256": "04f70a35307c216b9604d9acd93f86062e2f92c7f07feda165b34bd0956eb9b0",
    "id": "files",
    "install_location": "flash",
    "latest": {
-    "build": 3,
+    "build": 4,
     "package": {
-     "installed_size": 459642,
-     "sha256": "7e8998af543112e4c8d6a6ea17e5507aede4accdb4a537bfba2e9667cf71a64e",
-     "size": 215490,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/files-1.1.1.wpk"
+     "installed_size": 426526,
+     "sha256": "a34c5154e989a9f75e675fa09dbe2cd9d0c1a6b1a5b3373e12a7b8d8358f1cea",
+     "size": 199561,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/files-1.1.2.wpk"
     },
-    "version": "1.1.1"
+    "version": "1.1.2"
    },
    "menu_icon": "disk",
    "name": "Files",
@@ -158,24 +158,24 @@
    ],
    "terminal": false,
    "type": "system",
-   "updated": "2026-10-28"
+   "updated": "2026-11-09"
   },
   {
    "author": "WhyOS-Apps contributors",
    "category": "action",
    "commands": [],
-   "details_sha256": "f231dac5dfa4b32482eb4e1ae3fd351c3e23b96e8ac68668d1fbce8ae6f2e0cc",
+   "details_sha256": "3a186cfedc53de517b24b4002e4dda7c9d36a0a3037e61aab42d1831300dad11",
    "id": "flappy",
    "install_location": "sd",
    "latest": {
-    "build": 3,
+    "build": 4,
     "package": {
      "installed_size": 302907,
-     "sha256": "015dd998b4979344f3e439bd6b64ee7b72b181a84d1a231cb086f3b11f2251c6",
-     "size": 127362,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flappy-1.1.1.wpk"
+     "sha256": "6bbc69a06122bb13bb373349d081ee357e107807f20d2aa287b2e745bf7e40c4",
+     "size": 127325,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flappy-1.1.2.wpk"
     },
-    "version": "1.1.1"
+    "version": "1.1.2"
    },
    "menu_icon": "games",
    "name": "Flappy",
@@ -197,24 +197,24 @@
    ],
    "terminal": false,
    "type": "game",
-   "updated": "2026-10-28"
+   "updated": "2026-11-09"
   },
   {
    "author": "WhyOS-Apps contributors",
    "category": "tools",
    "commands": [],
-   "details_sha256": "2f44e1dde8fdfca45c6e8e7e6e7a2052adc9d19501232538bb9af788032b0b09",
+   "details_sha256": "fd22fd2d006e40b719fd29029dd57c38f24f301efbbfb8a4f48941f6bde1a61c",
    "id": "flashlight",
    "install_location": "sd",
    "latest": {
-    "build": 3,
+    "build": 4,
     "package": {
      "installed_size": 207771,
-     "sha256": "56117c391a98d492cc2a09c5ec875ebd409502c3ef693ec9f2a5fe6b4c67a02e",
-     "size": 89829,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flashlight-1.0.2.wpk"
+     "sha256": "f70ae4fbc67178f415a38177f98261159361e4c800af0d947f513c8ab3043c09",
+     "size": 89831,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flashlight-1.0.3.wpk"
     },
-    "version": "1.0.2"
+    "version": "1.0.3"
    },
    "menu_icon": "sun",
    "name": "Flashlight",
@@ -234,24 +234,24 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-11-06"
+   "updated": "2026-11-09"
   },
   {
    "author": "gnuboy authors (rofl0r/gnuboy), badge port",
    "category": "emulators",
    "commands": [],
-   "details_sha256": "d0dee087c17c89cf59d641fb986b906518d5fc8133cc45c262a2b86f19eb3896",
+   "details_sha256": "7151155127b19527960eb41bc9be71b175a1c314342639d1a0f21e1a8ba9f3f9",
    "id": "gnuboy",
    "install_location": "sd",
    "latest": {
-    "build": 6,
+    "build": 7,
     "package": {
-     "installed_size": 413858,
-     "sha256": "31bc9814ae606a688a954e5c6d5fa7d4dd71b911c87aa222e06cc9849a1d1f94",
-     "size": 208878,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/gnuboy-1.3.1.wpk"
+     "installed_size": 430422,
+     "sha256": "848ec6ce3f96eac12df1374600764f5c4ae9b7e7ff7a196e52be6d6c9ab18546",
+     "size": 218583,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/gnuboy-1.4.0.wpk"
     },
-    "version": "1.3.1"
+    "version": "1.4.0"
    },
    "menu_icon": "gameboy",
    "name": "Game Boy",
@@ -272,24 +272,24 @@
    ],
    "terminal": false,
    "type": "game",
-   "updated": "2026-10-28"
+   "updated": "2026-11-09"
   },
   {
    "author": "WhyOS-Apps contributors",
    "category": "tools",
    "commands": [],
-   "details_sha256": "b95c19e41f6f67cdc23a7827d5afdfc56e1e30c7ebad27957ab6b6aae8c135e4",
+   "details_sha256": "3cb09962a4cb12e10fe95b25dd4adcfdac7d4bc5c0b6a18724aad2fe8f3fc66c",
    "id": "hideous",
    "install_location": "sd",
    "latest": {
-    "build": 4,
+    "build": 5,
     "package": {
-     "installed_size": 401743,
-     "sha256": "6cc1208c9ce171a4492f2499ebf3b42b62cd9fc9d1dd2bc27053700bffab15f5",
-     "size": 180981,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/hideous-1.1.1.wpk"
+     "installed_size": 368247,
+     "sha256": "954e44fd5872f19fb8a2b2adbdc4d84894bc5723200e58bd086d7b2e3c5ef9af",
+     "size": 165147,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/hideous-1.1.2.wpk"
     },
-    "version": "1.1.1"
+    "version": "1.1.2"
    },
    "menu_icon": "keyboard",
    "name": "HIDeous",
@@ -311,24 +311,24 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-10-28"
+   "updated": "2026-11-09"
   },
   {
    "author": "badge port",
    "category": "other",
    "commands": [],
-   "details_sha256": "3b8123ff58871e5d575ba6316433df8cdaa1b327ef5f609bf4f304ca6a6dad47",
+   "details_sha256": "0d58e40ee4705e9240c8f5bece0b895931ea68f8da5d9c5afe11cad6e192bd93",
    "id": "imgview",
    "install_location": "sd",
    "latest": {
-    "build": 5,
+    "build": 6,
     "package": {
-     "installed_size": 594053,
-     "sha256": "86b0db7084f6be70f1125f9fa24c5de0d08c99f678caaf749aad18dfb3ecf2f5",
-     "size": 307746,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/imgview-1.2.1.wpk"
+     "installed_size": 557653,
+     "sha256": "0f09b77e9eed5c79a2e7fbd482c7b5916b598292060734ec95c108eb18347348",
+     "size": 289537,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/imgview-1.2.2.wpk"
     },
-    "version": "1.2.1"
+    "version": "1.2.2"
    },
    "name": "Picture viewer",
    "requires": {
@@ -349,7 +349,7 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-10-28"
+   "updated": "2026-11-09"
   },
   {
    "author": "Twibright Labs (Links), badge port",
@@ -396,18 +396,18 @@
    "author": "WhyOS-Apps contributors",
    "category": "puzzle",
    "commands": [],
-   "details_sha256": "40cce70e44a64f9c62641a23ce1a42ce9403d3647bd8c0275c90aa3e5e4db35e",
+   "details_sha256": "1a3251d8bbba0bbbfa09ef5351dd02d9e4cdf3f1cf5d29d8dc278c20222b853c",
    "id": "marble",
    "install_location": "sd",
    "latest": {
-    "build": 4,
+    "build": 5,
     "package": {
      "installed_size": 359959,
-     "sha256": "c914d2112c4517760f5de9ce7a706e9a32b6648e4a2bb55b90774a1405c3d57a",
-     "size": 160983,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/marble-1.1.2.wpk"
+     "sha256": "bdf0705525f619234edf5427fe8f550f5d49246990ec9ea8ca941cc356068196",
+     "size": 160976,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/marble-1.1.3.wpk"
     },
-    "version": "1.1.2"
+    "version": "1.1.3"
    },
    "menu_icon": "games",
    "name": "Marble Orbit",
@@ -429,7 +429,7 @@
    ],
    "terminal": false,
    "type": "game",
-   "updated": "2026-11-07"
+   "updated": "2026-11-09"
   },
   {
    "author": "Damien P. George and the MicroPython contributors, badge port",
@@ -438,18 +438,18 @@
     "micropython",
     "python"
    ],
-   "details_sha256": "b816eecd6535759182d0ec3ae59263905171e33c4d564a031f023fe70253e8eb",
+   "details_sha256": "3b2a05244447fbc3325d484e4fa34de2107e1cd9b1820a03173bec7e25a79a3d",
    "id": "micropython",
    "install_location": "sd",
    "latest": {
-    "build": 2,
+    "build": 3,
     "package": {
      "installed_size": 965977,
-     "sha256": "4d8bd7adb3457def4eb42d0d3f0394bd03e49515bcd73bf42072e7efa9559906",
-     "size": 535102,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/micropython-1.29.1.wpk"
+     "sha256": "6a6e5368e0ff2eb5d2a8ca481d195a2a9abb9a4010000e6f34a88e6c3c759a25",
+     "size": 535081,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/micropython-1.29.2.wpk"
     },
-    "version": "1.29.1"
+    "version": "1.29.2"
    },
    "menu_icon": "terminal",
    "name": "MicroPython",
@@ -472,7 +472,7 @@
    ],
    "terminal": true,
    "type": "app",
-   "updated": "2026-10-28"
+   "updated": "2026-11-09"
   },
   {
    "author": "The GNU nano developers, badge port",
@@ -480,18 +480,18 @@
    "commands": [
     "nano"
    ],
-   "details_sha256": "3953c2038ab0148b688afe67916f36d69d7eba27a9c37efcccac8f9af5abe9f6",
+   "details_sha256": "21ce3377171af3769b34e1b2de1306218474831542f24ddd1d884b06ee6d9abd",
    "id": "nano",
    "install_location": "sd",
    "latest": {
-    "build": 2,
+    "build": 3,
     "package": {
      "installed_size": 659257,
-     "sha256": "c5100df45d9f246337208a6d11a3b71b6107ff2fe7dfce3d94182aa7747650fc",
-     "size": 335417,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/nano-9.2.1.wpk"
+     "sha256": "60bc9c263750adfdb05a648a7cca429bd8c4e7e47c559910038ca4017bea5388",
+     "size": 335449,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/nano-9.2.2.wpk"
     },
-    "version": "9.2.1"
+    "version": "9.2.2"
    },
    "menu_icon": "keyboard",
    "name": "nano",
@@ -512,7 +512,7 @@
    ],
    "terminal": true,
    "type": "app",
-   "updated": "2026-10-28"
+   "updated": "2026-11-09"
   },
   {
    "author": "The NetHack DevTeam, badge port",
@@ -559,18 +559,18 @@
    "author": "NetSurf developers, badge port",
    "category": "internet",
    "commands": [],
-   "details_sha256": "9d77b6548b90269f1138da5883a62dff3ac7d1207f0ded53cb47897e15b937d9",
+   "details_sha256": "675c08b48a356cb6b62b245f59a879afa9a9698cbf299dce3017aa8ff42d0889",
    "id": "netsurf",
    "install_location": "sd",
    "latest": {
-    "build": 4,
+    "build": 5,
     "package": {
      "installed_size": 3483121,
-     "sha256": "806bf3a5ff1e7763f8ab5440d805a673cec1ef7fbc213f59c8aba75be5489ff7",
-     "size": 1684625,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/netsurf-1.2.1.wpk"
+     "sha256": "6cfbb3c7a805af420d98ce7278af5a1aad10026f189f16983d844db51d2151bc",
+     "size": 1684626,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/netsurf-1.2.2.wpk"
     },
-    "version": "1.2.1"
+    "version": "1.2.2"
    },
    "menu_icon": "globe",
    "name": "NetSurf",
@@ -592,7 +592,7 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-10-28"
+   "updated": "2026-11-09"
   },
   {
    "author": "Nmap Project, badge port",
@@ -638,18 +638,18 @@
    "author": "WhyOS-Apps contributors",
    "category": "hardware",
    "commands": [],
-   "details_sha256": "f92593cb799b766a6dceec3842f61b7ce3200722e1acd1ede9f93952d398ad7c",
+   "details_sha256": "53459fc2fdefd3d4f1c01d492299a5508fc1764846cca72c934a050ff512010f",
    "id": "ohminous",
    "install_location": "sd",
    "latest": {
-    "build": 3,
+    "build": 4,
     "package": {
-     "installed_size": 546039,
-     "sha256": "658ef630fc23a4109e7a901368dd7154bdd267e4a82fa2a48615b36dda161f5d",
-     "size": 232417,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/ohminous-1.1.1.wpk"
+     "installed_size": 526839,
+     "sha256": "ff528a464ce27216aeddba34342f3e8d176d58d7a3900852e1783636827df927",
+     "size": 223478,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/ohminous-1.1.2.wpk"
     },
-    "version": "1.1.1"
+    "version": "1.1.2"
    },
    "menu_icon": "chip",
    "name": "OHMinous",
@@ -673,24 +673,24 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-10-28"
+   "updated": "2026-11-09"
   },
   {
    "author": "badge port",
    "category": "other",
    "commands": [],
-   "details_sha256": "07627a4f11977360011426b20354f305cf43cfb790e0d3a1d72fb725d4b2a131",
+   "details_sha256": "4f4e1b21c1f05a03d4c639df9d740f27042d7c80492e61470dfa2a1790d71a79",
    "id": "pdfview",
    "install_location": "sd",
    "latest": {
-    "build": 3,
+    "build": 4,
     "package": {
-     "installed_size": 3413998,
-     "sha256": "04dd290447d4ebdea3d714649bdf3f0da2ebdcfc5738d21572511c833ec520d0",
-     "size": 2221333,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/pdfview-1.1.1.wpk"
+     "installed_size": 3381142,
+     "sha256": "3dd120e4061d452f8a6748019287ea2e0d051424edee9d32d91dfef0b6d15939",
+     "size": 2207709,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/pdfview-1.1.2.wpk"
     },
-    "version": "1.1.1"
+    "version": "1.1.2"
    },
    "name": "PDF viewer",
    "requires": {
@@ -710,7 +710,7 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-10-28"
+   "updated": "2026-11-09"
   },
   {
    "author": "RRG/Iceman Proxmark3 contributors, badge build",
@@ -719,18 +719,18 @@
     "pm3",
     "proxmark3"
    ],
-   "details_sha256": "11587094e788c6bbe72d440adb9f6582fa4dd877043a637b982fcfd65bc5c000",
+   "details_sha256": "20bddcc27110d28d938c09e1eb42868c11f6ba2dc76ed9bf6782180f64de1bbd",
    "id": "proxmark3",
    "install_location": "sd",
    "latest": {
-    "build": 4,
+    "build": 5,
     "package": {
      "installed_size": 3058773,
-     "sha256": "f1f513d4c2c6e3e0c5137e9405523c4564afdf6ed257fcdbfd28fde0f6fc90b7",
-     "size": 1520198,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/proxmark3-1.1.2.wpk"
+     "sha256": "b458518ffb23ad26a4bc0affa320bb54ad40a214d5ab3d13ca33660bbb198369",
+     "size": 1519899,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/proxmark3-1.1.3.wpk"
     },
-    "version": "1.1.2"
+    "version": "1.1.3"
    },
    "menu_icon": "usb",
    "name": "Proxmark3",
@@ -753,24 +753,24 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-10-31"
+   "updated": "2026-11-09"
   },
   {
    "author": "why2025-linux contributors",
    "category": "hardware",
    "commands": [],
-   "details_sha256": "f4780598230eee41ee345ccca1fad05e9c22f108c848aaa1ba948423102938f3",
+   "details_sha256": "e39e5b176152085501cef10932b30a25ac7f671aa0d287a7517be04bb6c69dcf",
    "id": "sensorpanel",
    "install_location": "sd",
    "latest": {
-    "build": 3,
+    "build": 4,
     "package": {
-     "installed_size": 337907,
-     "sha256": "dd4935b92e901737ea54d642096f8ecfb58844c862d58eaeef3487a829f74e30",
-     "size": 143070,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/sensorpanel-1.1.1.wpk"
+     "installed_size": 311147,
+     "sha256": "ca0ae783e8da7ff80e2d21ecfb9bc37313eae8b53f40adcbba97774128af66f6",
+     "size": 129026,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/sensorpanel-1.1.2.wpk"
     },
-    "version": "1.1.1"
+    "version": "1.1.2"
    },
    "menu_icon": "sensors",
    "name": "Sensor panel",
@@ -792,7 +792,7 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-10-28"
+   "updated": "2026-11-09"
   },
   {
    "author": "WhyOS-Apps",
@@ -800,18 +800,18 @@
    "commands": [
     "store"
    ],
-   "details_sha256": "248abad3da55a424ee4095d728e395d85e83ac3dbe2c86059305c7df3195d14c",
+   "details_sha256": "5adedd38ff3478756173c0f5d7564bbae5ae9015c263d3410aa5b800d82c3932",
    "id": "store",
    "install_location": "flash",
    "latest": {
-    "build": 17,
+    "build": 18,
     "package": {
-     "installed_size": 1037268,
-     "sha256": "90cf57559e24a49a0ce212907c046c9a8fe7171972145ecefd81dd2a8479adc5",
-     "size": 543498,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.2.16.wpk"
+     "installed_size": 1008584,
+     "sha256": "15247184c201ff236626812a60caf3fac103b531cb42f6b4f7c21f3993690e32",
+     "size": 530462,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.3.0.wpk"
     },
-    "version": "0.2.16"
+    "version": "0.3.0"
    },
    "menu_icon": "store",
    "name": "App store",
@@ -832,24 +832,61 @@
    ],
    "terminal": true,
    "type": "system",
-   "updated": "2026-10-28"
+   "updated": "2026-11-09"
+  },
+  {
+   "author": "WhyOS-Apps contributors",
+   "category": "internet",
+   "commands": [],
+   "details_sha256": "03a124e3882cc4e1681ff088022bc8193fa3eaa33e67c2906314fb5029ccabba",
+   "id": "vnc",
+   "install_location": "flash",
+   "latest": {
+    "build": 2,
+    "package": {
+     "installed_size": 219765,
+     "sha256": "095b185a56037be6c0650d5110b40a24265f0a186bfb444a9446db571b6632be",
+     "size": 101406,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/vnc-1.1.0.wpk"
+    },
+    "version": "1.1.0"
+   },
+   "name": "VNC server",
+   "requires": {
+    "features": [
+     "wifi",
+     "display",
+     "keyboard"
+    ],
+    "memory_kb": 1500,
+    "os_api": 1
+   },
+   "summary": "The badge's screen and keys on a computer, over Wi-Fi or USB.",
+   "tags": [
+    "vnc",
+    "remote",
+    "screen-sharing"
+   ],
+   "terminal": false,
+   "type": "app",
+   "updated": "2026-11-09"
   },
   {
    "author": "WhyOS-Apps",
    "category": "other",
    "commands": [],
-   "details_sha256": "9b2409ff29ed14ba25ca2c83ecae74dd15da0346342347c5d62b01fa3c52fc98",
+   "details_sha256": "b04881edde2e9dd6fa95e440f2ba731b535920aa8fe114312a06cfc0a7cd429b",
    "id": "write",
    "install_location": "flash",
    "latest": {
-    "build": 4,
+    "build": 5,
     "package": {
-     "installed_size": 732029,
-     "sha256": "1058b555f82364d68f43b2f9d2a5b22b09fc865d88afb19fcc18552d88ae5edb",
-     "size": 316464,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/write-1.2.1.wpk"
+     "installed_size": 713817,
+     "sha256": "de6c716cf6059607258c815005128d22b3256d9fd897f8ce1cc917b060f07945",
+     "size": 307727,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/write-1.2.2.wpk"
     },
-    "version": "1.2.1"
+    "version": "1.2.2"
    },
    "menu_icon": "text",
    "name": "Write",
@@ -871,13 +908,13 @@
    ],
    "terminal": false,
    "type": "system",
-   "updated": "2026-10-28"
+   "updated": "2026-11-09"
   }
  ],
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-11-07T17:27:00Z",
- "serial": 48,
+ "generated": "2026-11-09T15:03:24Z",
+ "serial": 49,
  "source": "whyos"
 }

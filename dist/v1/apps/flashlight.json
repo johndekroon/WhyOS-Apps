@@ -40,6 +40,7 @@
   "info": "a white or red light",
   "menu": "apps",
   "rotation": "auto",
+  "statusbar": "hidden",
   "terminal": false
  },
  "license": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
@@ -67,6 +68,19 @@
  ],
  "type": "app",
  "versions": [
+  {
+   "build": 4,
+   "changelog": "Uses the whole screen; hold the logo key to see WhyOS's status bar.",
+   "package": {
+    "installed_size": 207771,
+    "sha256": "f70ae4fbc67178f415a38177f98261159361e4c800af0d947f513c8ab3043c09",
+    "size": 89831,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flashlight-1.0.3.wpk"
+   },
+   "published": "2026-11-09T15:01:38Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/flashlight-1.0.3-source.tar.gz",
+   "version": "1.0.3"
+  },
   {
    "build": 3,
    "changelog": "Waiting for the screen moved into the drawing library; the app works as before.",

@@ -45,6 +45,9 @@
  "license": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
  "license_url": "licenses/ohminous/ohminous.txt",
  "name": "OHMinous",
+ "permissions": [
+  "usb"
+ ],
  "requires": {
   "features": [
    "display",
@@ -71,6 +74,19 @@
  ],
  "type": "app",
  "versions": [
+  {
+   "build": 4,
+   "changelog": "The status bar comes from WhyOS now, so the app no longer draws its own.",
+   "package": {
+    "installed_size": 526839,
+    "sha256": "ff528a464ce27216aeddba34342f3e8d176d58d7a3900852e1783636827df927",
+    "size": 223478,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/ohminous-1.1.2.wpk"
+   },
+   "published": "2026-11-09T15:03:21Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/ohminous-1.1.2-source.tar.gz",
+   "version": "1.1.2"
+  },
   {
    "build": 3,
    "changelog": "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time.",

@@ -45,6 +45,9 @@
  "license": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
  "license_url": "licenses/hideous/hideous.txt",
  "name": "HIDeous",
+ "permissions": [
+  "hid"
+ ],
  "requires": {
   "features": [
    "display",
@@ -69,6 +72,19 @@
  ],
  "type": "app",
  "versions": [
+  {
+   "build": 5,
+   "changelog": "The status bar comes from WhyOS now, so the app no longer draws its own.",
+   "package": {
+    "installed_size": 368247,
+    "sha256": "954e44fd5872f19fb8a2b2adbdc4d84894bc5723200e58bd086d7b2e3c5ef9af",
+    "size": 165147,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/hideous-1.1.2.wpk"
+   },
+   "published": "2026-11-09T15:01:39Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/hideous-1.1.2-source.tar.gz",
+   "version": "1.1.2"
+  },
   {
    "build": 4,
    "changelog": "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time.",

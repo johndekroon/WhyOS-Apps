@@ -91,6 +91,7 @@
   ],
   "rotation": "auto",
   "stack_kb": 256,
+  "statusbar": "hidden",
   "terminal": false
  },
  "license": "AGPL-3.0-or-later AND FTL AND IJG AND Zlib AND OFL-1.1 AND LGPL-2.1-or-later",
@@ -118,6 +119,19 @@
  ],
  "type": "app",
  "versions": [
+  {
+   "build": 4,
+   "changelog": "The viewer keeps the whole screen and no longer draws a status bar of its own; hold the logo key to see WhyOS's status bar.",
+   "package": {
+    "installed_size": 3381142,
+    "sha256": "3dd120e4061d452f8a6748019287ea2e0d051424edee9d32d91dfef0b6d15939",
+    "size": 2207709,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/pdfview-1.1.2.wpk"
+   },
+   "published": "2026-11-09T15:03:22Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/pdfview-1.1.2-source.tar.gz",
+   "version": "1.1.2"
+  },
   {
    "build": 3,
    "changelog": "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time.",

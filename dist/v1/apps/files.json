@@ -75,6 +75,19 @@
  "type": "system",
  "versions": [
   {
+   "build": 4,
+   "changelog": "The status bar comes from WhyOS now, so the app no longer draws its own.",
+   "package": {
+    "installed_size": 426526,
+    "sha256": "a34c5154e989a9f75e675fa09dbe2cd9d0c1a6b1a5b3373e12a7b8d8358f1cea",
+    "size": 199561,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/files-1.1.2.wpk"
+   },
+   "published": "2026-11-09T15:01:38Z",
+   "source_archive": null,
+   "version": "1.1.2"
+  },
+  {
    "build": 3,
    "changelog": "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time.",
    "package": {

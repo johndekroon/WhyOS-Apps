@@ -98,6 +98,19 @@
  "type": "system",
  "versions": [
   {
+   "build": 18,
+   "changelog": "The status bar comes from WhyOS now; the store installs services, such as the VNC server, with their page in Settings, and apps that need the whole screen.",
+   "package": {
+    "installed_size": 1008584,
+    "sha256": "15247184c201ff236626812a60caf3fac103b531cb42f6b4f7c21f3993690e32",
+    "size": 530462,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.3.0.wpk"
+   },
+   "published": "2026-11-09T15:03:23Z",
+   "source_archive": null,
+   "version": "0.3.0"
+  },
+  {
    "build": 17,
    "changelog": "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time.",
    "package": {

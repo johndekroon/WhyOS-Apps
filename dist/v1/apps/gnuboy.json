@@ -2,6 +2,22 @@
  "author": "gnuboy authors (rofl0r/gnuboy), badge port",
  "bundled": [
   {
+   "license": "MIT",
+   "license_file": "bsound.txt",
+   "license_url": "licenses/gnuboy/bsound.txt",
+   "name": "bsound (the badge's game sound)",
+   "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/gnuboy/source",
+   "version": "WhyOS 3ef5aae"
+  },
+  {
+   "license": "BSD-3-Clause",
+   "license_file": "tinyalsa.txt",
+   "license_url": "licenses/gnuboy/tinyalsa.txt",
+   "name": "tinyalsa",
+   "source": "https://github.com/tinyalsa/tinyalsa/archive/v2.0.0/tinyalsa-2.0.0.tar.gz",
+   "version": "2.0.0"
+  },
+  {
    "license": "LGPL-2.1-or-later",
    "license_file": "uClibc-ng.txt",
    "license_url": "licenses/gnuboy/uClibc-ng.txt",
@@ -28,7 +44,7 @@
  ],
  "category": "emulators",
  "cover": null,
- "description": "Plays Game Boy and Game Boy Color games, scaled 4x to 640x576 in the\nmiddle of the panel. The emulation runs at full speed; the screen is drawn\nup to 30 times a second, less often while the whole screen scrolls. There\nis no sound.\n\nPut your .gb and .gbc files in the roms folder of this app: on the SD card\nin badge/appdata/gnuboy/roms. Battery saves go to roms/saves.\n\nKeys: arrows are the D-pad, square or Enter is A, triangle or Backspace\nis B, cross or X is Start, circle or O is Select. Esc pauses: save or load\nthe state there, or quit. Diamond shows the keys.",
+ "description": "Plays Game Boy and Game Boy Color games, scaled to the panel's whole\nwidth (720x648). The emulation runs at full speed; fewer frames are shown\nwhile the whole screen scrolls. The sound plays on the output chosen in\nSettings > Sound.\n\nPut your .gb and .gbc files in the roms folder of this app: on the SD card\nin badge/appdata/gnuboy/roms. Battery saves go to roms/saves.\n\nKeys: arrows are the D-pad, square or Enter is A, triangle or Backspace\nis B, cross or X is Start, circle or O is Select. Esc pauses: save or load\nthe state there (saving over a state asks first and keeps a backup), or\nquit. Diamond shows the keys.",
  "format": 1,
  "homepage": "https://github.com/rofl0r/gnuboy",
  "icon": null,
@@ -43,13 +59,14 @@
   "menu": "games",
   "rotation": "auto",
   "stack_kb": 64,
+  "statusbar": "hidden",
   "terminal": false,
   "types": [
    "gb",
    "gbc"
   ]
  },
- "license": "GPL-2.0-or-later AND LGPL-2.1-or-later",
+ "license": "GPL-2.0-or-later AND MIT AND BSD-3-Clause AND LGPL-2.1-or-later",
  "license_url": "licenses/gnuboy/gnuboy.txt",
  "name": "Game Boy",
  "requires": {
@@ -83,6 +100,19 @@
  "type": "game",
  "upstream_version": "git c367bb4",
  "versions": [
+  {
+   "build": 7,
+   "changelog": "The Game Boy's sound plays on the output chosen in Settings > Sound; the picture fills the screen's width, and saving a state over another asks first and keeps a backup. Uses the whole screen; hold the logo key to see WhyOS's status bar.",
+   "package": {
+    "installed_size": 430422,
+    "sha256": "848ec6ce3f96eac12df1374600764f5c4ae9b7e7ff7a196e52be6d6c9ab18546",
+    "size": 218583,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/gnuboy-1.4.0.wpk"
+   },
+   "published": "2026-11-09T15:01:38Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/gnuboy-1.4.0-source.tar.gz",
+   "version": "1.4.0"
+  },
   {
    "build": 6,
    "changelog": "The pause screen dims what is behind it less, as every pop-up in WhyOS now does.",

@@ -1,0 +1,82 @@
+{
+ "author": "WhyOS-Apps contributors",
+ "bundled": [
+  {
+   "license": "LGPL-2.1-or-later",
+   "license_file": "uClibc-ng.txt",
+   "license_url": "licenses/vnc/uClibc-ng.txt",
+   "name": "uClibc-ng",
+   "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+   "version": "1.0.57"
+  },
+  {
+   "license": "Apache-2.0",
+   "license_file": "mbedtls.txt",
+   "license_url": "licenses/vnc/mbedtls.txt",
+   "name": "Mbed TLS (DES only)",
+   "source": "https://github.com/Mbed-TLS/mbedtls/releases/tag/mbedtls-3.6.6",
+   "version": "3.6.6"
+  },
+  {
+   "license": "Zlib",
+   "license_file": "zlib.txt",
+   "license_url": "licenses/vnc/zlib.txt",
+   "name": "zlib",
+   "source": "https://zlib.net/fossils/zlib-1.3.2.tar.gz",
+   "version": "1.3.2"
+  }
+ ],
+ "category": "internet",
+ "cover": null,
+ "description": "A VNC server: a viewer on a computer (macOS's Screen Sharing, TigerVNC,\nRealVNC and others) shows the badge's screen and types on its keys. It\nis a service, without a tile: turn it on in Settings > Connection > VNC\nserver, where you also find the addresses to connect to (Wi-Fi, and\n192.168.4.1 over the USB cable) and the password, with a button for a\nnew one. It starts again after a restart.\n\nIt needs full access to the badge, as anyone who has the password\ncontrols it. The session is not encrypted: use it on your own network or\nthe cable. There is no pointer, only the keys.",
+ "format": 1,
+ "homepage": "https://github.com/johndekroon/WhyOS-Apps",
+ "icon": null,
+ "id": "vnc",
+ "install_location": "flash",
+ "launch": {
+  "info": "The badge's screen and keys on…",
+  "menu": "apps",
+  "rotation": "auto",
+  "terminal": false
+ },
+ "license": "MIT AND Apache-2.0 AND LGPL-2.1-or-later AND Zlib",
+ "license_url": "licenses/vnc/vnc.txt",
+ "name": "VNC server",
+ "permissions": [
+  "daemon"
+ ],
+ "requires": {
+  "features": [
+   "wifi",
+   "display",
+   "keyboard"
+  ],
+  "memory_kb": 1500,
+  "os_api": 1
+ },
+ "screenshots": [],
+ "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/vnc/source",
+ "summary": "The badge's screen and keys on a computer, over Wi-Fi or USB.",
+ "tags": [
+  "vnc",
+  "remote",
+  "screen-sharing"
+ ],
+ "type": "app",
+ "versions": [
+  {
+   "build": 2,
+   "changelog": "A service without a tile: its page in Settings > Connection. ZRLE, so it is quick over USB and Wi-Fi, and macOS's Screen Sharing works.",
+   "package": {
+    "installed_size": 219765,
+    "sha256": "095b185a56037be6c0650d5110b40a24265f0a186bfb444a9446db571b6632be",
+    "size": 101406,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/vnc-1.1.0.wpk"
+   },
+   "published": "2026-11-09T15:03:23Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/vnc-1.1.0-source.tar.gz",
+   "version": "1.1.0"
+  }
+ ]
+}

@@ -18,6 +18,22 @@
    "version": "2ce6a3b"
   },
   {
+   "license": "MIT",
+   "license_file": "bsound.txt",
+   "license_url": "licenses/doom/bsound.txt",
+   "name": "bsound (the badge's game sound)",
+   "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/doom/source",
+   "version": "WhyOS 3ef5aae"
+  },
+  {
+   "license": "BSD-3-Clause",
+   "license_file": "tinyalsa.txt",
+   "license_url": "licenses/doom/tinyalsa.txt",
+   "name": "tinyalsa",
+   "source": "https://github.com/tinyalsa/tinyalsa/archive/v2.0.0/tinyalsa-2.0.0.tar.gz",
+   "version": "2.0.0"
+  },
+  {
    "license": "LGPL-2.1-or-later",
    "license_file": "uClibc-ng.txt",
    "license_url": "licenses/doom/uClibc-ng.txt",
@@ -28,7 +44,7 @@
  ],
  "category": "action",
  "cover": null,
- "description": "The first episode of DOOM, from id Software's shareware release 1.9, on\nfbDOOM, a port of the DOOM source code to the Linux framebuffer.\n\nKeys: arrows move and turn, Ctrl fires, Space opens doors, Enter selects\nin the menus, Esc opens the menu, Quit Game ends it, and the logo key\ngoes back to the start menu. Saved games go to the app's folder on the\nSD card. There is no sound.\n\nDOOM needs a free block of at least 2 MB of memory for its zone: close\nother apps first if it does not start.",
+ "description": "The first episode of DOOM, from id Software's shareware release 1.9, on\nfbDOOM, a port of the DOOM source code to the Linux framebuffer.\n\nKeys: arrows move and turn, Ctrl fires, Space opens doors, Enter selects\nin the menus, Esc opens the menu, Quit Game ends it, and the logo key\ngoes back to the start menu. Saved games go to the app's folder on the\nSD card. The sound effects play on the output chosen in Settings > Sound;\nthere is no music.\n\nDOOM needs a free block of at least 2 MB of memory for its zone: close\nother apps first if it does not start.",
  "format": 1,
  "homepage": "https://github.com/maximevince/fbDOOM",
  "icon": null,
@@ -42,7 +58,7 @@
   "rotation": "auto",
   "terminal": false
  },
- "license": "GPL-2.0-or-later AND MIT AND LicenseRef-DOOM-shareware AND LGPL-2.1-or-later",
+ "license": "GPL-2.0-or-later AND MIT AND BSD-3-Clause AND LicenseRef-DOOM-shareware AND LGPL-2.1-or-later",
  "license_url": "licenses/doom/fbdoom.txt",
  "name": "DOOM",
  "requires": {
@@ -67,6 +83,19 @@
  "type": "game",
  "upstream_version": "fbDOOM git 1728016",
  "versions": [
+  {
+   "build": 3,
+   "changelog": "Sound effects, on the output chosen in Settings > Sound (there is no music).",
+   "package": {
+    "installed_size": 4831103,
+    "sha256": "7a0952aa372e20cb0f188ba116f2db1c2382a8c8b3d72e2b6cb6f7acbd12138c",
+    "size": 2051618,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/doom-1.9.2.wpk"
+   },
+   "published": "2026-11-09T15:01:37Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/doom-1.9.2-source.tar.gz",
+   "version": "1.9.2"
+  },
   {
    "build": 2,
    "changelog": "Saving works, and Backspace no longer quits the game: it deletes while you type a save's name. The whole width of the screen, and smoother where the badge can scale the picture itself.",
