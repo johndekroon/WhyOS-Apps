@@ -3,7 +3,7 @@
  * hideous (HIDeous) — texts kept on the badge ("snippets") that it types
  * on a computer, as a USB keyboard on the bottom port (J8; docs/USB.md,
  * "Device mode"), and the badge as that computer's mouse. Drawn like the
- * menu, with libwb in the style of the canvas "Menu's met frontpaneel"
+ * menu, with libwb
  * (the frontpanel's figures behind glass cards, frosted pop-ups), as an app
  * from the store (sdapps/README.md).
  *
@@ -40,7 +40,7 @@
  * to sleep or show its user away. An image without the mouse has no
  * hidg1: the screen says so.
  *
- * Keys (Docs/06-design-system.md 6.6): Enter types, the square opens the
+ * Keys (docs/APPS.md): Enter types, the square opens the
  * snippet's options, the triangle adds one, the cross edits it; the
  * circle shows what was typed this session, the cloud the settings, the
  * diamond the help. Esc closes, or goes back one layer. In the editor's
@@ -74,8 +74,6 @@
 #define W		WB_SCREEN_W
 #define H		WB_SCREEN_H
 #include "wb.h"
-#include "lora_state.h"
-#include "wbstatus.h"
 #include "usbkbd.h"
 
 #ifndef SN_HOST
@@ -565,7 +563,7 @@ static void unescape(char *out, const char *s, int max)
 	int n = 0;
 
 	for (; *s && n < max; s++) {
-		static const char alias[] = "ebLRUD";	/* \e and the others of 2026-10-20 */
+		static const char alias[] = "ebLRUD";	/* \e and the others */
 		static const unsigned char alias_u[] = { 0x29, 0x2a, 0x50, 0x4f, 0x52, 0x51 };
 		const char *a = *s == '\\' && s[1] ? strchr(alias, s[1]) : 0;
 		unsigned cp = 0;
@@ -878,31 +876,12 @@ static uint16_t *whole;
 static uint16_t typing_bg[DLG_W * TYP_H];	/* the typing pop-up under its bar */
 static int typing_y = -1;			/* where that is; -1 not kept */
 
-/* ---- the status bar ----------------------------------------------------- */
-
-static struct {
-	char hhmm[6];
-	int clock_ok, wifi_up /* bars, -1 none: wbstatus.h */, lora;
-} U;
-
-/* as home's: WhyOS left; LoRa, Wi-Fi and the clock right */
-static void status_bar(void)
-{
-	const struct wb_font *n = &f_ui18b;
-	int cy = WB_STATUS_BAR_H / 2;
-
-	text(n, text(n, WB_CHROME_PAD, text_top(n, cy), "Why", WB_COLOR_TEXT_HI, -3),
-	     text_top(n, cy), "OS", WB_COLOR_CYAN, -3);
-	status_right(U.hhmm, U.clock_ok, U.wifi_up, U.lora);
-}
-
 /* The frontpanel's figures (libwb's wb_scene(), which reads the rotation
- * while a frame is recorded and keeps it while it is drawn), the status
- * bar, the eyebrow ("APP", or where the screen lies) and the title. */
+ * while a frame is recorded and keeps it while it is drawn), the eyebrow
+ * ("APP", or where the screen lies) and the title. */
 static void header(const char *eb, const char *title)
 {
 	wb_scene();
-	status_bar();
 	wb_header(eb, title, 0);
 }
 
@@ -2623,8 +2602,6 @@ int main(int argc, char **argv)
 	frames = getenv("SN_FRAMES");
 	if (hid)
 		hid_fd = open(hid, O_WRONLY | O_CREAT | O_APPEND, 0644);
-	memcpy(U.hhmm, "12:34", 6);
-	U.clock_ok = 1;
 	for (; *k; k++) {
 		int code = -1, fn = 0, shift = 0, hold = TICK_MS;
 
@@ -2735,33 +2712,10 @@ static void on_cont(int s)
 	cont_sig = 1;
 }
 
-/* the status bar; 1 if it changed */
-static int status_read(void)
-{
-	time_t t = time(0);
-	struct tm tm;
-	char old[6];
-	int wifi = U.wifi_up, ok = U.clock_ok, lora = U.lora;
-
-	memcpy(old, U.hhmm, sizeof(old));
-	localtime_r(&t, &tm);
-	U.clock_ok = tm.tm_year >= 124;
-	U.hhmm[0] = (char)('0' + tm.tm_hour / 10);
-	U.hhmm[1] = (char)('0' + tm.tm_hour % 10);
-	U.hhmm[2] = ':';
-	U.hhmm[3] = (char)('0' + tm.tm_min / 10);
-	U.hhmm[4] = (char)('0' + tm.tm_min % 10);
-	U.hhmm[5] = 0;
-	U.wifi_up = wifi_bars();	/* -1: not connected, else the lit arcs */
-	U.lora = lora_on();
-	return wifi != U.wifi_up || ok != U.clock_ok || lora != U.lora || memcmp(old, U.hhmm, sizeof(old));
-}
-
 int main(void)
 {
 	struct sigaction sa;
 	struct pollfd p;
-	int ticks = 0;
 	long checked = 0;
 
 	memset(&sa, 0, sizeof(sa));
@@ -2782,7 +2736,6 @@ int main(void)
 	wb_init();
 	whole = malloc((size_t)W * H * sizeof(*whole));	/* 0: bands, and plain pop-ups */
 	wb_rec_invalidate();	/* nothing in it yet: the first frame whole */
-	status_read();
 	present();
 	p.fd = ev_fd;
 	p.events = POLLIN;
@@ -2811,8 +2764,6 @@ int main(void)
 			checked = now_ms();
 			C.computer = computer_read();
 			if (pc != C.computer && (C.sc == SC_LIST || C.sc == SC_MOUSE) && !C.pop)
-				present();
-			if (++ticks % 5 == 0 && status_read())
 				present();
 		}
 		if (k <= 0)

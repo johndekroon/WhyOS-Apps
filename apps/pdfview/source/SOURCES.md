@@ -2,8 +2,8 @@
 
 Together with the download below, this directory is the complete
 corresponding source of the `pdfview` package (docs/package.md §2.10).
-The files here are the badge-specific ones, copied from why2025-linux
-`sdapps/` and `libwb/` at commit `647c8ea`; the toolchain and the build script are in
+The files here are the badge-specific ones, copied from WhyOS
+`sdapps/` and `libwb/` at commit `3ef5aae`; the toolchain and the build script are in
 [toolchain/](../../../toolchain/README.md).
 
 | Upstream | URL | SHA-256 |
@@ -17,7 +17,7 @@ unchanged, with the options in the script's `MUPDF_OPTS` and
 compiler for the badge (`CXX_OUT`).
 
 `pdfview.c` is the program (AGPL-3.0-or-later, as MuPDF); `libwb/` is
-why2025-linux's drawing library (the design, fonts rendered to bitmaps,
+WhyOS's drawing library (the design, fonts rendered to bitmaps,
 held keys, drawing only what changed), as built; the build script
-expects it next to `sdapps/`, as in why2025-linux. `test/` is its host test (`make -C test`, in a Linux
+expects it next to `sdapps/`, as in WhyOS. `test/` is its host test (`make -C test`, in a Linux
 build machine with MuPDF's source unpacked).

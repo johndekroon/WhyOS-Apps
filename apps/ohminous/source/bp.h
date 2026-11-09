@@ -2,8 +2,7 @@
 /*
  * bp.h — a Bus Pirate 6 on the bottom port, as OHMinous uses it (bp.c):
  * its terminal (USB interface 0), typed to as a user would, and its SUMP
- * port (interface 2) for the logic analyzer. Taken over from the menu's
- * Bus Pirate screens (overlay-src/home.c, BP_APP) on 2026-10-25.
+ * port (interface 2) for the logic analyzer.
  */
 #pragma once
 

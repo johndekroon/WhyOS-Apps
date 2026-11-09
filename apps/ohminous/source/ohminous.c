@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT
 /*
  * ohminous (OHMinous) — an electronics workbench on the badge, after the
- * design canvas "OHMinous" (2026-10-25), in the style of the canvas "Menu's
- * met frontpaneel" (2026-10-27, libwb): the frontpanel's figures behind
+ * design system (libwb): the frontpanel's figures behind
  * every screen, the eyebrow and title of the menu's lists, cards, rows and
  * the hint bar of glass with square corners, the focus cyan, pop-ups
  * frosted with their keys inside. The logic analyzer's traces and the
- * terminals' lines stay on black. It replaces the Bus Pirate app (the menu
- * built with -DBP_APP), whose Bus Pirate code it took over (bp.c), and adds
- * the badge's own header pins (hw.c).
+ * terminals' lines stay on black. bp.c drives a Bus Pirate 6, hw.c the
+ * badge's own header pins.
  *
  * Six tools on the start screen: Pins, Logic, Buses, LEDs, Power and
  * Serial. Each has two sources, switched with Tab: the badge's J3 and J7
@@ -29,7 +27,7 @@
  *   Serial   badge: a USB serial adapter on the bottom port; Bus Pirate:
  *            its terminal
  *
- * Keys (Docs/06-design-system.md 6.6): Enter opens; Tab switches the
+ * Keys (docs/APPS.md): Enter opens; Tab switches the
  * source; the square has a tool's options, the triangle its main action
  * (toggle a pin, capture, scan, the supply), the cross the second (save a
  * capture); the circle the log of what the tools sent and read, the cloud
@@ -65,8 +63,6 @@
 #define W		WB_SCREEN_W
 #define H		WB_SCREEN_H
 #include "wb.h"
-#include "lora_state.h"
-#include "wbstatus.h"
 #include "keyrep.h"
 
 #include "hw.h"
@@ -570,26 +566,13 @@ static int bp_ready(void)
 #define PINK_EDGE	0x99405F			/* pink at 60 % on surface */
 #define EDGE_A		66				/* glass's 1 px edge: white at 26 % */
 
-static struct { char hhmm[6]; int clock_ok, wifi, lora; } U;
-
-static void status_bar(void)
-{
-	const struct wb_font *n = &f_ui18b;
-	int cy = WB_STATUS_BAR_H / 2;
-
-	text(n, text(n, WB_CHROME_PAD, text_top(n, cy), "Why", WB_COLOR_TEXT_HI, -3), text_top(n, cy), "OS",
-	     WB_COLOR_CYAN, -3);
-	status_right(U.hhmm, U.clock_ok, U.wifi, U.lora);
-}
-
 /* every screen: the frontpanel's figures (wb_scene: libwb reads the
  * rotation once a frame, while recording it, and keeps it for the bands),
- * the status bar, the eyebrow (where the screen lies: "APP" on the start
- * screen, else the parent's name and a chevron) and the title */
+ * the eyebrow (where the screen lies: "APP" on the start screen, else the
+ * parent's name and a chevron) and the title */
 static void header(const char *eb, const char *title)
 {
 	wb_scene();
-	status_bar();
 	wb_header(eb, title, 0);
 }
 
@@ -632,7 +615,7 @@ static int bp_tag(int x, int cy)
 	return x + w;
 }
 
-/* a pin's level as a switch: the canvas's (wb_switch) with HIGH in pink */
+/* a pin's level as a switch: the design's (wb_switch) with HIGH in pink */
 static void level_switch(int x, int cy, int on)
 {
 	int y = cy - 15;
@@ -942,7 +925,6 @@ static void draw_start(void)
 	char st[40];
 
 	wb_scene();
-	status_bar();
 	wb_header("APP", "OHMinous", "Electronics workbench");
 	/* the two sources */
 	for (int i = 0; i < 2; i++) {
@@ -2800,10 +2782,6 @@ int main(int argc, char **argv)
 			hw_sim_level(i, lv[i] = *e == '1');
 	if ((e = getenv("OHM_UART_RX")))
 		hw_sim_uart(e);
-	memcpy(U.hhmm, "14:32", 6);
-	U.clock_ok = 1;
-	U.wifi = 3;
-	U.lora = 1;
 	if (hw_open() < 0)
 		notice(hw_err, 1);
 	bp_find();
@@ -2890,22 +2868,6 @@ int ev_cancel(void)
 	return stop != 0;
 }
 
-static int status_read(void)
-{
-	time_t t = time(0);
-	struct tm tm;
-	char old[6];
-	int wifi = U.wifi, ok = U.clock_ok, lora = U.lora;
-
-	memcpy(old, U.hhmm, sizeof(old));
-	localtime_r(&t, &tm);
-	U.clock_ok = tm.tm_year >= 124;
-	snprintf(U.hhmm, sizeof(U.hhmm), "%02d:%02d", tm.tm_hour % 100, tm.tm_min % 100);
-	U.wifi = wifi_bars();
-	U.lora = lora_on();
-	return wifi != U.wifi || ok != U.clock_ok || lora != U.lora || memcmp(old, U.hhmm, sizeof(old));
-}
-
 static void where_write(void)
 {
 	static char b[16384];
@@ -2954,7 +2916,6 @@ int main(void)
 {
 	struct sigaction sa;
 	long last_bp = 0, last_read = 0;
-	int ticks = 0;
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = on_signal;
@@ -2969,7 +2930,6 @@ int main(void)
 	if (!mkfifo(FIFO, 0600))
 		fifo_fd = open(FIFO, O_RDWR | O_NONBLOCK | O_CLOEXEC);
 	settings_load();
-	status_read();
 	if (hw_open() < 0)
 		notice(hw_err, 1);
 	bp_find();
@@ -3023,8 +2983,6 @@ int main(void)
 				bp_measure();
 				draw = 1;
 			}
-			if (++ticks % 5 == 0 && status_read())
-				draw = 1;
 		}
 		if (O.sc == SC_PINS && O.src[T_PINS] == SRC_BADGE && !O.pop && now - last_read >= 200) {
 			int was[HW_PINS], ch = 0;

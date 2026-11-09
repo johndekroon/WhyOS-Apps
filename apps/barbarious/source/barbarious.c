@@ -55,8 +55,6 @@
 #define W		WB_SCREEN_W
 #define H		WB_SCREEN_H
 #include "wb.h"
-#include "lora_state.h"
-#include "wbstatus.h"
 #include "keyrep.h"
 #include "power.h"
 #include "symbol.h"
@@ -767,32 +765,13 @@ static void go(int sc)
  */
 static uint16_t *whole;
 
-/* ---- the status bar ----------------------------------------------------- */
-
-static struct {
-	char hhmm[6];
-	int clock_ok, wifi_up /* bars, -1 none: wbstatus.h */, lora;
-} U;
-
-/* as home's: WhyOS left; LoRa, Wi-Fi and the clock right */
-static void status_bar(void)
-{
-	const struct wb_font *n = &f_ui18b;
-	int cy = WB_STATUS_BAR_H / 2;
-
-	text(n, text(n, WB_CHROME_PAD, text_top(n, cy), "Why", WB_COLOR_TEXT_HI, -3),
-	     text_top(n, cy), "OS", WB_COLOR_CYAN, -3);
-	status_right(U.hhmm, U.clock_ok, U.wifi_up, U.lora);
-}
-
 /* The frontpanel's figures (libwb's wb_scene(), which reads the rotation
- * while a frame is recorded and keeps it while it is drawn), the status
- * bar, the eyebrow ("APP", or where the screen lies), the title, and a
- * word right of the title ("6 codes"). */
+ * while a frame is recorded and keeps it while it is drawn), the eyebrow
+ * ("APP", or where the screen lies), the title, and a word right of the
+ * title ("6 codes"). */
 static void header(const char *eb, const char *title, const char *right)
 {
 	wb_scene();
-	status_bar();
 	wb_header(eb, title, right);
 }
 
@@ -2900,9 +2879,6 @@ int main(int argc, char **argv)
 	wb_init();
 	whole = getenv("BB_BANDS") ? 0 : screen;	/* BB_BANDS: as without room for the whole */
 	frames = getenv("BB_FRAMES");
-	memcpy(U.hhmm, "12:34", 6);
-	U.clock_ok = 1;
-	U.wifi_up = 3;
 	for (; *k; k++) {
 		int code = -1;
 
@@ -2994,28 +2970,6 @@ static void on_cont(int s)
 	cont_sig = 1;
 }
 
-/* the status bar; 1 if it changed */
-static int status_read(void)
-{
-	time_t t = time(0);
-	struct tm tm;
-	char old[6];
-	int wifi = U.wifi_up, ok = U.clock_ok, lora = U.lora;
-
-	memcpy(old, U.hhmm, sizeof(old));
-	localtime_r(&t, &tm);
-	U.clock_ok = tm.tm_year >= 124;
-	U.hhmm[0] = (char)('0' + tm.tm_hour / 10);
-	U.hhmm[1] = (char)('0' + tm.tm_hour % 10);
-	U.hhmm[2] = ':';
-	U.hhmm[3] = (char)('0' + tm.tm_min / 10);
-	U.hhmm[4] = (char)('0' + tm.tm_min % 10);
-	U.hhmm[5] = 0;
-	U.wifi_up = wifi_bars();	/* -1: not connected, else the lit arcs */
-	U.lora = lora_on();
-	return wifi != U.wifi_up || ok != U.clock_ok || lora != U.lora || memcmp(old, U.hhmm, sizeof(old));
-}
-
 static void where_write(void)
 {
 	static char b[4096];
@@ -3067,7 +3021,7 @@ int main(void)
 {
 	struct sigaction sa;
 	struct pollfd p[2];
-	int ev_fd, fifo_fd = -1, ticks = 0;
+	int ev_fd, fifo_fd = -1;
 	long last_key = power_now(), touched = 0;
 
 	memset(&sa, 0, sizeof(sa));
@@ -3091,7 +3045,6 @@ int main(void)
 	wb_init();
 	whole = malloc((size_t)W * H * sizeof(*whole));	/* 0: bands, and plain pop-ups */
 	wb_rec_invalidate();	/* nothing in it yet: the first frame whole */
-	status_read();
 	present();
 	p[0].fd = ev_fd;
 	p[0].events = POLLIN;
@@ -3112,8 +3065,6 @@ int main(void)
 		}
 		/* each draws only what changed (present) */
 		if (wb_scene_turned())
-			present();
-		if (++ticks % 20 == 0 && status_read())
 			present();
 		/* a code on screen keeps it on, as a key would; not past KEEP_ON_S,
 		 * and never out of standby */

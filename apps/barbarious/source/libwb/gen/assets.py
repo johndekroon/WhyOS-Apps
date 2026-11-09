@@ -104,6 +104,17 @@ ICONS = [
     ("r_sig1", 26, 2, '<path d="M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="#fff"/>'),
     ("r_sig2", 26, 2, '<path d="M5 12.5a10 10 0 0 1 14 0"/><path d="M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="#fff"/>'),
     ("r_sig3", 26, 2, '<path d="M2 9a15 15 0 0 1 20 0"/><path d="M5 12.5a10 10 0 0 1 14 0"/><path d="M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="#fff"/>'),
+    # sound (the sound UI's design): the speaker, muted (or out of reach), no
+    # output, AirPlay; 22 px for the status bar, 26 for rows
+    ("i_spk22", 22, 2, '<path d="M4 9h4l5-4v14l-5-4H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>'),
+    ("i_spkmute22", 22, 2, '<path d="M4 9h4l5-4v14l-5-4H4zM17 9l5 6M22 9l-5 6"/>'),
+    ("i_spknone22", 22, 2, '<path d="M4 9h4l5-4v14l-5-4H4zM3 3l18 18"/>'),
+    ("i_airplay22", 22, 2, '<path d="M6 17H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-2M12 15l5 6H7z"/>'),
+    ("r_spk", 26, 2, '<path d="M4 9h4l5-4v14l-5-4H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>'),
+    ("r_spkmute", 26, 2, '<path d="M4 9h4l5-4v14l-5-4H4zM17 9l5 6M22 9l-5 6"/>'),
+    ("r_spknone", 26, 2, '<path d="M4 9h4l5-4v14l-5-4H4zM3 3l18 18"/>'),
+    ("r_airplay", 26, 2, '<path d="M6 17H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-2M12 15l5 6H7z"/>'),
+    ("r_sliders", 26, 2, '<path d="M4 7h10M18 7h2M4 17h4M12 17h8M16 5v4M10 15v4"/>'),
     ("r_lock", 18, 2, '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>'),
     ("r_ethernet", 26, 2, '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M7 16v4h10v-4M8 8v3M11 8v3M14 8v3M17 8v3"/>'),
     ("r_refresh", 26, 2, '<path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/>'),

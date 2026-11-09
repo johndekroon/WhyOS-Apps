@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /*
  * libwb: the drawing library of WhyOS's screens, after the design system
- * "Neon Orbit" and the canvas "Menu's met frontpaneel" (Docs/06). The menu
+ * "Neon Orbit". The menu
  * (home) and the apps include this one header:
  *
  *	#define W 720	(optional: the panel's size by default)
@@ -9,18 +9,20 @@
  *	...
  *	wb_init();
  *
- * with -I pointing at this folder (why2025-linux/libwb). Everything is
+ * with -I pointing at this folder (libwb). Everything is
  * static and header-only (FLAT programs link statically; --gc-sections
  * drops what a program does not use). The parts:
  *
- *	wb_tokens.h	colours, sizes (design/tokens.json)
- *	wb_assets.h	fonts, icons and the glow fall-off (gen/gen.py)
+ *	wb_tokens.h	colours, sizes
+ *	wb_assets.h	fonts, icons and the glow fall-off (gen/assets.py)
  *	wbdraw.h	pixels, boxes, text, icons, key caps, the hint bar, help
  *	wbscene.h	the frontpanel's figures behind the screen, coloured
  *	wbglass.h	glass and frosted pop-ups, the focus's glow
  *	wbui.h		switch, slider buttons, pop-up list, dialog, loupe
- *	wbstatus.h	the status bar's clock, Wi-Fi and LoRa (include it too
- *			when the program shows the status bar)
+ *	wbstatus.h	the status bar's clock, Wi-Fi and LoRa (the system
+ *			draws the status bar; apps do not include it)
+ *	wbdoc.h		text people type, with Latin-1 (include it too when
+ *			the program needs that)
  *
  * A program draws into fb (rows fb_y0..fb_y1: a whole panel, or one band at
  * a time) and writes it to /dev/fb0 itself. README.md says more.
@@ -29,6 +31,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "wb_tokens.h"
 #include "wb_assets.h"
@@ -40,11 +43,11 @@
 #define H		WB_SCREEN_H
 #endif
 
-/* The canvas's style: square corners (every radius 4), pop-ups 96 px from
+/* The design's style: square corners (every radius 4), pop-ups 96 px from
  * the sides. What is under a pop-up recedes by the void at 35 %, as under
- * the Apps panel: the canvas had 68 % for dialogs, and on the panel that
- * left too little under the frosted glass to see it (john, 2026-10-28:
- * the glass must look the same everywhere). */
+ * the Apps panel: the design had 68 % for dialogs, and on the panel that
+ * left too little under the frosted glass to see it (the glass must
+ * look the same everywhere). */
 #define WB_SQUARE	4
 #define POP_X		96
 #define WB_DIM_A	89

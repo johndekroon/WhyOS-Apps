@@ -15,7 +15,7 @@
  * around the view, drawn again when the view leaves it. MuPDF keeps fonts
  * and images in its store, at most STORE_MAX.
  *
- * Keys (Docs/06-design-system.md 6.6): Up/Down scroll, on into the next
+ * Keys (docs/APPS.md): Up/Down scroll, on into the next
  * or previous page; Fn+Up/Down and Space (Shift: back) a screen;
  * Left/Right the previous and next page, zoomed in they move the page
  * sideways (Fn+Left/Right: pages); Enter zoom; the square the options (go
@@ -38,7 +38,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <time.h>
 #include <unistd.h>
 
 #include <mupdf/fitz.h>
@@ -48,7 +47,6 @@
 #define W		WB_SCREEN_W
 #define H		WB_SCREEN_H
 #include "wb.h"
-#include "wbstatus.h"
 #include "keyrep.h"
 
 #ifndef PDFVIEW_HOST
@@ -384,7 +382,7 @@ static void place_save(void)
 /* ---- drawing ------------------------------------------------------------ */
 
 /*
- * The canvas "Menu's met frontpaneel" (Docs/06-design-system.md): the page
+ * The design: the page
  * fills the screen, without the scene behind it; the title bar (the name,
  * the page, the zoom) and the hint bar are glass over it, the options, Go
  * to page and the help frosted pop-ups. The screens without a page (it
@@ -404,43 +402,6 @@ static int sc, pop, pf;
 static char go_text[8];
 static int busy;			/* "Drawing page ..." while it renders */
 static int on_scene;			/* the screen shows the scene: drawn again when the badge turns */
-
-static struct {				/* the status bar of the log and settings screens */
-	char hhmm[6];
-	int clock_ok, wifi, lora;
-} S;
-
-static void status_read(void)
-{
-#ifdef PDFVIEW_HOST
-	time_t t = 1798000000;		/* the tests compare screens: a clock that stands still */
-#else
-	time_t t = time(0);
-#endif
-	struct tm tm;
-
-	localtime_r(&t, &tm);
-	S.clock_ok = tm.tm_year >= 124;
-	S.hhmm[0] = (char)('0' + tm.tm_hour / 10);
-	S.hhmm[1] = (char)('0' + tm.tm_hour % 10);
-	S.hhmm[2] = ':';
-	S.hhmm[3] = (char)('0' + tm.tm_min / 10);
-	S.hhmm[4] = (char)('0' + tm.tm_min % 10);
-	S.hhmm[5] = 0;
-	S.wifi = wifi_bars();
-	S.lora = lora_on();
-}
-
-/* WhyOS left; LoRa, Wi-Fi and the clock right (as the menu's) */
-static void status_bar(void)
-{
-	const struct wb_font *n = &f_ui18b;
-	int cy = WB_STATUS_BAR_H / 2;
-
-	text(n, text(n, WB_CHROME_PAD, text_top(n, cy), "Why", WB_COLOR_TEXT_HI, -3),
-	     text_top(n, cy), "OS", WB_COLOR_CYAN, -3);
-	status_right(S.hhmm, S.clock_ok, S.wifi, S.lora);
-}
 
 /* The scene behind the screen (libwb keeps one rotation for a frame). */
 static void backdrop(void)
@@ -540,7 +501,6 @@ static void draw_empty(void)
 	static const struct hint hints[] = { { "Esc", "back", 1 } };
 
 	backdrop();
-	status_bar();
 	wb_header("PDF VIEWER \xe2\x80\xba", sc == SC_LOG ? "Log" : "Settings", 0);
 	wb_row(WB_CONTENT_PAD, WB_ROWS_TOP, W - 2 * WB_CONTENT_PAD, WB_LIST_ROW_H, &r_info,
 	       sc == SC_LOG ? "No log yet" : "This app has no settings", 0, 0, WB_ROW_NONE, 0, 0);
@@ -721,8 +681,6 @@ static void redraw(void)
 		free(whole);
 		whole = 0;
 	}
-	if (sc != SC_VIEW)
-		status_read();
 	on_scene = sc != SC_VIEW || (D.err[0] && !busy);
 	if (whole)
 		n = wb_frame(paint, 0, whole, 40, out);

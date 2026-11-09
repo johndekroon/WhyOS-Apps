@@ -5,11 +5,10 @@
  * for the WHY2025 badge running native Linux 6.18.35 LTS on the ESP32-P4
  * HP core. The "look, it's Linux!" demo for FOSDEM 2027.
  *
- * Drawn with the menu's library (libwb, the canvas "Menu's met
- * frontpaneel", Docs/06-design-system.md): the frontpanel's figures
- * behind, the status bar, "APP" / "Sensor panel", the readings on glass
- * cards (temperature, humidity, pressure; motion; the temperature of the
- * last 20 samples as a graph) and the hint bar. It reads no keys: Esc and
+ * Drawn with the menu's library (libwb): the frontpanel's figures
+ * behind, "APP" / "Sensor panel", the readings on glass cards
+ * (temperature, humidity, pressure; motion; the temperature of the last
+ * 20 samples as a graph) and the hint bar. It reads no keys: Esc and
  * the logo key are apprun's (app.conf: ESC=quit).
  *
  * Design constraints (all learned the hard way; see CLAUDE.md / memory):
@@ -53,7 +52,6 @@
 #define W	WB_SCREEN_W
 #define H	WB_SCREEN_H
 #include "wb.h"
-#include "wbstatus.h"
 
 static int      fb_fd = -1;     /* open fd to /dev/fb0 */
 static size_t   fb_bytes;       /* line_length * yres */
@@ -270,39 +268,6 @@ static void hist_push(int v)
 #define ROW3_Y   (ROW2_Y + ROW2_H + CARD_GAP)   /* the graph */
 #define ROW3_H   (H - WB_HINT_BAR_H - CARD_GAP - ROW3_Y)
 
-static struct {                 /* the status bar */
-    char hhmm[6];
-    int clock_ok, wifi, lora;
-} S;
-
-static void status_read(void)
-{
-    time_t t = time(0);
-    struct tm tm;
-
-    localtime_r(&t, &tm);
-    S.clock_ok = tm.tm_year >= 124;
-    S.hhmm[0] = (char)('0' + tm.tm_hour / 10);
-    S.hhmm[1] = (char)('0' + tm.tm_hour % 10);
-    S.hhmm[2] = ':';
-    S.hhmm[3] = (char)('0' + tm.tm_min / 10);
-    S.hhmm[4] = (char)('0' + tm.tm_min % 10);
-    S.hhmm[5] = 0;
-    S.wifi = wifi_bars();       /* asks wpa_supplicant at most every 5 s */
-    S.lora = lora_on();
-}
-
-/* WhyOS left; LoRa, Wi-Fi and the clock right (as the menu's). */
-static void status_bar(void)
-{
-    const struct wb_font *n = &f_ui18b;
-    int cy = WB_STATUS_BAR_H / 2;
-
-    text(n, text(n, WB_CHROME_PAD, text_top(n, cy), "Why", WB_COLOR_TEXT_HI, -3),
-         text_top(n, cy), "OS", WB_COLOR_CYAN, -3);
-    status_right(S.hhmm, S.clock_ok, S.wifi, S.lora);
-}
-
 /* A card's caption: mono, upper case, tracked, in text mid. */
 static void caption(int x, int y, const char *s)
 {
@@ -395,7 +360,6 @@ static void render_frame(int frame, int have_bme, int have_bmi,
     int w3 = (CARD_W - 2 * CARD_GAP) / 3;
 
     wb_scene();
-    status_bar();
     wb_header("APP", "Sensor panel", 0);
 
     /* --- Environment: temperature, humidity, pressure (BME680) --- */
@@ -502,7 +466,6 @@ int main(int argc, char **argv)
     fb_y0 = 0;
     fb_y1 = H;
     wb_init();
-    status_read();
     for (int i = 0; i < SPARK_N; i++)
         hist_push(2140 + (i * 7) % 23 + i * 3);
     render_frame(1234, 1, 1, 2203, 4187, 2351, 12, -998, 31);
@@ -650,7 +613,6 @@ int main(void)
 
         if (have_bme) hist_push(t_centi);
 
-        status_read();
         render_frame(frame, have_bme, have_bmi,
                      t_centi, rh_centi, p_milli,
                      ax_mg, ay_mg, az_mg);

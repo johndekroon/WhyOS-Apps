@@ -958,7 +958,12 @@ static void help_popup(const char *screen, const char *about, const struct help_
 	if (n > 12)
 		n = 12;
 	h = 32 + 18 + 6 + 36 + 16 + lines * 28 + 24 + 17 + 12 + n * HELP_ROW + 14 + 1 + 10 + 23 + 16;
-	y = (H - h) / 2;
+	/* under the status bar, which the system draws over the top rows */
+	while (n > 1 && h > H - WB_STATUS_BAR_H - 8) {
+		n--;
+		h -= HELP_ROW;
+	}
+	y = (H - h) / 2 < WB_STATUS_BAR_H + 8 ? WB_STATUS_BAR_H + 8 : (H - h) / 2;
 	pop_frame(y, h);
 	y += 32;
 	icon(&kc_diamond, x, y + 1, WB_COLOR_KEY_DIAMOND, 255);

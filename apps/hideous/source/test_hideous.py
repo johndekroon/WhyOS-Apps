@@ -272,7 +272,7 @@ def main():
           ("Typed 6 characters", [(0x08, 0x15), (0, 0x06)], True))
     s = b.run("\\2Win\\t\\1\\d\\d\\d\\n" + "\\d" * 35 + "\\n\\n")
     check("the modifiers alone", s["snips"][7], "Win|\\[Win]")
-    # the file: names in any case, aliases of 2026-10-20, unknown names stay text
+    # the file: names in any case, aliases, unknown names stay text
     b.file("snippets.txt", "f\t\\[ctrl+alt+delete]\\[Wait 2s]\\[Cmd+Space]\\[Ctrl++]\\[Foo]\\e\\b\n")
     s = b.run("")
     check("names in the file", s["snips"],

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * Glass (the canvas "Menu's met frontpaneel"): boxes of the void over what
+ * Glass: boxes of the void over what
  * is drawn, and frosted pop-ups over a blurred copy of what is under them;
  * the focus's glow; box() from a shape worked out once (box_shaped()).
  * Part of libwb: include wb.h, and call wb_init() once before drawing.
@@ -9,7 +9,7 @@
 
 static long tm_glass;		/* us spent in glass(), for a program's timing */
 
-/* The focus's glow on the canvas: 18 px at 55 %, from home_assets.h's
+/* The focus's glow in the design: 18 px at 55 %, from wb_assets.h's
  * 18 px at 40 % (glow_init()). */
 static uint8_t glow_focus[sizeof(glow_row)];
 static const struct glow GLOW_FOCUS = { glow_focus, sizeof(glow_focus) };
@@ -35,7 +35,7 @@ static void glow_init(void)
 /* Glass: boxes of the void over the scene; pop-ups over a blurred copy  */
 
 /*
- * The canvas (2026-10-27): tiles, rows, the hint bar and the temperature
+ * The design: tiles, rows, the hint bar and the temperature
  * are the void at 85 % over the scene, unblurred, with a faint sheen from
  * the top and a light edge; on the badge they are one flat colour (see
  * glass()). Only the pop-ups (the Apps panel, dialogs, the choices) are
@@ -52,7 +52,7 @@ static void glow_init(void)
 enum { GLASS_TILE, GLASS_HOME, GLASS_FOCUS, GLASS_BAR, GLASS_PANEL, GLASS_APPS };
 
 /*
- * Per kind (the canvas's CSS): the void's alpha; the sheen's colour, its
+ * Per kind (the design's CSS): the void's alpha; the sheen's colour, its
  * alpha at the top and at at_pct % of the height, falling to 0 at the
  * bottom; the 1 px edge (white); the inset highlights inside the top and
  * the bottom edge (inset is the row the top one is on: inside a 2 px
@@ -66,7 +66,7 @@ static const struct glass_style {
 	[GLASS_HOME]  = { 217, 18, 5, 45, 66, 61, 13, 1, 0, 0xFFFFFF },	/* home tiles, the pill */
 	[GLASS_FOCUS] = { 217, 71, 26, 50, 0, 71, 0, 2, 0, WB_COLOR_CYAN },
 	[GLASS_BAR]   = { 217, 10, 5, 50, 56, 0, 0, 1, 0, 0xFFFFFF },	/* edge: the top line */
-	/* every frosted panel alike (john, 2026-10-28): the canvas's Apps
+	/* every frosted panel alike: the design's Apps
 	 * panel; its dialogs had a fainter sheen and edge (20 -> 8 at 45 %,
 	 * edge 51, highlight 66) */
 	[GLASS_PANEL] = { 153, 26, 8, 40, 71, 77, 0, 1, 1, 0xFFFFFF },	/* pop-ups, dialogs */
@@ -373,7 +373,7 @@ static void glass(int x, int y, int w, int h, int r, int kind)
 	/*
 	 * Not frosted (tiles, rows, bars, the focus): one flat colour, the
 	 * sheen's mean over the opaque void, rounded, the scene not through
-	 * it (2026-10-27). The canvas's 85 %
+	 * it. The design's 85 %
 	 * with a sheen falling 7 % to 2 % spans 2-4 levels of RGB565 here:
 	 * rounded they showed as stripes on the panel, dithered as a grain
 	 * behind the text, and the rows must look calm and flat.

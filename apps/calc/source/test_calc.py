@@ -81,7 +81,7 @@ def main():
     if lines[0] != "closed":
         bad += 1
         print("FAIL: Esc on an empty line does not close")
-    # the symbol keys (Docs/06-design-system.md 6.6): circle the log, cloud
+    # the symbol keys (docs/APPS.md): circle the log, cloud
     # the settings, diamond the help; Esc goes back one layer, never closes
     # from there
     keys = [

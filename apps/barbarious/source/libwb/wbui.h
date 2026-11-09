@@ -324,6 +324,16 @@ static int wb_scene(void)
 }
 
 /*
+ * In the sandbox a write of 64 KB or more to the panel returns before its rows
+ * are copied, and any system call but the clock's waits for the copy: this one,
+ * cheap and without the panel's fd, before buf takes other rows.
+ */
+static void wb_out_wait(void)
+{
+	(void)getppid();
+}
+
+/*
  * A frame drawn in bands of band_h rows into buf and written out by out():
  * paint(arg) draws the screen, clipped to fb_y0..fb_y1 as libwb does. The
  * frame is recorded first (wb_rec) and only the bands that changed since
@@ -350,6 +360,7 @@ static int wb_bands(void (*paint)(void *), void *arg, uint16_t *buf, int band_h,
 		fb_y1 = y1;
 		paint(arg);
 		out(buf, y0, y1);
+		wb_out_wait();
 		n++;
 	}
 	wb_rot_hold = 0;
@@ -400,6 +411,7 @@ static int wb_frame(void (*paint)(void *), void *arg, uint16_t *buf, int band_h,
 		out(buf + y0 * W, y0, y1);
 		n++;
 	}
+	wb_out_wait();
 	fb_y0 = 0;
 	fb_y1 = H;
 	wb_rec_drawing = 0;

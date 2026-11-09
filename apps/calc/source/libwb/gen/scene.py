@@ -17,7 +17,7 @@ across the screen:
     Every ring and meridian starts where a line of the panel's mesh meets
     the cut-out.
 
-Measured in board millimetres from frontpanel.kicad_pcb on 2026-10-26
+Measured in board millimetres from frontpanel.kicad_pcb
 (--measure prints the numbers again). The active area is 70.94 mm wide
 (the 3.95-inch diagonal) and centred in the cut-out of footprint
 W395HDC001-A at (75, 70): 720 px over 70.94 mm, 10.15 px/mm.

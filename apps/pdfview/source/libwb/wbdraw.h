@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * Drawing for the badge's panel in the WhyBadge design's style, the base
+ * Drawing for the badge's panel in the WhyOS design's style, the base
  * of libwb: alpha-blended pixels, boxes with the focus glow, text in the
  * pre-rendered fonts and icons of wb_assets.h, key caps and the hint bar.
  * Integer-only (the toolchain is soft-float).
@@ -10,7 +10,7 @@
  * static.
  *
  * A program may define before including: WB_SQUARE (the largest corner
- * radius: home's canvas has square corners, every radius 4), WB_DIM (the
+ * radius: the design has square corners, every radius 4), WB_DIM (the
  * colour and alpha of a pop-up's backdrop) and the hooks WB_PANEL,
  * WB_CARD and WB_HINT_GLASS (below).
  */
@@ -791,7 +791,7 @@ static void eyebrow(int x, int y, const char *s)
 /* Pop-ups: help (the diamond key), menus and choices                  */
 
 /*
- * The design's key rules (Docs/06-design-system.md 6.6): the left three
+ * The design's key rules (docs/APPS.md): the left three
  * symbol keys are the screen's own (square: the context menu; triangle and
  * cross: frequent actions), the right three are the same everywhere:
  * circle the log, cloud the settings, diamond this help.
@@ -958,7 +958,12 @@ static void help_popup(const char *screen, const char *about, const struct help_
 	if (n > 12)
 		n = 12;
 	h = 32 + 18 + 6 + 36 + 16 + lines * 28 + 24 + 17 + 12 + n * HELP_ROW + 14 + 1 + 10 + 23 + 16;
-	y = (H - h) / 2;
+	/* under the status bar, which the system draws over the top rows */
+	while (n > 1 && h > H - WB_STATUS_BAR_H - 8) {
+		n--;
+		h -= HELP_ROW;
+	}
+	y = (H - h) / 2 < WB_STATUS_BAR_H + 8 ? WB_STATUS_BAR_H + 8 : (H - h) / 2;
 	pop_frame(y, h);
 	y += 32;
 	icon(&kc_diamond, x, y + 1, WB_COLOR_KEY_DIAMOND, 255);

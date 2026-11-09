@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 /*
- * calc — a calculator for the badge, drawn with libwb in the style of the
- * canvas "Menu's met frontpaneel" (its board Calculator.dc.html), as an app
+ * calc — a calculator for the badge, drawn with libwb, as an app
  * from the store (sdapps/README.md).
  *
  * You type a sum on the keyboard and Enter (or =) works it out. What it
@@ -17,7 +16,7 @@
  * angle unit is degrees; Tab switches to radians and back. A whole
  * number result also shows in hexadecimal and binary. Up and Down bring
  * back earlier sums, Esc clears the line (on an empty line it closes).
- * The symbol keys follow the design (Docs/06-design-system.md 6.6): the
+ * The symbol keys follow the design (docs/APPS.md): the
  * circle opens the log (the sums so far), the cloud its settings (the
  * angle unit, a pop-up list), the diamond the help; the left three do
  * nothing here.
@@ -41,7 +40,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "wb_tokens.h"
@@ -49,8 +47,6 @@
 #define W		WB_SCREEN_W
 #define H		WB_SCREEN_H
 #include "wb.h"
-#include "lora_state.h"
-#include "wbstatus.h"
 #include "keyrep.h"
 
 #ifndef CALC_HOST
@@ -641,11 +637,6 @@ static void recall(int dir)
 
 /* ---- drawing ------------------------------------------------------------ */
 
-static struct {
-	char hhmm[6];
-	int clock_ok, wifi_up /* bars, -1 none: wbstatus.h */, lora;
-} U;
-
 /*
  * The keys on the screen, as the board lays them out. Each shows the key
  * of the keyboard that does the same at its bottom right (the digits, the
@@ -1012,17 +1003,6 @@ static void draw_display(void)
 	text(fr, DSP_R - text_w(fr, res, -5), text_top(fr, RES_CY), res, rc, -5);
 }
 
-/* status bar, as home's: WhyOS left; LoRa, Wi-Fi and the clock right */
-static void status_bar(void)
-{
-	const struct wb_font *n = &f_ui18b;
-	int cy = WB_STATUS_BAR_H / 2;
-
-	text(n, text(n, WB_CHROME_PAD, text_top(n, cy), "Why", WB_COLOR_TEXT_HI, -3),
-	     text_top(n, cy), "OS", WB_COLOR_CYAN, -3);
-	status_right(U.hhmm, U.clock_ok, U.wifi_up, U.lora);
-}
-
 /* The calculator: the header, the display, the keys, the hint bar. */
 static void draw_calc(void)
 {
@@ -1035,7 +1015,6 @@ static void draw_calc(void)
 	const char *chip = C.rad ? "RAD" : "DEG";
 	int cw = text_w(&f_mono14, chip, 0) + 24, cx = DSP_X + DSP_W - cw;
 
-	status_bar();
 	eyebrow(HEAD_X, HEAD_Y, "APP");
 	text(&f_ui28b, HEAD_X, TITLE_Y, "Calculator", WB_COLOR_TEXT_HI, -10);
 	calc_glass(cx, CHIP_Y, cw, CHIP_H, &SK_OP);
@@ -1057,7 +1036,6 @@ static void draw_log(void)
 	int x = WB_CONTENT_PAD, w = W - 2 * WB_CONTENT_PAD, top = WB_ROWS_TOP;
 	int n = (H - WB_HINT_BAR_H - 24 - top - 16) / LOG_ROW, first;
 
-	status_bar();
 	wb_header("CALCULATOR \xe2\x80\xba", "Log", 0);
 	if (!C.n_hist) {
 		text(&f_ui20, x + 6, top + 8, "No sums yet.", WB_COLOR_TEXT_MID, 0);
@@ -1089,7 +1067,6 @@ static void draw_settings(void)
 {
 	static const struct hint hints[] = { { "Enter", "change", 0 }, { "Esc", "back", 1 } };
 
-	status_bar();
 	wb_header("CALCULATOR \xe2\x80\xba", "Settings", 0);
 	wb_row(WB_CONTENT_PAD, WB_ROWS_TOP, W - 2 * WB_CONTENT_PAD, WB_LIST_ROW_H, 0, "Angle unit",
 	       "For sin, cos, tan and their inverses. Tab switches it too.", units[C.rad], WB_ROW_OPEN, 0, 1);
@@ -1242,6 +1219,7 @@ static void flush(void)
 		fb_y1 = y0 + BAND_H;
 		draw_screen();
 		out_rows(band, y0, y0 + BAND_H);
+		wb_out_wait();
 	}
 	dirty = 0;
 }
@@ -1414,8 +1392,6 @@ int main(int argc, char **argv)
 {
 	const char *k = argc > 1 ? argv[1] : "";
 
-	memcpy(U.hhmm, "12:34", 6);
-	U.clock_ok = 1;
 	wb_init();
 	calc_glow_init();
 	dirty = ALL_BANDS;
@@ -1501,49 +1477,10 @@ struct ev {				/* 32-bit kernel input_event */
 };
 
 static volatile sig_atomic_t stop_sig;
-static long last_status;		/* when the status bar was read */
 
 static void on_signal(int s)
 {
 	stop_sig = s;
-}
-
-static int read_line(const char *path, char *buf, int size)
-{
-	int fd = open(path, O_RDONLY | O_CLOEXEC), n;
-
-	if (fd < 0)
-		return -1;
-	n = (int)read(fd, buf, (size_t)size - 1);
-	close(fd);
-	if (n < 0)
-		return -1;
-	while (n && (buf[n - 1] == '\n' || buf[n - 1] == ' '))
-		n--;
-	buf[n] = 0;
-	return n;
-}
-
-/* the status bar; 1 if it changed */
-static int status_read(void)
-{
-	time_t t = time(0);
-	struct tm tm;
-	char old[6];
-	int wifi = U.wifi_up, ok = U.clock_ok, lora = U.lora;
-
-	memcpy(old, U.hhmm, sizeof(old));
-	localtime_r(&t, &tm);
-	U.clock_ok = tm.tm_year >= 124;
-	U.hhmm[0] = (char)('0' + tm.tm_hour / 10);
-	U.hhmm[1] = (char)('0' + tm.tm_hour % 10);
-	U.hhmm[2] = ':';
-	U.hhmm[3] = (char)('0' + tm.tm_min / 10);
-	U.hhmm[4] = (char)('0' + tm.tm_min % 10);
-	U.hhmm[5] = 0;
-	U.wifi_up = wifi_bars();	/* -1: not connected, else the lit arcs */
-	U.lora = lora_on();
-	return wifi != U.wifi_up || ok != U.clock_ok || lora != U.lora || memcmp(old, U.hhmm, sizeof(old));
 }
 
 int main(void)
@@ -1563,24 +1500,16 @@ int main(void)
 		return 1;
 	wb_init();
 	calc_glow_init();
-	status_read();
 	dirty = ALL_BANDS;
 	flush();
 	p.fd = ev;
 	p.events = POLLIN;
-	last_status = wb_now_us();
 	while (!stop_sig) {
 		struct ev evs[16];
 		int k = poll(&p, 1, 250), got, quit = 0;
 
-		/* every 250 ms: has the badge turned (flush() looks); every 5 s
-		 * the status bar */
+		/* every 250 ms: has the badge turned (flush() looks) */
 		if (k <= 0) {
-			if (wb_now_us() - last_status >= 5000000) {
-				last_status = wb_now_us();
-				if (status_read())
-					mark(0, WB_STATUS_BAR_H);
-			}
 			flush();
 			continue;
 		}

@@ -7,7 +7,6 @@ stdio: it builds into FLAT programs.
 
 ```c
 #include "wb.h"          /* with -I libwb */
-#include "wbstatus.h"    /* when the screen has the status bar */
 ```
 
 `W` and `H` default to the panel (720 x 720); a program may define them
@@ -26,11 +25,12 @@ row 0, outside the band), and writes it to `/dev/fb0` itself.
 | `wbdraw.h` | pixels (`put`, `fill`, `dim`), boxes (`box`), text (`text`, `text_w`, `text_top`, `wb_fit`, `text_wrap`), icons, key caps, `hint_bar`, `eyebrow`, `help_popup`, `scrollbar`, `list_scroll`, `clip_rows`, `tick`, `empty_screen` |
 | `wbscene.h` | the frontpanel's figures behind the screen (moon with craters, orbits, head), turned with the badge and coloured; `scene_draw`, `rot`, `rot_read` |
 | `wbglass.h` | `glass()` boxes and frosted pop-ups (`glass_backdrop`), `GLOW_FOCUS`, `box_shaped`, `dim_outside` |
-| `wbui.h` | `wb_scene`, `wb_scene_turned`, `wb_bands`, `wb_frame`, `wb_header`, `wb_row`, `wb_switch`, `step_button`, `edge_rect`, `icon_scaled`, `loupe`, `menu_popup`, `dialog`, `dlg_hints`, `panel_hints` |
-| `wbstatus.h` | the status bar's clock, Wi-Fi and LoRa (`status_right`) |
+| `wbui.h` | `wb_scene`, `wb_scene_turned`, `wb_bands`, `wb_frame`, `wb_out_wait`, `wb_header`, `wb_row`, `wb_switch`, `step_button`, `edge_rect`, `icon_scaled`, `loupe`, `menu_popup`, `dialog`, `dlg_hints`, `panel_hints` |
+| `wbstatus.h` | the status bar's clock, sound, Wi-Fi and LoRa (`status_right`), for sysui, which draws the bar over every app; apps do not include it |
 | `wbdoc.h` | text people type, in UTF-8 with Latin-1: the document fonts (`wd_ui24`, `wd_mono20` and so on), `wd_text`, `wd_text_w`, `wd_top`, `wd_fit`, `wd_glyph_draw` |
 | `keyrep.h` | which keys repeat when held: the arrows, Page Up/Down, Backspace, Delete, Space and the typing keys |
-| `lora_state.h` | whether the LoRa radio is on, for the status bar |
+| `lora_state.h` | whether the LoRa radio is on |
+| `sound_state.h` | where sound plays and how loud, as sysui says it (docs/SOUND.md), for the status bar and Settings |
 | `wb_scene_data.h`, `wb_craters.h`, `wb_doc_fonts.h`, `emoji_font.h` | data (`gen/scene.py`, `gen/craters.py`, `gen/assets.py`) |
 
 ## A screen in the design's style
@@ -41,7 +41,9 @@ row 0, outside the band), and writes it to `/dev/fb0` itself.
    the whole screen then. While waiting for a key, poll
    `wb_scene_turned()` (four times a second is plenty) and draw again.
    A screen whose content fills it (a picture, a game) skips the scene.
-2. The status bar (`wbstatus.h`), then `wb_header(eyebrow, title, right)`:
+2. The top `WB_STATUS_BAR_H` (48) rows are the status bar's, which the
+   system draws over every app (docs/HOME.md): draw only the background
+   there. Then `wb_header(eyebrow, title, right)`:
    the eyebrow says where the screen lies ("APP", "SETTINGS ›",
    "SD CARD › /home"), the title 36 px; rows start at `WB_ROWS_TOP` (160).
 3. Content on cards: `wb_card(x, y, w, h, r, focused, &GLOW_FOCUS)` is
@@ -85,6 +87,10 @@ changed since the frame before are then drawn and written out.
   The pop-up's blur is kept while what is under it stays the same, so a
   key that moves the pop-up's focus draws the pop-up's changed bands
   (~200 ms instead of ~500).
+- Both wait for the band to be copied before its buffer takes other rows:
+  in the sandbox a write of 64 KB or more returns before that. A program
+  that writes that much at once and reuses the buffer calls `wb_out_wait()`
+  after the write.
 - `paint()` runs once more than the bands drawn: it must only draw (no
   reading keys, no counters). It must call `wb_scene()` itself (the frame's
   rotation is read while recording and kept while drawing).

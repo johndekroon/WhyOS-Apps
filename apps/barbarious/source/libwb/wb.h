@@ -19,8 +19,8 @@
  *	wbscene.h	the frontpanel's figures behind the screen, coloured
  *	wbglass.h	glass and frosted pop-ups, the focus's glow
  *	wbui.h		switch, slider buttons, pop-up list, dialog, loupe
- *	wbstatus.h	the status bar's clock, Wi-Fi and LoRa (include it too
- *			when the program shows the status bar)
+ *	wbstatus.h	the status bar's clock, Wi-Fi and LoRa (the system
+ *			draws the status bar; apps do not include it)
  *	wbdoc.h		text people type, with Latin-1 (include it too when
  *			the program needs that)
  *
@@ -31,6 +31,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "wb_tokens.h"
 #include "wb_assets.h"

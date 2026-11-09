@@ -2,7 +2,7 @@
 /*
  * The frontpanel's figures behind the screen (the moon with its craters and
  * orbits, the wireframe head), turned with the badge so they stay in line
- * with the panel, and coloured as the canvas "Menu's met frontpaneel" does
+ * with the panel, and coloured as the design does
  * (pink from the top left, cyan from the bottom right). Part of libwb:
  * include wb.h.
  *
@@ -31,7 +31,7 @@ static long wb_now_us(void)
 
 /* The figures: dimmer than the panel's white print, as if behind the
  * window's glass, so the tiles and the text stay in front. Colour and
- * opacity (design/tokens.json, "scene"). */
+ * opacity come from wb_tokens.h. */
 #define SCENE_MOON	WB_COLOR_SCENE, WB_SCENE_MOON_OPA
 #define SCENE_LINE	WB_COLOR_SCENE, WB_SCENE_LINE_OPA
 
@@ -270,7 +270,7 @@ static inline void rgb565_split(uint16_t d, unsigned *r, unsigned *g, unsigned *
 }
 
 /*
- * The scene's colour (the canvas: a layer over the figures with CSS
+ * The scene's colour (the design: a layer over the figures with CSS
  * mix-blend-mode: color): radial gradients of pink from the top left
  * (95 % at 19 %, 8 %, gone at half the distance to the farthest corner)
  * over cyan from the bottom right (90 % at 82 %, 86 %, gone at 62 %).

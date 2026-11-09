@@ -3,8 +3,8 @@
 format = 1
 id = "pdfview"
 name = "PDF viewer"
-version = "1.1.1"
-build = 3
+version = "1.1.2"
+build = 4
 summary = "Shows PDF documents, opened from Files"
 description = """
 Reads PDF documents on the badge: a page as wide as the screen, to
@@ -23,7 +23,7 @@ author = "badge port"
 license = "AGPL-3.0-or-later AND FTL AND IJG AND Zlib AND OFL-1.1 AND LGPL-2.1-or-later"
 license_file = "pdfview.txt"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/pdfview/source"
-changelog = "Pop-ups look the same everywhere: the screen behind them dims less, so their frosted glass shows; long pop-up lists scroll a whole row at a time."
+changelog = "The viewer keeps the whole screen and no longer draws a status bar of its own; hold the logo key to see WhyOS's status bar."
 
 type = "app"
 category = "media"
