@@ -5,8 +5,8 @@
 format = 1
 id = "proxmark3"
 name = "Proxmark3"
-version = "1.1.2"
-build = 4
+version = "1.1.3"
+build = 5
 summary = "Proxmark3 client: read, write and sniff RFID and NFC cards from the badge"
 description = """
 The Proxmark3 client (RRG/Iceman) on the badge itself, for a Proxmark3
@@ -42,7 +42,7 @@ license_file = "proxmark3.txt"
 homepage = "https://github.com/RfidResearchGroup/proxmark3"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/proxmark3/source"
 upstream_version = "4.21611-636 (da509461b)"
-changelog = "Every card type gets what is useful in the field (read, write, dump, load, simulate, NDEF, ...); saved cards get a name (asked after every dump), Rename and Duplicate; T55xx, EM4x05, HITAG and MIFARE Plus dumps go to Cards too; a new dump never replaces another. Fixes: an iCLASS card no longer shows as ISO 15693, LF cards were taken for MIFARE Classic, DESFire and Plus key checks, HID IDs, a blank T5577 is found. Uses 512 KB less memory for LF. The T55xx and EM4x05 password check is left out: it ran the badge out of memory."
+changelog = "Asks only for the usb permission."
 
 type = "app"
 category = "hardware"

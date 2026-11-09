@@ -6,8 +6,8 @@
 format = 1
 id = "micropython"
 name = "MicroPython"
-version = "1.29.1"
-build = 2
+version = "1.29.2"
+build = 3
 summary = "Python 3 on the badge: an interactive prompt and your own scripts"
 description = """
 MicroPython is a lean implementation of Python 3. From the menu it opens
@@ -38,7 +38,7 @@ license_file = "micropython.txt"
 homepage = "https://micropython.org"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/micropython/source"
 upstream_version = "1.29.0"
-changelog = "Built in: meshcore for LoRa messages and bots (with an example bot), setting for the badge's settings, ics for calendars from an .ics link, and xml.etree.ElementTree for XML. Sites that also have an IPv6 address, such as Google, now work."
+changelog = "Scripts may do what they can in a shell: MicroPython asks for the system permission, which the sandbox gives it."
 
 type = "app"
 category = "development"
