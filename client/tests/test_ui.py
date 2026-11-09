@@ -98,6 +98,10 @@ def test_browse_search_install_open(env):
     sh = os.path.join(env.tmp, "shots")
     r, g, b = pixel(os.path.join(sh, "app.ppm"), 48 + 170, 100 + 170)
     assert r > 200 and g < 120 and b > 120, (r, g, b)
+    # the top 48 px are the system's status bar: no logo or clock of the store's own
+    from PIL import Image
+    top = Image.open(os.path.join(sh, "discover.ppm")).convert("RGB").crop((0, 0, 720, 48))
+    assert not [p for p in top.getdata() if min(p) > 200]
 
 
 def test_open_asks_the_menu(env):
@@ -223,7 +227,7 @@ def test_focus_moves_drawn_partly(tmp_path):
             if runs:
                 shutil.rmtree(e.root)
                 shutil.copytree(str(tmp_path / "root-before"), e.root, symlinks=True)
-            # the clock (status bar, "Fetched") the same in both runs
+            # the clock ("Fetched") the same in both runs
             extra = dict(extra, STORE_UI_TIME="1793000000")
             runs.append({k: open(p, "rb").read() for k, p in ui(e, keys, extra=extra).items()})
     finally:

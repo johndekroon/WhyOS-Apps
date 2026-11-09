@@ -1,9 +1,10 @@
 /* SPDX-License-Identifier: MIT */
 /*
  * store: the full-screen UI (docs/client.md §4), drawn with libwb
- * (WhyOS libwb/: wb.h, wbstatus.h) in the menu's style: the
- * frontpanel's scene behind every screen, lists of glass rows (an icon, the
- * name, a second line, a value or state on the right), the eyebrow saying
+ * (WhyOS libwb/: wb.h) in the menu's style: the frontpanel's scene behind
+ * every screen (also in the top WB_STATUS_BAR_H rows, where WhyOS draws
+ * its status bar over the app), lists of glass rows (an icon, the name, a
+ * second line, a value or state on the right), the eyebrow saying
  * where the screen lies, frosted pop-ups with their keys inside.
  *
  *   Discover    ("App store") updates, featured, recently updated, the types
@@ -73,7 +74,6 @@ int ui_main(int argc, char **argv)
 #endif
 
 #include "wb.h"
-#include "wbstatus.h"
 #include "keyrep.h"
 
 #define S_(x)		((x) ? (x) : "")
@@ -326,11 +326,6 @@ static struct {
 	char input[200];
 } O;
 
-static struct {
-	char hhmm[6];
-	int clock_ok, wifi_bars, lora;
-} SB;
-
 static struct row *add(enum kind k, const char *label, const struct wb_icon *ic, enum act a)
 {
 	static struct row spare;
@@ -397,18 +392,6 @@ static void net_notice(const char *err)
 
 /* ---- drawing ------------------------------------------------------------- */
 
-/* WhyOS on the left; LoRa, Wi-Fi and the clock on the right (wbstatus.h),
- * as the menu draws them */
-static void status_bar(void)
-{
-	const struct wb_font *n = &f_ui18b;
-	int cy = WB_STATUS_BAR_H / 2;
-
-	text(n, text(n, WB_CHROME_PAD, text_top(n, cy), "Why", WB_COLOR_TEXT_HI, -3),
-	     text_top(n, cy), "OS", WB_COLOR_CYAN, -3);
-	status_right(SB.hhmm, SB.clock_ok, SB.wifi_bars, SB.lora);
-}
-
 /* The time; on the host STORE_UI_TIME (seconds since 1970) when set, so that
  * the tests' screens do not depend on the minute they ran in */
 static time_t ui_time(time_t t)
@@ -420,22 +403,6 @@ static time_t ui_time(time_t t)
 		return (time_t)atol(s);
 #endif
 	return t;
-}
-
-static int status_read(void)
-{
-	time_t t = ui_time(time(0));
-	struct tm tm;
-	char old[6];
-	int bars = SB.wifi_bars, lora = SB.lora, ok = SB.clock_ok;
-
-	memcpy(old, SB.hhmm, sizeof(old));
-	localtime_r(&t, &tm);
-	SB.clock_ok = tm.tm_year >= 124;
-	snprintf(SB.hhmm, sizeof(SB.hhmm), "%02d:%02d", tm.tm_hour % 24, tm.tm_min % 60);
-	SB.wifi_bars = wifi_bars();
-	SB.lora = lora_on();
-	return bars != SB.wifi_bars || lora != SB.lora || ok != SB.clock_ok || memcmp(old, SB.hhmm, sizeof(old));
 }
 
 static int focusable(const struct row *r)
@@ -977,7 +944,6 @@ static void draw_overlay(void)
 static void draw(void)
 {
 	wb_scene();
-	status_bar();
 	if (TOP->v == V_TEXT)
 		draw_text();
 	else if (TOP->v == V_SHOTS)
@@ -2799,7 +2765,6 @@ int ui_main(int argc, char **argv)
 {
 	char err[300], p[512];
 	int my_apps = argc > 1 && !strcmp(argv[1], "--my-apps");
-	long last_status = 0;
 
 	(void)argv;
 	paths_init();
@@ -2815,7 +2780,6 @@ int ui_main(int argc, char **argv)
 	input_open();
 	keep_path(p, sizeof(p));
 	keep_packages = is_file(p);
-	status_read();
 	sources_load();
 	push(V_DISCOVER, 0, 0);	/* drawn under "Loading" */
 	busy("APP STORE", "Loading the store\xe2\x80\xa6");
@@ -2843,19 +2807,12 @@ int ui_main(int argc, char **argv)
 	}
 	while (depth > 0) {
 		int k;
-		long t;
 
 		present();
 		do {
 			k = next_key(250);
-			t = now_ms();
-			if (!k && wb_scene_turned()) {
+			if (!k && wb_scene_turned())
 				present();
-			} else if (t - last_status >= 5000) {
-				last_status = t;
-				if (status_read() && !k)
-					present();
-			}
 		} while (k == 0);
 		if (k < 0)
 			break;

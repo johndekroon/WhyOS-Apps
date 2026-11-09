@@ -14,7 +14,7 @@ the badge (BFLT) and for the host (tests, CI).
 | `src/registry.c` | registry, card id, journal, pending cleanups |
 | `src/paths.c`, `src/sources.c` | where things live; sources and mirrors |
 | `src/json.c` | JSON reading (jsmn, `third_party/`) and writing |
-| `src/ui.c` | the screens (client.md §4), drawn with WhyOS's `libwb/` (`wb.h`, `wbstatus.h`) in the menu's style |
+| `src/ui.c` | the screens (client.md §4), drawn with WhyOS's `libwb/` (`wb.h`) in the menu's style |
 | `src/qoi.c` | QOI decoder for icons and screenshots |
 | `roots.pem` | the CA roots it trusts, picked by `mkroots.py` from Mozilla's list |
 | `deps.sh` | builds the pinned mbedTLS for the host or the badge |
