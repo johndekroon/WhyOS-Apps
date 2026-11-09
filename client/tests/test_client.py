@@ -48,6 +48,7 @@ files = "%D/roms"
 types = ["txt"]
 terminal = "shell"
 children = "none"
+service = "hello-svc"
 
 [[commands]]
 name = "hello-cmd"
@@ -265,7 +266,8 @@ def test_install_writes_everything(env):
     conf = open(os.path.join(a, "app.conf")).read()
     for line in ('NAME="Hello"', 'EXEC="hello"', 'ARGS="--data %D --conf %C"', 'FILES="%D/roms"',
                  'TYPES="txt"', 'TERMINAL="shell"', 'ID="hello"', 'TYPE="app"', 'SUBCATEGORY="utilities"',
-                 'CATEGORY="apps"', 'ROTATION="auto"', 'PERMISSIONS="network usb"', 'CHILDREN="none"'):
+                 'CATEGORY="apps"', 'ROTATION="auto"', 'PERMISSIONS="network usb"', 'CHILDREN="none"',
+                 'SERVICE="hello-svc"'):
         assert line in conf, line
     assert json.load(open(os.path.join(a, ".package", "manifest.json")))["id"] == "hello"
     assert open(os.path.join(a, ".package", "source")).read().startswith("ID=whyos\nURL=https://")

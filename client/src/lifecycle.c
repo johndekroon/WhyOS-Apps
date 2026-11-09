@@ -133,7 +133,7 @@ static int write_package_files(const char *dir, const char *mtext, const char *s
 			{ "ICON", "launch.icon" }, { "EXEC", "launch.exec" }, { "ARGS", "launch.args" },
 			{ "FILES", "launch.files" }, { "ESC", "launch.esc" }, { "ASK", "launch.ask" },
 			{ "ASK_DEFAULT", "launch.ask_default" }, { "ROTATION", "launch.rotation" },
-			{ "CHILDREN", "launch.children" },
+			{ "CHILDREN", "launch.children" }, { "SERVICE", "launch.service" },
 			{ "ID", "id" }, { "TYPE", "type" }, { "SUBCATEGORY", "category" },
 		};
 

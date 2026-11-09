@@ -115,6 +115,7 @@ the store. Keys map one to one:
 | `ask`, `ask_default` | `ASK`, `ASK_DEFAULT` | |
 | `rotation` | `ROTATION` | `"auto"` (default) or `"locked"`; see below |
 | `children` | `CHILDREN` | `"any"` (default) or `"none"`: the app starts no other programs (no `vfork`; an `exec` that replaces it still works), and WhyOS gives it the whole memory pool instead of keeping room for one (WhyOS `docs/APPS.md`). For an app that needs every byte, such as a web browser |
+| `service` | `SERVICE` | A program in the app that runs in the background while the user has it on (WhyOS `docs/APPS.md`, Services): the badge lists it in Settings > Connection. Only for an app with the `system` permission, as a service runs as root outside the sandbox; WhyOS ignores it otherwise |
 | `menu` | `CATEGORY` | `apps`, `games`, `tools`, `none`; defaults from the category's `menu` in categories.json |
 | `stack_kb` | — | Informational: the stack set in the BFLT header |
 

@@ -68,6 +68,7 @@
         "ask_default": { "type": "string", "maxLength": 64 },
         "rotation": { "enum": ["auto", "locked"], "default": "auto" },
         "children": {"enum": ["any", "none"], "default": "any"},
+        "service": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,47}$" },
         "menu": { "enum": ["apps", "games", "tools", "none"] },
         "stack_kb": { "type": "integer", "minimum": 4, "maximum": 4096 }
       }
