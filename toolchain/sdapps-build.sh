@@ -579,41 +579,35 @@ build_airplay() {
 	ls -l "$d"
 }
 
-# The sensor panel: BME680 and BMI270 readings, live (it was in the image).
+# The sensor panel: BME680 and BMI270 readings, live (it was in the image),
+# on the SDK.
 build_sensorpanel() {
-	local d=$DEST/sensorpanel
+	sdk_app sensorpanel 16384 "$HERE/sensorpanel/sensorpanel.c"
+}
+
+# An app on the WhyOS SDK (sdk/README.md): its C files with whyos.h, which
+# brings libwb. sdk_app NAME STACK FILE... [-lm]
+sdk_app() {
+	local name=$1 stack=$2 d=$DEST/$1
+	shift 2
 	mkdir -p "$d"
-	flat 16384
-	"$CC" "${CFLAGS[@]}" -Wall -I"$HERE/../libwb" "$HERE/sensorpanel/sensorpanel.c" "${LDFLAT[@]}" -o "$d/sensorpanel"
-	zero_page "$d/sensorpanel.gdb"
-	rm -f "$d/sensorpanel.gdb"
-	cp "$HERE/sensorpanel/app.conf" "$d/"
+	flat "$stack"
+	"$CC" "${CFLAGS[@]}" -Wall -I"$HERE/../sdk/include" -I"$HERE/../libwb" "$@" "${LDFLAT[@]}" -o "$d/$name"
+	zero_page "$d/$name.gdb"
+	rm -f "$d/$name.gdb"
+	cp "$HERE/$name/app.conf" "$d/"
 	ls -l "$d"
 }
 
-# The calculator (calc/calc.c): drawn with the menu's code and fonts, as
-# the Bus Pirate app is; libm for the functions.
+# The calculator: the SDK's entry screen around its sums (calc/sums.c),
+# libm for the functions.
 build_calc() {
-	local d=$DEST/calc O=$HERE/../patches/buildroot/overlay-src
-	mkdir -p "$d"
-	flat 16384
-	"$CC" "${CFLAGS[@]}" -Wall -I"$O" -I"$HERE/../libwb" "$HERE/calc/calc.c" "${LDFLAT[@]}" -lm -o "$d/calc"
-	zero_page "$d/calc.gdb"
-	rm -f "$d/calc.gdb"
-	cp "$HERE/calc/app.conf" "$d/"
-	ls -l "$d"
+	sdk_app calc 16384 "$HERE/calc/calc.c" "$HERE/calc/sums.c" -lm
 }
 
-# The flashlight (flashlight/flashlight.c): drawn as the calculator is.
+# The flashlight: the SDK's colour screen.
 build_flashlight() {
-	local d=$DEST/flashlight O=$HERE/../patches/buildroot/overlay-src
-	mkdir -p "$d"
-	flat 16384
-	"$CC" "${CFLAGS[@]}" -Wall -I"$O" -I"$HERE/../libwb" "$HERE/flashlight/flashlight.c" "${LDFLAT[@]}" -o "$d/flashlight"
-	zero_page "$d/flashlight.gdb"
-	rm -f "$d/flashlight.gdb"
-	cp "$HERE/flashlight/app.conf" "$d/"
-	ls -l "$d"
+	sdk_app flashlight 16384 "$HERE/flashlight/flashlight.c"
 }
 
 # HIDeous (hideous/hideous.c): saved texts typed on a computer through
@@ -901,7 +895,7 @@ build_micropython() {
 	rm -rf "$s/ports/unix/build-standard"
 	make -s -C "$s/mpy-cross" -j"$(nproc)"
 	make -s -C "$s/ports/unix" -j"$(nproc)" CROSS_COMPILE="$T-" STRIP=true SIZE=true CWARN=-Wall \
-		FROZEN_MANIFEST="$SRC/meshcore-py/manifest.py" \
+		FROZEN_MANIFEST="$SRC/meshcore-py/manifest.py" USER_C_MODULES="$HERE/../sdk/python" \
 		MICROPY_PY_FFI=0 MICROPY_PY_BTREE=0 MICROPY_PY_THREAD=0 \
 		MICROPY_VFS_LFS1=0 MICROPY_VFS_LFS2=0 MICROPY_VFS_FAT=0 CFLAGS_EXTRA="-fPIC" \
 		LDFLAGS_EXTRA="-static -Wl,--allow-multiple-definition -Wl,--no-relax -Wl,-elf2flt=-r"

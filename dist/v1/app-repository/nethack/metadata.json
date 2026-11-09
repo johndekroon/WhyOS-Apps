@@ -1,0 +1,29 @@
+{
+  "name": "NetHack",
+  "description": "The classic dungeon adventure - find the Amulet of Yendor",
+  "repository_url": "https://www.nethack.org",
+  "categories": [
+    "games"
+  ],
+  "version": "3.6.7-2",
+  "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+  },
+  "author": "The NetHack DevTeam, badge port",
+  "license_type": "NGPL AND MIT AND Zlib AND LGPL-2.1-or-later",
+  "license_file": "nethack.txt",
+  "application": [
+    {
+      "targets": [
+        "why2025-whyos"
+      ],
+      "type": "whyos",
+      "revision": 2,
+      "executable": "start",
+      "external_only": true,
+      "assets": []
+    }
+  ]
+}

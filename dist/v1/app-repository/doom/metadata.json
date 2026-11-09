@@ -1,0 +1,29 @@
+{
+  "name": "DOOM",
+  "description": "The shareware episode of DOOM (1993) Knee-Deep in the Dead",
+  "repository_url": "https://github.com/maximevince/fbDOOM",
+  "categories": [
+    "games"
+  ],
+  "version": "1.9.2",
+  "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+  },
+  "author": "id Software (DOOM), maximevince (fbDOOM), badge port",
+  "license_type": "GPL-2.0-or-later AND MIT AND BSD-3-Clause AND LicenseRef-DOOM-shareware AND LGPL-2.1-or-later",
+  "license_file": "fbdoom.txt",
+  "application": [
+    {
+      "targets": [
+        "why2025-whyos"
+      ],
+      "type": "whyos",
+      "revision": 3,
+      "executable": "doom",
+      "external_only": true,
+      "assets": []
+    }
+  ]
+}

@@ -1,0 +1,2720 @@
+[
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "barbarious",
+     "external_only": true,
+     "revision": 5,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "WhyOS-Apps contributors",
+   "categories": [
+    "tools"
+   ],
+   "description": "BARbarious shows your texts as barcodes and QR codes for a scanner to read.",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "barbarious.txt",
+   "license_type": "MIT AND BSD-3-Clause AND OFL-1.1 AND LGPL-2.1-or-later",
+   "name": "BARbarious",
+   "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
+   "version": "1.1.3",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "jetbrains-mono.txt",
+      "name": "JetBrains Mono (font)",
+      "source": "https://github.com/JetBrains/JetBrainsMono",
+      "version": "2.211"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "space-grotesk.txt",
+      "name": "Space Grotesk (font)",
+      "source": "https://github.com/floriankarsten/space-grotesk",
+      "version": "2.000"
+     },
+     {
+      "license": "MIT",
+      "license_file": "qrcodegen.txt",
+      "name": "QR Code generator library (Project Nayuki)",
+      "source": "https://github.com/nayuki/QR-Code-generator",
+      "version": "1.8.0"
+     },
+     {
+      "license": "BSD-3-Clause",
+      "license_file": "zint.txt",
+      "name": "zint's bar and codeword tables",
+      "source": "https://github.com/zint/zint",
+      "version": "master of 2026-10-25"
+     }
+    ],
+    "category": "utilities",
+    "changelog": "The status bar comes from WhyOS now, so the app no longer draws its own.",
+    "description": "Keep the codes you show often, such as a Wi-Fi login, a ticket, a\nproduct number or a login for a barcode scanner, and show them on the\nbadge's screen for a scanner or a phone to read. Control characters\nsuch as Tab and Enter can be part of a code.\n\nShowing a code:\n- Choose it in the list and press Enter. The code is as big as the\n  screen allows; the screen goes to full brightness and stays on while\n  the code shows, up to 10 minutes after the last key.\n- Left and Right go to the previous and next code.\n\nQuick code, the list's first row: type a text and see its code at once.\nIt is not saved; Enter keeps it as a code of the list.\n\nMaking a code: the triangle adds one, the cross edits it, and the\nsquare has the other options (show, edit, type, move, delete). A code\nhas a name for the list, a type and a text of up to 1000 characters.\nIn the text:\n- Tab puts in a TAB, Shift+Enter a CR (LF or CR LF in the settings).\n- Ctrl with a letter puts in ^A to ^Z; Ctrl+] is GS.\n- The square puts in any other control character, or GS1's FNC1: type\n  its name to find it.\n- The triangle chooses the type. Next to each type it says what the\n  text needs of it: some take digits only, and Code 39 needs a scanner\n  with Full ASCII on for lower case and control characters.\n\nTypes: QR Code, Data Matrix, Aztec, PDF417, Code 128, Code 39, EAN-13,\nUPC-A, ITF and Codabar.\n\nSettings (cloud key): the type of a new code, QR's error correction,\nthe quiet zone, what Shift+Enter puts in, the text under a barcode and\nfull brightness.\n\nThe codes are stored as plain text on the badge, so do not save\npasswords in them.",
+    "format": 2,
+    "id": "barbarious",
+    "launch": {
+     "icon": "barcode",
+     "info": "texts as barcodes and QR codes"
+    },
+    "package": {
+     "installed_size": 416075,
+     "sha256": "0cc6c56b40ff224aaec009b3b2576fae9d784409ef2d0484b98c485a2cea1779",
+     "size": 195275,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/barbarious-1.1.3.wpk"
+    },
+    "requires": {
+     "features": [
+      "display",
+      "keyboard"
+     ],
+     "memory_kb": 800,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/barbarious/source",
+    "summary": "BARbarious shows your texts as barcodes and QR codes for a scanner to read.",
+    "tags": [
+     "barcode",
+     "qr-code",
+     "scanner",
+     "text"
+    ],
+    "type": "app"
+   }
+  },
+  "slug": "barbarious"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "calc",
+     "external_only": true,
+     "revision": 7,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "WhyOS-Apps contributors",
+   "categories": [
+    "tools"
+   ],
+   "description": "Type a sum get the answer - functions hex and binary",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "calc.txt",
+   "license_type": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
+   "name": "Calculator",
+   "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
+   "version": "1.3.0",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "jetbrains-mono.txt",
+      "name": "JetBrains Mono (font)",
+      "source": "https://github.com/JetBrains/JetBrainsMono",
+      "version": "2.211"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "space-grotesk.txt",
+      "name": "Space Grotesk (font)",
+      "source": "https://github.com/floriankarsten/space-grotesk",
+      "version": "2.000"
+     }
+    ],
+    "category": "utilities",
+    "changelog": "Built on the WhyOS SDK: the drawn keypad is gone, the line and its result sit under the roll of earlier sums, the angle unit is kept, and the circle, clover and diamond work as in every app.",
+    "description": "Type a sum on the keyboard; its result shows as you type, and Enter (or =)\nworks it out and puts it on the roll above. Up and Down bring earlier sums\nback to change them. Starting with + * / ^ % or ! goes on from the last\nanswer, and an x after a number means times.\n\nIt knows + - * / ^, brackets, n% (n/100), n! and mod; pi, e and ans\n(the last answer); sqrt, cbrt, abs, exp, ln, log, log2, sin, cos, tan,\nasin, acos, atan, sinh, cosh, tanh, round, floor and ceil. 2pi and\n3(4+5) multiply. Numbers can be written as 0xff, 0b1010 or 1.5e3, and a\nwhole-number answer also shows in hexadecimal and binary.\n\nAngles are in degrees; Tab switches to radians, as the setting (the clover\nkey) does, and the choice is kept. The circle key shows the sums worked\nout, the diamond the keys. Esc clears the line, and on an empty line\ncloses the calculator, as the logo key does.",
+    "format": 2,
+    "id": "calc",
+    "launch": {
+     "icon": "count",
+     "info": "sums, functions, hex and binary"
+    },
+    "package": {
+     "installed_size": 406515,
+     "sha256": "f9d04dec80957e7f717617790bc28b2d69acc32978df5354cbeb6d4c292c3a10",
+     "size": 191095,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.3.0.wpk"
+    },
+    "requires": {
+     "features": [
+      "display",
+      "keyboard"
+     ],
+     "memory_kb": 700,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/calc/source",
+    "summary": "Type a sum, get the answer: functions, hex and binary",
+    "tags": [
+     "calculator",
+     "math",
+     "hex",
+     "binary"
+    ],
+    "type": "app"
+   }
+  },
+  "slug": "calc"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "doom",
+     "external_only": true,
+     "revision": 3,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "id Software (DOOM), maximevince (fbDOOM), badge port",
+   "categories": [
+    "games"
+   ],
+   "description": "The shareware episode of DOOM (1993) Knee-Deep in the Dead",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "fbdoom.txt",
+   "license_type": "GPL-2.0-or-later AND MIT AND BSD-3-Clause AND LicenseRef-DOOM-shareware AND LGPL-2.1-or-later",
+   "name": "DOOM",
+   "repository_url": "https://github.com/maximevince/fbDOOM",
+   "version": "1.9.2",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "LicenseRef-DOOM-shareware",
+      "license_file": "doom1-wad.txt",
+      "name": "DOOM shareware WAD (doom1.wad)",
+      "source": "http://www.jbserver.com/downloads/games/doom/misc/shareware/doom19s.zip",
+      "version": "1.9"
+     },
+     {
+      "license": "MIT",
+      "license_file": "doom-launcher.txt",
+      "name": "Badge launcher (doom.c)",
+      "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/doom/source",
+      "version": "2ce6a3b"
+     },
+     {
+      "license": "MIT",
+      "license_file": "bsound.txt",
+      "name": "bsound (the badge's game sound)",
+      "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/doom/source",
+      "version": "WhyOS 3ef5aae"
+     },
+     {
+      "license": "BSD-3-Clause",
+      "license_file": "tinyalsa.txt",
+      "name": "tinyalsa",
+      "source": "https://github.com/tinyalsa/tinyalsa/archive/v2.0.0/tinyalsa-2.0.0.tar.gz",
+      "version": "2.0.0"
+     },
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     }
+    ],
+    "category": "action",
+    "changelog": "Sound effects, on the output chosen in Settings > Sound (there is no music).",
+    "description": "The first episode of DOOM, from id Software's shareware release 1.9, on\nfbDOOM, a port of the DOOM source code to the Linux framebuffer.\n\nKeys: arrows move and turn, Ctrl fires, Space opens doors, Enter selects\nin the menus, Esc opens the menu, Quit Game ends it, and the logo key\ngoes back to the start menu. Saved games go to the app's folder on the\nSD card. The sound effects play on the output chosen in Settings > Sound;\nthere is no music.\n\nDOOM needs a free block of at least 2 MB of memory for its zone: close\nother apps first if it does not start.",
+    "format": 2,
+    "id": "doom",
+    "launch": {
+     "icon": "games",
+     "info": "shareware episode"
+    },
+    "package": {
+     "installed_size": 4831103,
+     "sha256": "7a0952aa372e20cb0f188ba116f2db1c2382a8c8b3d72e2b6cb6f7acbd12138c",
+     "size": 2051618,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/doom-1.9.2.wpk"
+    },
+    "requires": {
+     "features": [
+      "sd-card",
+      "display",
+      "keyboard"
+     ],
+     "memory_kb": 6500,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/doom/source",
+    "summary": "The shareware episode of DOOM (1993), Knee-Deep in the Dead",
+    "tags": [
+     "doom",
+     "fps",
+     "shooter",
+     "retro",
+     "id-software"
+    ],
+    "type": "game",
+    "upstream_version": "fbDOOM git 1728016"
+   }
+  },
+  "slug": "doom"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "files",
+     "internal_only": true,
+     "revision": 4,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "WhyOS-Apps",
+   "categories": [
+    "system"
+   ],
+   "description": "Browse every file on the badge the SD card and USB drives",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "files.txt",
+   "license_type": "MIT AND LGPL-2.1-or-later AND OFL-1.1",
+   "name": "Files",
+   "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
+   "version": "1.1.2",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "OFL-SpaceGrotesk.txt",
+      "name": "Space Grotesk (rendered into the program)",
+      "source": "https://github.com/floriankarsten/space-grotesk",
+      "version": "2.000"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "OFL-JetBrainsMono.txt",
+      "name": "JetBrains Mono (rendered into the program)",
+      "source": "https://github.com/JetBrains/JetBrainsMono",
+      "version": "2.211"
+     }
+    ],
+    "category": "other",
+    "changelog": "The status bar comes from WhyOS now, so the app no longer draws its own.",
+    "description": "Files shows every file on the badge as it is: the SD card, USB drives\nand the badge's own storage. Enter opens a folder, or a file with the app\nthat opens it (Write for notes, the Picture viewer for photos); the\nsquare key's options open a file with another app, rename, copy, cut,\npaste, make a folder and delete. The triangle goes to your home folder,\nthe cross to Drives, where Enter mounts a drive when it needs to.\n\nIt opens from the Files tile on the home screen.",
+    "format": 2,
+    "id": "files",
+    "launch": {
+     "args": "%f",
+     "icon": "disk",
+     "info": "every file on the badge",
+     "menu": "none"
+    },
+    "package": {
+     "installed_size": 426526,
+     "sha256": "a34c5154e989a9f75e675fa09dbe2cd9d0c1a6b1a5b3373e12a7b8d8358f1cea",
+     "size": 199561,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/files-1.1.2.wpk"
+    },
+    "permissions": [
+     "files-all"
+    ],
+    "requires": {
+     "features": [
+      "display",
+      "keyboard"
+     ],
+     "memory_kb": 1024,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/files",
+    "storage": {
+     "config": {
+      "max_kb": 4
+     }
+    },
+    "summary": "Browse every file on the badge, the SD card and USB drives",
+    "tags": [
+     "files",
+     "folders",
+     "drives",
+     "sd-card",
+     "usb"
+    ],
+    "type": "system"
+   }
+  },
+  "slug": "files"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "flappy",
+     "external_only": true,
+     "revision": 4,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "WhyOS-Apps contributors",
+   "categories": [
+    "games"
+   ],
+   "description": "Fly a bird through the gaps between the pipes",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "flappy.txt",
+   "license_type": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
+   "name": "Flappy",
+   "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
+   "version": "1.1.2",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "jetbrains-mono.txt",
+      "name": "JetBrains Mono (font)",
+      "source": "https://github.com/JetBrains/JetBrainsMono",
+      "version": "2.211"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "space-grotesk.txt",
+      "name": "Space Grotesk (font)",
+      "source": "https://github.com/floriankarsten/space-grotesk",
+      "version": "2.000"
+     }
+    ],
+    "category": "action",
+    "changelog": "Uses the whole screen; hold the logo key to see WhyOS's status bar.",
+    "description": "A bird falls; you make it flap. Fly through the gaps between the pipes:\nevery pipe you pass is a point. Touching a pipe or the ground ends the\ngame. It starts slowly and gets harder with every point, up to 30: faster,\nwith narrower gaps that lie further apart.\n\nFlap with Space, Enter, Up or any symbol key except the diamond. Esc\npauses (resume, restart or quit), the diamond shows the keys, and the\nlogo key goes back to the menu. Your best score is kept on the badge, so\nit survives a new card. The screen stays upright while you play.",
+    "format": 2,
+    "id": "flappy",
+    "launch": {
+     "icon": "games",
+     "info": "fly between the pipes",
+     "rotation": "locked",
+     "stack_kb": 16,
+     "statusbar": "hidden"
+    },
+    "package": {
+     "installed_size": 302907,
+     "sha256": "6bbc69a06122bb13bb373349d081ee357e107807f20d2aa287b2e745bf7e40c4",
+     "size": 127325,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flappy-1.1.2.wpk"
+    },
+    "requires": {
+     "features": [
+      "display",
+      "keyboard",
+      "accelerometer"
+     ],
+     "memory_kb": 600,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/flappy/source",
+    "summary": "Fly a bird through the gaps between the pipes",
+    "tags": [
+     "flappy",
+     "arcade",
+     "bird",
+     "casual"
+    ],
+    "type": "game"
+   }
+  },
+  "slug": "flappy"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "flashlight",
+     "external_only": true,
+     "revision": 5,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "WhyOS-Apps contributors",
+   "categories": [
+    "tools"
+   ],
+   "description": "The whole screen as a light - white at full or half brightness or red.",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "flashlight.txt",
+   "license_type": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
+   "name": "Flashlight",
+   "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
+   "version": "1.1.0",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "jetbrains-mono.txt",
+      "name": "JetBrains Mono (font)",
+      "source": "https://github.com/JetBrains/JetBrainsMono",
+      "version": "2.211"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "space-grotesk.txt",
+      "name": "Space Grotesk (font)",
+      "source": "https://github.com/floriankarsten/space-grotesk",
+      "version": "2.000"
+     }
+    ],
+    "category": "utilities",
+    "changelog": "Built on the WhyOS SDK: the circle and clover open the log and settings screens as in every app, and the help lists the keys from the same table as the key bar.",
+    "description": "Three modes: white at 100%, white at 50% and red at 100%. The square,\ntriangle and cross choose one, the arrow keys step through them and the\ndiamond shows the help. The mode you used last comes back the next time.\n\nFor the first two seconds the screen stays at the badge's own brightness\nand shows the keys in the bar at the bottom, so a dark room is not lit\nat once. Then the keys go and the whole screen is the light. The screen stays on until you close\nthe app with Esc or the logo key, and the brightness goes back to your\nsetting.",
+    "format": 2,
+    "id": "flashlight",
+    "launch": {
+     "icon": "sun",
+     "info": "a white or red light",
+     "statusbar": "hidden"
+    },
+    "package": {
+     "installed_size": 345223,
+     "sha256": "3b0bd17df7c2b42f2e97cb3643e01696054fae088ae2e1053538d8dc314c2ed1",
+     "size": 152625,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flashlight-1.1.0.wpk"
+    },
+    "requires": {
+     "features": [
+      "display",
+      "keyboard"
+     ],
+     "memory_kb": 600,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/flashlight/source",
+    "summary": "The whole screen as a light: white at full or half brightness, or red.",
+    "tags": [
+     "flashlight",
+     "torch",
+     "light"
+    ],
+    "type": "app"
+   }
+  },
+  "slug": "flashlight"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "gnuboy",
+     "external_only": true,
+     "revision": 7,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "gnuboy authors (rofl0r/gnuboy), badge port",
+   "categories": [
+    "games",
+    "emulators"
+   ],
+   "description": "Game Boy and Game Boy Color emulator",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "gnuboy.txt",
+   "license_type": "GPL-2.0-or-later AND MIT AND BSD-3-Clause AND LGPL-2.1-or-later",
+   "name": "Game Boy",
+   "repository_url": "https://github.com/rofl0r/gnuboy",
+   "version": "1.4.0",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "MIT",
+      "license_file": "bsound.txt",
+      "name": "bsound (the badge's game sound)",
+      "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/gnuboy/source",
+      "version": "WhyOS 3ef5aae"
+     },
+     {
+      "license": "BSD-3-Clause",
+      "license_file": "tinyalsa.txt",
+      "name": "tinyalsa",
+      "source": "https://github.com/tinyalsa/tinyalsa/archive/v2.0.0/tinyalsa-2.0.0.tar.gz",
+      "version": "2.0.0"
+     },
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "jetbrains-mono.txt",
+      "name": "JetBrains Mono (font)",
+      "source": "https://github.com/JetBrains/JetBrainsMono",
+      "version": "2.211"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "space-grotesk.txt",
+      "name": "Space Grotesk (font)",
+      "source": "https://github.com/floriankarsten/space-grotesk",
+      "version": "2.000"
+     }
+    ],
+    "category": "emulators",
+    "changelog": "The Game Boy's sound plays on the output chosen in Settings > Sound; the picture fills the screen's width, and saving a state over another asks first and keeps a backup. Uses the whole screen; hold the logo key to see WhyOS's status bar.",
+    "description": "Plays Game Boy and Game Boy Color games, scaled to the panel's whole\nwidth (720x648). The emulation runs at full speed; fewer frames are shown\nwhile the whole screen scrolls. The sound plays on the output chosen in\nSettings > Sound.\n\nPut your .gb and .gbc files in the roms folder of this app: on the SD card\nin badge/appdata/gnuboy/roms. Battery saves go to roms/saves.\n\nKeys: arrows are the D-pad, square or Enter is A, triangle or Backspace\nis B, cross or X is Start, circle or O is Select. Esc pauses: save or load\nthe state there (saving over a state asks first and keeps a backup), or\nquit. Diamond shows the keys.",
+    "format": 2,
+    "id": "gnuboy",
+    "launch": {
+     "args": "--source %d/badge.rc --savedir=%D/roms/saves %f",
+     "files": "%D/roms",
+     "icon": "gameboy",
+     "info": "gnuboy",
+     "stack_kb": 64,
+     "statusbar": "hidden",
+     "types": [
+      "gb",
+      "gbc"
+     ]
+    },
+    "package": {
+     "installed_size": 430422,
+     "sha256": "848ec6ce3f96eac12df1374600764f5c4ae9b7e7ff7a196e52be6d6c9ab18546",
+     "size": 218583,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/gnuboy-1.4.0.wpk"
+    },
+    "requires": {
+     "features": [
+      "sd-card",
+      "display",
+      "keyboard"
+     ],
+     "memory_kb": 1000,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/gnuboy/source",
+    "storage": {
+     "data": {
+      "folders": [
+       "roms",
+       "roms/saves"
+      ],
+      "user_folders": [
+       "roms"
+      ]
+     }
+    },
+    "summary": "Game Boy and Game Boy Color emulator",
+    "tags": [
+     "emulator",
+     "gameboy",
+     "retro"
+    ],
+    "type": "game",
+    "upstream_version": "git c367bb4"
+   }
+  },
+  "slug": "gnuboy"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "hideous",
+     "external_only": true,
+     "revision": 5,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "WhyOS-Apps contributors",
+   "categories": [
+    "tools"
+   ],
+   "description": "HIDeous lets you control your computer using pre-recorded input from your badge.",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "hideous.txt",
+   "license_type": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
+   "name": "HIDeous",
+   "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
+   "version": "1.1.2",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "jetbrains-mono.txt",
+      "name": "JetBrains Mono (font)",
+      "source": "https://github.com/JetBrains/JetBrainsMono",
+      "version": "2.211"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "space-grotesk.txt",
+      "name": "Space Grotesk (font)",
+      "source": "https://github.com/floriankarsten/space-grotesk",
+      "version": "2.000"
+     }
+    ],
+    "category": "utilities",
+    "changelog": "The status bar comes from WhyOS now, so the app no longer draws its own.",
+    "description": "The badge as a USB keyboard and mouse for a computer. Save texts you\ntype often, such as an address, a long command or a login sequence,\nand let the badge type them.\n\nTyping a text:\n- Connect the computer to the badge's bottom USB-C port, and unplug the\n  side port: while it is connected, the computer does not see the badge.\n- Click where the text should go, choose the text in the list and press\n  Enter. Esc stops the typing.\n\nMaking a text: the triangle adds one, the cross edits it, and the\nsquare has the other options (type, edit, move, delete). A text has a\nname for the list and up to 1000 bytes. In the editor:\n- Shift+Enter starts a new line, Tab types a tab.\n- Shift with Esc, Backspace or an arrow puts in that key.\n- Ctrl or Alt with a key puts in that shortcut, such as Ctrl+C.\n- The square puts in any other key or shortcut, such as F5, Win+R or\n  Ctrl+Alt+Delete.\n- The triangle puts in a pause of half a second, for example to let a\n  window open after Win+R. Press it again for a longer pause.\n\nKeyboard layout: the badge sends keys, not letters, so set the\ncomputer's layout in the settings (cloud key): US, US International or\nUS on a Mac. With other layouts, such as German or French, some\ncharacters come out wrong. Accented letters and the euro sign work with\nthe last two, but you can only add them by editing snippets.txt over\nSSH.\n\nMouse: open the first row of the list. The arrows move the pointer\n(tap for one pixel, hold to go faster), Enter is the left button (hold\nit to drag), the cross is a right click and Fn+Up/Down scrolls. Keep\nawake (the triangle) nudges the pointer every 30 seconds while the app\nis open, so the computer does not lock or show you as away. The mouse\nneeds WhyOS from 2026-10-20 or later.\n\nThe texts are stored as plain text on the badge, so do not save\npasswords in them.",
+    "format": 2,
+    "id": "hideous",
+    "launch": {
+     "icon": "keyboard",
+     "info": "type saved texts, move the mouse"
+    },
+    "package": {
+     "installed_size": 368247,
+     "sha256": "954e44fd5872f19fb8a2b2adbdc4d84894bc5723200e58bd086d7b2e3c5ef9af",
+     "size": 165147,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/hideous-1.1.2.wpk"
+    },
+    "permissions": [
+     "hid"
+    ],
+    "requires": {
+     "features": [
+      "display",
+      "keyboard"
+     ],
+     "memory_kb": 700,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/hideous/source",
+    "summary": "HIDeous lets you control your computer using pre-recorded input from your badge.",
+    "tags": [
+     "keyboard",
+     "mouse",
+     "usb",
+     "text",
+     "typing"
+    ],
+    "type": "app"
+   }
+  },
+  "slug": "hideous"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "imgview",
+     "external_only": true,
+     "revision": 6,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "badge port",
+   "categories": [
+    "tools"
+   ],
+   "description": "Shows JPEG and PNG pictures opened from Files",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "imgview.txt",
+   "license_type": "MIT AND IJG AND libpng-2.0 AND Zlib AND OFL-1.1 AND LGPL-2.1-or-later",
+   "name": "Picture viewer",
+   "repository_url": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/imgview/source",
+   "version": "1.2.2",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "IJG",
+      "license_file": "libjpeg.txt",
+      "name": "libjpeg (IJG)",
+      "source": "http://www.ijg.org/files/jpegsrc.v9f.tar.gz",
+      "version": "9f"
+     },
+     {
+      "license": "libpng-2.0",
+      "license_file": "libpng.txt",
+      "name": "libpng",
+      "source": "http://downloads.sourceforge.net/project/libpng/libpng16/1.6.58/libpng-1.6.58.tar.xz",
+      "version": "1.6.58"
+     },
+     {
+      "license": "Zlib",
+      "license_file": "zlib.txt",
+      "name": "zlib",
+      "source": "https://zlib.net/fossils/zlib-1.3.2.tar.gz",
+      "version": "1.3.2"
+     },
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "jetbrains-mono.txt",
+      "name": "JetBrains Mono (font)",
+      "source": "https://github.com/JetBrains/JetBrainsMono",
+      "version": "variable"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "space-grotesk.txt",
+      "name": "Space Grotesk (font)",
+      "source": "https://github.com/floriankarsten/space-grotesk",
+      "version": "variable"
+     }
+    ],
+    "category": "media",
+    "changelog": "The viewer keeps the whole screen and no longer draws a status bar of its own; hold the logo key to see WhyOS's status bar.",
+    "description": "Shows photos and pictures on the panel: JPEG and PNG, fitted to the\nscreen, with the other pictures in the same folder under the arrow keys.\nJPEGs are turned upright from their EXIF orientation.\n\nPictures are scaled down while they are read, so even a 12-megapixel\nphone photo fits in the badge's memory. Files opens pictures with it; it\nhas no entry in the menu's lists.",
+    "format": 2,
+    "id": "imgview",
+    "launch": {
+     "args": "%f",
+     "menu": "none",
+     "opens": [
+      "jpg",
+      "jpeg",
+      "png"
+     ],
+     "stack_kb": 64,
+     "statusbar": "hidden"
+    },
+    "package": {
+     "installed_size": 557653,
+     "sha256": "0f09b77e9eed5c79a2e7fbd482c7b5916b598292060734ec95c108eb18347348",
+     "size": 289537,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/imgview-1.2.2.wpk"
+    },
+    "requires": {
+     "features": [
+      "display",
+      "keyboard"
+     ],
+     "memory_kb": 2500,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/imgview/source",
+    "summary": "Shows JPEG and PNG pictures, opened from Files",
+    "tags": [
+     "photos",
+     "pictures",
+     "viewer",
+     "jpeg",
+     "png"
+    ],
+    "type": "app"
+   }
+  },
+  "slug": "imgview"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "start",
+     "external_only": true,
+     "revision": 1,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "Twibright Labs (Links), badge port",
+   "categories": [
+    "communication"
+   ],
+   "description": "Text web browser with HTTPS for the terminal",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "links.txt",
+   "license_type": "GPL-2.0-or-later AND Apache-2.0 AND Zlib AND LGPL-2.1-or-later AND MPL-2.0 AND MIT",
+   "name": "Links",
+   "repository_url": "http://links.twibright.com",
+   "version": "1.0.0",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "Apache-2.0",
+      "license_file": "openssl.txt",
+      "name": "OpenSSL",
+      "source": "https://github.com/openssl/openssl/releases/download/openssl-3.5.6/openssl-3.5.6.tar.gz",
+      "version": "3.5.6"
+     },
+     {
+      "license": "Zlib",
+      "license_file": "zlib.txt",
+      "name": "zlib",
+      "source": "https://zlib.net/fossils/zlib-1.3.2.tar.gz",
+      "version": "1.3.2"
+     },
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "MPL-2.0",
+      "license_file": "ca-certificates.txt",
+      "name": "Mozilla CA certificate store (curl.se cacert.pem)",
+      "source": "https://curl.se/docs/caextract.html",
+      "version": "2026-09-25"
+     },
+     {
+      "license": "MIT",
+      "license_file": "badge-port.txt",
+      "name": "Badge port (no-fork wrapper, start script and page)",
+      "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps",
+      "version": "2be6d7c"
+     }
+    ],
+    "category": "internet",
+    "changelog": "First store release. Also available as the links command in a shell.",
+    "commands": [
+     {
+      "exec": "start",
+      "name": "links"
+     }
+    ],
+    "description": "A fast text-mode web browser. From the menu it opens in a terminal window\non its start page, and Files opens web pages with it. In a shell (serial\nconsole or SSH), \"links <address>\" runs it in your own terminal.\n\nHTTPS goes through OpenSSL with Mozilla's list of certificate\nauthorities. Links keeps small caches so it fits in the badge's memory\nnext to other programs.",
+    "format": 2,
+    "id": "links",
+    "launch": {
+     "args": "%f",
+     "icon": "globe",
+     "info": "web browser (text)",
+     "opens": [
+      "html",
+      "htm",
+      "xhtml"
+     ],
+     "terminal": "close"
+    },
+    "package": {
+     "installed_size": 3624215,
+     "sha256": "54a8c27cf0d268dbd45f42417e903fe63e5ac544529e4a74da096d862dcd10b1",
+     "size": 1895601,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/links-1.0.0.wpk"
+    },
+    "permissions": [
+     "network"
+    ],
+    "requires": {
+     "features": [
+      "wifi",
+      "sd-card",
+      "keyboard"
+     ],
+     "memory_kb": 4000,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/links/source",
+    "storage": {
+     "config": {
+      "max_kb": 64
+     }
+    },
+    "summary": "Text web browser with HTTPS, for the terminal",
+    "tags": [
+     "browser",
+     "web",
+     "text",
+     "terminal"
+    ],
+    "type": "app",
+    "upstream_version": "2.30"
+   }
+  },
+  "slug": "links"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "marble",
+     "external_only": true,
+     "revision": 5,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "WhyOS-Apps contributors",
+   "categories": [
+    "games"
+   ],
+   "description": "Tilt the badge to roll a marble into the ring",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "marble.txt",
+   "license_type": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
+   "name": "Marble Orbit",
+   "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
+   "version": "1.1.3",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "jetbrains-mono.txt",
+      "name": "JetBrains Mono (font)",
+      "source": "https://github.com/JetBrains/JetBrainsMono",
+      "version": "2.211"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "space-grotesk.txt",
+      "name": "Space Grotesk (font)",
+      "source": "https://github.com/floriankarsten/space-grotesk",
+      "version": "2.000"
+     }
+    ],
+    "category": "puzzle",
+    "changelog": "Uses the whole screen; hold the logo key to see WhyOS's status bar.",
+    "description": "Tilt the badge to roll a marble through a level and into the glowing ring.\nThere are 18 levels in six worlds: a wooden workshop, a desert, ice, a\ntemple, a factory and outer space. Each world adds something new: sand\nthat slows you down, ramps to jump gaps, ice and ice that cracks behind\nyou, currents, buttons that open gates, conveyor belts, bumpers, magnets,\nlasers, low gravity, teleporters and a black hole.\n\nYou have three lives per level; falling into a hole costs one. Collect\nthe stars and finish quickly for a higher score. Levels unlock one by one,\nand your best score per level is kept on the badge.\n\nEsc pauses, the diamond shows the keys, the circle shows your results\nand the cloud opens the settings: tilt or arrow keys, sensitivity, and\nwhether the badge counts as level when held as you start or when lying\nflat. The screen stays upright while you play.",
+    "format": 2,
+    "id": "marble",
+    "launch": {
+     "icon": "games",
+     "info": "tilt to roll into the ring",
+     "rotation": "locked",
+     "stack_kb": 16,
+     "statusbar": "hidden"
+    },
+    "package": {
+     "installed_size": 359959,
+     "sha256": "bdf0705525f619234edf5427fe8f550f5d49246990ec9ea8ca941cc356068196",
+     "size": 160976,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/marble-1.1.3.wpk"
+    },
+    "requires": {
+     "features": [
+      "display",
+      "keyboard",
+      "accelerometer"
+     ],
+     "memory_kb": 600,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/marble/source",
+    "summary": "Tilt the badge to roll a marble into the ring",
+    "tags": [
+     "marble",
+     "tilt",
+     "maze",
+     "accelerometer"
+    ],
+    "type": "game"
+   }
+  },
+  "slug": "marble"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "start",
+     "external_only": true,
+     "revision": 3,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "Damien P. George and the MicroPython contributors, badge port",
+   "categories": [
+    "tools"
+   ],
+   "description": "Python 3 on the badge - an interactive prompt and your own scripts",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "micropython.txt",
+   "license_type": "MIT AND (Apache-2.0 OR GPL-2.0-or-later) AND BSD-3-Clause AND Zlib AND LGPL-2.1-or-later",
+   "name": "MicroPython",
+   "repository_url": "https://micropython.org",
+   "version": "1.29.2",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "Apache-2.0 OR GPL-2.0-or-later",
+      "license_file": "mbedtls.txt",
+      "name": "Mbed TLS",
+      "source": "https://github.com/micropython/micropython/releases/download/v1.29.0/micropython-1.29.0.tar.xz",
+      "version": "3.6.6"
+     },
+     {
+      "license": "MIT",
+      "license_file": "micropython-lib.txt",
+      "name": "micropython-lib (mip, ssl, frozen into the program)",
+      "source": "https://github.com/micropython/micropython/releases/download/v1.29.0/micropython-1.29.0.tar.xz",
+      "version": "1.29.0"
+     },
+     {
+      "license": "MIT",
+      "license_file": "meshcore_py.txt",
+      "name": "meshcore_py (frozen into the program)",
+      "source": "https://github.com/meshcore-dev/meshcore_py",
+      "version": "2.3.17"
+     },
+     {
+      "license": "MIT",
+      "license_file": "pycayennelpp.txt",
+      "name": "pycayennelpp (frozen in, for meshcore_py)",
+      "source": "https://github.com/smlng/pycayennelpp",
+      "version": "28f2ba4"
+     },
+     {
+      "license": "Zlib AND BSD-3-Clause",
+      "license_file": "third-party.txt",
+      "name": "uzlib and re1.5",
+      "source": "https://github.com/micropython/micropython/releases/download/v1.29.0/micropython-1.29.0.tar.xz",
+      "version": "1.29.0"
+     },
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "MIT",
+      "license_file": "badge-port.txt",
+      "name": "Badge port (start script, patches, setting, ics, xml)",
+      "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/micropython/source",
+      "version": "8a412f9"
+     }
+    ],
+    "category": "development",
+    "changelog": "Scripts may do what they can in a shell: MicroPython asks for the system permission, which the sandbox gives it.",
+    "commands": [
+     {
+      "exec": "start",
+      "name": "micropython"
+     },
+     {
+      "exec": "start",
+      "name": "python"
+     }
+    ],
+    "description": "MicroPython is a lean implementation of Python 3. From the menu it opens\nthe interactive prompt (the REPL): type Python and see the result at\nonce, with history (arrow keys), Tab completion and automatic\nindentation. Ctrl+D closes it, Ctrl+E pastes a block of code. In a shell\n(serial console or SSH) \"micropython\" or \"python\" starts the prompt in\nyour own terminal, and \"python script.py\" runs a script.\n\nPut your scripts in badge/appdata/micropython on the SD card: the prompt\nstarts there, so \"import myscript\" runs myscript.py. Files also runs a\n.py file under Open with, and leaves the prompt open afterwards. Modules\nin the lib folder there can be imported from anywhere, and\n\"python -m mip install <package>\" installs packages from micropython-lib\ninto it (Wi-Fi needed).\n\nIncluded: json, re, socket and ssl (HTTPS), requests, asyncio,\nhashlib, time, os, math, struct, binascii, deflate, select and more, and\nthe @micropython.native and viper decorators for fast code. For the\nbadge: meshcore (MeshCore messages and bots over LoRa, with an example\nbot), setting (the badge's settings), ics (calendars from an .ics link,\nrepeats worked out) and xml.etree.ElementTree (XML as in CPython). Not\nincluded: threads, ffi, and CPython's larger standard library. The heap\nis 2 MB; MICROPY_HEAP=4M before the command gives a script more.",
+    "format": 2,
+    "id": "micropython",
+    "launch": {
+     "args": "--menu %f",
+     "icon": "terminal",
+     "info": "Python 3 interpreter",
+     "opens_also": [
+      "py"
+     ],
+     "terminal": "close"
+    },
+    "package": {
+     "installed_size": 965977,
+     "sha256": "6a6e5368e0ff2eb5d2a8ca481d195a2a9abb9a4010000e6f34a88e6c3c759a25",
+     "size": 535081,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/micropython-1.29.2.wpk"
+    },
+    "permissions": [
+     "system"
+    ],
+    "requires": {
+     "features": [
+      "sd-card",
+      "keyboard"
+     ],
+     "memory_kb": 3100,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/micropython/source",
+    "storage": {
+     "data": {
+      "folders": [
+       "lib"
+      ]
+     }
+    },
+    "summary": "Python 3 on the badge: an interactive prompt and your own scripts",
+    "tags": [
+     "python",
+     "micropython",
+     "programming",
+     "repl",
+     "scripting",
+     "terminal"
+    ],
+    "type": "app",
+    "upstream_version": "1.29.0"
+   }
+  },
+  "slug": "micropython"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "start",
+     "external_only": true,
+     "revision": 3,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "The GNU nano developers, badge port",
+   "categories": [
+    "tools"
+   ],
+   "description": "A small easy text editor",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "nano.txt",
+   "license_type": "GPL-3.0-or-later AND X11-distribute-modifications-variant AND MIT AND LGPL-2.1-or-later",
+   "name": "nano",
+   "repository_url": "https://www.nano-editor.org",
+   "version": "9.2.2",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "X11-distribute-modifications-variant",
+      "license_file": "ncurses.txt",
+      "name": "ncurses",
+      "source": "https://ftp.gnu.org/gnu/ncurses/ncurses-6.6.tar.gz",
+      "version": "6.6"
+     },
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "MIT",
+      "license_file": "badge-port.txt",
+      "name": "Badge port (start script, terminal entry, fork stub)",
+      "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/nano/source",
+      "version": "2dc2819"
+     }
+    ],
+    "category": "productivity",
+    "changelog": "nano asks for the files-all permission, so the sandbox lets it open and save your files outside its own folders.",
+    "commands": [
+     {
+      "exec": "start",
+      "name": "nano"
+     }
+    ],
+    "description": "Edit text files on the badge: notes, configuration files, scripts. GNU\nnano shows its main short-cuts at the bottom of the screen: Ctrl+S\nsaves, Ctrl+X closes, Ctrl+W searches, Ctrl+K cuts a line and Ctrl+U\npastes it, Ctrl+G shows the help.\n\nFrom the menu it starts on a new file in your home folder (/root), as\nWrite does; Files opens text files with it (.txt, .md, .conf, .sh, .py,\n.json and more). In a shell\n(serial console or SSH) \"nano file\" edits in your own terminal, at full\nwidth, with syntax colours for many languages.\n\nThe logo key closes it; unsaved text is then kept in a file with\n\".save\" added to its name. Your own settings go in nanorc in the app's\nconfig folder. Running a command from nano (Ctrl+T) is not possible on\nthe badge, and the spell checker is left out. Plain ASCII and Latin-1\nonly: no UTF-8.",
+    "format": 2,
+    "id": "nano",
+    "launch": {
+     "args": "%f",
+     "icon": "keyboard",
+     "info": "text editor",
+     "opens": [
+      "txt",
+      "md",
+      "conf",
+      "cfg",
+      "ini",
+      "sh",
+      "py",
+      "c",
+      "h",
+      "json",
+      "toml",
+      "yaml",
+      "yml",
+      "csv",
+      "log"
+     ],
+     "terminal": "close"
+    },
+    "package": {
+     "installed_size": 659257,
+     "sha256": "60bc9c263750adfdb05a648a7cca429bd8c4e7e47c559910038ca4017bea5388",
+     "size": 335449,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/nano-9.2.2.wpk"
+    },
+    "permissions": [
+     "files-all"
+    ],
+    "requires": {
+     "features": [
+      "keyboard"
+     ],
+     "memory_kb": 1200,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/nano/source",
+    "storage": {
+     "config": {
+      "max_kb": 16
+     }
+    },
+    "summary": "A small, easy text editor",
+    "tags": [
+     "editor",
+     "text",
+     "terminal",
+     "nano",
+     "gnu"
+    ],
+    "type": "app",
+    "upstream_version": "9.2"
+   }
+  },
+  "slug": "nano"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "start",
+     "external_only": true,
+     "revision": 2,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "The NetHack DevTeam, badge port",
+   "categories": [
+    "games"
+   ],
+   "description": "The classic dungeon adventure - find the Amulet of Yendor",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "nethack.txt",
+   "license_type": "NGPL AND MIT AND Zlib AND LGPL-2.1-or-later",
+   "name": "NetHack",
+   "repository_url": "https://www.nethack.org",
+   "version": "3.6.7-2",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "Zlib",
+      "license_file": "zlib.txt",
+      "name": "zlib",
+      "source": "https://zlib.net/fossils/zlib-1.3.2.tar.gz",
+      "version": "1.3.2"
+     },
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "MIT",
+      "license_file": "badge-port.txt",
+      "name": "Badge port (key and fork glue, start script, termcap entry)",
+      "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/nethack/source",
+      "version": "149190c"
+     }
+    ],
+    "category": "strategy",
+    "changelog": "A game cut off by a reset or power loss is recovered at the next start; before, NetHack would not start again (\"Too many hacks running now\").",
+    "commands": [
+     {
+      "exec": "start",
+      "name": "nethack"
+     }
+    ],
+    "description": "Explore the Dungeons of Doom, fight monsters, find treasure and retrieve\nthe Amulet of Yendor. NetHack 3.6.7, with its classic text display and\ncolour, plays in a terminal window from the menu; in a shell (serial\nconsole or SSH) \"nethack\" plays it in your own terminal, at full width.\n\nThe map is 80 columns and the window 73: it scrolls along with your\nhero. Move with the arrow keys or hjkl (yubn diagonally); \"?\" lists the\ncommands, \"S\" saves and quits. The logo key saves the game too, and the\nnext start continues it. Your options are in nethackrc in the app's\nconfig folder (OPTIONS=name:yourname sets your name).\n\nSaves and the high scores are in badge/appdata/nethack on the SD card.",
+    "format": 2,
+    "id": "nethack",
+    "launch": {
+     "icon": "games",
+     "info": "dungeon adventure",
+     "terminal": "close"
+    },
+    "package": {
+     "installed_size": 3439309,
+     "sha256": "b024d416b50e5112eaf1cc63b6ed1cfca21efc3e0a2bb623d82bd93b4e6d918d",
+     "size": 1631973,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/nethack-3.6.7-2.wpk"
+    },
+    "requires": {
+     "features": [
+      "sd-card",
+      "keyboard"
+     ],
+     "memory_kb": 2600,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/nethack/source",
+    "storage": {
+     "config": {
+      "max_kb": 16
+     },
+     "data": {
+      "folders": [
+       "save"
+      ]
+     }
+    },
+    "summary": "The classic dungeon adventure: find the Amulet of Yendor",
+    "tags": [
+     "roguelike",
+     "dungeon",
+     "rpg",
+     "terminal",
+     "classic"
+    ],
+    "type": "game",
+    "upstream_version": "3.6.7"
+   }
+  },
+  "slug": "nethack"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "start",
+     "external_only": true,
+     "revision": 5,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "NetSurf developers, badge port",
+   "categories": [
+    "communication"
+   ],
+   "description": "Graphical web browser with HTTPS without JavaScript",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "netsurf.txt",
+   "license_type": "GPL-2.0-only AND MIT AND Unicode-DFS-2015 AND (Apache-2.0 OR GPL-2.0-or-later) AND curl AND libpng-2.0 AND IJG AND Zlib AND LGPL-2.1-or-later AND MPL-2.0",
+   "name": "NetSurf",
+   "repository_url": "https://www.netsurf-browser.org",
+   "version": "1.2.2",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "MIT",
+      "license_file": "libcss.txt",
+      "name": "libcss",
+      "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+      "version": "netsurf-all 3.11"
+     },
+     {
+      "license": "MIT",
+      "license_file": "libdom.txt",
+      "name": "libdom",
+      "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+      "version": "netsurf-all 3.11"
+     },
+     {
+      "license": "MIT",
+      "license_file": "libhubbub.txt",
+      "name": "libhubbub",
+      "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+      "version": "netsurf-all 3.11"
+     },
+     {
+      "license": "MIT",
+      "license_file": "libnsbmp.txt",
+      "name": "libnsbmp",
+      "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+      "version": "netsurf-all 3.11"
+     },
+     {
+      "license": "MIT",
+      "license_file": "libnsfb.txt",
+      "name": "libnsfb",
+      "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+      "version": "netsurf-all 3.11"
+     },
+     {
+      "license": "MIT",
+      "license_file": "libnsgif.txt",
+      "name": "libnsgif",
+      "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+      "version": "netsurf-all 3.11"
+     },
+     {
+      "license": "MIT",
+      "license_file": "libnslog.txt",
+      "name": "libnslog",
+      "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+      "version": "netsurf-all 3.11"
+     },
+     {
+      "license": "MIT",
+      "license_file": "libnspsl.txt",
+      "name": "libnspsl",
+      "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+      "version": "netsurf-all 3.11"
+     },
+     {
+      "license": "MIT",
+      "license_file": "libnsutils.txt",
+      "name": "libnsutils",
+      "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+      "version": "netsurf-all 3.11"
+     },
+     {
+      "license": "MIT",
+      "license_file": "libparserutils.txt",
+      "name": "libparserutils",
+      "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+      "version": "netsurf-all 3.11"
+     },
+     {
+      "license": "MIT",
+      "license_file": "libwapcaplet.txt",
+      "name": "libwapcaplet",
+      "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+      "version": "netsurf-all 3.11"
+     },
+     {
+      "license": "MIT AND Unicode-DFS-2015",
+      "license_file": "libutf8proc.txt",
+      "name": "libutf8proc",
+      "source": "https://download.netsurf-browser.org/netsurf/releases/source-full/netsurf-all-3.11.tar.gz",
+      "version": "netsurf-all 3.11"
+     },
+     {
+      "license": "Apache-2.0 OR GPL-2.0-or-later",
+      "license_file": "mbedtls.txt",
+      "name": "Mbed TLS",
+      "source": "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.6/mbedtls-3.6.6.tar.bz2",
+      "version": "3.6.6"
+     },
+     {
+      "license": "curl",
+      "license_file": "curl.txt",
+      "name": "curl",
+      "source": "https://curl.se/download/curl-8.20.0.tar.xz",
+      "version": "8.20.0"
+     },
+     {
+      "license": "libpng-2.0",
+      "license_file": "libpng.txt",
+      "name": "libpng",
+      "source": "http://downloads.sourceforge.net/project/libpng/libpng16/1.6.58/libpng-1.6.58.tar.xz",
+      "version": "1.6.58"
+     },
+     {
+      "license": "IJG",
+      "license_file": "libjpeg.txt",
+      "name": "libjpeg (IJG)",
+      "source": "http://www.ijg.org/files/jpegsrc.v9f.tar.gz",
+      "version": "9f"
+     },
+     {
+      "license": "MIT",
+      "license_file": "expat.txt",
+      "name": "Expat",
+      "source": "https://github.com/libexpat/libexpat/releases/download/R_2_8_1/expat-2.8.1.tar.xz",
+      "version": "2.8.1"
+     },
+     {
+      "license": "Zlib",
+      "license_file": "zlib.txt",
+      "name": "zlib",
+      "source": "https://zlib.net/fossils/zlib-1.3.2.tar.gz",
+      "version": "1.3.2"
+     },
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "MPL-2.0",
+      "license_file": "ca-certificates.txt",
+      "name": "Mozilla CA certificate store (curl.se cacert.pem)",
+      "source": "https://curl.se/docs/caextract.html",
+      "version": "2026-09-25"
+     },
+     {
+      "license": "MIT",
+      "license_file": "badge-port.txt",
+      "name": "Badge port (surface, iconv, OOM handler, start)",
+      "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps",
+      "version": "2be6d7c"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "jetbrains-mono.txt",
+      "name": "JetBrains Mono (font)",
+      "source": "https://github.com/JetBrains/JetBrainsMono",
+      "version": "2.211"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "space-grotesk.txt",
+      "name": "Space Grotesk (font)",
+      "source": "https://github.com/floriankarsten/space-grotesk",
+      "version": "2.000"
+     }
+    ],
+    "category": "internet",
+    "changelog": "Uses the whole screen; hold the logo key to see WhyOS's status bar.",
+    "description": "A web browser with its own layout engine: HTML, CSS, PNG, JPEG and GIF,\nHTTPS through Mbed TLS. No JavaScript, WebP, SVG or video, to save memory.\n\nThe badge has no mouse, so the browser brings a pointer: the arrows move\nit (faster while held), circle clicks or drags, triangle and cross scroll\na page up and down, square and diamond go back and forward, and the cloud\nkey opens the address bar. Fn with the arrows sends the arrow keys\nthemselves.\n\nLarge pages such as Wikipedia do not fit in the badge's memory; NetSurf\nthen stops with an error instead of hanging.",
+    "format": 2,
+    "id": "netsurf",
+    "launch": {
+     "args": "-f badge -w 720 -h 720 -b 16 %u",
+     "icon": "globe",
+     "info": "web browser",
+     "opens": [
+      "html",
+      "htm",
+      "xhtml",
+      "svg"
+     ],
+     "stack_kb": 256,
+     "statusbar": "hidden"
+    },
+    "package": {
+     "installed_size": 3483121,
+     "sha256": "6cfbb3c7a805af420d98ce7278af5a1aad10026f189f16983d844db51d2151bc",
+     "size": 1684626,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/netsurf-1.2.2.wpk"
+    },
+    "permissions": [
+     "network"
+    ],
+    "requires": {
+     "features": [
+      "wifi",
+      "sd-card",
+      "display",
+      "keyboard"
+     ],
+     "memory_kb": 5000,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/netsurf/source",
+    "storage": {
+     "config": {
+      "max_kb": 128
+     }
+    },
+    "summary": "Graphical web browser with HTTPS, without JavaScript",
+    "tags": [
+     "browser",
+     "web",
+     "https"
+    ],
+    "type": "app",
+    "upstream_version": "3.11"
+   }
+  },
+  "slug": "netsurf"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "nmap",
+     "external_only": true,
+     "revision": 2,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "Nmap Project, badge port",
+   "categories": [
+    "communication"
+   ],
+   "description": "Network scanner (TCP connect scans)",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "nmap.txt",
+   "license_type": "LicenseRef-NPSL-0.95 AND BSD-3-Clause AND (BSD-3-Clause WITH PCRE2-exception) AND LGPL-2.1-or-later AND MIT",
+   "name": "nmap",
+   "repository_url": "https://nmap.org",
+   "version": "1.0.1",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "BSD-3-Clause",
+      "license_file": "libpcap.txt",
+      "name": "libpcap",
+      "source": "https://nmap.org/dist/nmap-7.95.tar.bz2",
+      "version": "1.10.4 (in nmap 7.95)"
+     },
+     {
+      "license": "BSD-3-Clause",
+      "license_file": "libdnet.txt",
+      "name": "libdnet (nmap libdnet-stripped)",
+      "source": "https://nmap.org/dist/nmap-7.95.tar.bz2",
+      "version": "nmap 7.95"
+     },
+     {
+      "license": "BSD-3-Clause",
+      "license_file": "liblinear.txt",
+      "name": "LIBLINEAR",
+      "source": "https://nmap.org/dist/nmap-7.95.tar.bz2",
+      "version": "2.47 (in nmap 7.95)"
+     },
+     {
+      "license": "BSD-3-Clause WITH PCRE2-exception",
+      "license_file": "pcre2.txt",
+      "name": "PCRE2",
+      "source": "https://nmap.org/dist/nmap-7.95.tar.bz2",
+      "version": "10.43 (in nmap 7.95)"
+     },
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "MIT",
+      "license_file": "badge-port.txt",
+      "name": "Badge port (fast exit)",
+      "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps",
+      "version": "2be6d7c"
+     }
+    ],
+    "category": "network",
+    "changelog": "In the menu under Apps (Network tools) instead of Settings > Tools.",
+    "commands": [
+     {
+      "args": "--datadir %d/share --unprivileged --nsock-engine poll",
+      "exec": "nmap",
+      "name": "nmap"
+     }
+    ],
+    "description": "Scans hosts and ports on the network the badge is connected to.\n\nOnly TCP connect scans work (--unprivileged is always added): raw packets\nneed a memory-mapped packet ring, which the badge's kernel cannot give.\nNo scripts (NSE). From the menu, nmap shows its help and leaves a shell\nin which \"nmap <target>\" scans; in a shell over SSH or the serial\nconsole the nmap command works the same way.",
+    "format": 2,
+    "id": "nmap",
+    "launch": {
+     "args": "--datadir %d/share --unprivileged --nsock-engine poll",
+     "icon": "globe",
+     "info": "network scanner",
+     "terminal": "shell"
+    },
+    "package": {
+     "installed_size": 5840105,
+     "sha256": "e29419aed2b9c07a1687281da5b295cc623d8ab7a629c73e5058bf3ca8d23fe5",
+     "size": 1988595,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/nmap-1.0.1.wpk"
+    },
+    "permissions": [
+     "network"
+    ],
+    "requires": {
+     "features": [
+      "wifi",
+      "sd-card"
+     ],
+     "memory_kb": 7000,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/nmap/source",
+    "summary": "Network scanner (TCP connect scans)",
+    "tags": [
+     "scanner",
+     "network",
+     "security",
+     "ports"
+    ],
+    "type": "app",
+    "upstream_version": "7.95"
+   }
+  },
+  "slug": "nmap"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "ohminous",
+     "external_only": true,
+     "revision": 4,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "WhyOS-Apps contributors",
+   "categories": [
+    "hardware"
+   ],
+   "description": "Pins logic analyzer I2C UART and LEDs on the badge or with a Bus Pirate 6.",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "ohminous.txt",
+   "license_type": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
+   "name": "OHMinous",
+   "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
+   "version": "1.1.2",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "jetbrains-mono.txt",
+      "name": "JetBrains Mono (font)",
+      "source": "https://github.com/JetBrains/JetBrainsMono",
+      "version": "2.211"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "space-grotesk.txt",
+      "name": "Space Grotesk (font)",
+      "source": "https://github.com/floriankarsten/space-grotesk",
+      "version": "2.000"
+     }
+    ],
+    "category": "hardware",
+    "changelog": "The status bar comes from WhyOS now, so the app no longer draws its own.",
+    "description": "Work on circuits from the badge's keypad, with the pins on the badge's\nJ3 and J7 headers, and with a Bus Pirate 6 on the bottom USB port when\nyou have one. Each tool has both sources; Tab switches between them.\n\n- Pins: IO0 to IO4 and STROBE as inputs (with a pull-up or pull-down)\n  or outputs, a map of both headers, and your own names for the pins.\n  With a Bus Pirate: its IO0 to IO7.\n- Logic: capture the pins, scroll and zoom, save to /root/capture.bin.\n  The badge samples in software, up to 50 kHz; a Bus Pirate captures 8\n  channels up to 50 MHz.\n- Buses: scan the I2C bus on J7, read and write a device's registers,\n  or talk to a serial device on IO3 (TX) and IO4 (RX) at 1200 to 19200\n  baud. SPI and 1-Wire need a Bus Pirate.\n- LEDs: the WS2812 LEDs on J7, or a Bus Pirate's WS2812 and APA102\n  strips.\n- Power: the headers' supply pins; a Bus Pirate's supply (0.8 to 5.0 V,\n  with a current limit) and pull-ups.\n- Serial: a terminal to a USB serial adapter on the bottom port, or to\n  the Bus Pirate's own.\n\nThe circle key shows a log of what the tools sent and read, the cloud\nthe settings, the diamond the help. Esc goes back, and closes OHMinous\nfrom the start screen; pins it made outputs go back to inputs.\n\nThe badge's pins are 3.3 V: do not connect 5 V signals to them.",
+    "format": 2,
+    "id": "ohminous",
+    "launch": {
+     "icon": "chip",
+     "info": "pins, logic, buses, power"
+    },
+    "package": {
+     "installed_size": 526839,
+     "sha256": "ff528a464ce27216aeddba34342f3e8d176d58d7a3900852e1783636827df927",
+     "size": 223478,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/ohminous-1.1.2.wpk"
+    },
+    "permissions": [
+     "usb"
+    ],
+    "requires": {
+     "features": [
+      "display",
+      "keyboard"
+     ],
+     "memory_kb": 700,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/ohminous/source",
+    "summary": "Pins, logic analyzer, I2C, UART and LEDs on the badge, or with a Bus Pirate 6.",
+    "tags": [
+     "gpio",
+     "logic-analyzer",
+     "i2c",
+     "uart",
+     "ws2812",
+     "bus-pirate",
+     "power-supply"
+    ],
+    "type": "app"
+   }
+  },
+  "slug": "ohminous"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "pdfview",
+     "external_only": true,
+     "revision": 4,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "badge port",
+   "categories": [
+    "tools"
+   ],
+   "description": "Shows PDF documents opened from Files",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "pdfview.txt",
+   "license_type": "AGPL-3.0-or-later AND FTL AND IJG AND Zlib AND OFL-1.1 AND LGPL-2.1-or-later",
+   "name": "PDF viewer",
+   "repository_url": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/pdfview/source",
+   "version": "1.1.2",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "AGPL-3.0-or-later",
+      "license_file": "mupdf.txt",
+      "name": "MuPDF",
+      "source": "https://mupdf.com/downloads/archive/mupdf-1.28.5-source.tar.gz",
+      "version": "1.28.5"
+     },
+     {
+      "license": "FTL",
+      "license_file": "freetype.txt",
+      "name": "FreeType (in MuPDF's source)",
+      "source": "https://mupdf.com/downloads/archive/mupdf-1.28.5-source.tar.gz",
+      "version": "2.14.3"
+     },
+     {
+      "license": "AGPL-3.0-or-later",
+      "license_file": "jbig2dec.txt",
+      "name": "jbig2dec (in MuPDF's source)",
+      "source": "https://mupdf.com/downloads/archive/mupdf-1.28.5-source.tar.gz",
+      "version": "MuPDF 1.28.5's"
+     },
+     {
+      "license": "IJG",
+      "license_file": "libjpeg.txt",
+      "name": "libjpeg (IJG, in MuPDF's source)",
+      "source": "https://mupdf.com/downloads/archive/mupdf-1.28.5-source.tar.gz",
+      "version": "10"
+     },
+     {
+      "license": "Zlib",
+      "license_file": "zlib.txt",
+      "name": "zlib (in MuPDF's source)",
+      "source": "https://mupdf.com/downloads/archive/mupdf-1.28.5-source.tar.gz",
+      "version": "1.3.2"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "urw-fonts.txt",
+      "name": "URW base 14 fonts (in MuPDF's source)",
+      "source": "https://mupdf.com/downloads/archive/mupdf-1.28.5-source.tar.gz",
+      "version": "MuPDF 1.28.5's"
+     },
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "jetbrains-mono.txt",
+      "name": "JetBrains Mono (font)",
+      "source": "https://github.com/JetBrains/JetBrainsMono",
+      "version": "variable"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "space-grotesk.txt",
+      "name": "Space Grotesk (font)",
+      "source": "https://github.com/floriankarsten/space-grotesk",
+      "version": "variable"
+     }
+    ],
+    "category": "media",
+    "changelog": "The viewer keeps the whole screen and no longer draws a status bar of its own; hold the logo key to see WhyOS's status bar.",
+    "description": "Reads PDF documents on the badge: a page as wide as the screen, to\nscroll with the arrow keys, on into the next page. Left and Right turn\nthe pages, Space goes a screen down, Enter zooms in 2x. The square key\nhas Go to page and Whole page. It opens a file again on the page you\nleft it at.\n\nFiles opens PDF files with it; it has no entry in the menu's lists.\nRendering is done by MuPDF, cut down for the badge: documents in Chinese,\nJapanese or Korean, and PDFs with JPEG 2000 images, show those parts as\nboxes or blank. Locked PDFs (with a password) cannot be opened.\n\nIt needs about 6 MB of memory while it shows a page.",
+    "format": 2,
+    "id": "pdfview",
+    "launch": {
+     "args": "%f",
+     "menu": "none",
+     "opens": [
+      "pdf"
+     ],
+     "stack_kb": 256,
+     "statusbar": "hidden"
+    },
+    "package": {
+     "installed_size": 3381142,
+     "sha256": "3dd120e4061d452f8a6748019287ea2e0d051424edee9d32d91dfef0b6d15939",
+     "size": 2207709,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/pdfview-1.1.2.wpk"
+    },
+    "requires": {
+     "features": [
+      "display",
+      "keyboard"
+     ],
+     "memory_kb": 7000,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/pdfview/source",
+    "summary": "Shows PDF documents, opened from Files",
+    "tags": [
+     "pdf",
+     "documents",
+     "viewer",
+     "reader"
+    ],
+    "type": "app"
+   }
+  },
+  "slug": "pdfview"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "pm3",
+     "external_only": true,
+     "revision": 5,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "RRG/Iceman Proxmark3 contributors, badge build",
+   "categories": [
+    "hardware"
+   ],
+   "description": "Proxmark3 client - read write and sniff RFID and NFC cards from the badge",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "proxmark3.txt",
+   "license_type": "GPL-3.0-or-later AND Apache-2.0 AND MIT AND BSD-3-Clause AND LGPL-2.1-or-later AND OFL-1.1",
+   "name": "Proxmark3",
+   "repository_url": "https://github.com/RfidResearchGroup/proxmark3",
+   "version": "1.1.3",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "Apache-2.0",
+      "license_file": "mbedtls.txt",
+      "name": "Mbed TLS (in the Proxmark3 client)",
+      "source": "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/common/mbedtls",
+      "version": "2.26.0"
+     },
+     {
+      "license": "MIT",
+      "license_file": "jansson.txt",
+      "name": "Jansson (in the Proxmark3 client)",
+      "source": "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/client/deps/jansson",
+      "version": "Proxmark3 da509461b"
+     },
+     {
+      "license": "MIT",
+      "license_file": "amiitool.txt",
+      "name": "amiitool (in the Proxmark3 client)",
+      "source": "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/client/deps/amiitool",
+      "version": "Proxmark3 da509461b"
+     },
+     {
+      "license": "MIT",
+      "license_file": "id48.txt",
+      "name": "id48 (in the Proxmark3 client)",
+      "source": "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/client/deps/id48",
+      "version": "Proxmark3 da509461b"
+     },
+     {
+      "license": "MIT OR WTFPL",
+      "license_file": "whereami.txt",
+      "name": "whereami (in the Proxmark3 client)",
+      "source": "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/client/deps/whereami",
+      "version": "Proxmark3 da509461b"
+     },
+     {
+      "license": "BSD-3-Clause",
+      "license_file": "argtable3.txt",
+      "name": "argtable3 (in the Proxmark3 client)",
+      "source": "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/client/deps/cliparser",
+      "version": "Proxmark3 da509461b"
+     },
+     {
+      "license": "GPL-3.0-or-later",
+      "license_file": "reveng.txt",
+      "name": "CRC RevEng (in the Proxmark3 client)",
+      "source": "https://github.com/RfidResearchGroup/proxmark3/tree/da509461b734a61994f8e430e3151e9084bf9718/client/deps/reveng",
+      "version": "Proxmark3 da509461b"
+     },
+     {
+      "license": "MIT",
+      "license_file": "libwb.txt",
+      "name": "libwb (the screens' drawing library, why2025-linux)",
+      "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/proxmark3/source/libwb",
+      "version": "647c8ea"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "jetbrains-mono.txt",
+      "name": "JetBrains Mono (font)",
+      "source": "https://github.com/JetBrains/JetBrainsMono",
+      "version": "2.211"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "space-grotesk.txt",
+      "name": "Space Grotesk (font)",
+      "source": "https://github.com/floriankarsten/space-grotesk",
+      "version": "2.000"
+     },
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     }
+    ],
+    "category": "hardware",
+    "changelog": "Asks only for the usb permission.",
+    "commands": [
+     {
+      "exec": "pm3",
+      "name": "pm3"
+     },
+     {
+      "exec": "pm3",
+      "name": "proxmark3"
+     }
+    ],
+    "description": "The Proxmark3 client (RRG/Iceman) on the badge itself, for a Proxmark3\non the bottom USB port: work with LF and HF cards from the badge's\nkeyboard, without a laptop. Tested with a Proxmark3 RDV4.\n\nFrom the menu it opens on its own screens: search for a card, check the\nkeys of a MIFARE Classic sector by sector and dump it, keep the cards you\nsaved with a name, their dumps and keys (also the dumps the client saves\nitself, iCLASS, Ultralight, ISO 15693, T55xx and more), edit a saved dump in\nWrite or duplicate it to keep the original, choose the key\nlists to try (and edit your own in Write), sniff a reader and a card, and\nthe client's command line on the screen (Console).\n\nThe Proxmark3 needs RRG/Iceman firmware of the same release as this\nclient (v4.21611); flash it from a computer.\n\nThis is a smaller build than the client on a computer, to fit in the\nbadge's memory. Left out: Lua and Python scripts, and MIFARE Classic key\nrecovery that runs in the client (nested, darkside, hardnested). Key\nchecks that run on the Proxmark3 itself (hf mf chk, hf mf fchk) work,\nwith the default key lists included. The arrow keys recall earlier\ncommands and move the cursor; Tab does not complete.\n\nThe app connects to the Proxmark3 by itself, also when it is plugged in\nlater. Dumps, key files and traces go to /root/.proxmark3/dumps, in the\nbadge's flash; your key lists to /root/.proxmark3/dictionaries. In a\nshell over SSH or the serial console, pm3 (or proxmark3) starts the\nclient's command line.",
+    "format": 2,
+    "id": "proxmark3",
+    "launch": {
+     "args": "--ui",
+     "icon": "usb",
+     "info": "RFID and NFC cards"
+    },
+    "package": {
+     "installed_size": 3058773,
+     "sha256": "b458518ffb23ad26a4bc0affa320bb54ad40a214d5ab3d13ca33660bbb198369",
+     "size": 1519899,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/proxmark3-1.1.3.wpk"
+    },
+    "permissions": [
+     "usb"
+    ],
+    "requires": {
+     "features": [
+      "usb-host",
+      "sd-card",
+      "keyboard"
+     ],
+     "memory_kb": 10000,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/proxmark3/source",
+    "summary": "Proxmark3 client: read, write and sniff RFID and NFC cards from the badge",
+    "tags": [
+     "rfid",
+     "nfc",
+     "proxmark",
+     "mifare",
+     "security"
+    ],
+    "type": "app",
+    "upstream_version": "4.21611-636 (da509461b)"
+   }
+  },
+  "slug": "proxmark3"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "sensorpanel",
+     "external_only": true,
+     "revision": 5,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "why2025-linux contributors",
+   "categories": [
+    "hardware"
+   ],
+   "description": "Live readings of the badges environment and motion sensors",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "sensorpanel.txt",
+   "license_type": "GPL-2.0-only AND MIT AND OFL-1.1 AND LGPL-2.1-or-later",
+   "name": "Sensor panel",
+   "repository_url": "https://github.com/mrbreaker/why2025-linux",
+   "version": "1.2.0",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "MIT",
+      "license_file": "whyos-sdk.txt",
+      "name": "WhyOS SDK and libwb (the screens' drawing library)",
+      "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/sensorpanel/source/sdk",
+      "version": "21cd98c"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "jetbrains-mono.txt",
+      "name": "JetBrains Mono (font)",
+      "source": "https://github.com/JetBrains/JetBrainsMono",
+      "version": "2.211"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "space-grotesk.txt",
+      "name": "Space Grotesk (font)",
+      "source": "https://github.com/floriankarsten/space-grotesk",
+      "version": "2.000"
+     }
+    ],
+    "category": "sensors",
+    "changelog": "Built on the WhyOS SDK: only what changed is drawn, without a 1 MB screen buffer; Esc closes the help before the app, and the circle, clover and diamond work as in every app.",
+    "description": "Shows the BME680's temperature, humidity and pressure and the BMI270's\nacceleration on all three axes, about three times a second, with a graph\nof the last 20 temperatures. The BME680 sits on the board, so it reads\nwarmer than the room.\n\nThe diamond key shows the help, the circle and clover the log and\nsettings screens, as in every app; Esc or the logo key closes it.",
+    "format": 2,
+    "id": "sensorpanel",
+    "launch": {
+     "icon": "sensors",
+     "info": "temperature, humidity, motion"
+    },
+    "package": {
+     "installed_size": 366544,
+     "sha256": "a83a1ebbd41aeb99b41ddc0ca87b22ad854b800b8dde42156797b1c53871bf31",
+     "size": 159485,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/sensorpanel-1.2.0.wpk"
+    },
+    "requires": {
+     "features": [
+      "display",
+      "environment-sensor",
+      "accelerometer"
+     ],
+     "memory_kb": 700,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/sensorpanel/source",
+    "summary": "Live readings of the badge's environment and motion sensors",
+    "tags": [
+     "sensors",
+     "bme680",
+     "bmi270",
+     "demo"
+    ],
+    "type": "app"
+   }
+  },
+  "slug": "sensorpanel"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "store",
+     "internal_only": true,
+     "revision": 18,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "WhyOS-Apps",
+   "categories": [
+    "system"
+   ],
+   "description": "Find install and update apps and games",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "store.txt",
+   "license_type": "MIT AND (Apache-2.0 OR GPL-2.0-or-later) AND Zlib AND LGPL-2.1-or-later AND OFL-1.1",
+   "name": "App store",
+   "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
+   "version": "0.3.0",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "Apache-2.0 OR GPL-2.0-or-later",
+      "license_file": "mbedtls.txt",
+      "name": "Mbed TLS",
+      "source": "https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.6/mbedtls-3.6.6.tar.bz2",
+      "version": "3.6.6"
+     },
+     {
+      "license": "Zlib",
+      "license_file": "zlib.txt",
+      "name": "zlib",
+      "source": "https://zlib.net/fossils/zlib-1.3.2.tar.gz",
+      "version": "1.3.2"
+     },
+     {
+      "license": "MIT",
+      "license_file": "jsmn.txt",
+      "name": "jsmn",
+      "source": "https://github.com/zserge/jsmn",
+      "version": "jsmn.h with SHA-256 c04533e9181e…"
+     },
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "OFL-SpaceGrotesk.txt",
+      "name": "Space Grotesk (rendered into the program)",
+      "source": "https://github.com/floriankarsten/space-grotesk",
+      "version": "2.000"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "OFL-JetBrainsMono.txt",
+      "name": "JetBrains Mono (rendered into the program)",
+      "source": "https://github.com/JetBrains/JetBrainsMono",
+      "version": "2.211"
+     }
+    ],
+    "category": "store",
+    "changelog": "The status bar comes from WhyOS now; the store installs services, such as the VNC server, with their page in Settings, and apps that need the whole screen.",
+    "commands": [
+     {
+      "exec": "store",
+      "name": "store"
+     }
+    ],
+    "description": "The WhyOS app store: browse and search the apps and games, install them on\nthe SD card, update them, and see what is on your badge. It opens from\nApps > App store and Settings > My apps; \"store\" in a shell does the same\nfrom the command line (store --help).\n\nIt fetches the store's index over HTTPS and checks every package against\nit before anything is installed.",
+    "format": 2,
+    "id": "store",
+    "launch": {
+     "icon": "store",
+     "info": "install apps and games"
+    },
+    "package": {
+     "installed_size": 1008584,
+     "sha256": "15247184c201ff236626812a60caf3fac103b531cb42f6b4f7c21f3993690e32",
+     "size": 530462,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.3.0.wpk"
+    },
+    "permissions": [
+     "network"
+    ],
+    "requires": {
+     "features": [
+      "wifi",
+      "display",
+      "keyboard"
+     ],
+     "memory_kb": 1536,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/client",
+    "summary": "Find, install and update apps and games",
+    "tags": [
+     "store",
+     "apps",
+     "packages"
+    ],
+    "type": "system"
+   }
+  },
+  "slug": "store"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "internal_only": true,
+     "revision": 2,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "WhyOS-Apps contributors",
+   "categories": [
+    "communication"
+   ],
+   "description": "The badges screen and keys on a computer over Wi-Fi or USB.",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "vnc.txt",
+   "license_type": "MIT AND Apache-2.0 AND LGPL-2.1-or-later AND Zlib",
+   "name": "VNC server",
+   "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
+   "version": "1.1.0",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "Apache-2.0",
+      "license_file": "mbedtls.txt",
+      "name": "Mbed TLS (DES only)",
+      "source": "https://github.com/Mbed-TLS/mbedtls/releases/tag/mbedtls-3.6.6",
+      "version": "3.6.6"
+     },
+     {
+      "license": "Zlib",
+      "license_file": "zlib.txt",
+      "name": "zlib",
+      "source": "https://zlib.net/fossils/zlib-1.3.2.tar.gz",
+      "version": "1.3.2"
+     }
+    ],
+    "category": "internet",
+    "changelog": "A service without a tile: its page in Settings > Connection. ZRLE, so it is quick over USB and Wi-Fi, and macOS's Screen Sharing works.",
+    "description": "A VNC server: a viewer on a computer (macOS's Screen Sharing, TigerVNC,\nRealVNC and others) shows the badge's screen and types on its keys. It\nis a service, without a tile: turn it on in Settings > Connection > VNC\nserver, where you also find the addresses to connect to (Wi-Fi, and\n192.168.4.1 over the USB cable) and the password, with a button for a\nnew one. It starts again after a restart.\n\nIt needs full access to the badge, as anyone who has the password\ncontrols it. The session is not encrypted: use it on your own network or\nthe cable. There is no pointer, only the keys.",
+    "format": 2,
+    "id": "vnc",
+    "package": {
+     "installed_size": 219765,
+     "sha256": "095b185a56037be6c0650d5110b40a24265f0a186bfb444a9446db571b6632be",
+     "size": 101406,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/vnc-1.1.0.wpk"
+    },
+    "permissions": [
+     "daemon"
+    ],
+    "requires": {
+     "features": [
+      "wifi",
+      "display",
+      "keyboard"
+     ],
+     "memory_kb": 1500,
+     "os_api": 1
+    },
+    "service": {
+     "actions": [
+      {
+       "label": "New password",
+       "run": "vncd -n"
+      }
+     ],
+     "exec": "vncd",
+     "port": 5900,
+     "section": "connection",
+     "show": [
+      {
+       "file": "password",
+       "label": "Password"
+      }
+     ]
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/vnc/source",
+    "summary": "The badge's screen and keys on a computer, over Wi-Fi or USB.",
+    "tags": [
+     "vnc",
+     "remote",
+     "screen-sharing"
+    ],
+    "type": "app"
+   }
+  },
+  "slug": "vnc"
+ },
+ {
+  "project": {
+   "application": [
+    {
+     "assets": [],
+     "executable": "write",
+     "internal_only": true,
+     "revision": 5,
+     "targets": [
+      "why2025-whyos"
+     ],
+     "type": "whyos"
+    }
+   ],
+   "author": "WhyOS-Apps",
+   "categories": [
+    "system"
+   ],
+   "description": "Write notes and documents edit text and code",
+   "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+   },
+   "license_file": "write.txt",
+   "license_type": "MIT AND LGPL-2.1-or-later AND OFL-1.1",
+   "name": "Write",
+   "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
+   "version": "1.2.2",
+   "whyos": {
+    "bundled": [
+     {
+      "license": "LGPL-2.1-or-later",
+      "license_file": "uClibc-ng.txt",
+      "name": "uClibc-ng",
+      "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+      "version": "1.0.57"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "OFL-SpaceGrotesk.txt",
+      "name": "Space Grotesk (rendered into the program)",
+      "source": "https://github.com/floriankarsten/space-grotesk",
+      "version": "2.000"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "OFL-JetBrainsMono.txt",
+      "name": "JetBrains Mono (rendered into the program)",
+      "source": "https://github.com/JetBrains/JetBrainsMono",
+      "version": "2.211"
+     }
+    ],
+    "category": "other",
+    "changelog": "The status bar comes from WhyOS now, so the app no longer draws its own.",
+    "description": "Write notes and documents on the badge, with headings, lists, bold,\nitalic and underline, saved as markdown (.md) that any other editor can\nopen. Markdown works while you type: \"# \" makes a heading, \"- \" a list,\n**bold** turns bold when you type the last star. The cross key shows the\nmarkdown itself.\n\nCode and other text open in a code view with line numbers, colours for\nPython, shell, HTML, CSS, JavaScript, JSON, YAML, C and more, and Tab\nand Enter keep the indent. The triangle runs a Python or shell script\nin a terminal window, or shows an HTML page in NetSurf.\n\nSelect with Fn and the arrows, copy, cut and paste between documents,\nfind and replace, full screen for long texts. Files opens .md and .txt\nfiles in Write. The logo key saves before going back to the menu.",
+    "format": 2,
+    "id": "write",
+    "launch": {
+     "args": "%f",
+     "icon": "text",
+     "info": "notes and code",
+     "menu": "apps",
+     "opens": [
+      "md",
+      "markdown",
+      "txt"
+     ],
+     "opens_also": [
+      "conf",
+      "cfg",
+      "ini",
+      "log",
+      "sh",
+      "py",
+      "php",
+      "c",
+      "h",
+      "json",
+      "yml",
+      "yaml",
+      "js",
+      "css",
+      "html",
+      "htm",
+      "csv"
+     ]
+    },
+    "package": {
+     "installed_size": 713817,
+     "sha256": "de6c716cf6059607258c815005128d22b3256d9fd897f8ce1cc917b060f07945",
+     "size": 307727,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/write-1.2.2.wpk"
+    },
+    "permissions": [
+     "system"
+    ],
+    "requires": {
+     "features": [
+      "display",
+      "keyboard"
+     ],
+     "memory_kb": 1536,
+     "os_api": 1
+    },
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/write",
+    "storage": {
+     "config": {
+      "max_kb": 4
+     }
+    },
+    "summary": "Write notes and documents, edit text and code",
+    "tags": [
+     "editor",
+     "text",
+     "markdown",
+     "notes",
+     "code"
+    ],
+    "type": "system"
+   }
+  },
+  "slug": "write"
+ }
+]

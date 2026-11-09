@@ -1,0 +1,88 @@
+{
+  "name": "Sensor panel",
+  "description": "Live readings of the badges environment and motion sensors",
+  "repository_url": "https://github.com/mrbreaker/why2025-linux",
+  "categories": [
+    "hardware"
+  ],
+  "version": "1.2.0",
+  "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+  },
+  "author": "why2025-linux contributors",
+  "license_type": "GPL-2.0-only AND MIT AND OFL-1.1 AND LGPL-2.1-or-later",
+  "license_file": "sensorpanel.txt",
+  "application": [
+    {
+      "targets": [
+        "why2025-whyos"
+      ],
+      "type": "whyos",
+      "revision": 5,
+      "executable": "sensorpanel",
+      "external_only": true,
+      "assets": []
+    }
+  ],
+  "whyos": {
+    "id": "sensorpanel",
+    "summary": "Live readings of the badge's environment and motion sensors",
+    "description": "Shows the BME680's temperature, humidity and pressure and the BMI270's\nacceleration on all three axes, about three times a second, with a graph\nof the last 20 temperatures. The BME680 sits on the board, so it reads\nwarmer than the room.\n\nThe diamond key shows the help, the circle and clover the log and\nsettings screens, as in every app; Esc or the logo key closes it.",
+    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/sensorpanel/source",
+    "changelog": "Built on the WhyOS SDK: only what changed is drawn, without a 1 MB screen buffer; Esc closes the help before the app, and the circle, clover and diamond work as in every app.",
+    "type": "app",
+    "category": "sensors",
+    "tags": [
+      "sensors",
+      "bme680",
+      "bmi270",
+      "demo"
+    ],
+    "requires": {
+      "os_api": 1,
+      "memory_kb": 700,
+      "features": [
+        "display",
+        "environment-sensor",
+        "accelerometer"
+      ]
+    },
+    "bundled": [
+      {
+        "name": "uClibc-ng",
+        "version": "1.0.57",
+        "license": "LGPL-2.1-or-later",
+        "source": "https://downloads.uclibc-ng.org/releases/1.0.57/",
+        "license_file": "uClibc-ng.txt"
+      },
+      {
+        "name": "WhyOS SDK and libwb (the screens' drawing library)",
+        "version": "21cd98c",
+        "license": "MIT",
+        "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/sensorpanel/source/sdk",
+        "license_file": "whyos-sdk.txt"
+      },
+      {
+        "name": "JetBrains Mono (font)",
+        "version": "2.211",
+        "license": "OFL-1.1",
+        "source": "https://github.com/JetBrains/JetBrainsMono",
+        "license_file": "jetbrains-mono.txt"
+      },
+      {
+        "name": "Space Grotesk (font)",
+        "version": "2.000",
+        "license": "OFL-1.1",
+        "source": "https://github.com/floriankarsten/space-grotesk",
+        "license_file": "space-grotesk.txt"
+      }
+    ],
+    "format": 2,
+    "launch": {
+      "info": "temperature, humidity, motion",
+      "icon": "sensors"
+    }
+  }
+}

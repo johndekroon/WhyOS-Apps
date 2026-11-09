@@ -1,0 +1,29 @@
+{
+  "name": "App store",
+  "description": "Find install and update apps and games",
+  "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
+  "categories": [
+    "system"
+  ],
+  "version": "0.3.0",
+  "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+  },
+  "author": "WhyOS-Apps",
+  "license_type": "MIT AND (Apache-2.0 OR GPL-2.0-or-later) AND Zlib AND LGPL-2.1-or-later AND OFL-1.1",
+  "license_file": "store.txt",
+  "application": [
+    {
+      "targets": [
+        "why2025-whyos"
+      ],
+      "type": "whyos",
+      "revision": 18,
+      "executable": "store",
+      "internal_only": true,
+      "assets": []
+    }
+  ]
+}

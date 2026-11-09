@@ -47,18 +47,18 @@
    "author": "WhyOS-Apps contributors",
    "category": "tools",
    "commands": [],
-   "details_sha256": "adc4c0987fa9ba22f6a02b68b00bffc38cbee7dc12a0c03aebe47831f5af86f5",
+   "details_sha256": "6cd610518907663c9c8a213f5d6e99691fca0711c0848934f0ce3b4a4001abbf",
    "id": "calc",
    "install_location": "sd",
    "latest": {
-    "build": 6,
+    "build": 7,
     "package": {
-     "installed_size": 392731,
-     "sha256": "6b54ea771e192bb5829661b6f146725aeb7e82db14fc44d941163ad5e3d853a9",
-     "size": 182676,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.2.2.wpk"
+     "installed_size": 406515,
+     "sha256": "f9d04dec80957e7f717617790bc28b2d69acc32978df5354cbeb6d4c292c3a10",
+     "size": 191095,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.3.0.wpk"
     },
-    "version": "1.2.2"
+    "version": "1.3.0"
    },
    "menu_icon": "count",
    "name": "Calculator",
@@ -67,7 +67,7 @@
      "display",
      "keyboard"
     ],
-    "memory_kb": 600,
+    "memory_kb": 700,
     "os_api": 1
    },
    "summary": "Type a sum, get the answer: functions, hex and binary",
@@ -203,18 +203,18 @@
    "author": "WhyOS-Apps contributors",
    "category": "tools",
    "commands": [],
-   "details_sha256": "fd22fd2d006e40b719fd29029dd57c38f24f301efbbfb8a4f48941f6bde1a61c",
+   "details_sha256": "df828d12a366897898253b24a02cd015a472bae50bd1056ce6a67e819382f009",
    "id": "flashlight",
    "install_location": "sd",
    "latest": {
-    "build": 4,
+    "build": 5,
     "package": {
-     "installed_size": 207771,
-     "sha256": "f70ae4fbc67178f415a38177f98261159361e4c800af0d947f513c8ab3043c09",
-     "size": 89831,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flashlight-1.0.3.wpk"
+     "installed_size": 345223,
+     "sha256": "3b0bd17df7c2b42f2e97cb3643e01696054fae088ae2e1053538d8dc314c2ed1",
+     "size": 152625,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flashlight-1.1.0.wpk"
     },
-    "version": "1.0.3"
+    "version": "1.1.0"
    },
    "menu_icon": "sun",
    "name": "Flashlight",
@@ -223,7 +223,7 @@
      "display",
      "keyboard"
     ],
-    "memory_kb": 300,
+    "memory_kb": 600,
     "os_api": 1
    },
    "summary": "The whole screen as a light: white at full or half brightness, or red.",
@@ -759,18 +759,18 @@
    "author": "why2025-linux contributors",
    "category": "hardware",
    "commands": [],
-   "details_sha256": "e39e5b176152085501cef10932b30a25ac7f671aa0d287a7517be04bb6c69dcf",
+   "details_sha256": "e44bc3e123641c8bab1f88c76687b6e2edbc7e0ec404a27def8fa42bf59b8512",
    "id": "sensorpanel",
    "install_location": "sd",
    "latest": {
-    "build": 4,
+    "build": 5,
     "package": {
-     "installed_size": 311147,
-     "sha256": "ca0ae783e8da7ff80e2d21ecfb9bc37313eae8b53f40adcbba97774128af66f6",
-     "size": 129026,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/sensorpanel-1.1.2.wpk"
+     "installed_size": 366544,
+     "sha256": "a83a1ebbd41aeb99b41ddc0ca87b22ad854b800b8dde42156797b1c53871bf31",
+     "size": 159485,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/sensorpanel-1.2.0.wpk"
     },
-    "version": "1.1.2"
+    "version": "1.2.0"
    },
    "menu_icon": "sensors",
    "name": "Sensor panel",
@@ -780,7 +780,7 @@
      "environment-sensor",
      "accelerometer"
     ],
-    "memory_kb": 1200,
+    "memory_kb": 700,
     "os_api": 1
    },
    "summary": "Live readings of the badge's environment and motion sensors",
@@ -914,7 +914,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-11-09T15:03:24Z",
- "serial": 49,
+ "generated": "2026-11-09T22:23:56Z",
+ "serial": 51,
  "source": "whyos"
 }

@@ -1,0 +1,29 @@
+{
+  "name": "Flappy",
+  "description": "Fly a bird through the gaps between the pipes",
+  "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
+  "categories": [
+    "games"
+  ],
+  "version": "1.1.2",
+  "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+  },
+  "author": "WhyOS-Apps contributors",
+  "license_type": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
+  "license_file": "flappy.txt",
+  "application": [
+    {
+      "targets": [
+        "why2025-whyos"
+      ],
+      "type": "whyos",
+      "revision": 4,
+      "executable": "flappy",
+      "external_only": true,
+      "assets": []
+    }
+  ]
+}

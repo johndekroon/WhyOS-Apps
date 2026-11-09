@@ -10,6 +10,14 @@
    "version": "1.0.57"
   },
   {
+   "license": "MIT",
+   "license_file": "whyos-sdk.txt",
+   "license_url": "licenses/sensorpanel/whyos-sdk.txt",
+   "name": "WhyOS SDK and libwb (the screens' drawing library)",
+   "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/sensorpanel/source/sdk",
+   "version": "21cd98c"
+  },
+  {
    "license": "OFL-1.1",
    "license_file": "jetbrains-mono.txt",
    "license_url": "licenses/sensorpanel/jetbrains-mono.txt",
@@ -28,14 +36,13 @@
  ],
  "category": "hardware",
  "cover": null,
- "description": "Shows the BME680's temperature, humidity and pressure and the BMI270's\nacceleration on all three axes, about three times a second, with a graph\nof the last 20 temperatures. The BME680 sits on the board, so it reads\nwarmer than the room.\n\nEsc or the logo key closes it.",
+ "description": "Shows the BME680's temperature, humidity and pressure and the BMI270's\nacceleration on all three axes, about three times a second, with a graph\nof the last 20 temperatures. The BME680 sits on the board, so it reads\nwarmer than the room.\n\nThe diamond key shows the help, the circle and clover the log and\nsettings screens, as in every app; Esc or the logo key closes it.",
  "format": 1,
  "homepage": "https://github.com/mrbreaker/why2025-linux",
  "icon": null,
  "id": "sensorpanel",
  "install_location": "sd",
  "launch": {
-  "esc": "quit",
   "exec": "sensorpanel",
   "icon": "sensors",
   "info": "temperature, humidity, motion",
@@ -43,7 +50,7 @@
   "rotation": "auto",
   "terminal": false
  },
- "license": "GPL-2.0-only AND LGPL-2.1-or-later",
+ "license": "GPL-2.0-only AND MIT AND OFL-1.1 AND LGPL-2.1-or-later",
  "license_url": "licenses/sensorpanel/sensorpanel.txt",
  "name": "Sensor panel",
  "requires": {
@@ -52,7 +59,7 @@
    "environment-sensor",
    "accelerometer"
   ],
-  "memory_kb": 1200,
+  "memory_kb": 700,
   "os_api": 1
  },
  "screenshots": [],
@@ -66,6 +73,19 @@
  ],
  "type": "app",
  "versions": [
+  {
+   "build": 5,
+   "changelog": "Built on the WhyOS SDK: only what changed is drawn, without a 1 MB screen buffer; Esc closes the help before the app, and the circle, clover and diamond work as in every app.",
+   "package": {
+    "installed_size": 366544,
+    "sha256": "a83a1ebbd41aeb99b41ddc0ca87b22ad854b800b8dde42156797b1c53871bf31",
+    "size": 159485,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/sensorpanel-1.2.0.wpk"
+   },
+   "published": "2026-11-09T22:23:55Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/sensorpanel-1.2.0-source.tar.gz",
+   "version": "1.2.0"
+  },
   {
    "build": 4,
    "changelog": "The status bar comes from WhyOS now, so the app no longer draws its own.",

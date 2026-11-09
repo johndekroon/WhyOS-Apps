@@ -1,0 +1,29 @@
+{
+  "name": "Picture viewer",
+  "description": "Shows JPEG and PNG pictures opened from Files",
+  "repository_url": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/imgview/source",
+  "categories": [
+    "tools"
+  ],
+  "version": "1.2.2",
+  "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+  },
+  "author": "badge port",
+  "license_type": "MIT AND IJG AND libpng-2.0 AND Zlib AND OFL-1.1 AND LGPL-2.1-or-later",
+  "license_file": "imgview.txt",
+  "application": [
+    {
+      "targets": [
+        "why2025-whyos"
+      ],
+      "type": "whyos",
+      "revision": 6,
+      "executable": "imgview",
+      "external_only": true,
+      "assets": []
+    }
+  ]
+}

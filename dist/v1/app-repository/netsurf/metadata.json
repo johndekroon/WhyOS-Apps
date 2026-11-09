@@ -1,0 +1,29 @@
+{
+  "name": "NetSurf",
+  "description": "Graphical web browser with HTTPS without JavaScript",
+  "repository_url": "https://www.netsurf-browser.org",
+  "categories": [
+    "communication"
+  ],
+  "version": "1.2.2",
+  "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+  },
+  "author": "NetSurf developers, badge port",
+  "license_type": "GPL-2.0-only AND MIT AND Unicode-DFS-2015 AND (Apache-2.0 OR GPL-2.0-or-later) AND curl AND libpng-2.0 AND IJG AND Zlib AND LGPL-2.1-or-later AND MPL-2.0",
+  "license_file": "netsurf.txt",
+  "application": [
+    {
+      "targets": [
+        "why2025-whyos"
+      ],
+      "type": "whyos",
+      "revision": 5,
+      "executable": "start",
+      "external_only": true,
+      "assets": []
+    }
+  ]
+}

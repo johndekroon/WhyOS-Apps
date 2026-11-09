@@ -1,0 +1,29 @@
+{
+  "name": "Links",
+  "description": "Text web browser with HTTPS for the terminal",
+  "repository_url": "http://links.twibright.com",
+  "categories": [
+    "communication"
+  ],
+  "version": "1.0.0",
+  "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+  },
+  "author": "Twibright Labs (Links), badge port",
+  "license_type": "GPL-2.0-or-later AND Apache-2.0 AND Zlib AND LGPL-2.1-or-later AND MPL-2.0 AND MIT",
+  "license_file": "links.txt",
+  "application": [
+    {
+      "targets": [
+        "why2025-whyos"
+      ],
+      "type": "whyos",
+      "revision": 1,
+      "executable": "start",
+      "external_only": true,
+      "assets": []
+    }
+  ]
+}

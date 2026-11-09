@@ -28,7 +28,7 @@
  ],
  "category": "tools",
  "cover": "screens/calc-cover.qoi",
- "description": "Type a sum on the keyboard and press Enter (or =). Earlier sums stay on\nscreen like a paper tape; Up and Down bring them back to change them.\nStarting with + * / or ^ goes on from the last answer.\n\nIt knows + - * / ^, brackets, n% (n/100), n! and mod; pi, e and ans\n(the last answer); sqrt, cbrt, abs, exp, ln, log, log2, sin, cos, tan,\nasin, acos, atan, sinh, cosh, tanh, round, floor and ceil. 2pi and\n3(4+5) multiply. Numbers can be written as 0xff, 0b1010 or 1.5e3, and a\nwhole-number answer also shows in hexadecimal and binary.\n\nAngles are in degrees; Tab switches to radians. Esc clears the line,\nand on an empty line closes the calculator, as the logo key does.",
+ "description": "Type a sum on the keyboard; its result shows as you type, and Enter (or =)\nworks it out and puts it on the roll above. Up and Down bring earlier sums\nback to change them. Starting with + * / ^ % or ! goes on from the last\nanswer, and an x after a number means times.\n\nIt knows + - * / ^, brackets, n% (n/100), n! and mod; pi, e and ans\n(the last answer); sqrt, cbrt, abs, exp, ln, log, log2, sin, cos, tan,\nasin, acos, atan, sinh, cosh, tanh, round, floor and ceil. 2pi and\n3(4+5) multiply. Numbers can be written as 0xff, 0b1010 or 1.5e3, and a\nwhole-number answer also shows in hexadecimal and binary.\n\nAngles are in degrees; Tab switches to radians, as the setting (the clover\nkey) does, and the choice is kept. The circle key shows the sums worked\nout, the diamond the keys. Esc clears the line, and on an empty line\ncloses the calculator, as the logo key does.",
  "format": 1,
  "homepage": "https://github.com/johndekroon/WhyOS-Apps",
  "icon": null,
@@ -50,7 +50,7 @@
    "display",
    "keyboard"
   ],
-  "memory_kb": 600,
+  "memory_kb": 700,
   "os_api": 1
  },
  "screenshots": [
@@ -67,6 +67,19 @@
  ],
  "type": "app",
  "versions": [
+  {
+   "build": 7,
+   "changelog": "Built on the WhyOS SDK: the drawn keypad is gone, the line and its result sit under the roll of earlier sums, the angle unit is kept, and the circle, clover and diamond work as in every app.",
+   "package": {
+    "installed_size": 406515,
+    "sha256": "f9d04dec80957e7f717617790bc28b2d69acc32978df5354cbeb6d4c292c3a10",
+    "size": 191095,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.3.0.wpk"
+   },
+   "published": "2026-11-09T22:06:17Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/calc-1.3.0-source.tar.gz",
+   "version": "1.3.0"
+  },
   {
    "build": 6,
    "changelog": "The status bar comes from WhyOS now, so the app no longer draws its own.",

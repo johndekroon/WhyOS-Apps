@@ -1,0 +1,29 @@
+{
+  "name": "Proxmark3",
+  "description": "Proxmark3 client - read write and sniff RFID and NFC cards from the badge",
+  "repository_url": "https://github.com/RfidResearchGroup/proxmark3",
+  "categories": [
+    "hardware"
+  ],
+  "version": "1.1.3",
+  "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+  },
+  "author": "RRG/Iceman Proxmark3 contributors, badge build",
+  "license_type": "GPL-3.0-or-later AND Apache-2.0 AND MIT AND BSD-3-Clause AND LGPL-2.1-or-later AND OFL-1.1",
+  "license_file": "proxmark3.txt",
+  "application": [
+    {
+      "targets": [
+        "why2025-whyos"
+      ],
+      "type": "whyos",
+      "revision": 5,
+      "executable": "pm3",
+      "external_only": true,
+      "assets": []
+    }
+  ]
+}

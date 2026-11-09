@@ -51,7 +51,7 @@
    "display",
    "keyboard"
   ],
-  "memory_kb": 300,
+  "memory_kb": 600,
   "os_api": 1
  },
  "screenshots": [
@@ -68,6 +68,19 @@
  ],
  "type": "app",
  "versions": [
+  {
+   "build": 5,
+   "changelog": "Built on the WhyOS SDK: the circle and clover open the log and settings screens as in every app, and the help lists the keys from the same table as the key bar.",
+   "package": {
+    "installed_size": 345223,
+    "sha256": "3b0bd17df7c2b42f2e97cb3643e01696054fae088ae2e1053538d8dc314c2ed1",
+    "size": 152625,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flashlight-1.1.0.wpk"
+   },
+   "published": "2026-11-09T22:06:18Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/flashlight-1.1.0-source.tar.gz",
+   "version": "1.1.0"
+  },
   {
    "build": 4,
    "changelog": "Uses the whole screen; hold the logo key to see WhyOS's status bar.",

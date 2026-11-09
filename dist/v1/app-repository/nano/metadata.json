@@ -1,0 +1,29 @@
+{
+  "name": "nano",
+  "description": "A small easy text editor",
+  "repository_url": "https://www.nano-editor.org",
+  "categories": [
+    "tools"
+  ],
+  "version": "9.2.2",
+  "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+  },
+  "author": "The GNU nano developers, badge port",
+  "license_type": "GPL-3.0-or-later AND X11-distribute-modifications-variant AND MIT AND LGPL-2.1-or-later",
+  "license_file": "nano.txt",
+  "application": [
+    {
+      "targets": [
+        "why2025-whyos"
+      ],
+      "type": "whyos",
+      "revision": 3,
+      "executable": "start",
+      "external_only": true,
+      "assets": []
+    }
+  ]
+}

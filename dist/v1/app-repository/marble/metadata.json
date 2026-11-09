@@ -1,0 +1,29 @@
+{
+  "name": "Marble Orbit",
+  "description": "Tilt the badge to roll a marble into the ring",
+  "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
+  "categories": [
+    "games"
+  ],
+  "version": "1.1.3",
+  "icon": {
+    "16x16": "icon16.png",
+    "32x32": "icon32.png",
+    "64x64": "icon64.png"
+  },
+  "author": "WhyOS-Apps contributors",
+  "license_type": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
+  "license_file": "marble.txt",
+  "application": [
+    {
+      "targets": [
+        "why2025-whyos"
+      ],
+      "type": "whyos",
+      "revision": 5,
+      "executable": "marble",
+      "external_only": true,
+      "assets": []
+    }
+  ]
+}
