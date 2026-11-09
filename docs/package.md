@@ -130,6 +130,16 @@ mapping, and `sleepd` stops reading the accelerometer, so the app has it
 to itself. When the app ends, automatic rotation resumes. An app that
 locks rotation SHOULD also list `accelerometer` in `requires.features`.
 
+**The status bar.** WhyOS draws its status bar (the WhyOS logo, the
+LoRa, Wi-Fi and sound icons, the clock) over every app: the top 48 px of
+the 720 × 720 panel (`WB_STATUS_BAR_H` in WhyOS `libwb/wb_tokens.h`)
+belong to the system. An app draws its normal background there and puts
+nothing the user needs to see in those rows. It draws no logo, clock or
+status icons of its own, so it has no reason to read the Wi-Fi, LoRa or
+sound state or to wake each minute for the clock. An app that needs the
+whole screen (a game, a picture filling the panel) sets
+`statusbar = "hidden"`.
+
 `NAME` comes from `name`. The client adds `ID`, `TYPE` and `SUBCATEGORY`
 lines to `app.conf`; the menu reads `ID` and `TYPE` and ignores keys it
 does not know ([client.md](client.md) §5).
