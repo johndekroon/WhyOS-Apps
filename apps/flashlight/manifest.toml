@@ -2,8 +2,8 @@
 format = 1
 id = "flashlight"
 name = "Flashlight"
-version = "1.0.2"
-build = 3
+version = "1.0.3"
+build = 4
 summary = "The whole screen as a light: white at full or half brightness, or red."
 description = """
 Three modes: white at 100%, white at 50% and red at 100%. The square,
@@ -20,7 +20,7 @@ license = "MIT AND OFL-1.1 AND LGPL-2.1-or-later"
 license_file = "flashlight.txt"
 homepage = "https://github.com/johndekroon/WhyOS-Apps"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/flashlight/source"
-changelog = "Waiting for the screen moved into the drawing library; the app works as before."
+changelog = "Uses the whole screen; hold the logo key to see WhyOS's status bar."
 
 type = "app"
 category = "utilities"
