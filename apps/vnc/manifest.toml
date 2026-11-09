@@ -1,0 +1,57 @@
+# The VNC server (WhyOS sdapps/vnc), written for the badge.
+format = 1
+id = "vnc"
+name = "VNC server"
+version = "1.0.0"
+build = 1
+summary = "See the badge's screen and type on it from a computer, over Wi-Fi or the USB cable."
+description = """
+A VNC server: a viewer on a computer (macOS's Screen Sharing, TigerVNC,
+RealVNC and others) shows the badge's screen and types on its keys. It
+runs in the background while it is on: turn it on in Settings >
+Connection > VNC server, and it starts again after a restart. Open the
+app to see where to connect (the badge's address on Wi-Fi, and
+10.217.0.1 over the USB cable) and the password it made.
+
+It needs full access to the badge, as anyone who has the password
+controls it. The session is not encrypted: use it on your own network or
+the cable. There is no pointer, only the keys."""
+author = "WhyOS-Apps contributors"
+license = "MIT AND Apache-2.0 AND LGPL-2.1-or-later"
+license_file = "vnc.txt"
+homepage = "https://github.com/johndekroon/WhyOS-Apps"
+source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/vnc/source"
+changelog = "First version."
+permissions = ["system"]
+
+type = "app"
+category = "internet"
+tags = ["vnc", "remote", "screen sharing"]
+install_location = "sd"
+
+[launch]
+exec = "info"
+info = "screen and keys over the network"
+icon = "wifi"
+terminal = true
+service = "vncd"
+menu = "tools"
+
+[requires]
+os_api = 1
+memory_kb = 1200          # estimate: the 0.13 MB program and its 1 MB frame while a viewer is connected
+features = ["wifi", "display", "keyboard"]
+
+[[bundled]]
+name = "uClibc-ng"
+version = "1.0.57"
+license = "LGPL-2.1-or-later"
+source = "https://downloads.uclibc-ng.org/releases/1.0.57/"
+license_file = "uClibc-ng.txt"
+
+[[bundled]]
+name = "Mbed TLS (DES only)"
+version = "3.6.6"
+license = "Apache-2.0"
+source = "https://github.com/Mbed-TLS/mbedtls/releases/tag/mbedtls-3.6.6"
+license_file = "mbedtls.txt"
