@@ -108,6 +108,8 @@ def test_editor_rich(env):
     assert s.near(5, 400, VOID)                        # the page
     # the scene behind the bars: the moon, pink, top left
     assert s.count(0, 0, 300, 90, lambda p: p[0] > p[2] + 30) > 500
+    # the top 48 px are the system's status bar: no logo, no clock of Write's own
+    assert s.count(0, 0, 720, 48, is_c(TEXT_HI)) == 0
     assert s.count(24, 60, 120, 82, is_c(TEXT_HI)) > 50   # the name in the document bar
     # the caret: cyan, at the text's left edge on the first line
     assert s.count(44, 106, 52, 150, is_c(CYAN, 40)) > 10

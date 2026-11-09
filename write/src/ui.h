@@ -16,16 +16,12 @@
 #define BAND_H	40
 
 struct ui_status {
-	char hhmm[6];
-	int clock_ok, bars, lora;
 	int blink;		/* the caret shows */
 };
 
 extern struct ui_status ui_st;
 
 void ui_init(void);
-int ui_wifi_bars(void);	/* wbstatus.h, asked at most every 5 s */
-int ui_lora_on(void);
 /* draw rows y0..y1 (all when force), calling out for every band that changed */
 int ui_present(struct app *a, int force, void (*out)(const uint16_t *band, int y0, int y1));
 

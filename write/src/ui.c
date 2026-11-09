@@ -1,9 +1,10 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * Write: the screens, drawn with libwb from WhyOS (wb.h, wbstatus.h, and
- * wbdoc.h for the document: Latin-1, 4-bit alpha, italic slanted).
+ * Write: the screens, drawn with libwb from WhyOS (wb.h, and wbdoc.h for
+ * the document: Latin-1, 4-bit alpha, italic slanted).
  *
- *   editor      the frontpanel's scene behind the status bar, the document
+ *   editor      the frontpanel's scene at the top (the system's status bar
+ *               lies over its first WB_STATUS_BAR_H rows), the document
  *               bar (name, edited dot, what is going on, the caret's style
  *               on glass chips) and the hint bar (glass); the text on an
  *               opaque page between them, its word count
@@ -41,10 +42,9 @@
 #define W	WB_SCREEN_W
 #define H	WB_SCREEN_H
 #include "wb.h"
-#include "wbstatus.h"
 #include "wbdoc.h"
 
-struct ui_status ui_st = { "14:32", 1, -1, 0, 1 };
+struct ui_status ui_st = { 1 };
 
 extern int (*app_adv16)(void *ctx, int font, unsigned cp);
 
@@ -106,16 +106,6 @@ static int ui_adv16(void *ctx, int font, unsigned cp)
 }
 
 /* ---- bars ------------------------------------------------------------------------- */
-
-static void status_bar(void)
-{
-	const struct wb_font *n = &f_ui18b;
-	int cy = WB_STATUS_BAR_H / 2;
-
-	text(n, text(n, WB_CHROME_PAD, text_top(n, cy), "Why", WB_COLOR_TEXT_HI, -3), text_top(n, cy), "OS",
-	     WB_COLOR_CYAN, -3);
-	status_right(ui_st.hhmm, ui_st.clock_ok, ui_st.bars, ui_st.lora);
-}
 
 static int keycap_any(int x, int cy, const char *keys, uint32_t c)
 {
@@ -1044,7 +1034,6 @@ static void log_draw(struct app *a)
 	char buf[140];
 
 	/* as libwb's empty_screen, in Write's fonts, on a card */
-	status_bar();
 	wb_header("WRITE \xe2\x80\xba", "Log", 0);
 	wb_card(x, y, w, 32 + shown * 26, WB_RADIUS_MD, 0, 0);
 	y += 16;
@@ -1194,7 +1183,6 @@ static void open_draw(struct app *a)
 	char buf[160], eb[600];
 	time_t now = time(0);
 
-	status_bar();
 	wb_header(open_crumb(a, eb, sizeof(eb)), a->op_folders ? "Choose a folder" : a->op_drives ? "Drives" : "Open",
 		  !a->op_folders && !a->op_drives ? "text and code" : 0);
 	if (a->op_filter[0]) {	/* the design's search field */
@@ -1272,7 +1260,6 @@ static void draw(struct app *a)
 		return;
 	}
 	if (!a->full) {
-		status_bar();
 		docbar(a);
 		page();
 	}
@@ -1399,9 +1386,6 @@ static void signatures(struct app *a)
 			sig_now[b] = mix(sig_now[b], (unsigned)rand());	/* pop-ups: every frame anew */
 		return;
 	}
-	h = hash_str(2166136261u, ui_st.hhmm, 5);
-	h = mix(h, (unsigned)ui_st.bars ^ (unsigned)ui_st.lora << 4);
-	sig_add(0, WB_STATUS_BAR_H, h);
 	app_docbar(a, &d);
 	h = hash_str(2166136261u, d.info, (int)strlen(d.info));
 	h = mix(h, (unsigned)d.edited | (unsigned)d.style << 1 | (unsigned)d.md_view << 4 | (unsigned)d.info_kind << 6);
@@ -1493,12 +1477,3 @@ void ui_init(void)
 	wb_init();
 }
 
-int ui_wifi_bars(void)
-{
-	return wifi_bars();
-}
-
-int ui_lora_on(void)
-{
-	return lora_on();
-}

@@ -296,16 +296,6 @@ static void on_term(int sig)
 	term = 1;
 }
 
-static void status_read(void)
-{
-	time_t t = time(0);
-	struct tm tm;
-
-	localtime_r(&t, &tm);
-	snprintf(ui_st.hhmm, sizeof(ui_st.hhmm), "%02d:%02d", tm.tm_hour, tm.tm_min);
-	ui_st.clock_ok = tm.tm_year >= 125;
-}
-
 /* the keypad's state: a release the queue lost does not leave a key repeating */
 static int still_down(int code)
 {
@@ -437,7 +427,7 @@ static void run_program(void)
 
 int main(int argc, char **argv)
 {
-	long last_status = 0, last_blink = 0, last_key = 0;
+	long last_blink = 0, last_key = 0;
 	struct sigaction sa;
 
 	memset(&sa, 0, sizeof(sa));
@@ -455,8 +445,6 @@ int main(int argc, char **argv)
 		fifo_fd = open(FIFO, O_RDWR | O_NONBLOCK | O_CLOEXEC);
 	timing = getenv("WRITE_UI_TIMING") != 0;
 	ui_init();
-	status_read();
-	ui_st.bars = -1;
 	app_init(&A, argc > 1 ? argv[1] : 0);
 	A.now = now_ms();
 	present(1);
@@ -503,12 +491,6 @@ int main(int argc, char **argv)
 		if (A.run) {
 			run_program();
 			A.run = 0;
-		}
-		if (t - last_status >= 5000 && t - last_key >= 3000) {
-			last_status = t;
-			status_read();
-			ui_st.bars = ui_wifi_bars();
-			ui_st.lora = ui_lora_on();
 		}
 		/* the caret blinks, but not while typing, and it stops after a minute */
 		if (t - last_blink >= 530 && t - last_key < 60000) {

@@ -17,7 +17,7 @@ the image.
 | `src/files.c` | loading (256 KB at most), saving through a temporary file and rename, names, the Open list, dates |
 | `src/layout.c` | lines into rows: wrapping, heights (cached per line), caret x/y, up and down |
 | `src/app.c` | the app as a state machine: keys in; document, overlays, requests out |
-| `src/ui.c` | the screens, drawn with libwb from WhyOS (`libwb/wb.h`, `wbstatus.h`, `wbdoc.h` for the document) in the menu's style |
+| `src/ui.c` | the screens, drawn with libwb from WhyOS (`libwb/wb.h`, `wbdoc.h` for the document) in the menu's style |
 | `src/repeat.c` | a key held down repeats, by Write's own timer: which keys, when |
 | `src/main.c` | the badge program (keypad, panel, SIGTERM, running scripts) and the host program for the screen tests |
 | `tests/unit/` | the modules' tests (`t.h` is the harness) |
@@ -72,7 +72,9 @@ took to stderr (`/tmp/app-write.log`). The clipboard is
   pace) are ignored, so a repeat comes only after the last one is drawn.
 - Help is Write's own screen, not libwb's `help_popup`: twelve keys, some with three caps, do not fit in the
   shared pop-up.
-- The look: the frontpanel's scene behind the status bar, the document
+- The look: the frontpanel's scene at the top, where WhyOS draws its
+  status bar over the app (Write leaves those 48 px to the system and
+  draws no clock or status icons of its own), the document
   bar (its chips glass) and the hint bar (glass); the text on an opaque
   page between them. Glass under 24 px text would
   show the scene's lines through the letters, and the page's bands are the
