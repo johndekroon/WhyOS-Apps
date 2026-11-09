@@ -28,6 +28,7 @@ tags = ["flappy", "arcade", "bird", "casual"]
 install_location = "sd"
 
 [launch]
+statusbar = "hidden"        # draws in the status bar's rows: the whole screen
 exec = "flappy"
 info = "fly between the pipes"
 icon = "games"

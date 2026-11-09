@@ -34,6 +34,7 @@ tags = ["marble", "tilt", "maze", "accelerometer"]
 install_location = "sd"
 
 [launch]
+statusbar = "hidden"        # draws in the status bar's rows: the whole screen
 exec = "marble"
 info = "tilt to roll into the ring"
 icon = "games"
