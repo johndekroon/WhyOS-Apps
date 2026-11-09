@@ -1,7 +1,7 @@
 # Corresponding source: Sensor panel
 
 The sensor panel is a program of why2025-linux, rebuilt on the WhyOS SDK.
-The files are copied from WhyOS at commit `21cd98c`:
+The files are copied from WhyOS at commit `1ed3f59`:
 
 | File | What |
 |---|---|

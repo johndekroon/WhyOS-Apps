@@ -3,8 +3,10 @@
  * sensorpanel — the badge's sensors, live (sdapps/README.md), on the
  * WhyOS SDK (sdk/README.md): a canvas over the frontpanel's figures with
  * the temperature, humidity and pressure (BME680), the acceleration
- * (BMI270) and a graph of the last 20 temperatures, read three times a
- * second. A sensor that is missing shows a dash and its name.
+ * (BMI270) and a graph of the last 20 temperatures, read as often as the
+ * sensors answer: up to three times a second, about once on the badge,
+ * where the BME680 takes 0.6 s for its three values. A sensor that is
+ * missing shows a dash and its name.
  */
 #include "whyos.h"
 
@@ -174,7 +176,7 @@ int main(void)
 {
 	static const wos_app app = {
 		.name = "Sensor panel", .tick = sample, .tick_ms = 333,
-		.about = "The badge's sensors, three times a second: temperature, humidity and pressure "
+		.about = "The badge's sensors, about once a second: temperature, humidity and pressure "
 			 "from the BME680, the acceleration from the BMI270.",
 	};
 	static wos_screen panel = { .kind = WOS_CANVAS, .paint = paint, .scene = 1 };

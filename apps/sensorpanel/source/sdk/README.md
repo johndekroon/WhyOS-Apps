@@ -47,8 +47,8 @@ starting points.
 | `include/whyos/check.h` | Unit tests for an app's own logic |
 | `python/` | The SDK in MicroPython: the module `whyos`, its guide (`python/README.md`), examples and tests |
 | `testing/whyos_testing.py` | The test framework (pytest) |
-| `templates/` | Starting points: a list app, an entry app, a canvas app |
-| `tools/whyos-sdk` | New app from a template, test, screenshots |
+| `templates/` | Starting points: a list app, an entry app, a canvas app in C, and a list app in Python |
+| `tools/whyos-sdk` | New app from a template, test, screenshots, build for the badge |
 | `tools/micropython-sbsim.sh` | MicroPython for this computer, to test Python apps |
 | `test/` | The SDK's own tests |
 
@@ -66,7 +66,8 @@ title, a value on the right), the content, the key bar.
 | `WOS_LIST` | Rows: focus, scrolling, the run-on at the end, a scroll bar | `n`, `row(i, &r)`, `choose(i)` on Enter, `adjust(i, step)` on ← →, `menu` for ■ | The settings screen |
 | `WOS_ENTRY` | A line typed, worked out on Enter, the earlier lines above it | `evaluate(line, result)`, `preview(line, result)` while typing, `typed(line, cursor, ch)` | `sdapps/calc` |
 | `WOS_COLOUR` | The whole screen one colour, at a brightness | `colour`, `brightness`, `keys_ms` | `sdapps/flashlight` |
-| `WOS_CANVAS` | An area the app draws itself, with libwb | `paint(x, y, w, h)`, `key(code, ch)`, `scene` | A graph, a game |
+| `WOS_EDITOR` | Text over several lines, edited in place: wrapped at word ends, scrolled, tabs shown as arrows; a change marks it dirty | `text` (the app's buffer), `max` (its size), `placeholder` | A note, a snippet |
+| `WOS_CANVAS` | An area the app draws itself, with libwb | `paint(x, y, w, h)`, `key(code, ch)`, `release(code)`, `scene` | A graph, a game |
 
 `wos_push(&screen)` opens a screen on top; Esc goes back, and on the first screen Esc closes the
 app. `update(screen)` runs before every frame: it puts the app's data into the screen's fields
@@ -112,6 +113,22 @@ action) and `WOS_KEY_SECOND` (✕, the second), as the design system says when t
 Esc peels off one layer: a pop-up closes; an entry's typed text is cleared; a screen goes back;
 the first screen closes the app. Fn+Esc is standby, never the app's.
 
+## Questions, text and messages
+
+| Call | What |
+|---|---|
+| `wos_ask(title, body, "Keep|Delete", safe, danger, done)` | A question as the design's dialog: the choices as rows, the focus on the safe one, the destructive one in red; `done(i)` with the choice, or -1 on Esc |
+| `wos_ask_text(title, explain, text, done)` | Text typed in a pop-up: the field with the text and its cursor, the explanation under it; on Enter `done(text)` returns 0 to close, or what is wrong, which shows in red and keeps it open; Esc cancels |
+| `wos_message("Saved")` | A short line over the key bar for two seconds |
+
+A screen with `.busy` set ("Typing") has an action running: a pop-up with its name and, while
+`.progress` is 0 to 1000, a bar; no key acts but Esc, which calls `.abort()` (the design's Esc,
+step 1). The app clears `.busy` when the action ends. A canvas with `.release` also gets the keys
+let go, for what is held down (a mouse button, a fast move).
+
+A screen with `.dirty` set has unsaved work: Esc there asks "Discard changes?" with "Keep editing"
+focused, and goes back only on "Discard" (the design's rule: Esc never discards without asking).
+
 ## Settings
 
 ```c
@@ -120,13 +137,17 @@ static const wos_setting settings[] = {
 	  .changed = angle },
 	{ "sound", "Sound", 0, WOS_SWITCH, "1" },
 	{ "speed", "Speed", 0, WOS_SLIDER, "5", .min = 1, .max = 10 },
+	{ "nick", "Nickname", "Shown to others", WOS_TEXT, "anon" },
 	{ 0 }
 };
 ```
 
 The clover's screen shows them as rows: a switch flips on Enter, a choice opens a pop-up list
-with the present one ticked, a slider moves with ← →. A change is written at once to
+with the present one ticked, a slider moves with ← →, a text opens the text pop-up. A change is written at once to
 `APP_CONFIG/settings` (`key=value` lines, written whole and synced) and `changed()` is called.
+A `WOS_LIST` screen with `.fields` is a form: the same kinds of rows from its own table, kept
+the same way (a new item's name, size and colour, before the app makes it).
+
 The app reads a setting with `wos_get(key, 0)` (the schema's default when none is set) or
 `wos_get_int(key, def)`, and writes one with `wos_set` or `wos_set_int`; a key that is not in
 the schema is kept the same way but not shown (the flashlight keeps its mode so).
@@ -214,13 +235,15 @@ riscv32-buildroot-linux-uclibc-gcc -Os -fPIC -static -ffunction-sections -fdata-
     -I sdk/include -I libwb app.c -Wl,--gc-sections -Wl,--no-relax '-Wl,-elf2flt=-r -s 16384' -o app
 ```
 
-`sdapps/build.sh` does this for the apps in this repository (`sdk_app` in it).
+`sdk/tools/whyos-sdk build <dir>` does this with the toolchain of a badge build (`BR_OUT`), and
+`sdapps/build.sh` for the apps in this repository (`sdk_app` in it).
 
 ## Limits
 
 - No stdio in the SDK, no floating point in it, no `mmap`: programs are FLAT, NOMMU and
   soft-float (`../sdapps/README.md`, "Building").
 - One entry screen per app: its line and earlier lines are the SDK's.
+- One question or text pop-up at a time; a text is one line of up to 120 bytes.
 - A list shows up to 64 rows; a pop-up list up to 24 items, without a filter.
 - 32 settings of up to 71 characters; 40 log lines of up to 95.
 - Pop-ups are drawn in bands, so their glass is not blurred (`../libwb/README.md`).

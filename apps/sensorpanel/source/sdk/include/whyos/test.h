@@ -138,7 +138,7 @@ static void wos_jend(const char *close)
 	wos_j(",");
 }
 
-static const char *const wos_kind_names[] = { "", "colour", "entry", "list", "canvas", "log" };
+static const char *const wos_kind_names[] = { "", "colour", "entry", "list", "canvas", "log", "editor" };
 
 static void wos_test_screen(void)
 {
@@ -189,6 +189,17 @@ static void wos_test_screen(void)
 			wos_j("],");
 		}
 		wos_jend("]");
+	}
+	if (s->kind == WOS_EDITOR) {
+		wos_jkv("text", s->text);
+		wos_jki("cursor", wos.ed_cur);
+		wos_jki("dirty", s->dirty);
+		{
+			int starts[WOS_ED_LINES];
+
+			wos_jki("lines", wos_ed_layout(s->text ? s->text : "", starts));
+			wos_jki("top", wos.ed_top);
+		}
 	}
 	if (s->kind == WOS_LIST) {
 		wos_jki("focus", s->focus);
@@ -256,9 +267,21 @@ static void wos_test_screen(void)
 		}
 		wos_jend("]");
 		wos_jend("}");
+	} else if (wos.pop == WOS_POP_TEXT) {
+		wos_j("{");
+		wos_jkv("kind", "text");
+		wos_jkv("title", wos.ask_title);
+		wos_jkv("text", wos.text);
+		wos_jki("cursor", wos.text_cur);
+		wos_jkv("error", wos.text_err);
+		wos_jend("}");
 	} else if (wos.pop) {
 		wos_j("{");
-		wos_jkv("kind", wos.pop == WOS_POP_CHOICE ? "choice" : "menu");
+		wos_jkv("kind", wos.pop == WOS_POP_CHOICE ? "choice" : wos.pop == WOS_POP_ASK ? "ask" : "menu");
+		if (wos.pop == WOS_POP_ASK) {
+			wos_jkv("title", wos.ask_title);
+			wos_jkv("body", wos.ask_body);
+		}
 		wos_jki("focus", wos.pop_focus);
 		wos_jki("current", wos.pop == WOS_POP_CHOICE ? wos.pop_cur : -1);
 		wos_js("items");
@@ -271,6 +294,11 @@ static void wos_test_screen(void)
 		wos_jend("}");
 	} else {
 		wos_j("null,");
+	}
+	wos_jkv("message", wos.msg[0] ? wos.msg : 0);
+	if (s->busy) {
+		wos_jkv("busy", s->busy);
+		wos_jki("progress", s->progress);
 	}
 	wos_js("settings");
 	wos_j(":{");

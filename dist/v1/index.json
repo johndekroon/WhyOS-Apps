@@ -759,18 +759,18 @@
    "author": "why2025-linux contributors",
    "category": "hardware",
    "commands": [],
-   "details_sha256": "e44bc3e123641c8bab1f88c76687b6e2edbc7e0ec404a27def8fa42bf59b8512",
+   "details_sha256": "60156fb02c108ae41a3254d90d8a420a5ef6bcb35020db9c486ec96ae2edbd27",
    "id": "sensorpanel",
    "install_location": "sd",
    "latest": {
-    "build": 5,
+    "build": 6,
     "package": {
-     "installed_size": 366544,
-     "sha256": "a83a1ebbd41aeb99b41ddc0ca87b22ad854b800b8dde42156797b1c53871bf31",
-     "size": 159485,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/sensorpanel-1.2.0.wpk"
+     "installed_size": 373544,
+     "sha256": "17fceedc560505f29ffd3a0cbbc65d1964126e758644f1d80873000240aff986",
+     "size": 163754,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/sensorpanel-1.2.1.wpk"
     },
-    "version": "1.2.0"
+    "version": "1.2.1"
    },
    "menu_icon": "sensors",
    "name": "Sensor panel",
@@ -914,7 +914,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-11-09T22:50:58Z",
- "serial": 52,
+ "generated": "2026-11-09T23:18:16Z",
+ "serial": 53,
  "source": "whyos"
 }
