@@ -68,9 +68,39 @@
         "ask_default": { "type": "string", "maxLength": 64 },
         "rotation": { "enum": ["auto", "locked"], "default": "auto" },
         "children": {"enum": ["any", "none"], "default": "any"},
-        "service": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,47}$" },
         "menu": { "enum": ["apps", "games", "tools", "none"] },
         "stack_kb": { "type": "integer", "minimum": 4, "maximum": 4096 }
+      }
+    },
+
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exec"],
+      "properties": {
+        "exec": { "$ref": "#/$defs/relpath" },
+        "section": { "enum": ["connection", "sound"], "default": "connection" },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "show": {
+          "type": "array", "maxItems": 4,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["label", "file"],
+            "properties": {
+              "label": { "type": "string", "maxLength": 40, "pattern": "^[^|\"]+$" },
+              "file": { "type": "string", "maxLength": 40, "pattern": "^[A-Za-z0-9._-]+$" }
+            }
+          }
+        },
+        "actions": {
+          "type": "array", "maxItems": 4,
+          "items": {
+            "type": "object", "additionalProperties": false, "required": ["label", "run"],
+            "properties": {
+              "label": { "type": "string", "maxLength": 40, "pattern": "^[^|\"]+$" },
+              "run": { "type": "string", "maxLength": 100, "pattern": "^[^\"\\n]+$" }
+            }
+          }
+        }
       }
     },
 
@@ -130,7 +160,7 @@
 
     "permissions": {
       "type": "array", "uniqueItems": true,
-      "items": { "enum": ["network", "network-admin", "lora", "bluetooth", "usb", "hid", "gpio", "files-all", "system"] }
+      "items": { "enum": ["network", "network-admin", "lora", "bluetooth", "usb", "hid", "gpio", "files-all", "system", "daemon"] }
     },
 
     "hooks": {
@@ -168,7 +198,8 @@
   "then": { "required": ["format", "id", "name", "withdrawn"] },
   "else": {
     "required": ["format", "id", "name", "version", "build", "summary", "description",
-                 "author", "license", "type", "category", "launch", "requires"]
+                 "author", "license", "type", "category", "requires"],
+    "anyOf": [{ "required": ["launch"] }, { "required": ["service"] }]
   },
   "$defs": {
     "slug": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,31}$" },

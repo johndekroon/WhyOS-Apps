@@ -61,6 +61,9 @@ void paths_init(void)
 	snprintf(P.sd, sizeof(P.sd), "%s", env_or("STORE_SD", sd));
 	snprintf(P.flash_apps, sizeof(P.flash_apps), "%s", env_or("STORE_FLASH_APPS", "/data/apps"));
 	snprintf(P.tmp, sizeof(P.tmp), "%s", env_or("STORE_TMP", "/tmp"));
+	snprintf(P.services, sizeof(P.services), "%s", env_or("STORE_SERVICES", "/etc/badge/services"));
+	snprintf(P.appsvc, sizeof(P.appsvc), "%s", env_or("STORE_APPSVC", "/usr/bin/appsvc"));
+	snprintf(P.svc_data, sizeof(P.svc_data), "%s", env_or("STORE_SVC_DATA", "/data/appdata"));
 	snprintf(P.sys_sources, sizeof(P.sys_sources), "%s",
 		 env_or("STORE_SYS_SOURCES", "/etc/whyos/sources.d"));
 	/* a card counts when its mount point can be written: without a card

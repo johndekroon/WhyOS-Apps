@@ -94,6 +94,9 @@ struct paths {
 	char sd[200];		/* the card's mount point */
 	int sd_present;		/* mounted and writable */
 	char flash_apps[200];	/* /data/apps */
+	char services[200];	/* /etc/badge/services: where a service is linked (WhyOS appsvc) */
+	char appsvc[200];	/* /usr/bin/appsvc */
+	char svc_data[200];	/* /data/appdata: a service's own files */
 	char tmp[200];		/* /tmp */
 	char sys_sources[200];	/* /etc/whyos/sources.d */
 	int api;

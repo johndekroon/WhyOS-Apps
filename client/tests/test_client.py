@@ -48,7 +48,6 @@ files = "%D/roms"
 types = ["txt"]
 terminal = "shell"
 children = "none"
-service = "hello-svc"
 
 [[commands]]
 name = "hello-cmd"
@@ -95,6 +94,40 @@ exec = "tiny"
 [requires]
 os_api = 1
 memory_kb = 1
+'''
+
+SVC = '''format = 1
+id = "svc"
+name = "Svc server"
+version = "{version}"
+build = {build}
+summary = "A service"
+description = "Test."
+author = "tests"
+license = "MIT"
+source = "https://example.org/svc"
+type = "app"
+category = "utilities"
+install_location = "flash"
+permissions = ["daemon"]
+
+[service]
+exec = "svcd"
+port = 5900
+section = "connection"
+show = [{{ label = "Password", file = "password" }}]
+actions = [{{ label = "New password", run = "svcd -n" }}]
+
+[requires]
+os_api = 1
+memory_kb = 1
+'''
+
+# appsvc as the store sees it: what it was asked, in a log; "status" from a file
+FAKE_APPSVC = '''#!/bin/sh
+echo "$@" >> "$(dirname "$0")/appsvc.log"
+[ "$1" = status ] && cat "$(dirname "$0")/appsvc.status" 2>/dev/null
+exit 0
 '''
 
 
@@ -150,8 +183,14 @@ class Env:
         self.flash = os.path.join(self.root, "data", "apps")
         self.tmpdir = os.path.join(self.root, "tmp")
         self.etc = os.path.join(self.root, "etc")
+        self.services = os.path.join(self.etc, "services")
+        self.svc_data = os.path.join(self.root, "data", "appdata")
+        self.appsvc = os.path.join(self.root, "appsvc")
         for d in (self.home, self.sd, self.flash, self.tmpdir, os.path.join(self.etc, "sources.d")):
             os.makedirs(d, exist_ok=True)
+        with open(self.appsvc, "w") as f:
+            f.write(FAKE_APPSVC)
+        os.chmod(self.appsvc, 0o755)
         with open(os.path.join(self.etc, "whyos-release"), "w") as f:
             f.write('NAME=WhyOS\nVERSION=test\nAPI=1\nFEATURES="wifi sd-card display keyboard"\nSD=/nonexistent\n')
         os.makedirs(self.repo)
@@ -206,6 +245,7 @@ class Env:
         env = dict(os.environ, HOME=self.home, STORE_SD=sd or self.sd, STORE_FLASH_APPS=self.flash,
                    STORE_TMP=self.tmpdir, STORE_SYS_SOURCES=os.path.join(self.etc, "sources.d"),
                    STORE_RELEASE=os.path.join(self.etc, "whyos-release"),
+                   STORE_SERVICES=self.services, STORE_APPSVC=self.appsvc, STORE_SVC_DATA=self.svc_data,
                    ASAN_OPTIONS="detect_leaks=0")
         env.update(extra_env or {})
         r = subprocess.run([STORE, *args], env=env, capture_output=True, text=True, timeout=120)
@@ -266,8 +306,7 @@ def test_install_writes_everything(env):
     conf = open(os.path.join(a, "app.conf")).read()
     for line in ('NAME="Hello"', 'EXEC="hello"', 'ARGS="--data %D --conf %C"', 'FILES="%D/roms"',
                  'TYPES="txt"', 'TERMINAL="shell"', 'ID="hello"', 'TYPE="app"', 'SUBCATEGORY="utilities"',
-                 'CATEGORY="apps"', 'ROTATION="auto"', 'PERMISSIONS="network usb"', 'CHILDREN="none"',
-                 'SERVICE="hello-svc"'):
+                 'CATEGORY="apps"', 'ROTATION="auto"', 'PERMISSIONS="network usb"', 'CHILDREN="none"'):
         assert line in conf, line
     assert json.load(open(os.path.join(a, ".package", "manifest.json")))["id"] == "hello"
     assert open(os.path.join(a, ".package", "source")).read().startswith("ID=whyos\nURL=https://")
@@ -285,6 +324,43 @@ def test_install_writes_everything(env):
     assert out.strip() == "hello 1.0.0 --from-shell %s/share x" % a
     assert not os.listdir(os.path.join(env.sd, "badge", ".store", "download"))
     assert "is installed and up to date" in env.store("install", "hello").stdout
+
+
+def test_service(env):
+    """A [service]: in flash, linked into /etc/services, its page in app.conf; an update
+    restarts it if it ran; a removal stops it, unlinks it and deletes its data."""
+    svcd = "#!/bin/sh\necho svcd\n"
+    write_app(env.repo, "svc", SVC.format(version="1.0.0", build=1), {"svcd": svcd, "LICENSES/svc.txt": "MIT\n"})
+    env.publish()
+    env.store("update")
+    assert env.store("install", "svc", check=False).returncode != 0      # asks first: root
+    env.store("install", "--yes", "svc")
+    a = os.path.join(env.flash, "svc")
+    conf = open(os.path.join(a, "app.conf")).read()
+    for line in ('SERVICE="svcd"', 'SERVICE_SECTION="connection"', 'SERVICE_PORT="5900"',
+                 'SERVICE_SHOW="Password|password"', 'SERVICE_ACTION="New password|svcd -n"',
+                 'PERMISSIONS="daemon"'):
+        assert line in conf, line
+    assert "EXEC=" not in conf
+    assert os.path.realpath(os.path.join(env.services, "svc")) == os.path.realpath(a)
+    assert os.access(os.path.join(a, "svcd"), os.X_OK)
+    log = os.path.join(env.root, "appsvc.log")
+    # an update of a running service: stopped, then started again
+    open(os.path.join(env.root, "appsvc.status"), "w").write("running\n")
+    open(log, "w").close()
+    write_app(env.repo, "svc", SVC.format(version="1.0.1", build=2), {"svcd": svcd, "LICENSES/svc.txt": "MIT\n"})
+    env.publish()
+    env.store("update")
+    env.store("install", "--yes", "svc")
+    calls = open(log).read().split("\n")
+    assert calls[:3] == ["status svc", "stop svc", "start svc"], calls
+    assert 'SERVICE="svcd"' in open(os.path.join(env.services, "svc", "app.conf")).read()
+    os.makedirs(os.path.join(env.svc_data, "svc"))
+    open(os.path.join(env.svc_data, "svc", "password"), "w").write("x\n")
+    env.store("remove", "--yes", "svc")
+    assert open(log).read().split("\n")[3] == "stop svc"
+    assert not os.path.lexists(os.path.join(env.services, "svc"))
+    assert not os.path.exists(os.path.join(env.svc_data, "svc")) and not os.path.exists(a)
 
 
 def test_verify_and_repair(env):

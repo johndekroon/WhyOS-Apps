@@ -2135,7 +2135,10 @@ static void text_of(enum act a)
 			if (!i)
 				p += snprintf(p, (size_t)(end - p), "\nPermissions:\n");
 			if (!json_str(&AP.j, json_item(&AP.j, perm, i), b, sizeof(b)))
-				p += snprintf(p, (size_t)(end - p), "- %s\n", b);
+				p += snprintf(p, (size_t)(end - p), "- %s%s\n", b,
+					      !strcmp(b, "daemon") ? ": a service in the background, as root, outside "
+					      "the sandbox; it can do anything on the badge" :
+					      !strcmp(b, "system") ? ": everything, as root" : "");
 		}
 		p += snprintf(p, (size_t)(end - p), "\nStorage:\n");
 		if (AP.a) {
@@ -2147,7 +2150,11 @@ static void text_of(enum act a)
 				      AP.a->install_location && !strcmp(AP.a->install_location, "flash") ?
 				      "in the badge's flash" : "on the SD card in badge/apps/" );
 		}
-		p += snprintf(p, (size_t)(end - p), "Its data: badge/appdata/%s on the card.\n", AP.id);
+		if (json_path(&AP.j, 0, "service.exec") >= 0)
+			p += snprintf(p, (size_t)(end - p), "A service: on and off in Settings, its data in "
+				      "/data/appdata/%s.\n", AP.id);
+		else
+			p += snprintf(p, (size_t)(end - p), "Its data: badge/appdata/%s on the card.\n", AP.id);
 		for (int i = 0; i < json_len(&AP.j, st) && json_is_arr(&AP.j, st) && p < end; i++)
 			if (!json_str(&AP.j, json_item(&AP.j, st, i), b, sizeof(b)))
 				p += snprintf(p, (size_t)(end - p), "Put your files in badge/appdata/%s/%s.\n", AP.id, b);

@@ -115,7 +115,6 @@ the store. Keys map one to one:
 | `ask`, `ask_default` | `ASK`, `ASK_DEFAULT` | |
 | `rotation` | `ROTATION` | `"auto"` (default) or `"locked"`; see below |
 | `children` | `CHILDREN` | `"any"` (default) or `"none"`: the app starts no other programs (no `vfork`; an `exec` that replaces it still works), and WhyOS gives it the whole memory pool instead of keeping room for one (WhyOS `docs/APPS.md`). For an app that needs every byte, such as a web browser |
-| `service` | `SERVICE` | A program in the app that runs in the background while the user has it on (WhyOS `docs/APPS.md`, Services): the badge lists it in Settings > Connection. Only for an app with the `system` permission, as a service runs as root outside the sandbox; WhyOS ignores it otherwise |
 | `menu` | `CATEGORY` | `apps`, `games`, `tools`, `none`; defaults from the category's `menu` in categories.json |
 | `stack_kb` | — | Informational: the stack set in the BFLT header |
 
@@ -241,6 +240,37 @@ app page and in lists, the commands it adds, and screenshots of the
 terminal window (CI can render them from a recorded session, as the
 `appterm` tests do).
 
+### 2.3.1 Service
+
+A package may bring a service instead of an app, or beside one: a program
+that runs in the background while the user has it on, and starts again
+with the badge (WhyOS `docs/APPS.md`, Services). It runs as root outside
+the sandbox, so the package needs the `daemon` permission, and it
+installs in flash (`install_location = "flash"`): a service runs without
+the SD card. The store links it into `/etc/badge/services/<id>`, stops it
+for an update and starts it again if it ran, and stops it when it is
+removed (its data, `/data/appdata/<id>`, goes too). Without a service
+installed, the badge shows nothing of it.
+
+```toml
+[service]
+exec = "vncd"                         # the program, relative to the package
+section = "connection"                # its row in Settings > Connection, or "sound"
+port = 5900                           # its page shows the badge's addresses with it
+show = [{ label = "Password", file = "password" }]       # a line from a file in its data
+actions = [{ label = "New password", run = "vncd -n" }]  # a row that runs a command
+```
+
+| Field | app.conf | Notes |
+|---|---|---|
+| `exec` (required) | `SERVICE` | Relative to the app directory |
+| `section` | `SERVICE_SECTION` | `connection` (default) or `sound` |
+| `port` | `SERVICE_PORT` | 1-65535 |
+| `show` | `SERVICE_SHOW="Label\|file"` | Up to 4; `file` is a name in the service's data, its first line is shown |
+| `actions` | `SERVICE_ACTION="Label\|run"` | Up to 4; `run` is a shell command, run as the service (its directory first in `PATH`, `APP_DATA` set) |
+
+A package with a `[service]` may leave out `[launch]`: it then has no tile.
+
 ### 2.4 Requirements
 
 | Field | Req. | Meaning |
@@ -303,6 +333,7 @@ enabled = true
 | `gpio` | Use the pins of the expansion headers |
 | `files-all` | Read and change the user's files: the card outside `badge/`, and the screenshots |
 | `system` | Full access to the badge, as root |
+| `daemon` | Run a service (§2.3.1): a program in the background, as root, outside the sandbox. Only with a `[service]`, and only then |
 
 `network-admin` includes `network`, so an app lists one of the two. The sandbox enforces these: an app
 gets what it lists and nothing more. The store shows them on the info page.

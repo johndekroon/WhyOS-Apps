@@ -59,6 +59,7 @@ def check_app(app_id, schema, categories):
     files = {r for r, s in entries.items() if s is not None}
     launch = m.get("launch", {})
     programs = [("launch.exec", launch.get("exec"))]
+    programs += [("service.exec", m.get("service", {}).get("exec"))]
     programs += [("command %s" % c["name"], c["exec"]) for c in m.get("commands", [])]
     programs += [("hook %s" % k, v) for k, v in m.get("hooks", {}).items()]
     for what, prog in programs:
@@ -78,6 +79,15 @@ def check_app(app_id, schema, categories):
         p.append("no source: where is the corresponding source? (package.md §2.10)")
     elif "/apps/%s/source" % app_id in m["source"] and not os.path.isfile(os.path.join(d, "source", "SOURCES.md")):
         p.append("source points into this repository but source/SOURCES.md is missing")
+
+    # a service runs as root (WhyOS docs/APPS.md "Services"): it says so, and lives in flash
+    perms = m.get("permissions", [])
+    if "service" in m and "daemon" not in perms:
+        p.append("a [service] needs the daemon permission")
+    if "daemon" in perms and "service" not in m:
+        p.append("the daemon permission is only for a package with a [service]")
+    if "service" in m and m.get("install_location") != "flash":
+        p.append('a [service] installs in flash: install_location = "flash"')
 
     data = m.get("storage", {}).get("data", {})
     for uf in data.get("user_folders", []):

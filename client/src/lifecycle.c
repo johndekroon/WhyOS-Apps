@@ -133,7 +133,8 @@ static int write_package_files(const char *dir, const char *mtext, const char *s
 			{ "ICON", "launch.icon" }, { "EXEC", "launch.exec" }, { "ARGS", "launch.args" },
 			{ "FILES", "launch.files" }, { "ESC", "launch.esc" }, { "ASK", "launch.ask" },
 			{ "ASK_DEFAULT", "launch.ask_default" }, { "ROTATION", "launch.rotation" },
-			{ "CHILDREN", "launch.children" }, { "SERVICE", "launch.service" },
+			{ "CHILDREN", "launch.children" }, { "SERVICE", "service.exec" },
+			{ "SERVICE_SECTION", "service.section" },
 			{ "ID", "id" }, { "TYPE", "type" }, { "SUBCATEGORY", "category" },
 		};
 
@@ -146,6 +147,29 @@ static int write_package_files(const char *dir, const char *mtext, const char *s
 	conf_list(f, &m, "OPENS_ALSO", "launch.opens_also");
 	/* what the sandbox lets it do (WhyOS sandbox/policy.h): only the store says this */
 	conf_list(f, &m, "PERMISSIONS", "permissions");
+	/* the service's page in Settings (WhyOS docs/APPS.md, "Services") */
+	{
+		int port = (int)json_int(&m, json_path(&m, 0, "service.port"), 0);
+		int sh = json_path(&m, 0, "service.show"), ac = json_path(&m, 0, "service.actions");
+		char l[64], x[160];
+
+		if (port > 0) {
+			snprintf(v, sizeof(v), "%d", port);
+			conf_put(f, "SERVICE_PORT", v);
+		}
+		for (int i = 0; json_is_arr(&m, sh) && i < json_len(&m, sh); i++)
+			if (!json_str(&m, json_get(&m, json_item(&m, sh, i), "label"), l, sizeof(l)) &&
+			    !json_str(&m, json_get(&m, json_item(&m, sh, i), "file"), x, sizeof(x))) {
+				snprintf(v, sizeof(v), "%s|%s", l, x);
+				conf_put(f, "SERVICE_SHOW", v);
+			}
+		for (int i = 0; json_is_arr(&m, ac) && i < json_len(&m, ac); i++)
+			if (!json_str(&m, json_get(&m, json_item(&m, ac, i), "label"), l, sizeof(l)) &&
+			    !json_str(&m, json_get(&m, json_item(&m, ac, i), "run"), x, sizeof(x))) {
+				snprintf(v, sizeof(v), "%s|%s", l, x);
+				conf_put(f, "SERVICE_ACTION", v);
+			}
+	}
 	t = json_path(&m, 0, "launch.terminal");
 	if (json_bool(&m, t, 0))
 		conf_put(f, "TERMINAL", "1");
@@ -332,7 +356,8 @@ static int files_there(const char *dir, const char *id)
 	if (read_installed(dir, &text, &j))
 		return 0;
 	ok = json_eq(&j, json_get(&j, 0, "id"), id);
-	if (ok && !json_str(&j, json_path(&j, 0, "launch.exec"), exec, sizeof(exec)))
+	if (ok && (!json_str(&j, json_path(&j, 0, "launch.exec"), exec, sizeof(exec)) ||
+		   !json_str(&j, json_path(&j, 0, "service.exec"), exec, sizeof(exec))))
 		ok = is_file(path_join(p, sizeof(p), dir, exec));
 	json_free(&j);
 	free(text);
@@ -560,7 +585,8 @@ static void mark_programs(const char *dir)
 
 static void fix_modes(const char *dir, const struct json *m)
 {
-	const char *keys[] = { "launch.exec", "hooks.post_install", "hooks.migrate", "hooks.pre_remove" };
+	const char *keys[] = { "launch.exec", "service.exec", "hooks.post_install", "hooks.migrate",
+			       "hooks.pre_remove" };
 	int cmds = json_get(m, 0, "commands");
 	char f[128], p[512];
 
@@ -571,6 +597,69 @@ static void fix_modes(const char *dir, const struct json *m)
 	for (int i = 0; i < json_len(m, cmds) && json_is_arr(m, cmds); i++)
 		if (!json_str(m, json_get(m, json_item(m, cmds, i), "exec"), f, sizeof(f)))
 			chmod(path_join(p, sizeof(p), dir, f), 0755);
+}
+
+/*
+ * Services (WhyOS docs/APPS.md, "Services"): a package with a [service]
+ * and the daemon permission installs in flash and is linked into
+ * P.services, where WhyOS's appsvc runs it as root while the user has it
+ * on. An update stops it and starts it again if it ran; a removal stops it.
+ */
+static int is_service(const struct json *m)
+{
+	char exec[128];
+
+	return !json_str(m, json_path(m, 0, "service.exec"), exec, sizeof(exec));
+}
+
+static int has_permission(const struct json *m, const char *perm)
+{
+	int ps = json_get(m, 0, "permissions");
+	char b[32];
+
+	for (int i = 0; json_is_arr(m, ps) && i < json_len(m, ps); i++)
+		if (!json_str(m, json_item(m, ps, i), b, sizeof(b)) && !strcmp(b, perm))
+			return 1;
+	return 0;
+}
+
+/* appsvc CMD ID; its exit status, or -1 when there is no appsvc (a host test) */
+static int appsvc(const char *cmd, const char *id, char *out, size_t n)
+{
+	char line[400];
+	FILE *f;
+	int st;
+
+	if (out && n)
+		out[0] = 0;
+	if (access(P.appsvc, X_OK))
+		return -1;
+	snprintf(line, sizeof(line), "'%s' %s '%s' 2>&1", P.appsvc, cmd, id);
+	f = popen(line, "r");
+	if (!f)
+		return -1;
+	if (out && n && fgets(out, (int)n, f))
+		out[strcspn(out, "\n")] = 0;
+	st = pclose(f);
+	return st;
+}
+
+static int service_link(const char *id, const char *target)
+{
+	char link[400];
+
+	mkdir_p(P.services);
+	snprintf(link, sizeof(link), "%s/%s", P.services, id);
+	unlink(link);
+	return symlink(target, link);
+}
+
+static void service_unlink(const char *id)
+{
+	char link[400];
+
+	snprintf(link, sizeof(link), "%s/%s", P.services, id);
+	unlink(link);
 }
 
 static int confirm(const struct opts *o, const char *what)
@@ -592,7 +681,7 @@ int store_install(const char *spec, const struct opts *o, int auto_installed)
 	struct target t;
 	struct reg r;
 	struct json m;
-	int had, fresh, ret = 1, old_build;
+	int had, fresh, ret = 1, old_build, svc_ran = 0;
 	const char *loc;
 
 	snprintf(id, sizeof(id), "%s", spec);
@@ -731,12 +820,27 @@ int store_install(const char *spec, const struct opts *o, int auto_installed)
 		journal_clear();
 		return 1;
 	}
+	if (is_service(&m) && (!has_permission(&m, "daemon") || strcmp(loc, "flash"))) {
+		warn("%s: a service needs the daemon permission and installs in flash", id);
+		goto fail;
+	}
+	if (is_service(&m) && !had && !confirm(o, "it runs a service in the background as root, "
+					       "outside the sandbox: it can do anything on the badge"))
+		goto fail;
 	if (write_package_files(stage, mtext, a->src->id, t.url)) {
 		warn("cannot write %s/app.conf", stage);
 		goto fail;
 	}
 	fix_modes(stage, &m);	/* on FAT every file runs anyway; elsewhere they must */
 
+	/* a running service stops for the update, and starts again after it */
+	if (is_service(&m)) {
+		char st[32];
+
+		svc_ran = appsvc("status", id, st, sizeof(st)) == 0 && !strcmp(st, "running");
+		if (svc_ran)
+			appsvc("stop", id, 0, 0);
+	}
 	/* move into place: the old version aside first */
 	rm_rf(old);
 	if (is_dir(target) && rename(target, old)) {
@@ -750,6 +854,12 @@ int store_install(const char *spec, const struct opts *o, int auto_installed)
 	}
 	write_wrappers(&m, target);
 	make_storage(id, &m);
+	if (is_service(&m)) {
+		if (service_link(id, target))
+			warn("cannot link %s into %s: %s", id, P.services, strerror(errno));
+		else if (svc_ran)
+			appsvc("start", id, 0, 0);
+	}
 
 	fresh = !had;
 	old_build = had ? r.build : 0;
@@ -904,6 +1014,13 @@ int store_remove(const char *id, const struct opts *o)
 	}
 	if (have_m)
 		hook(id, dir, &m, "hooks.pre_remove", 0);
+	if (have_m && is_service(&m)) {
+		char sd[256];
+
+		appsvc("stop", id, 0, 0);
+		service_unlink(id);
+		rm_rf(path_join(sd, sizeof(sd), P.svc_data, id));
+	}
 	journal_write("remove", id, r.build);
 	if (there)
 		rm_rf(dir);
