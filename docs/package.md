@@ -114,6 +114,7 @@ the store. Keys map one to one:
 | `opens`, `opens_also` | `OPENS`, `OPENS_ALSO` | Lists of extensions |
 | `ask`, `ask_default` | `ASK`, `ASK_DEFAULT` | |
 | `rotation` | `ROTATION` | `"auto"` (default) or `"locked"`; see below |
+| `statusbar` | `STATUSBAR` | `"shown"` (default) or `"hidden"`: the system draws the status bar over the top 48 rows of every app, which draws only its background there; `"hidden"` gives the app the whole screen (a game), and the bar shows only while the logo key is held (WhyOS `docs/APPS.md`) |
 | `children` | `CHILDREN` | `"any"` (default) or `"none"`: the app starts no other programs (no `vfork`; an `exec` that replaces it still works), and WhyOS gives it the whole memory pool instead of keeping room for one (WhyOS `docs/APPS.md`). For an app that needs every byte, such as a web browser |
 | `menu` | `CATEGORY` | `apps`, `games`, `tools`, `none`; defaults from the category's `menu` in categories.json |
 | `stack_kb` | — | Informational: the stack set in the BFLT header |
