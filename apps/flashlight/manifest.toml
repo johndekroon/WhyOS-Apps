@@ -28,6 +28,7 @@ tags = ["flashlight", "torch", "light"]
 install_location = "sd"
 
 [launch]
+statusbar = "hidden"        # draws in the status bar's rows: the whole screen
 exec = "flashlight"
 info = "a white or red light"
 icon = "sun"

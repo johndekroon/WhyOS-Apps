@@ -26,6 +26,7 @@ tags = ["photos", "pictures", "viewer", "jpeg", "png"]
 install_location = "sd"
 
 [launch]
+statusbar = "hidden"        # draws in the status bar's rows: the whole screen
 exec = "imgview"
 args = "%f"
 opens = ["jpg", "jpeg", "png"]

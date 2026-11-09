@@ -34,6 +34,7 @@ permissions = ["network"]
 install_location = "sd"
 
 [launch]
+statusbar = "hidden"        # draws in the status bar's rows: the whole screen
 exec = "start"
 args = "-f badge -w 720 -h 720 -b 16 %u"
 info = "web browser"

@@ -33,6 +33,7 @@ tags = ["emulator", "gameboy", "retro"]
 install_location = "sd"
 
 [launch]
+statusbar = "hidden"        # draws in the status bar's rows: the whole screen
 exec = "gnuboy"
 args = "--source %d/badge.rc --savedir=%D/roms/saves %f"
 info = "gnuboy"
