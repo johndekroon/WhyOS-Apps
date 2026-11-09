@@ -3,6 +3,7 @@
  * vncd — the badge's screen and keypad over VNC.
  *
  *   vncd [-p PORT] [-f FB] [-i INPUT] [-d DATADIR]
+ *   vncd -n [-d DATADIR]     a new password, then exit
  *
  * An RFB server for one viewer at a time (RFB 3.8; 3.7 and 3.3 viewers
  * too): it sends the panel's picture, FB (/dev/fb0, 720x720 RGB565, as
@@ -11,9 +12,9 @@
  * /proc/bus/input/devices (else /dev/input/event0). PORT is 5900.
  *
  * VNC authentication only: the password is the first line of
- * DATADIR/password ($APP_DATA, else /mnt/sd/badge/appdata/vnc), of which
- * VNC uses 8 characters. Without the file vncd makes one with 8 random
- * characters. A wrong password costs a second; after 5 in a row vncd
+ * DATADIR/password ($APP_DATA, else /data/appdata/vnc), of which VNC uses
+ * 8 characters. Without the file vncd makes one with 8 random characters;
+ * -n makes a new one (the menu's New password). A wrong password costs a second; after 5 in a row vncd
  * refuses viewers for 60 s. A second viewer is refused while one is
  * connected.
  *
@@ -21,8 +22,13 @@
  * one frame buffer, at most 10 times a second and only while the viewer
  * waits for an update. A hash per 16x16 tile tells what changed since the
  * viewer got it, so an incremental update sends only those tiles.
- * Encodings: Raw and Hextile; pixel formats: true colour at 8, 16 or 32
- * bits per pixel, either byte order.
+ * Encodings: Raw, Hextile and ZRLE, the first of them the viewer lists;
+ * pixel formats: true colour at 8, 16 or 32 bits per pixel, either byte
+ * order. ZRLE is what makes it usable over the bottom port's full-speed
+ * USB (about 1 MB/s at best) and Wi-Fi: the menu's screens are a few
+ * colours, which its palette and runs take to a few kilobytes a frame
+ * where Raw at 32 bits per pixel is 2 MB. Its zlib stream and buffer are
+ * made at the first ZRLE update, so other viewers do not pay for them.
  *
  * Keys are written to INPUT as input events, which evdev passes on as if
  * the keypad sent them. A key the keypad lacks goes as the badge's Fn
@@ -49,6 +55,7 @@
 #include <unistd.h>
 
 #include <mbedtls/des.h>
+#include <zlib.h>
 
 #define W		720
 #define H		720
@@ -56,8 +63,14 @@
 #define TILE		16
 #define TW		(W / TILE)
 #define TH		(H / TILE)
+#define ZTILE		64		/* ZRLE's tiles */
+#define ZROWS		64		/* a ZRLE rectangle's height at most: its data is held whole */
+#define ENC_RAW		0
+#define ENC_HEXTILE	5
+#define ENC_ZRLE	16
 #define POLL_MS		100		/* at most 10 frames a second */
 #define IO_MS		10000		/* a viewer that reads or answers slower is dropped */
+#define AUTH_MS		120000		/* ... but the password: macOS's Screen Sharing asks for it now */
 #define LOCK_FAILS	5
 #define LOCK_MS		60000
 #define NREJECT		4		/* refused viewers being told why */
@@ -79,7 +92,11 @@ static struct {
 	unsigned char *frame;		/* the last picture read */
 	uint32_t hash[TW * TH];		/* of each tile as the viewer has it */
 	unsigned char known[TW * TH];	/* ... once it has it */
-	int hextile;
+	int enc;			/* ENC_RAW, ENC_HEXTILE or ENC_ZRLE */
+	z_stream z;			/* ZRLE's, one for the session */
+	int zinit;
+	unsigned char *zout;		/* a ZRLE rectangle's compressed data */
+	size_t zcap;
 	int want, incr, x0, y0, x1, y1;	/* the update the viewer waits for */
 	int64_t last;			/* when FB was read */
 	unsigned char ib[4096];		/* what the viewer sent, not yet handled */
@@ -92,6 +109,7 @@ static struct {
 /* The viewer's pixel format: a table per colour of RGB565 */
 static struct {
 	int bpp, big, native;
+	int cpix, coff;		/* ZRLE's CPIXEL: its bytes, the first of the pixel's kept */
 	uint32_t r[32], g[64], b[32];
 } pf;
 
@@ -120,14 +138,14 @@ static void on_signal(int sig)
 	quit = 1;
 }
 
-/* Output to the viewer: buffered, sent with a time limit. */
-static void flush(void)
+/* n bytes to the viewer, with a time limit */
+static void send_all(const unsigned char *p, size_t len)
 {
 	size_t off = 0;
 	int64_t until = now_ms() + IO_MS;
 
-	while (off < olen && !C.dead) {
-		ssize_t n = send(C.fd, ob + off, olen - off, MSG_NOSIGNAL);
+	while (off < len && !C.dead) {
+		ssize_t n = send(C.fd, p + off, len - off, MSG_NOSIGNAL);
 		int left;
 
 		if (n > 0) {
@@ -149,6 +167,12 @@ static void flush(void)
 		}
 		C.dead = 1;
 	}
+}
+
+/* Output to the viewer: buffered */
+static void flush(void)
+{
+	send_all(ob, olen);
 	olen = 0;
 }
 
@@ -203,11 +227,11 @@ static uint32_t be32(const unsigned char *p)
 	return (uint32_t)p[0] << 24 | (uint32_t)p[1] << 16 | p[2] << 8 | p[3];
 }
 
-/* Exactly n bytes from the viewer during the handshake, or -1. */
-static int rd(void *buf, size_t n)
+/* Exactly n bytes from the viewer during the handshake within ms, or -1. */
+static int rd_for(void *buf, size_t n, int ms)
 {
 	unsigned char *p = buf;
-	int64_t until = now_ms() + IO_MS;
+	int64_t until = now_ms() + ms;
 
 	while (n) {
 		ssize_t r = recv(C.fd, p, n, 0);
@@ -227,6 +251,11 @@ static int rd(void *buf, size_t n)
 		poll(&q, 1, left);
 	}
 	return 0;
+}
+
+static int rd(void *buf, size_t n)
+{
+	return rd_for(buf, n, IO_MS);
 }
 
 static int random_bytes(unsigned char *p, size_t n)
@@ -367,7 +396,7 @@ static int version(const char *v)
 	return minor >= 8 ? 8 : minor == 7 ? 7 : 3;
 }
 
-static void set_format(int bpp, int big, unsigned rmax, unsigned gmax, unsigned bmax,
+static void set_format(int bpp, int depth, int big, unsigned rmax, unsigned gmax, unsigned bmax,
 		       int rs, int gs, int bs)
 {
 	unsigned i;
@@ -382,6 +411,24 @@ static void set_format(int bpp, int big, unsigned rmax, unsigned gmax, unsigned 
 		pf.g[i] = (uint32_t)((i * gmax + 31) / 63) << gs;
 	pf.native = bpp == 16 && !big && rmax == 31 && gmax == 63 && bmax == 31 &&
 		    rs == 11 && gs == 5 && bs == 0;
+	/* a 32-bit pixel whose colours fit in three of its bytes goes as those,
+	 * whatever the depth: the RFB text asks depth 24 or less too, but
+	 * libvncserver and libvncclient do not, and macOS's Screen Sharing (32
+	 * bpp, depth 32) decodes it their way */
+	(void)depth;
+	pf.cpix = bpp / 8;
+	pf.coff = 0;
+	if (bpp == 32) {
+		uint32_t all = rmax << rs | gmax << gs | (uint32_t)bmax << bs;
+
+		if (all <= 0xffffff) {
+			pf.cpix = 3;
+			pf.coff = big;
+		} else if (!(all & 0xff)) {
+			pf.cpix = 3;
+			pf.coff = !big;
+		}
+	}
 }
 
 static unsigned char *pixel(unsigned char *d, unsigned v)
@@ -438,17 +485,238 @@ static void row(int x, int y, int n)
 	olen = d - ob;
 }
 
+/* ZRLE */
+
+static unsigned char *cpixel(unsigned char *d, unsigned v)
+{
+	unsigned char t[4];
+
+	pixel(t, v);
+	memcpy(d, t + pf.coff, pf.cpix);
+	return d + pf.cpix;
+}
+
+/* A run's length: 255s, then the rest, all less one */
+static unsigned char *run_len(unsigned char *d, int n)
+{
+	for (n--; n >= 255; n -= 255)
+		*d++ = 255;
+	*d++ = n;
+	return d;
+}
+
+/* A run of pixel v (without a palette, np 0) or of palette index k */
+static unsigned char *zrle_run(unsigned char *d, int np, int k, unsigned v, int len)
+{
+	if (!np)
+		return run_len(cpixel(d, v), len);
+	if (len == 1) {
+		*d++ = k;
+		return d;
+	}
+	*d++ = k | 128;
+	return run_len(d, len);
+}
+
+/*
+ * One ZRLE tile into t, its length: one colour, a palette of up to 16
+ * packed or in runs, else runs or raw pixels, whichever is smallest. The
+ * runs go on from one row into the next.
+ */
+static size_t zrle_tile(unsigned char *t, int x, int y, int tw, int th)
+{
+	unsigned pal[16], v, last = 0x10000;
+	int np = 0, runs = 0, len = 0, lb = 0, lb2 = 0, i, j, k, bits;
+	size_t packed, prle, raw, rle;
+	unsigned char *d = t;
+	const unsigned char *s;
+
+	/* the colours (up to 17: more than a palette holds) and the runs */
+	for (j = 0; j < th; j++) {
+		s = C.frame + (y + j) * BPL + x * 2;
+		for (i = 0; i < tw; i++, s += 2) {
+			v = s[0] | s[1] << 8;
+			if (v == last) {
+				len++;
+				continue;
+			}
+			if (len) {
+				lb += (len - 1) / 255 + 1;
+				lb2 += len > 1 ? (len - 1) / 255 + 1 : 0;
+			}
+			runs++;
+			len = 1;
+			last = v;
+			if (np > 16)
+				continue;
+			for (k = 0; k < np && pal[k] != v; k++)
+				;
+			if (k == np) {
+				if (np < 16)
+					pal[np] = v;
+				np++;
+			}
+		}
+	}
+	lb += (len - 1) / 255 + 1;
+	lb2 += len > 1 ? (len - 1) / 255 + 1 : 0;
+	if (np == 1) {
+		*d++ = 1;
+		return cpixel(d, pal[0]) - t;
+	}
+	raw = (size_t)tw * th * pf.cpix;
+	rle = (size_t)runs * pf.cpix + lb;
+	bits = np <= 2 ? 1 : np <= 4 ? 2 : 4;
+	packed = np <= 16 ? (size_t)np * pf.cpix + (size_t)th * ((tw * bits + 7) / 8) : (size_t)-1;
+	prle = np <= 16 ? (size_t)np * pf.cpix + runs + lb2 : (size_t)-1;
+	if (packed <= prle && packed < raw && packed <= rle) {
+		*d++ = np;
+		for (k = 0; k < np; k++)
+			d = cpixel(d, pal[k]);
+		for (j = 0; j < th; j++) {
+			unsigned acc = 0;
+			int nb = 0;
+
+			s = C.frame + (y + j) * BPL + x * 2;
+			for (i = 0, k = 0; i < tw; i++, s += 2) {
+				v = s[0] | s[1] << 8;
+				if (pal[k] != v)
+					for (k = 0; pal[k] != v; k++)
+						;
+				acc = acc << bits | k;
+				nb += bits;
+				if (nb == 8) {
+					*d++ = acc;
+					acc = nb = 0;
+				}
+			}
+			if (nb)
+				*d++ = acc << (8 - nb);
+		}
+		return d - t;
+	}
+	if (prle < raw && prle <= rle) {
+		*d++ = 128 + np;
+		for (k = 0; k < np; k++)
+			d = cpixel(d, pal[k]);
+	} else if (rle < raw) {
+		*d++ = 128;
+		np = 0;
+	} else {
+		*d++ = 0;
+		for (j = 0; j < th; j++) {
+			s = C.frame + (y + j) * BPL + x * 2;
+			for (i = 0; i < tw; i++, s += 2)
+				d = cpixel(d, s[0] | s[1] << 8);
+		}
+		return d - t;
+	}
+	/* runs: of palette indexes (np) or of pixels */
+	last = 0x10000;
+	len = 0;
+	k = 0;
+	for (j = 0; j < th; j++) {
+		s = C.frame + (y + j) * BPL + x * 2;
+		for (i = 0; i < tw; i++, s += 2) {
+			v = s[0] | s[1] << 8;
+			if (v == last) {
+				len++;
+				continue;
+			}
+			if (len)
+				d = zrle_run(d, np, k, last, len);
+			if (np)
+				for (k = 0; pal[k] != v; k++)
+					;
+			last = v;
+			len = 1;
+		}
+	}
+	return zrle_run(d, np, k, last, len) - t;
+}
+
+/* The zlib stream and the buffer, at the first ZRLE update; 0 if made */
+static int zrle_init(void)
+{
+	size_t cap;
+
+	if (C.zinit)
+		return 0;
+	memset(&C.z, 0, sizeof(C.z));
+	/* a 8 KB window: little memory, and the tiles repeat close by */
+	if (deflateInit2(&C.z, 1, Z_DEFLATED, 13, 7, Z_DEFAULT_STRATEGY) != Z_OK)
+		return -1;
+	cap = deflateBound(&C.z, (size_t)W * ZROWS * 4 + W / ZTILE * 64) + 64;
+	C.zout = malloc(cap);
+	if (!C.zout) {
+		deflateEnd(&C.z);
+		return -1;
+	}
+	C.zcap = cap;
+	C.zinit = 1;
+	return 0;
+}
+
+/* One ZRLE rectangle (at most ZROWS high): its tiles through zlib, then
+ * the length and the compressed data */
+static void zrle(int x, int y, int w, int h)
+{
+	static unsigned char t[1 + ZTILE * ZTILE * 4 + 16 * 4];
+	int tx, ty, tw, th;
+
+	C.z.next_out = C.zout;
+	C.z.avail_out = C.zcap;
+	for (ty = y; ty < y + h; ty += ZTILE) {
+		th = y + h - ty < ZTILE ? y + h - ty : ZTILE;
+		for (tx = x; tx < x + w; tx += ZTILE) {
+			tw = x + w - tx < ZTILE ? x + w - tx : ZTILE;
+			C.z.next_in = t;
+			C.z.avail_in = zrle_tile(t, tx, ty, tw, th);
+			if (deflate(&C.z, Z_NO_FLUSH) != Z_OK || C.z.avail_in) {
+				C.dead = 1;
+				return;
+			}
+		}
+	}
+	if (deflate(&C.z, Z_SYNC_FLUSH) != Z_OK || !C.z.avail_out) {
+		fprintf(stderr, "vncd: %s: ZRLE did not fit\n", C.addr);
+		C.dead = 1;
+		return;
+	}
+	put32(C.zcap - C.z.avail_out);
+	flush();
+	send_all(C.zout, C.zcap - C.z.avail_out);
+}
+
+/* The rectangles one of h rows is sent as */
+static int pieces(int h)
+{
+	return C.enc == ENC_ZRLE ? (h + ZROWS - 1) / ZROWS : 1;
+}
+
 static void rect(int x, int y, int w, int h)
 {
 	int tx, ty, i, j, tw, th, bg = -1;
 	unsigned c;
 
+	if (C.enc == ENC_ZRLE) {
+		for (ty = y; ty < y + h && !C.dead; ty += ZROWS) {
+			th = y + h - ty < ZROWS ? y + h - ty : ZROWS;
+			put16(x);
+			put16(ty);
+			put16(w);
+			put16(th);
+			put32(ENC_ZRLE);
+			zrle(x, ty, w, th);
+		}
+		return;
+	}
 	put16(x);
 	put16(y);
 	put16(w);
 	put16(h);
-	put32(C.hextile ? 5 : 0);
-	if (!C.hextile) {
+	put32(C.enc);
+	if (C.enc == ENC_RAW) {
 		for (j = y; j < y + h && !C.dead; j++)
 			row(x, j, w);
 		return;
@@ -525,14 +793,13 @@ static int runs(const unsigned char *dirty, int send)
 				continue;
 			for (a = tx; tx * TILE < C.x1 && dirty[ty * TW + tx]; tx++)
 				;
-			n++;
-			if (!send)
-				continue;
 			x = a * TILE > C.x0 ? a * TILE : C.x0;
 			y = ty * TILE > C.y0 ? ty * TILE : C.y0;
 			x1 = tx * TILE < C.x1 ? tx * TILE : C.x1;
 			y1 = (ty + 1) * TILE < C.y1 ? (ty + 1) * TILE : C.y1;
-			rect(x, y, x1 - x, y1 - y);
+			n += pieces(y1 - y);
+			if (send)
+				rect(x, y, x1 - x, y1 - y);
 		}
 	}
 	return n;
@@ -571,6 +838,10 @@ static void update(void)
 	}
 	if (C.incr && !any)
 		return;			/* nothing new: read FB again later */
+	if (C.enc == ENC_ZRLE && zrle_init()) {
+		fprintf(stderr, "vncd: %s: no memory for ZRLE, Raw instead\n", C.addr);
+		C.enc = ENC_RAW;
+	}
 	put8(0);
 	put8(0);
 	if (C.incr) {
@@ -578,7 +849,7 @@ static void update(void)
 		put16(n);
 		runs(dirty, 1);
 	} else if (C.x1 > C.x0 && C.y1 > C.y0) {
-		put16(1);
+		put16(pieces(C.y1 - C.y0));
 		rect(C.x0, C.y0, C.x1 - C.x0, C.y1 - C.y0);
 	} else {
 		put16(0);
@@ -802,21 +1073,35 @@ static void set_pixel_format(const unsigned char *m)
 		C.dead = 1;
 		return;
 	}
-	set_format(bpp, m[6] != 0, be16(m + 8), be16(m + 10), be16(m + 12), m[14], m[15], m[16]);
+	set_format(bpp, m[5], m[6] != 0, be16(m + 8), be16(m + 10), be16(m + 12), m[14], m[15], m[16]);
+	fprintf(stderr, "vncd: %s: %d bpp, depth %d, %s, max %u/%u/%u, shift %d/%d/%d\n", C.addr, bpp, m[5],
+		m[6] ? "big-endian" : "little-endian", be16(m + 8), be16(m + 10), be16(m + 12), m[14], m[15],
+		m[16]);
 }
 
 static void set_encodings(const unsigned char *m, unsigned n)
 {
 	unsigned i;
 	uint32_t e;
+	int was = C.enc;
 
-	C.hextile = 0;
+	C.enc = ENC_RAW;
 	for (i = 0; i < n; i++) {
 		e = be32(m + 4 + i * 4);
-		if (e == 0 || e == 5) {		/* the first of the two the viewer lists */
-			C.hextile = e == 5;
-			return;
+		if (e == ENC_RAW || e == ENC_HEXTILE || e == ENC_ZRLE) {	/* the first the viewer lists */
+			C.enc = e;
+			break;
 		}
+	}
+	if (C.enc != was) {
+		char list[200];
+		size_t o = 0;
+
+		list[0] = 0;
+		for (i = 0; i < n && o < sizeof(list) - 12; i++)
+			o += snprintf(list + o, sizeof(list) - o, " %d", (int32_t)be32(m + 4 + i * 4));
+		fprintf(stderr, "vncd: %s: %s, of%s\n", C.addr,
+			C.enc == ENC_ZRLE ? "ZRLE" : C.enc == ENC_HEXTILE ? "Hextile" : "Raw", list);
 	}
 }
 
@@ -917,6 +1202,11 @@ static void end_session(void)
 		close(C.in);
 	if (C.fb >= 0)
 		close(C.fb);
+	if (C.zinit)
+		deflateEnd(&C.z);
+	free(C.zout);
+	C.zout = NULL;
+	C.zinit = 0;
 	free(C.frame);
 	close(C.fd);
 	C.frame = NULL;
@@ -935,7 +1225,8 @@ static void greet(int fd, const char *addr)
 	memset(&C.held, 0, sizeof(C.held));
 	C.fd = fd;
 	C.in = C.fb = -1;
-	C.dead = C.authed = C.want = C.hextile = 0;
+	C.dead = C.authed = C.want = 0;
+	C.enc = ENC_RAW;
 	C.ilen = C.skip = 0;
 	C.last = 0;
 	snprintf(C.addr, sizeof(C.addr), "%s", addr);
@@ -948,15 +1239,21 @@ static void greet(int fd, const char *addr)
 
 	put("RFB 003.008\n", 12);
 	flush();
-	if (C.dead || rd(v, 12) || (C.ver = version(v)) < 0)
+	if (C.dead || rd(v, 12) || (C.ver = version(v)) < 0) {
+		fprintf(stderr, "vncd: %s: no RFB version\n", C.addr);
 		goto drop;
+	}
+	fprintf(stderr, "vncd: %s: %.11s\n", C.addr, v);
 	if (C.ver >= 7) {
 		put8(1);
 		put8(2);		/* VNC authentication, nothing else */
 		flush();
-		if (rd(&t, 1))
+		if (rd(&t, 1)) {
+			fprintf(stderr, "vncd: %s: no security type chosen\n", C.addr);
 			goto drop;
+		}
 		if (t != 2) {
+			fprintf(stderr, "vncd: %s: wants security type %d\n", C.addr, t);
 			if (C.ver == 8) {
 				put32(1);
 				put_reason("Only VNC authentication is supported");
@@ -973,8 +1270,10 @@ static void greet(int fd, const char *addr)
 	password(pw);
 	put(chal, sizeof(chal));
 	flush();
-	if (C.dead || rd(resp, sizeof(resp)))
+	if (C.dead || rd_for(resp, sizeof(resp), AUTH_MS)) {
+		fprintf(stderr, "vncd: %s: no answer to the challenge\n", C.addr);
 		goto drop;
+	}
 	if (!auth_ok(chal, resp, pw)) {
 		fprintf(stderr, "vncd: %s: wrong password\n", C.addr);
 		sleep(1);
@@ -994,8 +1293,10 @@ static void greet(int fd, const char *addr)
 	fails = 0;
 	put32(0);
 	flush();
-	if (C.dead || rd(&t, 1))	/* ClientInit: shared or not, there is one */
+	if (C.dead || rd(&t, 1)) {	/* ClientInit: shared or not, there is one */
+		fprintf(stderr, "vncd: %s: no ClientInit\n", C.addr);
 		goto drop;
+	}
 
 	C.frame = malloc((size_t)BPL * H);
 	C.fb = open(fb_path, O_RDONLY | O_CLOEXEC);
@@ -1011,7 +1312,7 @@ static void greet(int fd, const char *addr)
 	memset(C.keys, 0, sizeof(C.keys));
 	if (C.in < 0 || ioctl(C.in, EVIOCGBIT(EV_KEY, sizeof(C.keys)), C.keys) < 0)
 		memset(C.keys, 0xff, sizeof(C.keys));
-	set_format(16, 0, 31, 63, 31, 11, 5, 0);
+	set_format(16, 16, 0, 31, 63, 31, 11, 5, 0);
 	put16(W);
 	put16(H);
 	put8(16);		/* RGB565, little-endian, as FB */
@@ -1106,7 +1407,7 @@ static void accept_one(int lfd)
 
 static void usage(void)
 {
-	fprintf(stderr, "usage: vncd [-p PORT] [-f FB] [-i INPUT] [-d DATADIR]\n");
+	fprintf(stderr, "usage: vncd [-p PORT] [-f FB] [-i INPUT] [-d DATADIR], vncd -n [-d DATADIR]\n");
 	exit(2);
 }
 
@@ -1117,11 +1418,12 @@ int main(int argc, char **argv)
 	struct sockaddr_in a;
 	struct pollfd p[2 + NREJECT];
 	char pw[9];
-	int c, port = 5900, lfd, one = 1, i, np, ci, ri[NREJECT], timeout, in_set = 0;
+	int c, port = 5900, lfd, one = 1, i, np, ci, ri[NREJECT], timeout, in_set = 0, renew = 0;
 	int64_t now;
 
-	while ((c = getopt(argc, argv, "p:f:i:d:")) != -1) {
+	while ((c = getopt(argc, argv, "p:f:i:d:n")) != -1) {
 		switch (c) {
+		case 'n': renew = 1; break;
 		case 'p':
 			port = atoi(optarg);
 			if (port <= 0 || port > 65535)
@@ -1141,8 +1443,16 @@ int main(int argc, char **argv)
 	if (!data_dir) {
 		const char *e = getenv("APP_DATA");
 
-		snprintf(dd, sizeof(dd), "%s", e && *e ? e : "/mnt/sd/badge/appdata/vnc");
+		snprintf(dd, sizeof(dd), "%s", e && *e ? e : "/data/appdata/vnc");
 		data_dir = dd;
+	}
+	if (renew) {
+		char path[300];
+
+		snprintf(path, sizeof(path), "%s/password", data_dir);
+		make_password(path, pw);
+		memset(pw, 0, sizeof(pw));
+		return 0;
 	}
 	if (!in_set)
 		find_keypad();

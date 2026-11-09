@@ -19,6 +19,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import zlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 MBEDTLS = os.path.expanduser("~/sdapps/src/mbedtls-3.6.6")
@@ -111,6 +112,8 @@ class Viewer:
         self.s.settimeout(10)
         self.s.connect(("127.0.0.1", port))
         self.bpp, self.big = 16, False
+        self.fmt, self.depth = DEFAULT, 16
+        self.zd = zlib.decompressobj()
 
     def recv(self, n):
         b = b""
@@ -173,10 +176,11 @@ class Viewer:
         name = self.reason()
         return "ok", (w, h, fmt, name)
 
-    def set_pixel_format(self, bpp, big, rmax, gmax, bmax, rs, gs, bs, true_colour=1):
+    def set_pixel_format(self, bpp, big, rmax, gmax, bmax, rs, gs, bs, true_colour=1, depth=None):
         self.bpp, self.big = bpp, big
         self.fmt = (bpp, big, rmax, gmax, bmax, rs, gs, bs)
-        self.s.sendall(struct.pack(">B3xBBBBHHHBBB3x", 0, bpp, 24 if bpp == 32 else bpp, big, true_colour,
+        self.depth = depth or (24 if bpp == 32 else bpp)
+        self.s.sendall(struct.pack(">B3xBBBBHHHBBB3x", 0, bpp, self.depth, big, true_colour,
                                    rmax, gmax, bmax, rs, gs, bs))
 
     def set_encodings(self, *enc):
@@ -200,6 +204,10 @@ class Viewer:
                 rects.append((x, y, w, h, enc, self.recv(w * h * self.bpp // 8), None))
             elif enc == 5:
                 pix, kinds = self.hextile(w, h)
+                rects.append((x, y, w, h, enc, pix, kinds))
+            elif enc == 16:
+                data = self.zd.decompress(self.recv(self.u32()))
+                pix, kinds = self.zrle(data, w, h)
                 rects.append((x, y, w, h, enc, pix, kinds))
             else:
                 raise AssertionError(f"encoding {enc}")
@@ -239,6 +247,84 @@ class Viewer:
                 for j in range(th):
                     o = ((ty + j) * w + tx) * bp
                     out[o:o + tw * bp] = b"".join(tile[j])
+        return bytes(out), kinds
+
+    def zrle(self, data, w, h):
+        """ZRLE's tiles: the pixels, and how many tiles of each subencoding."""
+        bp = self.bpp // 8
+        bpp, big, rmax, gmax, bmax, rs, gs, bs = self.fmt
+        allbits = rmax << rs | gmax << gs | bmax << bs
+        cp, pad = bp, None
+        if bpp == 32 and allbits <= 0xffffff:
+            cp, pad = 3, "high"
+        elif bpp == 32 and not allbits & 0xff:
+            cp, pad = 3, "low"
+
+        def full(c):
+            # the CPIXEL as the whole pixel: the byte left out is zero
+            if pad is None:
+                return c
+            return (c + b"\0") if (pad == "high") != big else (b"\0" + c)
+
+        out = bytearray(w * h * bp)
+        kinds = {}
+        o = 0
+
+        def cpixel():
+            nonlocal o
+            c = data[o:o + cp]
+            o += cp
+            return full(c)
+
+        def run_len():
+            nonlocal o
+            n = 1
+            while data[o] == 255:
+                n += 255
+                o += 1
+            n += data[o]
+            o += 1
+            return n
+
+        for ty in range(0, h, 64):
+            th = min(64, h - ty)
+            for tx in range(0, w, 64):
+                tw = min(64, w - tx)
+                sub = data[o]
+                o += 1
+                kinds[sub] = kinds.get(sub, 0) + 1
+                px = []
+                if sub == 0:
+                    px = [cpixel() for _ in range(tw * th)]
+                elif sub == 1:
+                    px = [cpixel()] * (tw * th)
+                elif 2 <= sub <= 16:
+                    pal = [cpixel() for _ in range(sub)]
+                    bits = 1 if sub == 2 else 2 if sub <= 4 else 4
+                    for _ in range(th):
+                        row_bytes = (tw * bits + 7) // 8
+                        acc = int.from_bytes(data[o:o + row_bytes], "big")
+                        o += row_bytes
+                        total = row_bytes * 8
+                        for i in range(tw):
+                            px.append(pal[(acc >> (total - bits * (i + 1))) & ((1 << bits) - 1)])
+                elif sub == 128:
+                    while len(px) < tw * th:
+                        c = cpixel()
+                        px += [c] * run_len()
+                elif sub >= 130:
+                    pal = [cpixel() for _ in range(sub - 128)]
+                    while len(px) < tw * th:
+                        k = data[o]
+                        o += 1
+                        px += [pal[k & 127]] * (run_len() if k & 128 else 1)
+                else:
+                    raise AssertionError(f"ZRLE subencoding {sub}")
+                assert len(px) == tw * th, f"tile of {len(px)} pixels, not {tw * th}"
+                for j in range(th):
+                    q = ((ty + j) * w + tx) * bp
+                    out[q:q + tw * bp] = b"".join(px[j * tw:(j + 1) * tw])
+        assert o == len(data), f"{len(data) - o} bytes left over"
         return bytes(out), kinds
 
     def close(self):
@@ -288,6 +374,7 @@ class Server:
         self.datadir = datadir or os.path.join(tmp, "data")
         self.port = port
         self.event_size = event_size
+        self.cmd = list(prefix) + [exe]
         open(self.input, "wb").close()
         self.log = open(os.path.join(tmp, f"vncd-{port}.log"), "w+")
         self.p = subprocess.Popen(list(prefix) + [exe, "-p", str(port), "-f", self.fb, "-i", self.input,
@@ -359,6 +446,12 @@ def run(srv, px):
     st = os.stat(os.path.join(srv.datadir, "password"))
     check("password file made, mode 0600, 8 characters from the alphabet",
           stat.S_IMODE(st.st_mode) == 0o600 and len(pw) == 8 and all(c in ALPHABET for c in pw), (pw, oct(st.st_mode)))
+    r = subprocess.run(srv.cmd + ["-n", "-d", srv.datadir], capture_output=True, timeout=30)
+    new = srv.password()
+    check("vncd -n: a new password, and the running vncd takes it",
+          r.returncode == 0 and new != pw and len(new) == 8 and Viewer(srv.port).handshake(new)[0] == "ok",
+          (r.returncode, pw, new))
+    pw = new
 
     # versions
     for ver in (b"RFB 003.008\n", b"RFB 003.007\n", b"RFB 003.003\n", b"RFB 003.889\n"):
@@ -458,6 +551,44 @@ def run(srv, px):
     hx = v.update()
     check("Hextile of an odd rectangle (5,7 50x21)",
           len(hx) == 1 and hx[0][5] == expected(px, table16, 5, 7, 50, 21))
+
+    # ZRLE: in strips of 64 rows, each the same pixels as Raw; one zlib stream for all
+    zformats = [("16 bpp", DEFAULT), ("32 bpp little-endian, 3-byte CPIXEL", formats[0][1]),
+                ("32 bpp big-endian BGR, 3-byte CPIXEL", formats[1][1]),
+                ("32 bpp big-endian, colours in the top bytes", (32, True, 255, 255, 255, 24, 16, 8)),
+                ("8 bpp", formats[4][1])]
+    zformats.append(("32 bpp of depth 32 (as macOS asks): still a 3-byte CPIXEL", formats[0][1], 32))
+    for name, fmt, *depth in zformats:
+        v.set_pixel_format(*fmt, depth=depth[0] if depth else None)
+        v.set_encodings(16, 5, 0)
+        v.request(0)
+        z = v.update()
+        want = expected(px, convert_table(*fmt), 0, 0, W, H)
+        got = b"".join(r[5] for r in sorted(z, key=lambda r: r[1]))
+        kinds = {}
+        for r in z:
+            for k, n in r[6].items():
+                kinds[k] = kinds.get(k, 0) + n
+        check(f"ZRLE ({name}): 12 strips of 64 rows, the same pixels as Raw",
+              len(z) == 12 and all(r[4] == 16 and r[2] == W for r in z) and got == want,
+              [r[:5] for r in z][:3])
+        check(f"... solid tiles and raw or run tiles: {kinds}", kinds.get(1) and (kinds.get(0) or kinds.get(128)))
+    v.set_pixel_format(*DEFAULT)
+    v.request(0, 5, 7, 50, 21)
+    z = v.update()
+    check("ZRLE of an odd rectangle (5,7 50x21)",
+          len(z) == 1 and z[0][5] == expected(px, table16, 5, 7, 50, 21))
+    # a palette: a pixel of another colour in a solid tile, then incremental
+    v.request(1)
+    with open(srv.fb, "r+b") as f:
+        px[10 * W + 10] = 0xffff
+        f.seek((10 * W + 10) * 2)
+        f.write(struct.pack("<H", 0xffff))
+    z = v.update()
+    sub = [k for r in z for k in r[6]]
+    check(f"ZRLE incremental: the changed tile, as a palette of two ({sub})",
+          [r[:4] for r in z] == [(0, 0, 16, 16)] and z[0][5] == expected(px, table16, 0, 0, 16, 16)
+          and sub and (2 <= sub[0] <= 16 or sub[0] >= 130), [r[:4] for r in z])
     v.set_encodings(0)
 
     # keys
@@ -679,12 +810,12 @@ def build(tmp, rv32, sanitize=True):
     exe = os.path.join(tmp, "vncd")
     if rv32:
         subprocess.run([CC_RV32, "-Os", "-static", "-Wall", "-I" + PREFIX + "/include", src,
-                        "-L" + PREFIX + "/lib", "-lmbedcrypto", "-o", exe], check=True)
+                        "-L" + PREFIX + "/lib", "-lmbedcrypto", "-lz", "-o", exe], check=True)
     else:
         lib = os.path.join(MBEDTLS, "library")
         subprocess.run(["gcc", "-O2", "-g", "-Wall", "-Wextra"] + (["-fsanitize=address,undefined"] if sanitize else []) + [
                         "-I" + os.path.join(MBEDTLS, "include"), src, os.path.join(lib, "des.c"),
-                        os.path.join(lib, "platform_util.c"), "-o", exe], check=True)
+                        os.path.join(lib, "platform_util.c"), "-lz", "-o", exe], check=True)
     return exe
 
 
