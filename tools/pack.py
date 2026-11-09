@@ -23,7 +23,7 @@ def main():
     if problems:
         sys.exit("\n".join(problems))
     d = os.path.join(pkglib.ROOT, "apps", app_id)
-    m = pkglib.load_toml(os.path.join(d, "manifest.toml"))
+    m = pkglib.load_manifest(d)
     art = pkglib.load_toml(os.path.join(d, "artifact.toml"))
     files, dirs = pkglib.files_of_archive(os.path.join(d, art["path"]))
     stamp = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")

@@ -41,7 +41,7 @@ background updates, shared libraries between apps.
 | **App id** | Unique, permanent name of an app in a source: `[a-z0-9][a-z0-9-]{1,31}`, e.g. `gnuboy` |
 | **Source** | A published catalogue: a base URL. The default source is this repository's `dist/v1/` |
 | **Package** | One file (`.wpk`) with one version of an app |
-| **Manifest** | The app's metadata: identity, category, launch, requirements, storage. Authored as TOML, shipped as JSON |
+| **Manifest** | The app's metadata: identity, category, launch, requirements, storage. Authored as TOML (format 1) or as `metadata.json` in the badge.team app repository's format (format 2, [metadata.md](metadata.md)), shipped as JSON |
 | **Index** | The list of all apps in a source, with the SHA-256 of every package, built by `tools/publish.py` |
 | **Registry** | The record of installed apps in the home directory, one file per app |
 | **Store client** | The `store` program on the badge: CLI and UI |
@@ -87,3 +87,5 @@ categories, sources). Rules for all of them:
 - New optional fields do not change `format`. A change that old clients
   would misread does, and gets a new published path (`/v2/`), while `/v1/`
   stays published for old clients as long as practical.
+- The manifest an author writes may be format 1 or 2 ([metadata.md](metadata.md));
+  what is published is format 1, so clients read one format.

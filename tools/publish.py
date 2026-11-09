@@ -11,7 +11,9 @@ Per app: the checks of validate.py, then the package dist/v1/packages/
 <id>-<version>.wpk (manifest.json first, then files/), the details
 apps/<id>.json with every published version, the licence texts, the
 source archive (when apps/<id>/source/ exists) and the icon and
-screenshots as QOI. Then index.json and index.json.gz.
+screenshots as QOI. Then index.json and index.json.gz, and app-repository/:
+the apps in the layout and format of the badge.team app repository
+(docs/metadata.md).
 
 A published version never changes: a package that would come out
 different for the same version is refused (raise version and build).
@@ -114,7 +116,7 @@ def publish_app(app_id, out, base, categories, schema):
     problems = validate.check_app(app_id, schema, categories)
     if problems:
         sys.exit("%s:\n    %s" % (app_id, "\n    ".join(problems)))
-    m = pkglib.load_toml(os.path.join(d, "manifest.toml"))
+    m = pkglib.load_manifest(d)
     details_path = os.path.join(out, "apps", app_id + ".json")
     prev = load(details_path) or {}
     versions = [v for v in prev.get("versions", []) if v["version"] != m.get("version")]
@@ -229,6 +231,39 @@ def publish_app(app_id, out, base, categories, schema):
     return entry
 
 
+def app_repository(out, entries, categories, serial):
+    """dist/v1/app-repository/: every app as the badge.team app repository keeps it (docs/metadata.md
+    §4): <id>/metadata.json with their fields only, and its icons, the folder their repository
+    server reads; projects.json, what that server's GET /projects answers, each project with the
+    WhyOS fields and its package beside theirs; categories.json and information.json."""
+    import metadata
+    base = os.path.join(out, "app-repository")
+    projects, cats, keep = [], set(), {"projects.json", "categories.json", "information.json"}
+    for app_id in sorted(entries):
+        e = entries[app_id]
+        d = os.path.join(pkglib.ROOT, "apps", app_id)
+        if "latest" not in e or not os.path.isdir(d):
+            continue
+        meta = pkglib.load_metadata(d, categories)
+        theirs = metadata.export(meta)
+        for f in theirs.get("icon", {}).values():
+            if os.path.isfile(os.path.join(d, f)):
+                write_if_changed(os.path.join(base, app_id, f), open(os.path.join(d, f), "rb").read())
+        write_if_changed(os.path.join(base, app_id, "metadata.json"),
+                         (json.dumps(theirs, indent=2, ensure_ascii=False) + "\n").encode())
+        whyos = dict(meta["whyos"], package=e["latest"]["package"])
+        projects.append({"slug": app_id, "project": dict(theirs, whyos=whyos)})
+        cats.update(theirs["categories"])
+        keep.add(app_id)
+    write_if_changed(os.path.join(base, "projects.json"), dump(projects))
+    write_if_changed(os.path.join(base, "categories.json"), dump(sorted(cats)))
+    write_if_changed(os.path.join(base, "information.json"), dump({"data_path": "app-repository", "version": serial}))
+    for name in os.listdir(base):           # an app that is gone, or withdrawn
+        if name not in keep:
+            import shutil
+            shutil.rmtree(os.path.join(base, name))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--base-url", default=DEFAULT_BASE)
@@ -247,7 +282,7 @@ def main():
 
     apps_dir = os.path.join(pkglib.ROOT, "apps")
     all_ids = sorted(i for i in os.listdir(apps_dir)
-                     if os.path.isfile(os.path.join(apps_dir, i, "manifest.toml")))
+                     if pkglib.manifest_path(os.path.join(apps_dir, i)))
     ids = a.ids or all_ids
     prev = load(os.path.join(out, "index.json")) or {}
     entries = {e["id"]: e for e in prev.get("apps", [])}
@@ -275,6 +310,7 @@ def main():
         print("index: serial %d, %d apps" % (index["serial"], len(index["apps"])))
     else:
         print("index: unchanged (serial %d)" % index["serial"])
+    app_repository(out, entries, categories, index["serial"])
 
 
 if __name__ == "__main__":

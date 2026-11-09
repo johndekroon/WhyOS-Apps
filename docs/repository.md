@@ -3,7 +3,9 @@
 ## 1. Layout
 
 ```
-apps/<id>/manifest.toml        the manifest (package.md §2)
+apps/<id>/manifest.toml        the manifest (package.md §2), or:
+apps/<id>/metadata.json        the manifest in format 2, the app repository's format (metadata.md)
+apps/<id>/icon16.png, icon32.png, icon64.png   the icons that format names (tools/make-icons.py)
 apps/<id>/icon.png             optional: 256×256 PNG with transparency (without it: the menu icon of launch.icon)
 apps/<id>/screenshots/<n>.png  optional: up to 6, 720×720 PNG (the panel), named 1.png, 2.png, ...
 apps/<id>/cover.png            optional: square PNG for the app page's header, e.g. a crop of the game in play (without it: screenshot 1)
@@ -19,7 +21,7 @@ featured.json                  optional: app ids for the store's Discover page
 dist/v1/                       the published source (§5), written by tools/publish.py
 schema/                        JSON Schemas
 toolchain/                     how the apps' toolchain is built: Buildroot config, uClibc patch, build script
-tools/                         validate.py, import-sdapp.py, pack.py, publish.py, serve.py, local-source.sh
+tools/                         validate.py, import-sdapp.py, pack.py, publish.py, metadata.py, make-icons.py, serve.py, local-source.sh
 tests/                         tests of the tools, and the good and malicious packages the client is tested with
 docs/                          this specification
 .github/workflows/             the check workflow (§4)
@@ -137,7 +139,8 @@ Publishing is a git push; there is no publishing job and no secret.
    - writes `dist/v1/apps/<id>.json`, the licence texts, the source
      archive and the QOI images;
    then rewrites `dist/v1/index.json(.gz)`, raising `serial` only when
-   something changed. Running it twice changes nothing.
+   something changed, and `dist/v1/app-repository/` ([metadata.md](metadata.md) §5).
+   Running it twice changes nothing.
 2. Commit `apps/` and `dist/` together, and push to `main`. That is the
    publication.
 
@@ -165,6 +168,7 @@ v1/icons/<id>@2.qoi                icon, 192×192, for a featured banner
 v1/screens/<id>-<n>.qoi            screenshot, 360×360 (half size, fits the info page)
 v1/screens/<id>-cover.qoi          cover, 180×180, the info page's header (from cover.png or screenshot 1)
 v1/categories.json                 copy of the category tree
+v1/app-repository/                 the apps in the badge.team app repository's layout and format (metadata.md §5)
 ```
 
 URLs of packages in the index are absolute, so a mirror can host

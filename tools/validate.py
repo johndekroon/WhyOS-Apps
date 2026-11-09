@@ -3,7 +3,8 @@
 
     tools/validate.py [<id> ...]
 
-Per app: the manifest against schema/manifest.schema.json (needs jsonschema)
+Per app: the manifest (manifest.toml, or metadata.json in format 2 with the app
+repository's rules too: docs/metadata.md) against schema/manifest.schema.json (needs jsonschema)
 and categories.json; the directory name; artifact.toml and the SHA-256 of
 files.tar.gz; the entry rules for the archive; that launch.exec, command and
 hook programs exist in it; that every licence file is in LICENSES/; and that
@@ -27,7 +28,14 @@ PLACEHOLDER = re.compile(r"%[dDCTfuaA%]")
 def check_app(app_id, schema, categories):
     d = os.path.join(pkglib.ROOT, "apps", app_id)
     p = []
-    m = pkglib.load_toml(os.path.join(d, "manifest.toml"))
+    m = pkglib.load_manifest(d)
+    if pkglib.manifest_path(d).endswith(".json"):
+        import metadata
+        p += ["metadata.json: %s" % e for e in metadata.check_format2(pkglib.load_json(pkglib.manifest_path(d)), app_id)]
+        if "withdrawn" not in m:
+            p += ["metadata.json: icon %s: %s is missing" % (k, f) for k, f in
+                  pkglib.load_json(pkglib.manifest_path(d)).get("icon", {}).items()
+                  if not os.path.isfile(os.path.join(d, f))]
 
     if schema is not None:
         v = jsonschema.Draft202012Validator(schema)
@@ -109,7 +117,7 @@ def main():
     categories = pkglib.load_json(os.path.join(pkglib.ROOT, "categories.json"))
     bad = 0
     for app_id in ids:
-        if not os.path.isfile(os.path.join(apps_dir, app_id, "manifest.toml")):
+        if not pkglib.manifest_path(os.path.join(apps_dir, app_id)):
             continue
         problems = check_app(app_id, schema, categories)
         print("%-10s %s" % (app_id, "OK" if not problems else "%d problem(s)" % len(problems)))

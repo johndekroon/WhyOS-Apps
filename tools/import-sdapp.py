@@ -25,8 +25,8 @@ def main():
     a = ap.parse_args()
 
     app = os.path.join(pkglib.ROOT, "apps", a.id)
-    if not os.path.isfile(os.path.join(app, "manifest.toml")):
-        sys.exit("no apps/%s/manifest.toml" % a.id)
+    if not pkglib.manifest_path(app):
+        sys.exit("no apps/%s/manifest.toml or metadata.json" % a.id)
 
     skip = lambda rel: rel == "app.conf" or rel.endswith(".gdb")  # noqa: E731
     tree, problems = pkglib.collect([a.built, os.path.join(app, "overlay")], skip)

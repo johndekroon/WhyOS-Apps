@@ -32,6 +32,34 @@ def load_json(path):
         return json.load(f)
 
 
+def manifest_path(app_dir):
+    """The app's manifest: metadata.json (format 2) or manifest.toml (format 1); None without."""
+    for name in ("metadata.json", "manifest.toml"):
+        if os.path.isfile(os.path.join(app_dir, name)):
+            return os.path.join(app_dir, name)
+    return None
+
+
+def load_manifest(app_dir):
+    """The app's manifest as format 1, whichever format it is written in (docs/metadata.md)."""
+    path = manifest_path(app_dir)
+    if path is None:
+        raise FileNotFoundError(os.path.join(app_dir, "manifest.toml"))
+    if path.endswith(".toml"):
+        return load_toml(path)
+    import metadata
+    return metadata.to_manifest(load_json(path), os.path.basename(os.path.normpath(app_dir)))
+
+
+def load_metadata(app_dir, categories=None):
+    """The app's manifest as format 2 (metadata.json), whichever format it is written in."""
+    path = manifest_path(app_dir)
+    import metadata
+    if path and path.endswith(".json"):
+        return load_json(path)
+    return metadata.from_manifest(load_toml(path), categories)
+
+
 def sha256_file(path):
     h = hashlib.sha256()
     with open(path, "rb") as f:

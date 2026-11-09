@@ -55,7 +55,9 @@ as the program a start script runs, and `0644` on the rest.
 
 ## 2. Manifest
 
-Authors write `apps/<id>/manifest.toml` in this repository. CI validates
+Authors write `apps/<id>/manifest.toml` in this repository (format 1,
+below), or `apps/<id>/metadata.json` (format 2: the same fields in the
+format of the badge.team app repository, [metadata.md](metadata.md)). CI validates
 it, adds generated fields (sizes, hashes, publish dates) and writes
 `manifest.json` into the package and the index. The badge only reads
 JSON. The schema is [schema/manifest.schema.json](../schema/manifest.schema.json);
