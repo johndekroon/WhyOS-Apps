@@ -116,6 +116,8 @@ def test_folder(env):
     _, home, _ = env
     s = ui(env, ["shot folder"], home / "notes.md")["folder"]
     assert s.count(0, 0, 200, 200, scene_pink) > 2000               # the scene behind it
+    # the top 48 px are the system's status bar: no logo, no clock of Files' own
+    assert s.count(0, 0, 720, 48, is_c(TEXT_HI)) == 0
     assert s.count(54, 96, 200, 140, is_c(TEXT_HI)) > 200          # the title: "Files"
     assert s.count(54, 72, 400, 90, is_c(CYAN, 40)) > 100          # the eyebrow: where it is
     # the columns' names, then notes.md with the focus: its row cyan, in the panel

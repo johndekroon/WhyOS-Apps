@@ -202,9 +202,6 @@ int main(int argc, char **argv)
 	FILE *script = s ? fopen(s, "r") : 0;
 	char line[512];
 
-	memcpy(ui_st.hhmm, "12:34", 6);
-	ui_st.clock_ok = 1;
-	ui_st.bars = -1;
 	F.b.log = getenv("FILES_LOG");
 	F.b.run = run;
 	files_init(&F, argc > 1 ? argv[1] : 0);
@@ -290,21 +287,6 @@ static void present(void)
 		where_write(WHERE);
 }
 
-/* the status bar: 1 if it changed */
-static int status_read(void)
-{
-	time_t t = time(0);
-	struct tm tm;
-	struct ui_status was = ui_st;
-
-	localtime_r(&t, &tm);
-	snprintf(ui_st.hhmm, sizeof(ui_st.hhmm), "%02d:%02d", tm.tm_hour, tm.tm_min);
-	ui_st.clock_ok = tm.tm_year >= 124;
-	ui_st.bars = ui_wifi_bars();
-	ui_st.lora = ui_lora_on();
-	return memcmp(&was, &ui_st, sizeof(was)) != 0;
-}
-
 /* a copy, move or delete: its message while it runs */
 static int run(struct browse *b, const char *what, char *const argv[])
 {
@@ -354,7 +336,7 @@ static void read_fifo(void)
 int main(int argc, char **argv)
 {
 	struct sigaction sa;
-	long last_status = 0, last_disks = 0;
+	long last_disks = 0;
 	char notice[160];
 	int fd;
 
@@ -388,7 +370,6 @@ int main(int argc, char **argv)
 			br_say(&F.b, notice, "", 1);
 		}
 	}
-	status_read();
 	files_build(&F);
 	present();
 	while (!F.quit && !term) {
@@ -414,10 +395,6 @@ int main(int argc, char **argv)
 			files_refresh(&F);
 			files_build(&F);
 			dirty = 1;
-		}
-		if (t - last_status >= 5000) {
-			last_status = t;
-			dirty |= status_read();
 		}
 		if (dirty || ui_turned())
 			present();

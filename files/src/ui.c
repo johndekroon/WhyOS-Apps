@@ -25,8 +25,6 @@
 #define WB_HOST		/* the rotation is rot, not the panel's */
 #endif
 #include "wb.h"
-#include "lora_state.h"
-#include "wbstatus.h"
 
 /* The folder's panel (the board): 624 wide at 48, 148; a column header of
  * 34 px and a line; the list under it, rows of 48 with 2 between and 6
@@ -61,18 +59,6 @@ _Static_assert(FILES_PAGE == LIST_H / PITCH - 1, "app.h FILES_PAGE: the rows in 
 #define LOG_ROW		23
 _Static_assert(LOG_ROWS * LOG_ROW <= PANEL_H - 2 * 16, "app.h LOG_ROWS");
 
-struct ui_status ui_st;
-
-int ui_wifi_bars(void)
-{
-	return wifi_bars();
-}
-
-int ui_lora_on(void)
-{
-	return lora_on();
-}
-
 static int need_full = 1;	/* the next frame drawn whole (ui_present) */
 
 int ui_turned(void)
@@ -81,17 +67,6 @@ int ui_turned(void)
 
 	need_full |= t;
 	return t;
-}
-
-/* status bar, as the menu's: WhyOS left; LoRa, Wi-Fi and the clock right */
-static void status_bar(void)
-{
-	const struct wb_font *n = &f_ui18b;
-	int cy = WB_STATUS_BAR_H / 2;
-
-	text(n, text(n, WB_CHROME_PAD, text_top(n, cy), "Why", WB_COLOR_TEXT_HI, -3),
-	     text_top(n, cy), "OS", WB_COLOR_CYAN, -3);
-	status_right(ui_st.hhmm, ui_st.clock_ok, ui_st.bars, ui_st.lora);
 }
 
 /*
@@ -384,7 +359,6 @@ static void draw_folder(const struct files *f)
 	char buf[96];
 
 	files_scene();
-	status_bar();
 	wb_header(lay.crumb, "Files", 0);
 	pills();
 	files_panel(PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
@@ -526,7 +500,6 @@ static void draw_list(const struct files *f)
 	char buf[96];
 
 	files_scene();
-	status_bar();
 	wb_header("FILES \xe2\x80\xba", settings ? "Settings" : l->title ? l->title : "", 0);
 	if (l->notice) {
 		text(&f_ui18, WB_CONTENT_PAD + 6, top, wb_fit(&f_ui18, l->notice, W - 2 * WB_CONTENT_PAD, buf, sizeof(buf)),
@@ -662,7 +635,6 @@ static void draw_log(const struct files *f)
 	char buf[120];
 
 	files_scene();
-	status_bar();
 	wb_header("FILES \xe2\x80\xba", "Copy, move and delete", 0);
 	if (!f->log_n) {
 		text(&f_ui20, WB_CONTENT_PAD + 6, WB_ROWS_TOP, "No log yet.", WB_COLOR_TEXT_MID, 0);
@@ -862,7 +834,6 @@ static void paint_message(const void *unused)
 
 	(void)unused;
 	files_scene();
-	status_bar();
 	wb_card(POP_X, y, cw, ch, WB_RADIUS_LG, 0, 0);
 	eyebrow((W - text_w(&f_mono14, msg_eb, 22)) / 2, y + 32, msg_eb);
 	text(&f_ui28b, (W - w) / 2, y + 32 + 18 + 6 + 2, msg_text, WB_COLOR_TEXT_HI, 0);

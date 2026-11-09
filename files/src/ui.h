@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /*
- * Files: drawing the app (ui.c) with libwb (WhyOS libwb: wb.h,
- * wbstatus.h), in bands of BAND_H rows: no 1 MB frame buffer next to the
+ * Files: drawing the app (ui.c) with libwb (WhyOS libwb: wb.h),
+ * in bands of BAND_H rows: no 1 MB frame buffer next to the
  * program, as the store, Write and appterm. ui_present draws every band and
  * hands it to out(); a frame with a pop-up is drawn whole while there is
  * room for it (the pop-up's frost blurs the picture under it).
@@ -15,15 +15,6 @@
 
 #define BAND_H	40
 
-struct ui_status {
-	char hhmm[6];
-	int clock_ok, bars, lora;
-};
-
-extern struct ui_status ui_st;
-
-int ui_wifi_bars(void);		/* wbstatus.h: -1 not connected, else the lit arcs */
-int ui_lora_on(void);
 /* has the badge turned since the last frame? (the scene turns with it) */
 int ui_turned(void);
 /* the whole screen, band by band */

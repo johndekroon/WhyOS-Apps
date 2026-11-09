@@ -17,7 +17,9 @@ the triangle `/root`; the cross Drives; Esc up a folder, and closes Files
 at `/` and on Drives; the circle the log of copy, move and delete
 (`/tmp/files.log`); the cloud "Show hidden files"; the diamond help.
 
-The look: the frontpanel's figures behind every screen; a folder
+The look: the frontpanel's figures behind every screen, also in the
+top 48 px, where WhyOS draws its status bar over the app (Files draws no
+clock or status icons of its own); a folder
 under the eyebrow "SD CARD › /mnt/sd/notes · 18 ITEMS · 12 GB FREE", the
 title Files and the places as pills (SD card, USB when one is in, System;
 the one the folder is on cyan); the folder as one panel of glass with
@@ -39,7 +41,7 @@ four times a second and draws again.
 | `src/apps.c` | the installed apps that open files, from their `app.conf` (`OPENS`, `OPENS_ALSO`), as the menu reads them |
 | `src/disks.c` | the drives on the Drives screen and mounting them, as the menu's Disks; the SD card's FAT at `/media/sd` while Files is open |
 | `src/app.c` | the app as a state machine: keys in; the list, pop-ups and what to open out |
-| `src/ui.c` | the screens, with libwb from WhyOS (`libwb/wb.h`, `wbstatus.h`) |
+| `src/ui.c` | the screens, with libwb from WhyOS (`libwb/wb.h`) |
 | `src/main.c` | the badge program (keypad, panel, SIGTERM) and the host program for the screen tests |
 | `tests/unit/` | the modules' tests (`t.h` is the harness) |
 | `tests/test_ui.py` | the screens on the host: keys from a script, screens as PPM (`SHOTS=dir` keeps them as PNG) |
