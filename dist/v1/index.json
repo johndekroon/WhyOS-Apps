@@ -438,18 +438,18 @@
     "micropython",
     "python"
    ],
-   "details_sha256": "3b2a05244447fbc3325d484e4fa34de2107e1cd9b1820a03173bec7e25a79a3d",
+   "details_sha256": "0be3275a939263b4100203e920cda55ae513158c5534a5a04788e720dd90e6ff",
    "id": "micropython",
    "install_location": "sd",
    "latest": {
-    "build": 3,
+    "build": 4,
     "package": {
-     "installed_size": 965977,
-     "sha256": "6a6e5368e0ff2eb5d2a8ca481d195a2a9abb9a4010000e6f34a88e6c3c759a25",
-     "size": 535081,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/micropython-1.29.2.wpk"
+     "installed_size": 1235020,
+     "sha256": "c7f61fdb42a506e36d193f0e6388a2d3b07912aea8518452a4715554e93ec1aa",
+     "size": 661118,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/micropython-1.29.3.wpk"
     },
-    "version": "1.29.2"
+    "version": "1.29.3"
    },
    "menu_icon": "terminal",
    "name": "MicroPython",
@@ -458,7 +458,7 @@
      "sd-card",
      "keyboard"
     ],
-    "memory_kb": 3100,
+    "memory_kb": 3400,
     "os_api": 1
    },
    "summary": "Python 3 on the badge: an interactive prompt and your own scripts",
@@ -914,7 +914,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-11-09T22:23:56Z",
- "serial": 51,
+ "generated": "2026-11-09T22:50:58Z",
+ "serial": 52,
  "source": "whyos"
 }

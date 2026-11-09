@@ -5,14 +5,14 @@
   "categories": [
     "tools"
   ],
-  "version": "1.29.2",
+  "version": "1.29.3",
   "icon": {
     "16x16": "icon16.png",
     "32x32": "icon32.png",
     "64x64": "icon64.png"
   },
   "author": "Damien P. George and the MicroPython contributors, badge port",
-  "license_type": "MIT AND (Apache-2.0 OR GPL-2.0-or-later) AND BSD-3-Clause AND Zlib AND LGPL-2.1-or-later",
+  "license_type": "MIT AND (Apache-2.0 OR GPL-2.0-or-later) AND BSD-3-Clause AND Zlib AND OFL-1.1 AND LGPL-2.1-or-later",
   "license_file": "micropython.txt",
   "application": [
     {
@@ -20,7 +20,7 @@
         "why2025-whyos"
       ],
       "type": "whyos",
-      "revision": 3,
+      "revision": 4,
       "executable": "start",
       "external_only": true,
       "assets": []

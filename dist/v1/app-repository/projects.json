@@ -1140,7 +1140,7 @@
      "assets": [],
      "executable": "start",
      "external_only": true,
-     "revision": 3,
+     "revision": 4,
      "targets": [
       "why2025-whyos"
      ],
@@ -1158,12 +1158,33 @@
     "64x64": "icon64.png"
    },
    "license_file": "micropython.txt",
-   "license_type": "MIT AND (Apache-2.0 OR GPL-2.0-or-later) AND BSD-3-Clause AND Zlib AND LGPL-2.1-or-later",
+   "license_type": "MIT AND (Apache-2.0 OR GPL-2.0-or-later) AND BSD-3-Clause AND Zlib AND OFL-1.1 AND LGPL-2.1-or-later",
    "name": "MicroPython",
    "repository_url": "https://micropython.org",
-   "version": "1.29.2",
+   "version": "1.29.3",
    "whyos": {
     "bundled": [
+     {
+      "license": "MIT",
+      "license_file": "whyos-sdk.txt",
+      "name": "WhyOS SDK and libwb (the module whyos)",
+      "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/micropython/source/sdk",
+      "version": "392b2e7"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "jetbrains-mono.txt",
+      "name": "JetBrains Mono (font)",
+      "source": "https://github.com/JetBrains/JetBrainsMono",
+      "version": "2.211"
+     },
+     {
+      "license": "OFL-1.1",
+      "license_file": "space-grotesk.txt",
+      "name": "Space Grotesk (font)",
+      "source": "https://github.com/floriankarsten/space-grotesk",
+      "version": "2.000"
+     },
      {
       "license": "Apache-2.0 OR GPL-2.0-or-later",
       "license_file": "mbedtls.txt",
@@ -1215,7 +1236,7 @@
      }
     ],
     "category": "development",
-    "changelog": "Scripts may do what they can in a shell: MicroPython asks for the system permission, which the sandbox gives it.",
+    "changelog": "The module whyos: the WhyOS SDK in Python, for scripts with the badge's own screens (sdk/python/README.md in WhyOS). A script that asks for more memory than the heap has fails with MemoryError instead of ending MicroPython.",
     "commands": [
      {
       "exec": "start",
@@ -1226,7 +1247,7 @@
       "name": "python"
      }
     ],
-    "description": "MicroPython is a lean implementation of Python 3. From the menu it opens\nthe interactive prompt (the REPL): type Python and see the result at\nonce, with history (arrow keys), Tab completion and automatic\nindentation. Ctrl+D closes it, Ctrl+E pastes a block of code. In a shell\n(serial console or SSH) \"micropython\" or \"python\" starts the prompt in\nyour own terminal, and \"python script.py\" runs a script.\n\nPut your scripts in badge/appdata/micropython on the SD card: the prompt\nstarts there, so \"import myscript\" runs myscript.py. Files also runs a\n.py file under Open with, and leaves the prompt open afterwards. Modules\nin the lib folder there can be imported from anywhere, and\n\"python -m mip install <package>\" installs packages from micropython-lib\ninto it (Wi-Fi needed).\n\nIncluded: json, re, socket and ssl (HTTPS), requests, asyncio,\nhashlib, time, os, math, struct, binascii, deflate, select and more, and\nthe @micropython.native and viper decorators for fast code. For the\nbadge: meshcore (MeshCore messages and bots over LoRa, with an example\nbot), setting (the badge's settings), ics (calendars from an .ics link,\nrepeats worked out) and xml.etree.ElementTree (XML as in CPython). Not\nincluded: threads, ffi, and CPython's larger standard library. The heap\nis 2 MB; MICROPY_HEAP=4M before the command gives a script more.",
+    "description": "MicroPython is a lean implementation of Python 3. From the menu it opens\nthe interactive prompt (the REPL): type Python and see the result at\nonce, with history (arrow keys), Tab completion and automatic\nindentation. Ctrl+D closes it, Ctrl+E pastes a block of code. In a shell\n(serial console or SSH) \"micropython\" or \"python\" starts the prompt in\nyour own terminal, and \"python script.py\" runs a script.\n\nPut your scripts in badge/appdata/micropython on the SD card: the prompt\nstarts there, so \"import myscript\" runs myscript.py. Files also runs a\n.py file under Open with, and leaves the prompt open afterwards. Modules\nin the lib folder there can be imported from anywhere, and\n\"python -m mip install <package>\" installs packages from micropython-lib\ninto it (Wi-Fi needed).\n\nIncluded: json, re, socket and ssl (HTTPS), requests, asyncio,\nhashlib, time, os, math, struct, binascii, deflate, select and more, and\nthe @micropython.native and viper decorators for fast code. For the\nbadge: meshcore (MeshCore messages and bots over LoRa, with an example\nbot), setting (the badge's settings), ics (calendars from an .ics link,\nrepeats worked out), xml.etree.ElementTree (XML as in CPython), and whyos:\nthe WhyOS SDK, so a script can have the badge's own screens (lists,\nforms, a typed line, a text editor, one colour, dialogs) with the key bar,\nhelp, log and settings every app has. Not\nincluded: threads, ffi, and CPython's larger standard library. The heap\nis 2 MB; MICROPY_HEAP=4M before the command gives a script more.",
     "format": 2,
     "id": "micropython",
     "launch": {
@@ -1239,10 +1260,10 @@
      "terminal": "close"
     },
     "package": {
-     "installed_size": 965977,
-     "sha256": "6a6e5368e0ff2eb5d2a8ca481d195a2a9abb9a4010000e6f34a88e6c3c759a25",
-     "size": 535081,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/micropython-1.29.2.wpk"
+     "installed_size": 1235020,
+     "sha256": "c7f61fdb42a506e36d193f0e6388a2d3b07912aea8518452a4715554e93ec1aa",
+     "size": 661118,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/micropython-1.29.3.wpk"
     },
     "permissions": [
      "system"
@@ -1252,7 +1273,7 @@
       "sd-card",
       "keyboard"
      ],
-     "memory_kb": 3100,
+     "memory_kb": 3400,
      "os_api": 1
     },
     "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/micropython/source",

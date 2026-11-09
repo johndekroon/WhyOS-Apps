@@ -1,0 +1,14 @@
+--- a/ports/unix/main.c
++++ b/ports/unix/main.c
+@@ -472,6 +472,11 @@
+     #if MICROPY_ENABLE_GC
+     #if !MICROPY_GC_SPLIT_HEAP
+     char *heap = malloc(heap_size);
++    // On NOMMU a heap asks for one contiguous block, and that can fail
++    if (heap == NULL) {
++        fprintf(stderr, "micropython: no %ld bytes for the heap\n", heap_size);
++        return 1;
++    }
+     gc_init(heap, heap + heap_size);
+     #else
+     assert(MICROPY_GC_SPLIT_HEAP_N_HEAPS > 0);
