@@ -96,8 +96,8 @@ arrive as the codes of F1 to F6.
 Things to know about raw mode:
 
 - **Ctrl-C does not stop the program**: it arrives as `"\x03"`. Handle it
-  yourself, as in the example below. The logo key always closes the
-  window.
+  yourself, as in the example below. The logo key always goes to the
+  menu.
 - **A new line needs `"\r\n"`**: in raw mode `"\n"` only moves down.
   Moving the cursor with escape codes avoids the question.
 - **`with Keys()` puts the terminal back** when the block ends, also after
@@ -151,7 +151,7 @@ print("\x1b[2J\x1b[H\x1b[?25h", end="")
 |---|---|
 | The program ends | From the menu or Files the window closes when the program ends without an error; after an error it stays open with the message until Enter or Esc. From Write the window always stays open until Enter or Esc |
 | Ctrl-C | `KeyboardInterrupt` in the program (not in raw mode, see above). Catch it with `try ... except KeyboardInterrupt` to clean up |
-| Logo key | Closes the window and ends the program at once; `finally` blocks do not run |
+| Logo key | Goes to the menu and pauses the program: it stands still until you come back to it (the logo key on the home screen, or its tile). The system may close a paused program, to make room for another app or after an hour; it then ends at once, and `finally` blocks do not run |
 | `sys.exit(n)` | Ends with status `n`; `0` is success |
 
 ## Saving data
