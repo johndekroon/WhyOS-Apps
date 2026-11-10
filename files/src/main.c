@@ -1,7 +1,9 @@
 /* SPDX-License-Identifier: MIT */
 /*
  * Files: the program. On the badge it reads the keypad (evdev, not grabbed:
- * apprun needs the logo key) and writes the panel band by band.
+ * apprun needs the logo key) and writes the panel band by band, all of it
+ * again on SIGCONT (after a pause or the screenshot's question, when
+ * something else was on the panel).
  *
  *   files [PATH]        start in PATH's folder, on PATH (a file or folder);
  *                       "" for Drives; none for /
@@ -113,6 +115,8 @@ static void key_word(const char *w)
  *   type TEXT            keys for TEXT
  *   code WORD            a key as the test FIFO takes it ("h108")
  *   shot PATH            the screen as PPM
+ *   suspend              a pause: something else on the panel
+ *   cont                 SIGCONT: everything drawn again
  * FILES_APPS: the app folders to read (":" between), FILES_LOG the log,
  * FILES_OPEN where a file to open goes, FILES_WHERE the where file after
  * every line, FILES_MSG_SHOT the message shown while a copy, move or
@@ -225,6 +229,11 @@ int main(int argc, char **argv)
 			type_text(line + 5);
 		} else if (!strncmp(line, "code ", 5)) {
 			key_word(line + 5);
+		} else if (!strcmp(line, "suspend")) {
+			memset(screen, 0x5a, sizeof(screen));	/* the menu's picture, say */
+		} else if (!strcmp(line, "cont")) {
+			ui_again();
+			ui_present(&F, out_band);
 		} else if (!strncmp(line, "held ", 5)) {
 			files_key(&F, code_of(line + 5), 2);
 			files_build(&F);
@@ -255,7 +264,7 @@ struct ev {			/* 32-bit kernel input_event */
 	int value;
 };
 
-static volatile sig_atomic_t term;
+static volatile sig_atomic_t term, cont;
 static int fb_fd = -1, ev_fd = -1, fifo_fd = -1, fifo_used;
 
 static long now_ms(void)
@@ -270,6 +279,12 @@ static void on_term(int sig)
 {
 	(void)sig;
 	term = 1;
+}
+
+static void on_cont(int sig)
+{
+	(void)sig;
+	cont = 1;
 }
 
 static void out_band(const uint16_t *b, int y0, int y1)
@@ -345,6 +360,8 @@ int main(int argc, char **argv)
 	sigaction(SIGTERM, &sa, 0);
 	sigaction(SIGINT, &sa, 0);
 	sigaction(SIGHUP, &sa, 0);
+	sa.sa_handler = on_cont;
+	sigaction(SIGCONT, &sa, 0);
 	fb_fd = open("/dev/fb0", O_RDWR | O_CLOEXEC);
 	if (fb_fd < 0) {
 		fprintf(stderr, "files: no panel (/dev/fb0)\n");
@@ -382,6 +399,14 @@ int main(int argc, char **argv)
 
 		if (term)
 			break;
+		/* something else was on the panel, and a Shift held then was let
+		 * go where Files did not look */
+		if (cont) {
+			cont = 0;
+			files_key(&F, K_LEFTSHIFT, 0);
+			ui_again();
+			dirty = 1;
+		}
 		if (r > 0 && (p[0].revents & POLLIN)) {
 			read_keys();
 			dirty = 1;

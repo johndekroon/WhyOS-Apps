@@ -17,6 +17,8 @@
 
 /* has the badge turned since the last frame? (the scene turns with it) */
 int ui_turned(void);
+/* something else was on the panel (SIGCONT): the next frame is drawn whole */
+void ui_again(void);
 /* the whole screen, band by band */
 void ui_present(const struct files *f, void (*out)(const uint16_t *band, int y0, int y1));
 /* a full-screen one-liner while a copy, move or delete runs */

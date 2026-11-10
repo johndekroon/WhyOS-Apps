@@ -42,7 +42,7 @@ four times a second and draws again.
 | `src/disks.c` | the drives on the Drives screen and mounting them, as the menu's Disks; the SD card's FAT at `/media/sd` while Files is open |
 | `src/app.c` | the app as a state machine: keys in; the list, pop-ups and what to open out |
 | `src/ui.c` | the screens, with libwb from WhyOS (`libwb/wb.h`) |
-| `src/main.c` | the badge program (keypad, panel, SIGTERM) and the host program for the screen tests |
+| `src/main.c` | the badge program (keypad, panel, SIGTERM, the whole screen again on SIGCONT) and the host program for the screen tests |
 | `tests/unit/` | the modules' tests (`t.h` is the harness) |
 | `tests/test_ui.py` | the screens on the host: keys from a script, screens as PPM (`SHOTS=dir` keeps them as PNG) |
 

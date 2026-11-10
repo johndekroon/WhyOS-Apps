@@ -243,6 +243,17 @@ def test_focus_moves_drawn_partly(env):
     assert [k for k in part if part[k] != whole[k]] == []
 
 
+def test_everything_again_after_a_pause(env):
+    """suspend puts something else on the panel; after cont (SIGCONT) the screen is as it was:
+    the folder, a pop-up over it, and a focus moved since."""
+    _, home, _ = env
+    s = ui(env, ["shot a", "suspend", "cont", "shot b", "f1", "shot c", "suspend", "cont", "shot d",
+                 "esc", "suspend", "cont", "down", "shot e"], home / "notes.md")
+    assert s["a"].px == s["b"].px and s["c"].px == s["d"].px
+    again = ui(env, ["down", "shot e"], home / "notes.md")
+    assert s["e"].px == again["e"].px
+
+
 def test_esc_closes_at_the_top(env):
     tmp, home, _ = env
     ui(env, ["esc", "esc", "esc", "esc", "esc", "esc", "esc", "esc", "esc", "esc", "esc", "esc"], home)

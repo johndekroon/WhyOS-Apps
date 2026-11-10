@@ -783,6 +783,11 @@ static void timing(long t0, int whole_frame)
 	tm_scene = tm_glass = tm_out = 0;
 }
 
+void ui_again(void)
+{
+	need_full = 1;
+}
+
 void ui_present(const struct files *f, void (*out)(const uint16_t *band, int y0, int y1))
 {
 	long t0 = wb_now_us();

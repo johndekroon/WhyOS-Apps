@@ -295,7 +295,8 @@ static int save_to(struct app *a, const char *path)
 	free(data);
 	text_saved(&a->e.t);
 	a->saved_at = time(0);
-	snprintf(a->path, sizeof(a->path), "%s", path);
+	if (path != a->path)		/* (onto itself glibc's snprintf leaves it empty) */
+		snprintf(a->path, sizeof(a->path), "%s", path);
 	path_split(path, a->dir, sizeof(a->dir), a->name, sizeof(a->name));
 	if (a->e.mode == M_CODE)
 		app_log(a, "saved %s (%d lines)", path, a->e.t.n);
@@ -1411,18 +1412,29 @@ int app_tick(struct app *a, long now)
 	return 0;
 }
 
+/*
+ * A pause: the document is saved, as it may not come back, and nothing else
+ * changes. One without a name is saved as untitled.md (-2, -3 ... when that
+ * exists) and is that document from then on, so the next pause saves over
+ * it and makes no new file.
+ */
+void app_suspend(struct app *a)
+{
+	if (!dirty(a))
+		return;
+	if (a->path[0]) {
+		save_to(a, a->path);
+	} else if (text_size(&a->e.t)) {
+		char p[600];
+
+		rescue_path(a->home, p, sizeof(p));
+		save_to(a, p);
+	}
+}
+
 void app_term(struct app *a)
 {
-	if (dirty(a)) {
-		if (a->path[0]) {
-			save_to(a, a->path);
-		} else if (text_size(&a->e.t)) {
-			char p[600];
-
-			rescue_path(a->home, p, sizeof(p));
-			save_to(a, p);
-		}
-	}
+	app_suspend(a);
 	a->quit = 1;
 }
 

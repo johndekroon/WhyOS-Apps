@@ -2,8 +2,9 @@
 /*
  * Write: the program. On the badge it reads the keypad (evdev, not
  * grabbed: apprun needs the logo key), keeps Shift, Ctrl, Alt and Fn,
- * writes the panel band by band and ends on SIGTERM after saving (the logo
- * key). /tmp/write.keys takes key codes from a
+ * writes the panel band by band, ends on SIGTERM after saving, saves and
+ * stops itself on SIGTSTP (a pause) and draws everything again on SIGCONT.
+ * /tmp/write.keys takes key codes from a
  * test, as /tmp/meshchat.keys does (docs/HOME.md of WhyOS):
  * decimal codes, each optionally after s (Shift), c (Ctrl), a (Alt) and f
  * (Fn): "c31" is Ctrl+S, "f106" Fn+Right.
@@ -87,7 +88,9 @@ static void key_word(const char *w)
  *   shot PATH            the screen as PPM
  *   fn down / fn up      Fn held / let go
  *   tick MS              time passes
- *   term                 the logo key (SIGTERM)
+ *   term                 SIGTERM
+ *   suspend              a pause (SIGTSTP): saved, and something else on the panel
+ *   cont                 SIGCONT: everything drawn again
  *   code WORD            a key as the test FIFO writes it ("c31": Ctrl+S)
  */
 static uint16_t screen[W * H];
@@ -209,6 +212,16 @@ int main(int argc, char **argv)
 			app_term(&A);
 			break;
 		}
+		if (!strcmp(line, "suspend")) {
+			app_suspend(&A);
+			memset(screen, 0x5a, sizeof(screen));	/* the menu's picture, say */
+			continue;
+		}
+		if (!strcmp(line, "cont")) {
+			A.redraw = 1;
+			present();
+			continue;
+		}
 		if (!strcmp(line, "fn down") || !strcmp(line, "fn up")) {
 			app_fn(&A, line[3] == 'd');
 			present();
@@ -249,7 +262,7 @@ int main(int argc, char **argv)
 
 #define FIFO	"/tmp/write.keys"
 
-static volatile sig_atomic_t term;
+static volatile sig_atomic_t term, paused, cont;
 static struct { int shift, ctrl, alt, fn; } M;
 static struct rep held;		/* the key held down (repeat.h) */
 
@@ -294,6 +307,20 @@ static void on_term(int sig)
 {
 	(void)sig;
 	term = 1;
+}
+
+static void on_pause(int sig)
+{
+	(void)sig;
+	paused = 1;
+}
+
+/* (a pause not yet acted on is over too: the system stopped Write itself) */
+static void on_cont(int sig)
+{
+	(void)sig;
+	cont = 1;
+	paused = 0;
 }
 
 /* the keypad's state: a release the queue lost does not leave a key repeating */
@@ -425,6 +452,39 @@ static void run_program(void)
 	A.redraw = 1;
 }
 
+/*
+ * A pause (SIGTSTP): the document is saved and Write stops itself, to stand
+ * still in here until SIGCONT. A SIGCONT that came while it saved means the
+ * system stopped Write itself and it is back already; a SIGTERM, that it is
+ * to end. What was typed
+ * meanwhile went to the menu, and the keys held at the pause were let go
+ * there.
+ */
+static void pause_here(void)
+{
+	struct ev junk[16];
+
+	/* keys typed before the logo key belong in the document */
+	if (ev_fd >= 0)
+		read_keys();
+	if (fifo_fd >= 0)
+		read_fifo();
+	paused = 0;
+	cont = 0;
+	fprintf(stderr, "write: paused: %s\n", text_dirty(&A.e.t) ? "saving first" : "nothing to save");
+	app_suspend(&A);
+	if (!cont && !term)
+		kill(getpid(), SIGSTOP);
+	while (!cont && !term)		/* (a system that answers the stop before it holds) */
+		poll(0, 0, 100);
+	while (read(ev_fd, junk, sizeof(junk)) > 0)
+		;
+	M.shift = M.ctrl = M.alt = M.fn = 0;
+	app_fn(&A, 0);
+	held.code = 0;
+	cont = 1;
+}
+
 int main(int argc, char **argv)
 {
 	long last_blink = 0, last_key = 0;
@@ -434,6 +494,10 @@ int main(int argc, char **argv)
 	sa.sa_handler = on_term;
 	sigaction(SIGTERM, &sa, 0);
 	sigaction(SIGINT, &sa, 0);
+	sa.sa_handler = on_pause;
+	sigaction(SIGTSTP, &sa, 0);
+	sa.sa_handler = on_cont;
+	sigaction(SIGCONT, &sa, 0);
 	fb_fd = open("/dev/fb0", O_RDWR | O_CLOEXEC);
 	if (fb_fd < 0) {
 		fprintf(stderr, "write: no panel (/dev/fb0)\n");
@@ -455,15 +519,22 @@ int main(int argc, char **argv)
 		 * (the scene behind the bars turns with it) */
 		int r = poll(p, fifo_fd >= 0 ? 2 : 1, w >= 0 && w < 250 ? (int)w : 250);
 
+		if (paused && !term)
+			pause_here();
 		if (term) {
-			/* keys typed before the logo key belong in the document */
+			/* keys typed before the end belong in the document */
 			if (ev_fd >= 0)
 				read_keys();
 			if (fifo_fd >= 0)
 				read_fifo();
-			fprintf(stderr, "write: the logo key: %s\n", text_dirty(&A.e.t) ? "saving first" : "nothing to save");
+			fprintf(stderr, "write: SIGTERM: %s\n", text_dirty(&A.e.t) ? "saving first" : "nothing to save");
 			app_term(&A);
 			break;
+		}
+		/* something else was on the panel (a pause, the screenshot's question) */
+		if (cont) {
+			cont = 0;
+			A.redraw = 1;
 		}
 		t = now_ms();
 		if (r > 0 && (p[0].revents & POLLIN)) {

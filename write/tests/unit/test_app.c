@@ -659,6 +659,89 @@ TEST(the_logo_key_saves)
 	EQ(access(strcat(strcpy(tmp, home), "/untitled.md"), F_OK), -1);	/* nothing typed: no file */
 }
 
+TEST(a_pause_saves_and_changes_nothing_else)
+{
+	struct pos caret, anchor;
+
+	start("n.md", "one two\n");
+	type("y");
+	key(K_RIGHT, 0, 1, 0, 1, 0);	/* Fn+Ctrl+Right: "one" selected */
+	ctrl('c');
+	caret = A.e.caret;
+	anchor = A.e.anchor;
+	app_suspend(&A);
+	EQ(A.quit, 0);
+	STREQ(slurp("n.md"), "Yone two\n");
+	EQ(A.e.sel, 1);
+	OK(caret.line == A.e.caret.line && caret.col == A.e.caret.col);
+	OK(anchor.line == A.e.anchor.line && anchor.col == A.e.anchor.col);
+	STREQ(slurp(getenv("WRITE_CLIP")), "one");
+	ctrl('z');			/* undo still reaches back past the pause */
+	STREQ(src(), "one two\n");
+	app_suspend(&A);
+	STREQ(slurp("n.md"), "one two\n");
+}
+
+TEST(a_pause_names_a_new_document_once)
+{
+	struct docbar d;
+	char p[400];
+
+	start(0, 0);
+	app_suspend(&A);			/* nothing typed: no file */
+	EQ(access(strcat(strcpy(p, home), "/untitled.md"), F_OK), -1);
+	type("first");
+	app_suspend(&A);
+	STREQ(slurp("untitled.md"), "First");
+	app_docbar(&A, &d);
+	STREQ(d.name, "untitled.md");	/* it is that document now */
+	EQ(d.edited, 0);
+	for (int i = 0; i < 10; i++) {
+		type("!");
+		app_suspend(&A);
+	}
+	STREQ(slurp("untitled.md"), "First!!!!!!!!!!");
+	EQ(access(strcat(strcpy(p, home), "/untitled-2.md"), F_OK), -1);
+	type("?");
+	ctrl('s');			/* named: Ctrl+S saves at once */
+	EQ(A.ov, OV_NONE);
+	STREQ(slurp("untitled.md"), "First!!!!!!!!!!?");
+	start(0, 0);
+	put("untitled.md", "someone else's");
+	type("second");
+	app_suspend(&A);
+	app_suspend(&A);
+	STREQ(slurp("untitled.md"), "someone else's");	/* an existing one is not written over */
+	STREQ(slurp("untitled-2.md"), "Second");
+	EQ(access(strcat(strcpy(p, home), "/untitled-3.md"), F_OK), -1);
+}
+
+TEST(a_pause_leaves_a_dialog_open)
+{
+	start("n.md", "x\n");
+	type("y");
+	press(K_ESC);
+	EQ(A.ov, OV_DISCARD);
+	press(K_DOWN);
+	app_suspend(&A);
+	EQ(A.ov, OV_DISCARD);
+	EQ(A.focus, 1);
+	EQ(A.quit, 0);
+	STREQ(slurp("n.md"), "Yx\n");
+	start(0, 0);
+	type("# Plan");
+	ctrl('s');
+	EQ(A.ov, OV_SAVEAS);
+	app_suspend(&A);			/* kept under the rescue name meanwhile */
+	EQ(A.ov, OV_SAVEAS);
+	STREQ(A.sa_name, "plan");
+	STREQ(slurp("untitled.md"), "# Plan");
+	press(K_ENTER);
+	EQ(A.ov, OV_NONE);
+	STREQ(slurp("plan.md"), "# Plan");
+	STREQ(A.name, "plan.md");
+}
+
 TEST(new_document)
 {
 	start("n.md", "x\n");

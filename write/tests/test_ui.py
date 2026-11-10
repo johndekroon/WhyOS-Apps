@@ -212,6 +212,49 @@ def test_logo_key_saves(env):
     assert (home / "untitled.md").read_text() == "Note to self"
 
 
+FILL = bytes((88, 72, 208)) * 8      # what "suspend" leaves on the panel (0x5a5a), a row of it
+
+
+def part(shot, x0, y0, x1, y1):
+    return b"".join(shot.px[(y * shot.w + x0) * 3:(y * shot.w + x1) * 3] for y in range(y0, y1))
+
+
+def test_a_pause_saves_and_everything_is_drawn_again(env):
+    """suspend (SIGTSTP) saves and puts something else on the panel; cont (SIGCONT) draws it all
+    again: the caret and the selection where they were."""
+    _, home, _ = env
+    s = ui(env, ["down", "down", "fn ctrl right", "fn ctrl right", "shot a", "suspend", "cont", "shot b",
+                 "type x", "shot typed", "suspend", "cont", "shot c", "type y", "shot d"],
+           home / "camp-notes.md")
+    assert s["a"].px == s["b"].px and FILL not in s["b"].px     # nothing to save: the same screen
+    assert s["typed"].count(100, 62, 260, 78, is_c(YELLOW, 30)) > 10
+    assert FILL not in s["c"].px
+    assert s["c"].count(100, 62, 260, 78, is_c(YELLOW, 30)) == 0   # saved: no edited dot
+    assert part(s["c"], 0, 100, 720, 660) == part(s["typed"], 0, 100, 720, 660)   # the page as it was
+    # saved at the second pause, and Write went on: y is typed where the caret was, not saved
+    assert "\nX badge **fully charged**" in (home / "camp-notes.md").read_text()
+    assert s["d"].count(100, 62, 260, 78, is_c(YELLOW, 30)) > 10
+
+
+def test_ten_pauses_make_one_file(env):
+    _, home, _ = env
+    s = ui(env, ["type note"] + ["type !", "suspend", "cont"] * 10 + ["shot end"])["end"]
+    assert sorted(p.name for p in home.glob("untitled*")) == ["untitled.md"]
+    assert (home / "untitled.md").read_text() == "Note!!!!!!!!!!"
+    assert FILL not in s.px and s.count(100, 62, 260, 78, is_c(YELLOW, 30)) == 0
+
+
+def test_a_pause_with_a_dialog_open(env):
+    _, home, _ = env
+    s = ui(env, ["type x", "esc", "down", "shot a", "suspend", "cont", "shot b", "up", "enter", "shot c"],
+           home / "camp-notes.md")
+    assert (home / "camp-notes.md").read_text() == NOTES.replace("## ", "## X", 1)
+    # the question is still there, its focus too; "Keep editing" goes on in the document
+    assert FILL not in s["b"].px and part(s["a"], 96, 250, 624, 540) == part(s["b"], 96, 250, 624, 540)
+    assert s["b"].count(96, 450, 624, 530, is_c((0xFF, 0x7A, 0x6E), 30)) > 20
+    assert s["c"].count(96, 450, 624, 530, is_c((0xFF, 0x7A, 0x6E), 30)) == 0
+
+
 def test_small_text(env):
     _, home, _ = env
     big = ui(env, ["shot big"], home / "camp-notes.md")["big"]

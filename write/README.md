@@ -19,7 +19,7 @@ the image.
 | `src/app.c` | the app as a state machine: keys in; document, overlays, requests out |
 | `src/ui.c` | the screens, drawn with libwb from WhyOS (`libwb/wb.h`, `wbdoc.h` for the document) in the menu's style |
 | `src/repeat.c` | a key held down repeats, by Write's own timer: which keys, when |
-| `src/main.c` | the badge program (keypad, panel, SIGTERM, running scripts) and the host program for the screen tests |
+| `src/main.c` | the badge program (keypad, panel, SIGTERM, SIGTSTP and SIGCONT, running scripts) and the host program for the screen tests |
 | `tests/unit/` | the modules' tests (`t.h` is the harness) |
 | `tests/test_ui.py` | the screens on the host: keys from a script, screens as PPM |
 
@@ -49,8 +49,12 @@ took to stderr (`/tmp/app-write.log`). The clipboard is
 
 - Italic: Space Grotesk has none; Write slants the regular glyphs.
 - Files over 256 KB are refused with a message.
-- The logo key saves a named document over itself and an unnamed one as
-  `/root/untitled.md` (`-2`, `-3` ... when that exists).
+- When the system ends Write (SIGTERM) or pauses it (SIGTSTP), Write saves
+  a named document over itself and an unnamed one as `/root/untitled.md`
+  (`-2`, `-3` ... when that exists). At a pause the unnamed document becomes
+  that file, so the next pause saves over it and makes no new one; the
+  caret, the selection and an open pop-up stay as they are, and Write stops
+  itself (SIGSTOP). On SIGCONT it draws the whole screen again.
 - The clipboard is `/tmp/write.clip`: shared between documents, gone after
   a restart; only Write uses it.
 - Options has a Language row for every document, so a new document can be

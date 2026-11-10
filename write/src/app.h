@@ -141,7 +141,8 @@ void app_free(struct app *a);
 void app_key(struct app *a, const struct key *k);
 void app_fn(struct app *a, int down);
 int app_tick(struct app *a, long now);	/* 1 when the screen must change */
-void app_term(struct app *a);		/* SIGTERM (the logo key): save, then quit */
+void app_suspend(struct app *a);		/* SIGTSTP (a pause): save, and stay as it is */
+void app_term(struct app *a);		/* SIGTERM: save, then quit */
 
 /* for drawing */
 void app_docbar(struct app *a, struct docbar *d);
