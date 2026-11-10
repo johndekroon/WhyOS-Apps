@@ -47,18 +47,18 @@
    "author": "WhyOS-Apps contributors",
    "category": "tools",
    "commands": [],
-   "details_sha256": "fb8fea974ed17830d2300f062770efbf2d33c088e57b0c6df6003f91c628c782",
+   "details_sha256": "25e35d19793d183b188edb659112eb43771d26da705388f422dff30d501cffd1",
    "id": "calc",
    "install_location": "sd",
    "latest": {
-    "build": 8,
+    "build": 9,
     "package": {
-     "installed_size": 414083,
-     "sha256": "9378c4362e5528b233fdaf8087d66e5c8b30bb2e4b3a9983c5f27b8699181c2e",
-     "size": 195842,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.3.1.wpk"
+     "installed_size": 414179,
+     "sha256": "12cbd7d6bf31ebab2a5d5e2890769ec80ad3623eeb4e60e7405be734d30e6e35",
+     "size": 195898,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.3.2.wpk"
     },
-    "version": "1.3.1"
+    "version": "1.3.2"
    },
    "menu_icon": "count",
    "name": "Calculator",
@@ -79,7 +79,7 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-11-09"
+   "updated": "2026-11-10"
   },
   {
    "author": "id Software (DOOM), maximevince (fbDOOM), badge port",
@@ -203,18 +203,18 @@
    "author": "WhyOS-Apps contributors",
    "category": "tools",
    "commands": [],
-   "details_sha256": "71614b254a62e2f56a59ea2bc7e41b5fe059e65cb4b5f023cbc10c43c358d3b5",
+   "details_sha256": "b6e00b1f2d4162241fd73d8fd81772cb7a92182277536b01c49ae8faeb8b76bc",
    "id": "flashlight",
    "install_location": "sd",
    "latest": {
-    "build": 6,
+    "build": 7,
     "package": {
-     "installed_size": 352795,
-     "sha256": "69a276044c8dadb8f1d51770372d58d7d4dd9a3bb55485326933f7c5c88fc091",
-     "size": 157031,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flashlight-1.1.1.wpk"
+     "installed_size": 352859,
+     "sha256": "91fb767628cd84b7f37d6218b93ac49e31eb0f8377fa453b1f94e99cf7094ea9",
+     "size": 157026,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flashlight-1.1.2.wpk"
     },
-    "version": "1.1.1"
+    "version": "1.1.2"
    },
    "menu_icon": "sun",
    "name": "Flashlight",
@@ -234,7 +234,7 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-11-09"
+   "updated": "2026-11-10"
   },
   {
    "author": "gnuboy authors (rofl0r/gnuboy), badge port",
@@ -438,18 +438,18 @@
     "micropython",
     "python"
    ],
-   "details_sha256": "45a99a0efaa14adef136673dff5a2d66a4549cd8c5e02b651de31793122e6b8a",
+   "details_sha256": "e651ec25ca34e0f8ed0195868ca93fc85751af8542e061d4e319bc4028a456b9",
    "id": "micropython",
    "install_location": "sd",
    "latest": {
-    "build": 5,
+    "build": 6,
     "package": {
-     "installed_size": 1236068,
-     "sha256": "e8052031c011678cd8429966b2dcf31626a79e927f1a9db7ffc5511c00e057fc",
-     "size": 661900,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/micropython-1.29.4.wpk"
+     "installed_size": 1236132,
+     "sha256": "fbd5290c79a8a2968b507291cddc1d6377160a67fe624146a9299488aa13424e",
+     "size": 661860,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/micropython-1.29.5.wpk"
     },
-    "version": "1.29.4"
+    "version": "1.29.5"
    },
    "menu_icon": "terminal",
    "name": "MicroPython",
@@ -472,7 +472,7 @@
    ],
    "terminal": true,
    "type": "app",
-   "updated": "2026-11-09"
+   "updated": "2026-11-10"
   },
   {
    "author": "The GNU nano developers, badge port",
@@ -759,18 +759,18 @@
    "author": "why2025-linux contributors",
    "category": "hardware",
    "commands": [],
-   "details_sha256": "c845ba2436de0cbe4cd9ae7fdb9096f724631b0246c9900637212764073c89e6",
+   "details_sha256": "34ef3e1cc8ea6e21d4bd5ff33dd426ffb1d68c7e6ee9d3b9c40278432966c3d2",
    "id": "sensorpanel",
    "install_location": "sd",
    "latest": {
-    "build": 7,
+    "build": 8,
     "package": {
-     "installed_size": 374164,
-     "sha256": "51313af680e4f5ccca2f53e2ebd3a06469102ad17389a6e345fb0b839055d85b",
-     "size": 163970,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/sensorpanel-1.2.2.wpk"
+     "installed_size": 374228,
+     "sha256": "2bce325457fb651adef6cc49a886e1f7ea55f5b0e75b9d09e20076dfe57a61f6",
+     "size": 164042,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/sensorpanel-1.2.3.wpk"
     },
-    "version": "1.2.2"
+    "version": "1.2.3"
    },
    "menu_icon": "sensors",
    "name": "Sensor panel",
@@ -792,7 +792,7 @@
    ],
    "terminal": false,
    "type": "app",
-   "updated": "2026-11-09"
+   "updated": "2026-11-10"
   },
   {
    "author": "WhyOS-Apps",
@@ -914,7 +914,7 @@
  "base_url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/",
  "categories_sha256": "008a1abc805e1472c954a04b31694e3d93f070cab3d860fd6e1ec99abf98aa59",
  "format": 1,
- "generated": "2026-11-09T23:50:13Z",
- "serial": 54,
+ "generated": "2026-11-10T02:28:13Z",
+ "serial": 55,
  "source": "whyos"
 }

@@ -68,6 +68,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 9,
+   "changelog": "The SDK's fix of WhyOS ca53300: keys that come before a new screen's first frame (a quick press right after the one that opened it) are no longer lost.",
+   "package": {
+    "installed_size": 414179,
+    "sha256": "12cbd7d6bf31ebab2a5d5e2890769ec80ad3623eeb4e60e7405be734d30e6e35",
+    "size": 195898,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/calc-1.3.2.wpk"
+   },
+   "published": "2026-11-10T02:28:05Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/calc-1.3.2-source.tar.gz",
+   "version": "1.3.2"
+  },
+  {
    "build": 8,
    "changelog": "The SDK's fixes of WhyOS 59c4625: Left, Right and Backspace move and erase by character.",
    "package": {

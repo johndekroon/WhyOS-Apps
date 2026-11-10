@@ -121,13 +121,16 @@ class App:
 
     # ---- what the test does ----------------------------------------------------------------
 
-    def press(self, *names):
-        """Keys one after another, STEP_MS apart: 'Enter', '◆', 'Fn+Esc', 'x', 'Up'."""
+    def press(self, *names, gap=STEP_MS):
+        """Keys one after another, gap ms apart: 'Enter', '◆', 'Fn+Esc', 'x', 'Up'. gap=0 sends
+        them at once, as a quick hand can within one frame."""
         for name in names:
             held, code = key_codes(name)
             for i, m in enumerate(held):
                 self.keys.append((self.t + i, m))
             self.keys.append((self.t + len(held) + 10, code))
+            self.t += gap
+        if not gap:
             self.t += STEP_MS
         return self
 

@@ -15,7 +15,7 @@
    "license_url": "licenses/sensorpanel/whyos-sdk.txt",
    "name": "WhyOS SDK and libwb (the screens' drawing library)",
    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/sensorpanel/source/sdk",
-   "version": "59c4625"
+   "version": "ca53300"
   },
   {
    "license": "OFL-1.1",
@@ -73,6 +73,19 @@
  ],
  "type": "app",
  "versions": [
+  {
+   "build": 8,
+   "changelog": "The SDK's fix of WhyOS ca53300: keys that come before a new screen's first frame (a quick press right after the one that opened it) are no longer lost.",
+   "package": {
+    "installed_size": 374228,
+    "sha256": "2bce325457fb651adef6cc49a886e1f7ea55f5b0e75b9d09e20076dfe57a61f6",
+    "size": 164042,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/sensorpanel-1.2.3.wpk"
+   },
+   "published": "2026-11-10T02:28:12Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/sensorpanel-1.2.3-source.tar.gz",
+   "version": "1.2.3"
+  },
   {
    "build": 7,
    "changelog": "The SDK's fixes of WhyOS 59c4625: the help always lists Esc and the logo key.",

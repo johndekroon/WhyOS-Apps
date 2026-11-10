@@ -63,15 +63,16 @@ title, a value on the right), the content, the key bar.
 
 | Kind | What it is | The app gives | Example |
 |---|---|---|---|
-| `WOS_LIST` | Rows: focus, scrolling, the run-on at the end, a scroll bar | `n`, `row(i, &r)`, `choose(i)` on Enter, `adjust(i, step)` on ← →, `menu` for ■ | The settings screen |
+| `WOS_LIST` | Rows: focus, scrolling, the run-on at the end, a scroll bar | `n`, `row(i, &r)`, `choose(i)` on Enter, `adjust(i, step)` on ← →, `menu` for ■; or `fields` for a form | The settings screen |
 | `WOS_ENTRY` | A line typed, worked out on Enter, the earlier lines above it | `evaluate(line, result)`, `preview(line, result)` while typing, `typed(line, cursor, ch)` | `sdapps/calc` |
 | `WOS_COLOUR` | The whole screen one colour, at a brightness | `colour`, `brightness`, `keys_ms` | `sdapps/flashlight` |
 | `WOS_EDITOR` | Text over several lines, edited in place: wrapped at word ends, scrolled, tabs shown as arrows; a change marks it dirty | `text` (the app's buffer), `max` (its size), `placeholder` | A note, a snippet |
 | `WOS_CANVAS` | An area the app draws itself, with libwb | `paint(x, y, w, h)`, `key(code, ch)`, `release(code)`, `scene` | A graph, a game |
 
 `wos_push(&screen)` opens a screen on top; Esc goes back, and on the first screen Esc closes the
-app. `update(screen)` runs before every frame: it puts the app's data into the screen's fields
-(a value on the right of the title, a row count), so the app does not tell the SDK when to draw.
+app. `update(screen)` runs before every frame and before every key: it puts the app's data into
+the screen's fields (a value on the right of the title, a row count), so the app does not tell the
+SDK when to draw, and keys that come before a new screen's first frame find it ready.
 The SDK draws after every key, every tick and every change in the log, and only the bands of
 40 rows that changed (`wb_bands`, `../libwb/README.md`).
 
@@ -110,8 +111,9 @@ The circle (log), clover (settings) and diamond (help) belong to the SDK on ever
 too. The keys by role are `WOS_KEY_OPTIONS` (■, a context menu), `WOS_KEY_MAIN` (▲, the main
 action) and `WOS_KEY_SECOND` (✕, the second), as the design system says when to use them.
 
-Esc peels off one layer: a pop-up closes; an entry's typed text is cleared; a screen goes back;
-the first screen closes the app. Fn+Esc is standby, never the app's.
+Esc peels off one layer: a running action is aborted; a pop-up closes; an entry's typed text is
+cleared; a screen goes back (after "Discard changes?" when it has unsaved work); the first screen
+closes the app. Fn+Esc is standby, never the app's.
 
 ## Questions, text and messages
 
@@ -143,8 +145,9 @@ static const wos_setting settings[] = {
 ```
 
 The clover's screen shows them as rows: a switch flips on Enter, a choice opens a pop-up list
-with the present one ticked, a slider moves with ← →, a text opens the text pop-up. A change is written at once to
-`APP_CONFIG/settings` (`key=value` lines, written whole and synced) and `changed()` is called.
+with the present one ticked, a slider moves with ← →, a text opens the text pop-up. A change is
+written at once to `APP_CONFIG/settings` (`key=value` lines, written whole and synced) and
+`changed()` is called.
 A `WOS_LIST` screen with `.fields` is a form: the same kinds of rows from its own table, kept
 the same way (a new item's name, size and colour, before the app makes it).
 
@@ -247,7 +250,8 @@ riscv32-buildroot-linux-uclibc-gcc -Os -fPIC -static -ffunction-sections -fdata-
 - The editor wraps and reaches the first 200 lines of a text.
 - The help lists up to 12 keys: the screen's actions and own keys as far as they fit, then always
   Esc, the circle, clover, diamond and the logo key.
-- A list shows up to 64 rows; a pop-up list up to 24 items, without a filter.
+- A pop-up list shows up to 24 items, without a filter; a test's screen description has a list's
+  first 64 rows.
 - 32 settings of up to 71 characters; 40 log lines of up to 95.
 - Pop-ups are drawn in bands, so their glass is not blurred (`../libwb/README.md`).
 - The SDK's version is `WOS_SDK_VERSION`; until 1.0 its calls may change.

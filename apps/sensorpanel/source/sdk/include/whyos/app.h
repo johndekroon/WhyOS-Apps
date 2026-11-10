@@ -49,7 +49,7 @@ typedef struct wos_screen {
 	const char *title_right;	/* right of the title, in text mid */
 	const wos_action *actions;	/* ended by { 0 } */
 	const char *esc;	/* Esc's word when it is not the SDK's (close, back, clear) */
-	void (*update)(struct wos_screen *s);	/* before each frame: the data into the fields */
+	void (*update)(struct wos_screen *s);	/* before each frame and key: the data into the fields */
 
 	/* WOS_COLOUR: the whole screen one colour, at a brightness */
 	uint32_t colour;
@@ -926,8 +926,12 @@ static void wos_out(const uint16_t *rows, int y0, int y1)
 static void wos_test_screen(void);	/* test.h */
 static void wos_entry_preview(const wos_screen *s);
 
-/* The screen as it is now, drawn where it changed. */
-static void wos_present(void)
+/*
+ * The top screen made ready: the app's update, a form's rows. Before every
+ * frame and before every key, so that keys that come before the first frame
+ * of a screen just opened find it as it will be drawn.
+ */
+static void wos_ready(void)
 {
 	wos_screen *s = wos_top();
 
@@ -941,10 +945,18 @@ static void wos_present(void)
 		s->choose = wos_settings_open;
 		s->adjust = wos_settings_adjust;
 	}
-	if (s->kind == WOS_ENTRY && !wos.err)	/* a setting may have changed it */
-		wos_entry_preview(s);
 	if (s->kind == WOS_LIST && s->focus >= s->n)
 		s->focus = s->n ? s->n - 1 : 0;
+}
+
+/* The screen as it is now, drawn where it changed. */
+static void wos_present(void)
+{
+	wos_screen *s = wos_top();
+
+	wos_ready();
+	if (s->kind == WOS_ENTRY && !wos.err)	/* a setting may have changed it */
+		wos_entry_preview(s);
 	if (getenv("WOS_TIMING")) {	/* a line per frame in the app's log: bands, ms */
 		long t = wos_ms();
 		char line[48] = "frame: ";
@@ -1376,7 +1388,10 @@ static void wos_discard(int choice)
 
 static void wos_key(int code)
 {
-	wos_screen *s = wos_top();
+	wos_screen *s;
+
+	wos_ready();
+	s = wos_top();
 
 	if (s->busy) {			/* a running action: only Esc, which aborts it (6.7 step 1) */
 		if (code == WOS_KEY_ESC && s->abort)

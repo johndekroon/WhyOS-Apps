@@ -1,7 +1,7 @@
 # Corresponding source: Flashlight
 
 The flashlight is our own program, written for the badge on the WhyOS SDK.
-The files are copied from WhyOS at commit `59c4625`:
+The files are copied from WhyOS at commit `ca53300`:
 
 | File | What |
 |---|---|

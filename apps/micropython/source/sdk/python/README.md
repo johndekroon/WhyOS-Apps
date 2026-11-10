@@ -39,8 +39,8 @@ with a list, an entry screen, a menu and a setting.
 | `whyos.Entry(**fields)` | A line typed, worked out on Enter | `evaluate(line)` returns the result as text, or raises with what is wrong; `preview(line)` while typing; `placeholder`; `right` |
 
 Every screen also has `title`, `eyebrow`, `about` (the help's sentence), `title_right` (a value
-right of the title) and `update` (a function called before every frame, to put the app's data in
-the fields). A field can be changed at any time; the SDK draws what changed after every key,
+right of the title) and `update` (a function called before every frame and every key, to put the
+app's data in the fields). A field can be changed at any time; the SDK draws what changed after every key,
 tick or log line.
 
 `screen.action(key, word, help, fn)`: `fn()` on that key, `word` in the key bar (`None`: only in

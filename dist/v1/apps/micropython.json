@@ -7,7 +7,7 @@
    "license_url": "licenses/micropython/whyos-sdk.txt",
    "name": "WhyOS SDK and libwb (the module whyos)",
    "source": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/micropython/source/sdk",
-   "version": "59c4625"
+   "version": "ca53300"
   },
   {
    "license": "OFL-1.1",
@@ -150,6 +150,19 @@
  "type": "app",
  "upstream_version": "1.29.0",
  "versions": [
+  {
+   "build": 6,
+   "changelog": "The module whyos (the WhyOS SDK, ca53300): keys that come before a new screen's first frame (a quick press right after the one that opened it) are no longer lost, and a screen's update runs before every key too.",
+   "package": {
+    "installed_size": 1236132,
+    "sha256": "fbd5290c79a8a2968b507291cddc1d6377160a67fe624146a9299488aa13424e",
+    "size": 661860,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/micropython-1.29.5.wpk"
+   },
+   "published": "2026-11-10T02:28:09Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/micropython-1.29.5-source.tar.gz",
+   "version": "1.29.5"
+  },
   {
    "build": 5,
    "changelog": "The module whyos (the WhyOS SDK, 59c4625): forms, an editor, dialogs and a running action besides lists, entry lines and one colour; rows that are not text show as text; actions are no longer counted across screens. A script that asks for more memory than the heap has fails with MemoryError instead of ending MicroPython.",
