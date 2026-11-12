@@ -13,8 +13,10 @@
  */
 #pragma once
 #include <fcntl.h>
+#include <stdio.h>	/* rename() */
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -219,6 +221,157 @@ static void scene_lines(const short *s, uint32_t c, unsigned opa)
 static uint16_t *scene_rle[4];
 static uint32_t scene_at[4][H];	/* where each row starts in scene_rle[] */
 static long kept_bytes;		/* the scenes and tiles kept, for the timing line */
+
+/*
+ * A program that starts often (the menu, at every pause and after every
+ * app) keeps the runs in files as well, so that its first frame only reads
+ * and unpacks them: wb_scene_cache(dir, key) names the folder and a number
+ * that changes with the program (its build), since the runs hold the scene
+ * as this code draws and tints it. A file that is not whole, of another
+ * build or of another scene is not used, and written again.
+ */
+static const char *scene_cache_dir;
+static uint32_t scene_cache_key;
+
+struct scene_file {
+	uint32_t magic, key, size, words, sum;
+};
+#define SCENE_MAGIC	0x43534257	/* "WBSC" */
+
+static void wb_scene_cache(const char *dir, uint32_t key)
+{
+	scene_cache_dir = dir;
+	scene_cache_key = key;
+}
+
+static uint32_t scene_sum(uint32_t h, const void *p, size_t n)
+{
+	const uint8_t *b = p;
+
+	while (n--)
+		h = (h ^ *b++) * 16777619u;
+	return h;
+}
+
+/* the key with the figures in it, and the panel's size */
+static void scene_file_head(struct scene_file *f, int k, uint32_t words)
+{
+	uint32_t h = scene_sum(2166136261u, scene_moon, sizeof(scene_moon));
+
+	h = scene_sum(h, scene_orbits, sizeof(scene_orbits));
+	h = scene_sum(h, scene_head, sizeof(scene_head));
+	h = scene_sum(h, scene_craters, sizeof(scene_craters));
+	f->magic = SCENE_MAGIC;
+	f->key = (h ^ scene_cache_key) * 16777619u;
+	f->size = (uint32_t)W | (uint32_t)H << 12 | (uint32_t)k << 24;
+	f->words = words;
+	f->sum = scene_sum(scene_sum(2166136261u, scene_at[k], sizeof(scene_at[k])),
+			   scene_rle[k], (size_t)words * 2);
+}
+
+static char *scene_file_name(char *b, size_t n, int k, const char *end)
+{
+	size_t l = strlen(scene_cache_dir);
+
+	if (l + 24 > n)
+		return 0;
+	memcpy(b, scene_cache_dir, l);
+	memcpy(b + l, "/scene-0.runs", 14);
+	b[l + 7] = (char)('0' + k);
+	strcat(b, end);
+	return b;
+}
+
+/* Every row's runs are W pixels and stay inside the words: the file is
+ * someone else's until this says so. */
+static int scene_runs_ok(int k, uint32_t words)
+{
+	for (int y = 0; y < H; y++) {
+		uint32_t at = scene_at[k][y], end = y + 1 < H ? scene_at[k][y + 1] : words;
+		int x = 0;
+
+		if (at >= end || end > words)
+			return 0;
+		while (x < W && at < end) {
+			int n = scene_rle[k][at] & 0x7fff;
+
+			at += scene_rle[k][at] & 0x8000 ? 2 : 1 + (uint32_t)n;
+			if (!n)
+				return 0;
+			x += n;
+		}
+		if (x != W || at != end)
+			return 0;
+	}
+	return 1;
+}
+
+/* Rotation k's runs from its file. 1 if they are kept now. */
+static int scene_cache_load(int k)
+{
+	struct scene_file f, want;
+	char name[96];
+	int fd, ok = 0;
+
+	if (!scene_cache_dir || !scene_file_name(name, sizeof(name), k, ""))
+		return 0;
+	fd = open(name, O_RDONLY | O_CLOEXEC);
+	if (fd < 0)
+		return 0;
+	if (read(fd, &f, sizeof(f)) == (ssize_t)sizeof(f) && f.magic == SCENE_MAGIC &&
+	    f.words > 0 && f.words <= (uint32_t)W * H * 2 &&
+	    read(fd, scene_at[k], sizeof(scene_at[k])) == (ssize_t)sizeof(scene_at[k]) &&
+	    (scene_rle[k] = malloc((size_t)f.words * 2))) {
+		ok = read(fd, scene_rle[k], (size_t)f.words * 2) == (ssize_t)((size_t)f.words * 2);
+		if (ok) {
+			scene_file_head(&want, k, f.words);
+			ok = !memcmp(&f, &want, sizeof(f)) && scene_runs_ok(k, f.words);
+		}
+		if (!ok) {
+			free(scene_rle[k]);
+			scene_rle[k] = 0;
+		}
+	}
+	close(fd);
+	if (ok) {
+		kept_bytes += (long)f.words * 2;
+#ifdef WB_SCENE_LOADED
+		WB_SCENE_LOADED();	/* a test's count */
+#endif
+	}
+	return ok;
+}
+
+/*
+ * Rotation k's runs, tinted, into its file: whole or not at all. Not while
+ * a frame is drawn (a card can take seconds over a write): the runs wait in
+ * scene_unsaved until the program has time, wb_scene_cache_flush().
+ */
+static uint32_t scene_unsaved[4];	/* their words, 0: nothing to write */
+
+static void scene_cache_save(int k, uint32_t words)
+{
+	struct scene_file f;
+	char name[96], tmp[96];
+	int fd, ok;
+
+	if (!scene_cache_dir || !scene_file_name(name, sizeof(name), k, "") ||
+	    !scene_file_name(tmp, sizeof(tmp), k, ".new"))
+		return;
+	mkdir(scene_cache_dir, 0755);	/* here, not at the start: the card may come later */
+	fd = open(tmp, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+	if (fd < 0)
+		return;
+	scene_file_head(&f, k, words);
+	ok = write(fd, &f, sizeof(f)) == (ssize_t)sizeof(f) &&
+	     write(fd, scene_at[k], sizeof(scene_at[k])) == (ssize_t)sizeof(scene_at[k]) &&
+	     write(fd, scene_rle[k], (size_t)words * 2) == (ssize_t)((size_t)words * 2);
+	close(fd);
+	if (ok)
+		rename(tmp, name);
+	else
+		unlink(tmp);
+}
 
 /* fb's rows y0..y1 as runs into out from word n on, or only counted when
  * out is 0; the words used up to there */
@@ -592,6 +745,19 @@ static int scene_keep_banded(int k)
 	return 1;
 }
 
+/* While the program waits for a key: one rotation's runs to their file.
+ * 1 if it wrote one. */
+static int wb_scene_cache_flush(void)
+{
+	for (int k = 0; k < 4; k++)
+		if (scene_unsaved[k] && scene_rle[k]) {
+			scene_cache_save(k, scene_unsaved[k]);
+			scene_unsaved[k] = 0;
+			return 1;
+		}
+	return 0;
+}
+
 /* Draw the scene at rotation rot, and keep it when the whole picture is drawn
  * (or, drawing in bands, keep it first). */
 static long tm_scene;		/* us spent in scene_draw(), for a program's timing */
@@ -616,6 +782,8 @@ static void scene_draw_(void)
 {
 	int k = rot / 90, n;
 
+	if (!scene_rle[k])
+		scene_cache_load(k);
 	if (!scene_rle[k] && (fb_y0 > 0 || fb_y1 < H))
 		scene_keep_banded(k);
 	if (scene_rle[k]) {
@@ -632,6 +800,7 @@ static void scene_draw_(void)
 		scene_encode(scene_rle[k], scene_at[k]);
 		kept_bytes += (long)n * 2;
 		scene_pretint(k);
+		scene_unsaved[k] = (uint32_t)n;
 		scene_decode(k);	/* tinted */
 	} else {
 		tint_rows();

@@ -281,75 +281,25 @@ static void entry_row(const struct row *r, int y, int on, int faded)
 		text(&f_mono14, DATE_R - text_w(&f_mono14, r->date, 0), text_top(&f_mono14, cy), r->date, mid, 0);
 }
 
-/*
- * The board's hint bar: Enter, PgUp PgDn, Del on the left, the position
- * in mono and Esc on the right. Keys with a space are caps side by side.
- */
-static int caps(int x, int cy, const char *keys)
-{
-	char k[16];
-
-	for (const char *s = keys; *s; ) {
-		size_t n = strcspn(s, " ");
-
-		snprintf(k, sizeof(k), "%.*s", (int)n, s);
-		x = keycap(x, cy, k);
-		s += n;
-		if (*s) {
-			s++;
-			x += 4;
-		}
-	}
-	return x;
-}
-
-static int caps_w(const char *keys)
-{
-	char k[16];
-	int w = 0;
-
-	for (const char *s = keys; *s; ) {
-		size_t n = strcspn(s, " ");
-
-		snprintf(k, sizeof(k), "%.*s", (int)n, s);
-		w += keycap_w(k) + 18;
-		s += n;
-		if (*s) {
-			s++;
-			w += 4;
-		}
-	}
-	return w;
-}
-
+/* The key bar (6.8): Enter, the square, triangle and cross, PgUp PgDn and
+ * Del; the circle, clover and diamond and Esc on the right */
 static void folder_hints(const struct files *f)
 {
-	const struct wb_font *t = &f_ui16;
 	const struct br_ent *e = f->b.n ? &f->b.e[f->b.sel] : 0;
-	int y0 = H - WB_HINT_BAR_H, cy = y0 + WB_HINT_BAR_H / 2, x = WB_CHROME_PAD, ex;
-	const char *esc = f->b.dir[1] ? "up" : "close";
-	struct hint h[3];
+	struct hint h[7];
 	int n = 0;
-	char pos[24];
 
 	if (e)
 		h[n++] = (struct hint){ "Enter", e->dir ? "open" : "open with\xe2\x80\xa6", 0 };
+	h[n++] = (struct hint){ "#1", "options", 0 };
+	h[n++] = (struct hint){ "#2", "home", 0 };
+	h[n++] = (struct hint){ "#3", "drives", 0 };
 	if (lay.total > lay.view)
 		h[n++] = (struct hint){ "PgUp PgDn", "page", 0 };
 	if (e)
 		h[n++] = (struct hint){ "Del", "delete", 0 };
-	hint_glass(y0);
-	for (int i = 0; i < n; i++) {
-		x = caps(x, cy, h[i].keys);
-		x = text(t, x + 8, text_top(t, cy), h[i].label, WB_COLOR_TEXT_MID, 0) + 22;
-	}
-	ex = W - WB_CHROME_PAD - caps_w("Esc") - 8 - text_w(t, esc, 0);
-	text(t, caps(ex, cy, "Esc") + 8, text_top(t, cy), esc, WB_COLOR_TEXT_MID, 0);
-	if (e) {
-		snprintf(pos, sizeof(pos), "%d / %d", f->b.sel + 1, f->b.n);
-		text(&f_mono14, ex - 22 - text_w(&f_mono14, pos, 0), text_top(&f_mono14, cy), pos,
-		     WB_COLOR_TEXT_MID, 0);
-	}
+	h[n++] = (struct hint){ "Esc", f->b.dir[1] ? "up" : "close", 1 };
+	app_bar(h, n);
 }
 
 static void draw_folder(const struct files *f)
@@ -540,17 +490,17 @@ static void draw_list(const struct files *f)
 	}
 	clip_end();
 	scrollbar(W - WB_CONTENT_PAD + 18, top, bottom - top, y - 10, bottom - top, scroll);
-	/* the hint bar (6.8): the symbol keys first, Esc on the right */
+	/* the key bar (6.8): Enter first, then the triangle; Esc on the right */
 	if (settings) {
 		h[n++] = (struct hint){ "Enter", "switch", 0 };
 		h[n++] = (struct hint){ "Esc", "back", 1 };
 	} else {
-		h[n++] = (struct hint){ "#2", "home", 0 };
 		if (focus >= 0)
 			h[n++] = (struct hint){ "Enter", "open", 0 };
+		h[n++] = (struct hint){ "#2", "home", 0 };
 		h[n++] = (struct hint){ "Esc", "close", 1 };
 	}
-	hint_bar(h, n);
+	app_bar(h, n);
 }
 
 /* ---- pop-ups ---------------------------------------------------------------- */
@@ -629,16 +579,14 @@ static void draw_confirm(const struct files *f)
 
 static void draw_log(const struct files *f)
 {
-	static const struct hint hints[] = {
-		{ "\xe2\x86\x91\xe2\x86\x93", "scroll", 0 }, { "Esc", "back", 1 },
-	};
+	static const struct hint hints[] = { { "Esc", "back", 1 } };
 	char buf[120];
 
 	files_scene();
 	wb_header("FILES \xe2\x80\xba", "Copy, move and delete", 0);
+	app_bar(hints, 1);
 	if (!f->log_n) {
 		text(&f_ui20, WB_CONTENT_PAD + 6, WB_ROWS_TOP, "No log yet.", WB_COLOR_TEXT_MID, 0);
-		hint_bar(hints + 1, 1);
 		return;
 	}
 	files_panel(PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
@@ -647,10 +595,6 @@ static void draw_log(const struct files *f)
 		     wb_fit(&f_mono14, f->log_line[f->log_top + i], PANEL_W - 40 - 10, buf, sizeof(buf)),
 		     WB_COLOR_TEXT_MID, 0);
 	panel_scrollbar(PANEL_X + PANEL_W - 1 - 6 - 4, PANEL_Y + 7, PANEL_H - 14, f->log_n, LOG_ROWS, f->log_top);
-	if (f->log_n > LOG_ROWS)
-		hint_bar(hints, 2);
-	else
-		hint_bar(hints + 1, 1);
 }
 
 /* the diamond key: what this screen is for and its keys */

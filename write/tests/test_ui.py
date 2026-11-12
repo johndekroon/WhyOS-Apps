@@ -278,3 +278,25 @@ def test_more_pop_ups(env):
     assert s["language"].count(96, 100, 624, 600, is_c(CYAN, 30)) > 300
     # Replace?: the destructive choice in red
     assert s["replace"].count(96, 100, 624, 600, is_c((0xFF, 0x7A, 0x6E), 30)) > 20
+
+
+def test_circle_clover_diamond_everywhere(env):
+    """the circle, clover and diamond on the editor, the log and Open (6.6): the log
+    and the settings take each other's place, the help comes back to the log"""
+    _, home, _ = env
+    s = ui(env, ["shot main", "f4", "shot log", "f6", "shot loghelp", "esc", "shot log2", "f5",
+                 "shot settings", "esc", "shot back", "ctrl o", "shot open", "f6", "shot openhelp", "esc",
+                 "f4", "shot openlog", "esc", "f5", "shot opensettings", "esc", "shot open2"],
+           home / "camp-notes.md")
+    for k in ("main", "log", "open"):           # the block: the circle green, the words
+        assert s[k].count(480, 668, 530, 682, is_c((0x38, 0xDC, 0x80), 40)) > 5, k
+        assert s[k].count(490, 668, 600, 716, is_c((0xC8, 0xC8, 0xDC), 40)) > 40, k
+    assert s["log"].count(48, 140, 400, 200, is_c((0xC8, 0xC8, 0xDC), 30)) > 20    # "No log yet."
+    for k in ("loghelp", "openhelp"):           # the help: the diamond over the screen
+        assert s[k].count(96, 60, 200, 500, is_c((0xC4, 0x5C, 0xFF), 60)) > 5, k
+    assert part(s["log2"], 0, 48, 720, 720) == part(s["log"], 0, 48, 720, 720)
+    assert part(s["openlog"], 0, 48, 720, 720) == part(s["log"], 0, 48, 720, 720)
+    for k in ("settings", "opensettings"):      # the settings pop-up: its switches
+        assert s[k].count(520, 355, 600, 390, is_c(CYAN, 30)) + s[k].count(520, 407, 600, 442, is_c(CYAN, 30)) > 20, k
+    assert part(s["back"], 0, 48, 720, 720) == part(s["main"], 0, 48, 720, 720)
+    assert part(s["open2"], 0, 48, 720, 720) == part(s["open"], 0, 48, 720, 720)

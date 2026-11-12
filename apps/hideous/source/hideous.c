@@ -977,7 +977,7 @@ static void list_hints(void)
 	if (C.focus > 0)
 		h[n++] = (struct hint){ "#3", "edit", 0 };
 	h[n++] = (struct hint){ "Esc", "close", 1 };
-	hint_bar(h, n);
+	app_bar(h, n);
 }
 
 static void draw_list(void)
@@ -1243,7 +1243,7 @@ static void draw_edit(void)
 	text(&f_mono13, X0 + 6, TEXT_LY, "TEXT", C.field == 1 ? WB_COLOR_CYAN : WB_COLOR_PLACEHOLDER, 21);
 	draw_name();
 	draw_text_field();
-	hint_bar(hints, 4);
+	app_bar(hints, 4);
 }
 
 /* ---- the mouse screen --------------------------------------------------- */
@@ -1259,7 +1259,8 @@ static void draw_mouse(void)
 		{ "#2", "Keep awake on or off" },
 	};
 	static const struct hint hints[] = {
-		{ "Enter", "click", 0 }, { "#3", "right", 0 }, { "#2", "awake", 0 }, { "Esc", "back", 1 },
+		{ "Enter", "click", 0 }, { "#1", "options", 0 }, { "#2", "awake", 0 }, { "#3", "right", 0 },
+		{ "Esc", "back", 1 },
 	};
 	int y = list_top(), kw = 0, n = sizeof(legend) / sizeof(legend[0]), ph = 24 + n * 40 + 8;
 	char buf[128], t[96];
@@ -1292,7 +1293,7 @@ static void draw_mouse(void)
 	else
 		cat(t, "So the computer does not sleep or show you away.");
 	text(&f_ui18, X0 + 6, y + ROW_H + 12, wb_fit(&f_ui18, t, XW - 6, buf, sizeof(buf)), WB_COLOR_TEXT_MID, 0);
-	hint_bar(hints, 4);
+	app_bar(hints, 5);
 }
 
 /* ---- log, settings, help, pop-ups --------------------------------------- */
@@ -1309,7 +1310,7 @@ static void draw_log(void)
 		text(&f_ui20, X0 + 20, text_top(&f_ui20, y + ROW_H / 2),
 		     wb_fit(&f_ui20, "No log yet. What is typed shows here until the app closes.", XW - 40, buf,
 			    sizeof(buf)), WB_COLOR_TEXT_MID, 0);
-		hint_bar(hints, 1);
+		app_bar(hints, 1);
 		return;
 	}
 	if (n > (BOTTOM - y - 28) / 30)
@@ -1319,7 +1320,7 @@ static void draw_log(void)
 	for (int i = C.n_log - 1; i >= C.n_log - n; i--, y += 30)
 		text(&f_mono14, X0 + 20, text_top(&f_mono14, y + 15), wb_fit(&f_mono14, C.log[i], XW - 40, buf, sizeof(buf)),
 		     i == C.n_log - 1 ? WB_COLOR_TEXT_HI : WB_COLOR_TEXT_MID, 0);
-	hint_bar(hints, 1);
+	app_bar(hints, 1);
 }
 
 static void draw_settings(void)
@@ -1341,7 +1342,7 @@ static void draw_settings(void)
 		wb_row(X0, y, XW, ROW_H, ics[i], labels[i], 0, v, WB_ROW_OPEN, 0, C.set_focus == i);
 		text(&f_ui16, X0 + 6, y + ROW_H + 12, notes[i], WB_COLOR_TEXT_MID, 0);
 	}
-	hint_bar(hints, 2);
+	app_bar(hints, 2);
 }
 
 static void draw_help(void)
@@ -1359,14 +1360,15 @@ static void draw_help(void)
 	};
 	static const struct help_key edit_keys[] = {
 		{ "Enter", "Save; with Shift: a new line in the text" },
-		{ "Tab", "In the text: a tab; in the name: to the text" },
+		{ "Tab", "A tab; in the name: to the text" },
 		{ "#1", "In the text: a key or shortcut (F5, Win+R)" },
 		{ "#2", "In the text: wait 0.5 s; again for longer" },
 		{ "Shift+key", "That key in the text (Esc, F1); Ctrl+C too" },
-		{ "\xe2\x86\x91\xe2\x86\x93", "A line up or down; between name and text" },
-		{ "\xe2\x86\x90\xe2\x86\x92", "Move the cursor (with Fn: to the line's end)" },
+		{ "\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "Move the cursor (Fn \xe2\x86\x90\xe2\x86\x92: a line's ends)" },
 		{ "Backspace", "Erase before the cursor (Fn: after it)" },
 		{ "Esc", "Cancel: the snippet stays as it was" },
+		{ "#4", "Log" },
+		{ "#5", "Settings" },
 		{ "#6", "This help" },
 	};
 	static const struct help_key mouse_keys[] = {
@@ -1377,6 +1379,7 @@ static void draw_help(void)
 		{ "#1", "Middle click, double click, keep awake" },
 		{ "#2", "Keep awake on or off" },
 		{ "Esc", "Back to the list (keep awake goes on)" },
+		{ "#4", "Log" },
 		{ "#5", "Settings: the mouse speed" },
 		{ "#6", "This help" },
 		{ "Logo", "Back to the menu" },
@@ -1391,11 +1394,9 @@ static void draw_help(void)
 	};
 
 	if (C.sc == SC_MOUSE)
-		help_popup("Mouse", "The badge is the computer's mouse too. Keep awake nudges the "
-			   "pointer every 30 s, as long as the app is open.", mouse_keys, 10);
+		help_popup("Mouse", "The badge is the computer's mouse too.", mouse_keys, 11);
 	else if (C.sc == SC_EDIT)
-		help_popup("Edit snippet", "The name is only for the list. The text is what the badge "
-			   "types, new lines and tabs included.", edit_keys, 10);
+		help_popup("Edit snippet", "The text is what the badge types.", edit_keys, 11);
 	else if (C.sc == SC_LIST)
 		help_popup("HIDeous", "Connect a computer to the bottom USB-C port (J8), click where "
 			   "the text should go, and press Enter on a snippet.", list_keys, 9);

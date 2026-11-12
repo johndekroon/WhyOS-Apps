@@ -80,9 +80,11 @@ one screen and closes the store from the first one (in Search it first
 clears what was typed), Backspace only erases text. ■ opens a
 category's menu (sort by name or recently updated); ● the store's log
 (the end of apprun's `/tmp/app-store.log`, "No log yet." without one);
-♣ Settings; ◆ a help pop-up with the screen's keys. The hint bar shows
-only Enter, ■ where a screen has it and Esc with its word (close, back,
-clear).
+♣ Settings; ◆ a help pop-up with the screen's keys. ● and ♣ take each
+other's place: Esc on either goes back to the screen they were opened
+from. The key bar is libwb's `app_bar`: Enter and ■ where a screen has it
+on the left, ● ♣ ◆ small with their words (log, settings, help) and Esc
+with its word (close, back, clear) on the right.
 
 | Screen | Contents |
 |---|---|

@@ -733,10 +733,11 @@ static int one_sym(const char *keys)
 static int keycap_w(const char *keys)
 {
 	return !strcmp(keys, "SYMS") ? 6 * 12 + 5 * 5 : one_sym(keys) ? 12 :
-	       text_w(&f_mono13, keys, 0);
+	       !strcmp(keys, "LOGO") ? 16 : text_w(&f_mono13, keys, 0);
 }
 
-/* "SYMS" stands for the six symbol keys, drawn as icons. */
+/* "SYMS" stands for the six symbol keys, drawn as icons; "LOGO" for the logo
+ * key, drawn as what is printed on it. */
 static int keycap(int x, int cy, const char *keys)
 {
 	const struct wb_font *f = &f_mono13;
@@ -749,6 +750,8 @@ static int keycap(int x, int cy, const char *keys)
 			icon(keycap_syms[i], x + 9 + i * 17, cy - 6, WB_COLOR_TEXT_HI, 255);
 	else if (one)
 		icon(keycap_syms[one - 1], x + 9, cy - 6, key_colors[one - 1], 255);
+	else if (!strcmp(keys, "LOGO"))
+		icon(&kc_logo, x + 9, cy - 8, WB_COLOR_TEXT_HI, 255);
 	else
 		text(f, x + 9, text_top(f, cy), keys, WB_COLOR_TEXT_HI, 0);
 	return x + w;
@@ -778,6 +781,60 @@ static void hint_bar(const struct hint *hs, int n)
 		ex = text(f, ex + 8, text_top(f, cy), hs[i].label, WB_COLOR_TEXT_MID, 0);
 		if (!hs[i].right)
 			x = ex + WB_SPACE_4;
+	}
+}
+
+/* the words beside the circle, clover and diamond in an app's key bar */
+static const char *const app_bar_words[3] = { "log", "settings", "help" };
+
+static int app_bar_syms_w(void)
+{
+	return 12 + 6 + text_w(&f_mono13, "settings", 0);
+}
+
+/*
+ * An app's key bar (the design system, 6.8): the keys of hs on the left
+ * in the order given (Enter first, then the square, triangle and cross,
+ * then other keys), the circle, clover and diamond stacked small with
+ * their words, a thin line, and Esc (the hint with right set) on the far
+ * right. What does not fit drops out from the end, but for Enter's
+ * "open", which goes first: the help lists every key. Every app screen
+ * draws its keys with this; a pop-up or dialog uses hint_bar.
+ */
+static void app_bar(const struct hint *hs, int n)
+{
+	struct hint all[12], e = { "Esc", "close", 1 };
+	int k = 0, cy = H - WB_HINT_BAR_H / 2, ex, sx, room;
+
+	for (int i = 0; i < n; i++)
+		if (hs[i].right)
+			e = hs[i];
+		else if (k < 11)
+			all[k++] = hs[i];
+	ex = W - WB_CHROME_PAD - hint_w(&e) - 20;
+	sx = ex - 20 - app_bar_syms_w();
+	room = sx - 20 - WB_CHROME_PAD;
+	for (;;) {
+		int w = 0;
+
+		for (int i = 0; i < k; i++)
+			w += hint_w(&all[i]) + (i ? WB_SPACE_4 : 0);
+		if (w <= room || !k)
+			break;
+		if (!strcmp(all[0].keys, "Enter") && !strcmp(all[0].label, "open")) {
+			memmove(all, all + 1, sizeof(all[0]) * (size_t)--k);
+			continue;
+		}
+		k--;
+	}
+	all[k++] = e;
+	hint_bar(all, k);
+	fill(ex, cy - 16, 1, 32, WB_COLOR_LINE);
+	for (int i = 0; i < 3; i++) {
+		int yc = cy - 16 + i * 16;
+
+		icon(keycap_syms[3 + i], sx, yc - 6, key_colors[3 + i], 255);
+		text(&f_mono13, sx + 18, text_top(&f_mono13, yc), app_bar_words[i], WB_COLOR_TEXT_MID, 0);
 	}
 }
 
@@ -1022,20 +1079,27 @@ static void menu_swatch(int x, int cy, int kind, uint32_t c)
 	box(x, cy - 11, 22, 22, 6, 0, 0, WB_COLOR_LINE, 1, 0);
 }
 
-/*
- * The log (circle key) or the settings (cloud key) of an app that has none:
- * the screen still opens, with one line saying so (6.6). Draw the status
- * bar after it.
- */
-static void empty_screen(const char *eb, const char *title, const char *line)
+/* A screen with only its title and one line under it, without a key bar. */
+static void empty_page(const char *eb, const char *title, const char *line)
 {
-	static const struct hint hints[] = { { "Esc", "back", 1 } };
 	int top = WB_STATUS_BAR_H + 20;
 
 	fill(0, 0, W, H, WB_COLOR_VOID);
 	eyebrow(WB_CONTENT_PAD, top, eb);
 	text(&f_ui36b, WB_CONTENT_PAD, top + 18 + 6, title, WB_COLOR_TEXT_HI, -11);
 	text(&f_ui20, WB_CONTENT_PAD, top + 18 + 6 + 44 + 24, line, WB_COLOR_TEXT_LOW, 0);
-	hint_bar(hints, 1);
+}
+
+/*
+ * The log (circle key) or the settings (cloud key) of an app that has none:
+ * the screen still opens, with one line saying so (6.6), and the app's
+ * key bar. Draw the status bar after it.
+ */
+static void empty_screen(const char *eb, const char *title, const char *line)
+{
+	static const struct hint hints[] = { { "Esc", "back", 1 } };
+
+	empty_page(eb, title, line);
+	app_bar(hints, 1);
 }
 

@@ -3,7 +3,7 @@
 Together with the download below, this directory is the complete
 corresponding source of the `pdfview` package (docs/package.md §2.10).
 The files here are the badge-specific ones, copied from WhyOS
-`sdapps/` and `libwb/` at commit `3ef5aae`; the toolchain and the build script are in
+`sdapps/` and `libwb/` at commit `0db7fc2`; the toolchain and the build script are in
 [toolchain/](../../../toolchain/README.md).
 
 | Upstream | URL | SHA-256 |

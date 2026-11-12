@@ -562,8 +562,32 @@ static void op_enter(struct app *a)
 	request(a, AF_OPEN, p);
 }
 
+static void settings_rows(struct app *a);
+
+/* The circle, clover and diamond, the same in the editor and Open: the log,
+ * the settings, the help (the design system, 6.6) */
+static int right_keys(struct app *a, int code)
+{
+	switch (code) {
+	case K_F4:
+		a->ov = OV_LOG;
+		return 1;
+	case K_F5:
+		settings_rows(a);
+		a->ov = OV_SETTINGS;
+		a->focus = 0;
+		return 1;
+	case K_F6:
+		a->ov = OV_HELP;
+		return 1;
+	}
+	return 0;
+}
+
 static void op_key(struct app *a, const struct key *k)
 {
+	if (right_keys(a, k->code))
+		return;
 	switch (k->code) {
 	case K_UP:
 		if (a->op_focus > 0)
@@ -1176,16 +1200,8 @@ static void edit_key(struct app *a, const struct key *k)
 			a->redraw = 1;
 		}
 		return;
-	case K_F4:
-		a->ov = OV_LOG;
-		return;
-	case K_F5:
-		settings_rows(a);
-		a->ov = OV_SETTINGS;
-		a->focus = 0;
-		return;
-	case K_F6:
-		a->ov = OV_HELP;
+	case K_F4: case K_F5: case K_F6:
+		right_keys(a, k->code);
 		return;
 	case K_UP: case K_DOWN: case K_LEFT: case K_RIGHT:
 		move_key(a, k);
@@ -1319,9 +1335,20 @@ static void overlay_key(struct app *a, const struct key *k)
 		style_key(a, k);
 		return;
 	case OV_HELP:
-	case OV_LOG:
-		if (k->code == K_ESC || k->code == K_ENTER || k->code == K_F6 || k->code == K_F4)
+		if (k->code == K_ESC || k->code == K_ENTER || k->code == K_F6 || k->code == K_F4) {
+			a->ov = a->help_on_log ? OV_LOG : OV_NONE;
+			a->help_on_log = 0;
+		}
+		return;
+	case OV_LOG:		/* a screen: the clover and diamond as on the others */
+		if (k->code == K_ESC || k->code == K_ENTER) {
 			a->ov = OV_NONE;
+		} else if (k->code == K_F5) {
+			right_keys(a, k->code);
+		} else if (k->code == K_F6) {
+			a->help_on_log = 1;
+			a->ov = OV_HELP;
+		}
 		return;
 	case OV_ERROR:
 		if (k->code == K_ESC || k->code == K_ENTER)
@@ -1384,10 +1411,10 @@ void app_key(struct app *a, const struct key *k)
 	a->notice[0] = 0;
 	if (a->full && a->hint_until)
 		a->hint_until = 0;	/* the first key ends the hint */
-	if (a->screen == SC_OPEN)
-		op_key(a, k);
-	else if (a->ov != OV_NONE)
+	if (a->ov != OV_NONE)
 		overlay_key(a, k);
+	else if (a->screen == SC_OPEN)
+		op_key(a, k);
 	else
 		edit_key(a, k);
 	if (a->e.mode != m || a->full != full || a->find_open != find)
@@ -1585,24 +1612,25 @@ int app_hints(const struct app *a, struct hintk *h, int max)
 {
 	int n = 0;
 
-	if (a->screen == SC_OPEN) {
+	if (a->screen == SC_OPEN && a->ov == OV_NONE) {
 		if (a->op_folders) {
 			n = hint(h, n, max, "Enter", "choose", 0, 0);
 		} else {
+			n = hint(h, n, max, "Enter", "open", 0, 0);
 			n = hint(h, n, max, "#2", "home", 0, 0);
 			n = hint(h, n, max, "#3", "drives", 0, 0);
-			n = hint(h, n, max, "Enter", "open", 0, 0);
 		}
 		n = hint(h, n, max, "Esc", a->op_filter[0] ? "clear" :
-			 (!strcmp(a->op_dir, a->home) || !strcmp(a->op_dir, "/") || a->op_drives) ?
-			 (a->op_folders ? "back" : "close") : "up", 1, 0);
+			 (!strcmp(a->op_dir, a->home) || !strcmp(a->op_dir, "/") || a->op_drives) ? "back" : "up", 1, 0);
 		return n < max ? n : max;
 	}
 	switch (a->ov) {
 	case OV_NONE:
 		break;
-	case OV_HELP: case OV_LOG:
+	case OV_HELP:
 		return hint(h, n, max, "Esc", "close", 1, 0);
+	case OV_LOG:
+		return hint(h, n, max, "Esc", "back", 1, 0);
 	case OV_ERROR:
 		return hint(h, n, max, "Enter", "OK", 0, 0);
 	case OV_STYLE:
@@ -1621,19 +1649,19 @@ int app_hints(const struct app *a, struct hintk *h, int max)
 		n = hint(h, n, max, "Enter", "choose", 0, 0);
 		return hint(h, n, max, "Esc", "close", 1, 0);
 	}
-	n = hint(h, n, max, "#1", "options", 0, 0);
 	if (a->find_open) {
-		if (a->find_focus) {
+		n = hint(h, n, max, "Enter", a->find_focus ? "replace" : "next", 0, 0);
+		n = hint(h, n, max, "#1", "options", 0, 0);
+		if (a->find_focus)
 			n = hint(h, n, max, "#2", "replace all", 0, 0);
-			n = hint(h, n, max, "Enter", "replace", 0, 0);
-		} else {
-			n = hint(h, n, max, "Enter", "next", 0, 0);
+		else
 			n = hint(h, n, max, "Shift+Enter", "previous", 0, 0);
-		}
 	} else if (a->e.mode == M_CODE) {
+		n = hint(h, n, max, "#1", "options", 0, 0);
 		if (lang_runs(a->lang))
 			n = hint(h, n, max, "#2", lang_runs(a->lang) == 2 ? "preview" : "run", 0, 0);
 	} else {
+		n = hint(h, n, max, "#1", "options", 0, 0);
 		n = hint(h, n, max, "#2", "style", 0, 0);
 		if (a->e.sel) {
 			n = hint(h, n, max, "Ctrl+C", "copy", 0, 0);
@@ -1648,6 +1676,6 @@ int app_hints(const struct app *a, struct hintk *h, int max)
 	}
 	if (a->fn_held)
 		n = hint(h, n, max, "Fn", "", 1, 1);
-	n = hint(h, n, max, "Esc", a->find_open ? "close" : a->e.sel ? "cancel" : a->full ? "leave" : "close", 1, 0);
+	n = hint(h, n, max, "Esc", a->find_open ? "close" : a->e.sel ? "cancel" : a->full ? "back" : "close", 1, 0);
 	return n < max ? n : max;
 }

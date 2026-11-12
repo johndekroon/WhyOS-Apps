@@ -15,10 +15,10 @@ import tempfile
 from collections import deque
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-# libwb (wb.h, the fonts): the copy next to it, else why2025-linux's
+# libwb (wb.h, the fonts): the copy next to it, else WhyOS's
 O = os.path.join(HERE, "libwb")
 if not os.path.isfile(os.path.join(O, "wb.h")):
-    O = os.path.normpath(os.path.join(HERE, "../../../../why2025-linux/libwb"))
+    O = os.path.normpath(os.path.join(HERE, "../../../../WhyOS/libwb"))
 ESC, ENTER, UP, DOWN, LEFT, RIGHT = 1, 28, 103, 108, 105, 106
 SQUARE, TRIANGLE, CROSS, CIRCLE, CLOUD, DIAMOND = 59, 60, 61, 62, 63, 64
 G1 = 4096                       # a g, in sensor counts

@@ -92,6 +92,7 @@ struct app {
 
 	enum screen screen;
 	enum overlay ov;
+	int help_on_log;	/* the help is over the log */
 	int focus;		/* the overlay's focused row */
 	struct menu_row rows[MENU_ROWS];
 	int n_rows;

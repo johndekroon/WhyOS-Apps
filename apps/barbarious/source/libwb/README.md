@@ -22,7 +22,7 @@ row 0, outside the band), and writes it to `/dev/fb0` itself.
 | `wb.h` | include this; sets the style (square corners, pop-ups) and includes the rest |
 | `wb_tokens.h` | colours, sizes, spacing |
 | `wb_assets.h` | fonts, icons and the glow fall-off (`gen/assets.py`) |
-| `wbdraw.h` | pixels (`put`, `fill`, `dim`), boxes (`box`), text (`text`, `text_w`, `text_top`, `wb_fit`, `text_wrap`), icons, key caps, `hint_bar`, `eyebrow`, `help_popup`, `scrollbar`, `list_scroll`, `clip_rows`, `tick`, `empty_screen` |
+| `wbdraw.h` | pixels (`put`, `fill`, `dim`), boxes (`box`), text (`text`, `text_w`, `text_top`, `wb_fit`, `text_wrap`), icons, key caps, `hint_bar`, `app_bar`, `eyebrow`, `help_popup`, `scrollbar`, `list_scroll`, `clip_rows`, `tick`, `empty_page`, `empty_screen` |
 | `wbscene.h` | the frontpanel's figures behind the screen (moon with craters, orbits, head), turned with the badge and coloured; `scene_draw`, `rot`, `rot_read` |
 | `wbglass.h` | `glass()` boxes and frosted pop-ups (`glass_backdrop`), `GLOW_FOCUS`, `box_shaped`, `dim_outside` |
 | `wbui.h` | `wb_scene`, `wb_scene_turned`, `wb_bands`, `wb_frame`, `wb_out_wait`, `wb_header`, `wb_row`, `wb_switch`, `step_button`, `edge_rect`, `icon_scaled`, `loupe`, `menu_popup`, `dialog`, `dlg_hints`, `panel_hints` |
@@ -54,7 +54,13 @@ row 0, outside the band), and writes it to `/dev/fb0` itself.
    shows as stripes, or dithered as grain behind the text.) `wb_row()` is
    the design's list row (icon, label, optional second line, a value in mono, a chevron or
    the switch). Corners are square (radius 4) whatever radius is asked.
-4. `hint_bar(hints, n)`: the keys at the bottom, Esc on the right.
+4. `app_bar(hints, n)`: an app screen's keys at the bottom: the screen's
+   own keys on the left (Enter first, then ■ ▲ ✕, then other keys), ● ♣ ◆
+   small with their words (log, settings, help), and Esc (the hint with
+   `right` set) on the far right. What does not fit drops out from the end.
+   `hint_bar(hints, n)` draws keys without ● ♣ ◆: a pop-up's or dialog's,
+   and the menu's. `empty_screen()` is the log or settings screen of an app
+   that has none ("No log yet.", "This app has no settings.").
 5. Pop-ups are frosted (the void at 60 % over what is under them, blurred
    18 px), 96 px from the sides, with their keys inside at the bottom:
    `menu_popup()` for a context menu (`cur` -2) or a choice (`cur` the
@@ -113,6 +119,14 @@ a field's hint `WB_COLOR_PLACEHOLDER`, focus `WB_COLOR_CYAN`, active/on
   is drawn; a whole frame of it then costs ~55-65 ms on the badge. Drawing
   in bands, the first frame of a rotation builds it 40 rows at a time
   (`scene_keep_banded`) with a 57 KB buffer of its own.
+- Working a rotation's scene out takes about 0.4 s, once per program. A
+  program that starts often can keep the runs in files:
+  `wb_scene_cache(dir, key)` before the first frame, with a `key` that
+  changes with the program's build, and `wb_scene_cache_flush()` while it
+  waits for a key (it writes one rotation and returns 1, or 0 when there is
+  nothing to write). The first whole frame then reads the file. A file of
+  another build, of other figures, cut short or with a run that does not
+  fit its row is not used. The menu does this, on the SD card.
 - Glass costs a blend per pixel over what is drawn; a frosted pop-up adds
   the blur of the box under it (~40 ms for a large one) and, the first
   time, a 97 KB buffer for it (a program that never frosts never takes

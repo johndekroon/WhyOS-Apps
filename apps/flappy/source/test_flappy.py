@@ -11,13 +11,13 @@ import sys
 import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-# libwb (wb.h, the fonts): the copy next to it, else why2025-linux's
+# libwb (wb.h, the fonts): the copy next to it, else WhyOS's
 O = os.path.join(HERE, "libwb")
 if not os.path.isfile(os.path.join(O, "wb.h")):
-    O = os.path.normpath(os.path.join(HERE, "../../../../why2025-linux/libwb"))
+    O = os.path.normpath(os.path.join(HERE, "../../../../WhyOS/libwb"))
 
 # script -> what the state must say (f flap, kN key code, tN ticks, aN autopilot ticks)
-ESC, ENTER, UP, DOWN, HELP, TRIANGLE = 1, 28, 103, 108, 64, 60
+ESC, ENTER, UP, DOWN, HELP, TRIANGLE, LOG, SETTINGS = 1, 28, 103, 108, 64, 60, 62, 63
 CASES = [
     ("", {"mode": "ready", "score": "0"}),
     ("t600", {"mode": "ready"}),                         # waits for the first flap
@@ -38,6 +38,12 @@ CASES = [
     ("k%d" % HELP, {"mode": "ready help"}),
     ("k%d f k%d" % (HELP, HELP), {"mode": "ready"}),     # Space does nothing in the help
     ("f t10 k%d t100 k%d t5" % (HELP, ESC), {"mode": "play"}),
+    ("k%d" % LOG, {"mode": "ready log"}),               # the circle: the empty log, no flap
+    ("k%d k%d" % (LOG, SETTINGS), {"mode": "ready settings"}),
+    ("k%d k%d" % (LOG, ESC), {"mode": "ready"}),         # Esc back
+    ("k%d k%d k%d" % (SETTINGS, HELP, ESC), {"mode": "ready settings"}),  # the help over it
+    ("f t10 k%d t100" % SETTINGS, {"mode": "play settings", "score": "0"}),  # the game waits
+    ("f t300 k%d f" % LOG, {"mode": "dead log"}),        # Space does nothing there
 ]
 
 
@@ -50,6 +56,7 @@ FRAMES = [
     % (ESC, DOWN, DOWN, UP, HELP, ESC, DOWN, ENTER, ESC, ESC, ESC, DOWN, ENTER),
     "f t300 d k%d d k%d d k%d d k%d d k%d d k%d d k%d d" % (DOWN, HELP, ESC, ESC, DOWN, UP, ENTER),
     "f t300 d f f t300 d k%d d" % ESC,                   # a second game over, the field moved on
+    "d k%d d k%d d k%d d k%d d k%d d" % (LOG, SETTINGS, HELP, ESC, ESC),   # the empty log and settings
 ]
 SIZE = len(b"P6\n720 720\n255\n") + 720 * 720 * 3
 

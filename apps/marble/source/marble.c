@@ -1945,23 +1945,27 @@ static void draw_help(void)
 {
 	static const struct help_key tilt[] = {
 		{ "Tilt", "Roll the marble" },
-		{ "Esc", "Pause: resume, restart, levels, quit" },
-		{ "#4", "Results of every level" },
+		{ "\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "Choose a level" },
+		{ "Enter", "Play the level, start, the next level" },
+		{ "Esc", "Pause; on the levels it closes the game" },
+		{ "#4", "Log: the results of every level" },
 		{ "#5", "Settings: controls, sensitivity" },
 		{ "#6", "These keys (the game waits)" },
 		{ "Logo", "Back to the menu" },
 	};
 	static const struct help_key arrows[] = {
-		{ "\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "Roll the marble" },
-		{ "Esc", "Pause: resume, restart, levels, quit" },
-		{ "#4", "Results of every level" },
+		{ "\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "Roll the marble; choose a level" },
+		{ "Enter", "Play the level, start, the next level" },
+		{ "Esc", "Pause; on the levels it closes the game" },
+		{ "#4", "Log: the results of every level" },
 		{ "#5", "Settings: controls, sensitivity" },
 		{ "#6", "These keys (the game waits)" },
 		{ "Logo", "Back to the menu" },
 	};
 
 	help_popup("Marble Orbit", "Roll into the ring. Stars, lives left and time under par add to the score; "
-		   "a hole costs a life.", G.control || G.no_sensor ? arrows : tilt, 6);
+		   "a hole costs a life.", G.control || G.no_sensor ? arrows : tilt,
+		   G.control || G.no_sensor ? 7 : 8);
 }
 
 static void draw_pop(void)
@@ -2037,14 +2041,14 @@ static void draw_pop(void)
  * more to record the frame). */
 static void draw_band(void)
 {
-	static const struct hint title_h[] = { { "Enter", "play", 0 }, { "#4", "results", 0 }, { "Esc", "quit", 1 } };
+	static const struct hint title_h[] = { { "Enter", "play", 0 }, { "Esc", "close", 1 } };
 	static const struct hint won_h[] = { { "Enter", "next level", 0 }, { "Esc", "pause", 1 } };
 	static const struct hint ready_h[] = { { "Enter", "start", 0 }, { "Esc", "pause", 1 } };
 
 	if (G.mode == TITLE) {
 		title();
 		if (G.pop != POP_HELP)		/* the help has a bar of its own */
-			hint_bar(title_h, 3);
+			app_bar(title_h, 2);
 	} else if (wb_rec) {	/* the level writes fb itself: recorded by its generation */
 		int k[] = { 0x6d62, (int)G.gen };
 
@@ -2064,11 +2068,11 @@ static void draw_band(void)
 		if (G.mode == READY) {
 			ready_card();
 			if (G.pop != POP_HELP)
-				hint_bar(ready_h, 2);
+				app_bar(ready_h, 2);
 		} else if (G.mode == WON) {
 			won_card();
 			if (G.pop != POP_HELP)
-				hint_bar(won_h, 2);
+				app_bar(won_h, 2);
 		} else if (G.mode == OVER) {
 			over_card();
 		}

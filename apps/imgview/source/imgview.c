@@ -558,6 +558,8 @@ static void draw_help(void)
 		{ "Enter", "Zoom in 2x, or fit the screen again" },
 		{ "\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "Zoomed in: move the picture" },
 		{ "Esc", "Close" },
+		{ "#4", "Log" },
+		{ "#5", "Settings" },
 		{ "#6", "This help" },
 		{ "Logo", "Back to the menu" },
 	};
@@ -570,13 +572,8 @@ static void draw_help(void)
  * still opens, with one line saying so. */
 static void draw_empty(void)
 {
-	static const struct hint hints[] = { { "Esc", "back", 1 } };
-
-	backdrop();
-	wb_header("PICTURE VIEWER \xe2\x80\xba", sc == SC_LOG ? "Log" : "Settings", 0);
-	wb_row(WB_CONTENT_PAD, WB_ROWS_TOP, W - 2 * WB_CONTENT_PAD, WB_LIST_ROW_H, &r_info,
-	       sc == SC_LOG ? "No log yet" : "This app has no settings", 0, 0, WB_ROW_NONE, 0, 0);
-	hint_bar(hints, 1);
+	empty_screen("PICTURE VIEWER \xe2\x80\xba", sc == SC_LOG ? "Log" : "Settings",
+		     sc == SC_LOG ? "No log yet." : "This app has no settings.");
 }
 
 /* A picture that cannot be shown: a card in the middle, over the scene. */
@@ -616,11 +613,11 @@ static void draw_picture(void)
 static void paint(void *unused)
 {
 	static const struct hint hints[] = {
-		{ "\xe2\x86\x90 \xe2\x86\x92", "previous / next", 0 }, { "Enter", "zoom", 0 },
+		{ "Enter", "zoom", 0 }, { "\xe2\x86\x90 \xe2\x86\x92", "previous / next", 0 },
 		{ "Esc", "close", 1 },
 	};
 	static const struct hint zoomed[] = {
-		{ "\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "move", 0 }, { "Enter", "fit", 0 },
+		{ "Enter", "fit", 0 }, { "\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "move", 0 },
 		{ "Esc", "close", 1 },
 	};
 	char right[64], name[96];
@@ -664,7 +661,7 @@ static void paint(void *unused)
 	     WB_COLOR_TEXT_HI, 0);
 	text(&f_mono14, W - WB_CHROME_PAD - rw, text_top(&f_mono14, WB_STATUS_BAR_H / 2), right,
 	     WB_COLOR_TEXT_MID, 0);
-	hint_bar(P.zoom ? zoomed : hints, 3);
+	app_bar(P.zoom ? zoomed : hints, 3);
 	if (help)
 		draw_help();
 }

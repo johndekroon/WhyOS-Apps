@@ -627,9 +627,9 @@ static void draw_search_head(int y)
 }
 
 /*
- * The hint bar (6.8): only what differs per screen. Enter with its word,
- * the square key where the screen has a menu, Esc on the right; no Up and
- * Down, and no circle, cloud or diamond (the help lists those).
+ * The key bar (6.8), libwb's app_bar: only what differs per screen. Enter
+ * with its word, the square key where the screen has a menu; no Up and
+ * Down. The circle, clover and diamond small, and Esc, on the right.
  */
 static void hints(void)
 {
@@ -646,19 +646,19 @@ static void hints(void)
 	const struct row *r = f->focus >= 0 && f->focus < L.n ? &L.rows[f->focus] : 0;
 
 	if (f->v == V_TEXT)
-		hint_bar(back, 1);
+		app_bar(back, 1);
 	else if (f->v == V_SHOTS)
-		hint_bar(shots, 2);
+		app_bar(shots, 2);
 	else if (f->v == V_SEARCH && query[0])
-		hint_bar(search_clear, 2);
+		app_bar(search_clear, 2);
 	else if (depth == 1)
-		hint_bar(discover, 2);
+		app_bar(discover, 2);
 	else if (f->v == V_CAT)
-		hint_bar(nav_sort, 3);
+		app_bar(nav_sort, 3);
 	else if (r && r->kind == R_TOGGLE)
-		hint_bar(adj, 2);
+		app_bar(adj, 2);
 	else
-		hint_bar(nav, 2);
+		app_bar(nav, 2);
 }
 
 /* The diamond key's pop-up: what the screen is for and its keys. */
@@ -2684,13 +2684,18 @@ static void key(int k)
 		overlay_keys(OV_HELP);
 		return;
 	}
+	/* the log and the settings take each other's place (the WhyOS SDK) */
 	if (k == KEY_SYM_LOG) {
-		if (!(f->v == V_TEXT && !strcmp(f->arg, "log")))
+		if (f->v == V_SETTINGS)
+			pop();
+		if (!(TOP->v == V_TEXT && !strcmp(TOP->arg, "log")))
 			log_open();
 		return;
 	}
 	if (k == KEY_SYM_SETTINGS) {
-		if (f->v != V_SETTINGS)
+		if (f->v == V_TEXT && !strcmp(f->arg, "log"))
+			pop();
+		if (TOP->v != V_SETTINGS)
 			push(V_SETTINGS, 0, 0);
 		return;
 	}

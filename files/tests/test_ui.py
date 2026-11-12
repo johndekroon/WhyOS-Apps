@@ -123,7 +123,11 @@ def test_folder(env):
     # the columns' names, then notes.md with the focus: its row cyan, in the panel
     assert s.count(100, 150, 680, 182, is_c((0x9A, 0x9A, 0xB6), 30)) > 50
     assert s.count(48, 184, 672, 646, is_c(CYAN, 40)) > 300
-    assert s.count(540, 670, 620, 710, is_c(TEXT_MID, 40)) > 20     # "3 / 4" in the hint bar
+    # the key bar: Enter, the square and the triangle on the left; the circle,
+    # clover and diamond with their words, then Esc
+    assert s.count(24, 680, 80, 704, is_c(TEXT_HI, 40)) > 20         # "Enter"
+    assert s.count(504, 670, 520, 682, is_c((0x38, 0xDC, 0x80), 40)) > 5    # the circle, green
+    assert s.count(520, 668, 590, 716, is_c(TEXT_MID, 40)) > 40     # log, settings, help
     assert where(env)[:3] == ("home", str(home), "notes.md")
 
 
@@ -202,6 +206,20 @@ def test_settings_help_log(env):
     assert where(env)[4] == "list"
     ui(env, [], home / ".profile")              # the next start: hidden files show
     assert where(env)[2] == ".profile"
+
+
+def test_log_and_settings_take_each_others_place(env):
+    """as in the WhyOS SDK: the circle on the settings and the clover on the
+    log open the other in its place; Esc goes back to the folder"""
+    _, home, _ = env
+    ui(env, ["f5", "f4"], home)
+    assert where(env)[4] == "log"
+    ui(env, ["f5", "f4", "esc"], home)
+    assert where(env)[4] == "list"
+    ui(env, ["f4", "f5"], home)
+    assert where(env)[4] == "settings"
+    ui(env, ["f4", "f5", "esc"], home)
+    assert where(env)[4] == "list"
 
 
 def test_del_and_pages(env):

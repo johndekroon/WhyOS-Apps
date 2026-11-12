@@ -106,7 +106,6 @@ struct files {
 	struct apps apps;
 	int drive;			/* Drives: the focused drive (d.fs index) */
 	enum screen sc, under;		/* under: what the help or a pop-up is over */
-	enum screen log_under;		/* what the log is over (the help may be over it) */
 	struct list l;
 	struct pick p;
 	struct input in;

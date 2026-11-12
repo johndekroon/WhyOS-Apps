@@ -16,6 +16,8 @@ first); PgUp and PgDn (Fn + Up, Down) and the arrows across a page of 8;
 the triangle `/root`; the cross Drives; Esc up a folder, and closes Files
 at `/` and on Drives; the circle the log of copy, move and delete
 (`/tmp/files.log`); the cloud "Show hidden files"; the diamond help.
+The log and the settings take each other's place; Esc on either goes
+back to the folder.
 
 The look: the frontpanel's figures behind every screen, also in the
 top 48 px, where WhyOS draws its status bar over the app (Files draws no
@@ -26,8 +28,10 @@ the one the folder is on cyan); the folder as one panel of glass with
 the columns Name, Size (a folder's entries) and Changed, rows of 48 px,
 the focus cyan, rows the panel cuts off faded, a scroll bar in its right
 edge; a notice and the clipboard ("Copied: notes.txt", pink) under the
-list; the hint bar Enter, PgUp PgDn, Del, the position ("12 / 18") and
-Esc. Drives, the settings and the log are cards and panels of glass on
+list; the key bar, libwb's `app_bar`, on every screen: Enter, the
+square, triangle and cross, PgUp PgDn and Del on the left (what does not
+fit drops from the end), the circle, clover and diamond small with their
+words, and Esc ("up", "close" or "back") on the right. Drives, the settings and the log are cards and panels of glass on
 the same scene; options, Open with, Rename, New folder and Delete are
 libwb's frosted pop-ups (`menu_popup`, `dialog`). A frame with a pop-up
 is drawn whole (1 MB, only while the pop-up is open) so that the pop-up

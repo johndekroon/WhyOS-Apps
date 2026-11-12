@@ -1436,16 +1436,16 @@ static void list_hints(void)
 	int n = 0;
 
 	if (C.focus) {
+		h[n++] = (struct hint){ "Enter", "show", 0 };
 		h[n++] = (struct hint){ "#1", "options", 0 };
 		h[n++] = (struct hint){ "#2", "new", 0 };
 		h[n++] = (struct hint){ "#3", "edit", 0 };
-		h[n++] = (struct hint){ "Enter", "show", 0 };
 	} else {
-		h[n++] = (struct hint){ "#2", "new", 0 };
 		h[n++] = (struct hint){ "Enter", "open", 0 };
+		h[n++] = (struct hint){ "#2", "new", 0 };
 	}
 	h[n++] = (struct hint){ "Esc", "close", 1 };
-	hint_bar(h, n);
+	app_bar(h, n);
 }
 
 static void draw_list(void)
@@ -1540,14 +1540,14 @@ static void draw_show(void)
 		if (is_wide(c->type) && y + 10 + 52 < H - WB_HINT_BAR_H)
 			draw_ctl_note(s, c->t, c->n, y + 10);
 	}
-	hint_bar(hints, 5);
+	app_bar(hints, 5);
 }
 
 /* ---- Quick code ------------------------------------------------------------ */
 
 static void draw_quick(void)
 {
-	static const struct hint hints[] = { { "#1", "insert", 0 }, { "#2", "type", 0 }, { "Enter", "save", 0 },
+	static const struct hint hints[] = { { "Enter", "save", 0 }, { "#1", "insert", 0 }, { "#2", "type", 0 },
 					     { "Esc", "back", 1 } };
 	const struct sym *s;
 	char info[120];
@@ -1566,7 +1566,7 @@ static void draw_quick(void)
 			text(&f_ui16, W / 2 - text_w(&f_ui16, info, 0) / 2, y + 12, info, WB_COLOR_TEXT_MID, 0);
 		}
 	}
-	hint_bar(hints, 4);
+	app_bar(hints, 4);
 }
 
 /* ---- the editor ------------------------------------------------------------ */
@@ -1617,7 +1617,8 @@ static void draw_preview(void)
 
 static void draw_edit(void)
 {
-	static const struct hint hints[] = { { "#1", "insert", 0 }, { "Enter", "save", 0 }, { "Esc", "cancel", 1 } };
+	static const struct hint hints[] = { { "Enter", "save", 0 }, { "#1", "insert", 0 }, { "#2", "type", 0 },
+					     { "Esc", "cancel", 1 } };
 	static const struct hint type_hints[] = { { "Enter", "choose", 0 }, { "\xe2\x86\x90 \xe2\x86\x92", "change", 0 },
 						  { "Esc", "cancel", 1 } };
 	char t[32] = "";
@@ -1662,7 +1663,10 @@ static void draw_edit(void)
 		text(&f_ui20, X0 + TF_PAD, text_top(&f_ui20, cy), "Type", WB_COLOR_TEXT_HI, 0);
 	}
 	draw_preview();
-	hint_bar(C.field == 2 ? type_hints : hints, 3);
+	if (C.field == 2)
+		app_bar(type_hints, 3);
+	else
+		app_bar(hints, 4);
 }
 
 /* ---- log, settings -------------------------------------------------------- */
@@ -1679,7 +1683,7 @@ static void draw_log(void)
 		text(&f_ui20, X0 + 20, text_top(&f_ui20, y + ROW_H / 2),
 		     wb_fit(&f_ui20, "No codes shown yet. They show here until the app closes.", XW - 40, buf,
 			    sizeof(buf)), WB_COLOR_TEXT_MID, 0);
-		hint_bar(hints, 1);
+		app_bar(hints, 1);
 		return;
 	}
 	if (n > (BOTTOM - y - 28) / 30)
@@ -1689,7 +1693,7 @@ static void draw_log(void)
 	for (int i = C.n_log - 1; i >= C.n_log - n; i--, y += 30)
 		text(&f_mono14, X0 + 20, text_top(&f_mono14, y + 15), wb_fit(&f_mono14, C.log[i], XW - 40, buf, sizeof(buf)),
 		     i == C.n_log - 1 ? WB_COLOR_TEXT_HI : WB_COLOR_TEXT_MID, 0);
-	hint_bar(hints, 1);
+	app_bar(hints, 1);
 }
 
 static const char *const ecc_names[4] = { "L \xc2\xb7 7 %", "M \xc2\xb7 15 %", "Q \xc2\xb7 25 %", "H \xc2\xb7 30 %" };
@@ -1702,7 +1706,8 @@ static int set_h(int i)
 
 static void draw_settings(void)
 {
-	static const struct hint hints[] = { { "\xe2\x86\x90 \xe2\x86\x92", "adjust", 0 }, { "Esc", "back", 1 } };
+	static const struct hint hints[] = { { "Enter", "change", 0 }, { "\xe2\x86\x90 \xe2\x86\x92", "adjust", 0 },
+					     { "Esc", "back", 1 } };
 	static const char *const labels[N_SET] = { "Type for a new code", "QR error correction", "Quiet zone",
 						   "Shift+Enter types", "Text under the code",
 						   "Full brightness while showing" };
@@ -1745,7 +1750,7 @@ static void draw_settings(void)
 		y += h + 6;
 	}
 	text_wrap(&f_ui16, HX, y + 4, XW - 6, 20, notes[C.set_focus], WB_COLOR_TEXT_MID, 2, 1);
-	hint_bar(hints, 2);
+	app_bar(hints, 3);
 }
 
 /* ---- pop-ups ------------------------------------------------------------- */
@@ -1772,7 +1777,7 @@ static void help_popup2(const char *title, const char *about, const struct help_
 	static const struct hint hints[] = { { "Esc", "close", 1 } };
 	int x = POP_X + 32, tw = POP_W - 64, lines = text_wrap(&f_ui18, 0, 0, tw, 25, about, 0, 3, 0);
 	int h = 26 + 18 + 6 + 36 + 6 + lines * 25 + 16 + 17 + 8 + n * HELP_ROW + 8 + 48 + 12;
-	int y = (H - h) / 2;
+	int y = (H - h) / 2 < WB_STATUS_BAR_H + 8 ? WB_STATUS_BAR_H + 8 : (H - h) / 2;
 	char buf[96];
 
 	dim(WB_DIM);
@@ -1807,6 +1812,7 @@ static void draw_help(void)
 		{ "#3", "Edit the code" },
 		{ "#4", "Codes shown this session" },
 		{ "#5", "Settings: type, error correction, quiet zone" },
+		{ "#6", "This help" },
 		{ "\xe2\x86\x90 \xe2\x86\x92", "In a code: the previous or next one" },
 		{ "Esc", "Close BARbarious" },
 		{ "Logo", "Back to the menu" },
@@ -1818,6 +1824,7 @@ static void draw_help(void)
 		{ "#3", "Edit the code" },
 		{ "#4", "Codes shown this session" },
 		{ "#5", "Settings: brightness, quiet zone" },
+		{ "#6", "This help" },
 		{ "Esc", "Back to the list" },
 		{ "Logo", "Back to the menu" },
 	};
@@ -1828,9 +1835,12 @@ static void draw_help(void)
 		{ "Ctrl", "With a letter: ^A to ^Z; [ ] for ESC, GS" },
 		{ "#1", "Insert a control character or FNC1" },
 		{ "#2", "Barcode type" },
-		{ "\xe2\x86\x91\xe2\x86\x93", "A line up or down; the fields" },
-		{ "\xe2\x86\x90\xe2\x86\x92", "Move the cursor (Fn: the line's ends)" },
+		{ "\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "Move the cursor (Fn \xe2\x86\x90\xe2\x86\x92: a line's ends)" },
 		{ "Esc", "Cancel: the code stays as it was" },
+		{ "#4", "Log" },
+		{ "#5", "Settings" },
+		{ "#6", "This help" },
+		{ "Logo", "Back to the menu" },
 	};
 	static const struct help_key quick_keys[] = {
 		{ "Enter", "Save it as a code of the list" },
@@ -1840,6 +1850,9 @@ static void draw_help(void)
 		{ "#1", "Insert a control character or FNC1" },
 		{ "#2", "Barcode type" },
 		{ "Esc", "Back to the list; the text stays" },
+		{ "#4", "Log" },
+		{ "#5", "Settings" },
+		{ "#6", "This help" },
 		{ "Logo", "Back to the menu" },
 	};
 	static const struct help_key set_keys[] = {
@@ -1847,35 +1860,37 @@ static void draw_help(void)
 		{ "\xe2\x86\x90 \xe2\x86\x92", "Change it" },
 		{ "Enter", "The next value" },
 		{ "Esc", "Back" },
+		{ "#4", "Log" },
+		{ "#6", "This help" },
 		{ "Logo", "Back to the menu" },
 	};
 	static const struct help_key log_keys[] = {
 		{ "Esc", "Back" },
+		{ "#5", "Settings" },
+		{ "#6", "This help" },
 		{ "Logo", "Back to the menu" },
 	};
 
 	switch (C.sc) {
 	case SC_SHOW:
 		help_popup2("Show code", "As big as the screen allows, at full brightness; the screen stays on "
-			    "while it shows, up to 10 minutes after a key.", show_keys, 8);
+			    "while it shows, up to 10 minutes after a key.", show_keys, 9);
 		break;
 	case SC_EDIT:
-		help_popup2(C.edit < 0 ? "New code" : "Edit code", "The name is only for the list. The text is "
-			    "what the code holds, control characters included.", edit_keys, 9);
+		help_popup2(C.edit < 0 ? "New code" : "Edit code", "The text is what the code holds.", edit_keys, 12);
 		break;
 	case SC_QUICK:
-		help_popup2("Quick code", "The code of a text as you type it. It is not saved; Enter makes it a "
-			    "code of the list.", quick_keys, 8);
+		help_popup2("Quick code", "The code of a text as you type it; not saved.", quick_keys, 11);
 		break;
 	case SC_SETTINGS:
-		help_popup2("Settings", "Kept on the badge, in flash.", set_keys, 5);
+		help_popup2("Settings", "Kept on the badge, in flash.", set_keys, 7);
 		break;
 	case SC_LOG:
-		help_popup2("Log", "The codes shown since the app started.", log_keys, 2);
+		help_popup2("Log", "The codes shown since the app started.", log_keys, 4);
 		break;
 	default:
 		help_popup2("BARbarious", "Turns your texts into barcodes and QR Codes, control characters "
-			    "included, for a scanner to read off the screen.", list_keys, 9);
+			    "included, for a scanner to read off the screen.", list_keys, 10);
 	}
 }
 

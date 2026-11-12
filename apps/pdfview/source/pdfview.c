@@ -453,6 +453,8 @@ static void draw_help(void)
 		{ "Enter", "Zoom in 2x, or back" },
 		{ "#1", "Options: go to a page, whole page" },
 		{ "Esc", "Close" },
+		{ "#4", "Log" },
+		{ "#5", "Settings" },
 		{ "#6", "This help" },
 		{ "Logo", "Back to the menu" },
 	};
@@ -498,13 +500,8 @@ static void draw_goto(void)
  * still opens, with one line saying so. */
 static void draw_empty(void)
 {
-	static const struct hint hints[] = { { "Esc", "back", 1 } };
-
-	backdrop();
-	wb_header("PDF VIEWER \xe2\x80\xba", sc == SC_LOG ? "Log" : "Settings", 0);
-	wb_row(WB_CONTENT_PAD, WB_ROWS_TOP, W - 2 * WB_CONTENT_PAD, WB_LIST_ROW_H, &r_info,
-	       sc == SC_LOG ? "No log yet" : "This app has no settings", 0, 0, WB_ROW_NONE, 0, 0);
-	hint_bar(hints, 1);
+	empty_screen("PDF VIEWER \xe2\x80\xba", sc == SC_LOG ? "Log" : "Settings",
+		     sc == SC_LOG ? "No log yet." : "This app has no settings.");
 }
 
 /* A file or page that cannot be shown: a card in the middle, over the scene. */
@@ -546,12 +543,12 @@ static void draw_page(void)
 static void paint(void *unused)
 {
 	static const struct hint hints[] = {
-		{ "\xe2\x86\x91\xe2\x86\x93", "scroll", 0 }, { "\xe2\x86\x90 \xe2\x86\x92", "page", 0 },
-		{ "Enter", "zoom", 0 }, { "#1", "options", 0 }, { "Esc", "close", 1 },
+		{ "Enter", "zoom", 0 }, { "#1", "options", 0 }, { "\xe2\x86\x90 \xe2\x86\x92", "page", 0 },
+		{ "Esc", "close", 1 },
 	};
 	static const struct hint zoomed[] = {
-		{ "\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "move", 0 }, { "Enter", "back", 0 },
-		{ "#1", "options", 0 }, { "Esc", "close", 1 },
+		{ "Enter", "back", 0 }, { "#1", "options", 0 },
+		{ "\xe2\x86\x90\xe2\x86\x91\xe2\x86\x93\xe2\x86\x92", "move", 0 }, { "Esc", "close", 1 },
 	};
 	static const struct hint closing[] = { { "Esc", "close", 1 } };
 	char right[48], name[256];
@@ -601,9 +598,9 @@ static void paint(void *unused)
 	text(&f_mono14, W - WB_CHROME_PAD - rw, text_top(&f_mono14, WB_STATUS_BAR_H / 2), right,
 	     WB_COLOR_TEXT_MID, 0);
 	if (!D.pages)
-		hint_bar(closing, 1);
+		app_bar(closing, 1);
 	else
-		hint_bar(D.zoom ? zoomed : hints, D.zoom ? 4 : 5);
+		app_bar(D.zoom ? zoomed : hints, 4);
 	if (pop == POP_HELP)
 		draw_help();
 	else if (pop == POP_MENU)

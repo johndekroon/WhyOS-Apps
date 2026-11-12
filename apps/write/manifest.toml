@@ -4,8 +4,8 @@
 format = 1
 id = "write"
 name = "Write"
-version = "1.2.2"
-build = 5
+version = "1.2.3"
+build = 6
 summary = "Write notes and documents, edit text and code"
 description = """
 Write notes and documents on the badge, with headings, lists, bold,
@@ -27,7 +27,7 @@ license = "MIT AND LGPL-2.1-or-later AND OFL-1.1"
 license_file = "write.txt"
 homepage = "https://github.com/johndekroon/WhyOS-Apps"
 source = "https://github.com/johndekroon/WhyOS-Apps/tree/main/write"
-changelog = "The status bar comes from WhyOS now, so the app no longer draws its own."
+changelog = "The key bar looks as in the other apps: the screen's keys on the left, the circle, clover and diamond small with their words, Esc on the right; the log and the settings take each other's place."
 
 type = "system"
 category = "other"

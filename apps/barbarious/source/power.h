@@ -23,7 +23,9 @@
 #include <time.h>
 #include <unistd.h>
 
+#ifndef POWER_ACTIVE	/* a test has its own */
 #define POWER_ACTIVE	"/run/active"	/* monotonic second of the last key */
+#endif
 #define POWER_STANDBY	"/run/standby"	/* there while in standby */
 
 /* Seconds after the last key; 0 = never. */
@@ -165,7 +167,10 @@ static inline void power_touch(long now)
 		buf[n - 1 - i] = t;
 	}
 	buf[n++] = '\n';
-	fd = open(POWER_ACTIVE, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
+	/* over what is there, not emptied first: one who reads between the two
+	 * would find no key noted, which counts from boot and is standby at
+	 * once. The number never gets shorter. */
+	fd = open(POWER_ACTIVE, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
 	if (fd >= 0) {
 		write(fd, buf, (size_t)n);
 		close(fd);
@@ -202,7 +207,7 @@ static inline long power_idle(long now)
 static inline void power_standby_flag(int on)
 {
 	if (on) {
-		int fd = open(POWER_STANDBY, O_WRONLY | O_CREAT | O_CLOEXEC, 0644);
+		int fd = open(POWER_STANDBY, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
 
 		if (fd >= 0)
 			close(fd);

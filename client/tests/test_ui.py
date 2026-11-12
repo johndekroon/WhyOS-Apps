@@ -177,6 +177,15 @@ def test_symbol_keys(env):
     assert len(shots) == 6
 
 
+def test_log_and_settings_take_each_others_place(env):
+    """As in the WhyOS SDK: the circle on Settings and the cloud on the log
+    open the other in its place, so Esc goes back to where they were opened."""
+    shots = ui(env, ["shot d0", "f5", "f4", "esc", "shot a", "f4", "f5", "esc", "shot b", "esc"],
+               extra={"STORE_UI_TIME": "1793000000"})
+    d0, a, b = (open(shots[k], "rb").read() for k in ("d0", "a", "b"))
+    assert a == d0 and b == d0
+
+
 def test_no_network(env):
     env.stop()
     shots = ui(env, ["shot offline"])

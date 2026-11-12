@@ -65,11 +65,17 @@ static const struct wd_font *const FONTS[FONT_COUNT] = {
 
 /* ---- the scene and glass ------------------------------------------------------------ */
 
+/* the log, or the help over it */
+static int log_shown(const struct app *a)
+{
+	return a->ov == OV_LOG || (a->ov == OV_HELP && a->help_on_log);
+}
+
 /* The screens with chrome have the scene behind them: the editor (but in
  * full screen, where the text fills the panel), Open and the log. */
 static int scene_screen(const struct app *a)
 {
-	return a->screen == SC_OPEN || a->ov == OV_LOG || !a->full;
+	return a->screen == SC_OPEN || log_shown(a) || !a->full;
 }
 
 /*
@@ -80,7 +86,7 @@ static int scene_screen(const struct app *a)
  */
 static void backdrop(const struct app *a)
 {
-	int bars_only = a->screen == SC_EDIT && a->ov != OV_LOG;
+	int bars_only = a->screen == SC_EDIT && !log_shown(a);
 
 	scene_shown = 1;
 	gb_ok = 0;
@@ -120,12 +126,7 @@ static int keycap_any(int x, int cy, const char *keys, uint32_t c)
 	}
 }
 
-static int hint_wk(const struct hintk *h)
-{
-	return keycap_w(h->keys) + 18 + (h->label[0] ? 8 + text_w(&f_ui16, h->label, 0) : 0);
-}
-
-/* The keys of the screen under a pop-up: the hint bar stays, dimmed with
+/* The keys of the screen under a pop-up: the key bar stays, dimmed with
  * the screen, and the pop-up carries its own keys (pop_keys). */
 static int screen_hints(struct app *a, struct hintk *h, int max)
 {
@@ -140,33 +141,41 @@ static int screen_hints(struct app *a, struct hintk *h, int max)
 	return n;
 }
 
+/* The pink Fn while it is held: after the keys app_bar kept on the left,
+ * where there is room before the circle, clover and diamond */
+static void fn_chip(const struct hint *hs, int n)
+{
+	int x = WB_CHROME_PAD, end = W - WB_CHROME_PAD - 20 - 20 - app_bar_syms_w() - 20;
+
+	for (int i = 0; i < n; i++)
+		if (hs[i].right)
+			end -= hint_w(&hs[i]);
+	for (int i = 0; i < n; i++) {
+		if (hs[i].right)
+			continue;
+		if (x + hint_w(&hs[i]) > end)
+			break;
+		x += hint_w(&hs[i]) + WB_SPACE_4;
+	}
+	if (x + text_w(&f_mono13, "Fn", 0) + 18 <= end)
+		keycap_any(x, H - WB_HINT_BAR_H / 2, "Fn", WB_COLOR_PINK);
+}
+
+/* The key bar (6.8): libwb's app_bar, with Fn in pink while it is held */
 static void hints(struct app *a)
 {
 	struct hintk h[12];
-	int n = screen_hints(a, h, 12), x = WB_CHROME_PAD, rx = W - WB_CHROME_PAD;
-	int y0 = H - WB_HINT_BAR_H, cy = y0 + WB_HINT_BAR_H / 2;
+	struct hint hs[12];
+	int n = screen_hints(a, h, 12), k = 0, fn = 0;
 
-	hint_glass(y0);
-	for (int i = n - 1; i >= 0; i--) {	/* the right ones from the right: Esc, then Fn */
-		int hx, ex;
-
-		if (!h[i].right)
-			continue;
-		hx = rx - hint_wk(&h[i]);
-		ex = keycap_any(hx, cy, h[i].keys, h[i].pink ? WB_COLOR_PINK : WB_COLOR_TEXT_HI);
-		if (h[i].label[0])
-			text(&f_ui16, ex + 8, text_top(&f_ui16, cy), h[i].label, WB_COLOR_TEXT_MID, 0);
-		rx = hx - 20;
-	}
-	for (int i = 0; i < n; i++) {
-		int ex;
-
-		if (h[i].right)
-			continue;
-		ex = keycap(x, cy, h[i].keys);
-		ex = text(&f_ui16, ex + 8, text_top(&f_ui16, cy), h[i].label, WB_COLOR_TEXT_MID, 0);
-		x = ex + 20;
-	}
+	for (int i = 0; i < n; i++)
+		if (h[i].pink)
+			fn = 1;
+		else
+			hs[k++] = (struct hint){ h[i].keys, h[i].label, h[i].right };
+	app_bar(hs, k);
+	if (fn)
+		fn_chip(hs, k);
 }
 
 /* A chip of the document bar: glass over the scene; on: pink over it. */
@@ -1027,7 +1036,7 @@ static void language_draw(struct app *a)
 
 static void log_draw(struct app *a)
 {
-	static const struct hint esc[] = { { "Esc", "close", 1 } };
+	static const struct hint esc[] = { { "Esc", "back", 1 } };
 	int x = WB_CONTENT_PAD, w = W - 2 * WB_CONTENT_PAD, y = WB_ROWS_TOP;
 	int rows = (PAGE_BOT - 16 - y - 32) / 26, first = a->n_log > rows ? a->n_log - rows : 0;
 	int shown = a->n_log ? a->n_log - first : 1;
@@ -1044,7 +1053,7 @@ static void log_draw(struct app *a)
 			text(&f_mono14, x + 20, y + 4, wb_fit(&f_mono14, a->log[i], w - 40, buf, sizeof(buf)),
 			     strstr(a->log[i], "error") ? WB_COLOR_ERROR : WB_COLOR_TEXT_MID, 0);
 	}
-	hint_bar(esc, 1);
+	app_bar(esc, 1);
 }
 
 /* a key cap of the help: mono 13, a thicker bottom edge (design Help) */
@@ -1102,32 +1111,63 @@ static void help_draw(struct app *a)
 		{ { "Esc" }, "Close. Asks first if there are unsaved changes" },
 		{ { "Logo" }, "Back to the menu. Write saves first" },
 	};
+	static const struct help_row open[] = {
+		{ { "Enter" }, "Open the file or folder" },
+		{ { "#2" }, "Your home folder" },
+		{ { "#3" }, "Drives" },
+		{ { "\xe2\x86\x90", "\xe2\x86\x92" }, "A page up or down" },
+		{ { "Ctrl+N" }, "A new document" },
+		{ { "Backspace" }, "Erase the last letter of the filter" },
+		{ { "#4" }, "Log: saves and errors" },
+		{ { "#5" }, "Settings: text size, line numbers" },
+		{ { "Esc" }, "Clear the filter, or up a folder; at the top, back" },
+		{ { "Logo" }, "Back to the menu. Write saves first" },
+	};
+	static const struct help_row log[] = {
+		{ { "#5" }, "Settings: text size, line numbers" },
+		{ { "Esc" }, "Back" },
+		{ { "Logo" }, "Back to the menu. Write saves first" },
+	};
 	const struct help_row *k = a->e.mode == M_CODE ? code : rich;
 	const char *about = a->e.mode == M_CODE ? "Edit text and code. Files stay as they are: Write adds nothing." :
 			    "Write notes and documents. Files are saved as markdown (.md), so any other editor can open them.";
-	int x = PX, w = PW, lines = text_wrap(&f_ui18, 0, 0, w, 25, about, 0, 2, 0), kw = 0;
-	int h = 22 + 55 + 8 + lines * 25 + 14 + 17 + 6 + 12 * 32 + KEYS_H - 14 + 6, y = centered(h);
+	const char *title = "Write";
+	int n = 12, x = PX, w = PW, lines, kw = 0, h, y;
 	const struct wb_font *df = &f_ui18;
 	char buf[100];
 
+	if (a->help_on_log) {
+		k = log;
+		n = (int)(sizeof(log) / sizeof(log[0]));
+		title = "Log";
+		about = "Saves and errors, the newest at the bottom.";
+	} else if (a->screen == SC_OPEN) {
+		k = open;
+		n = (int)(sizeof(open) / sizeof(open[0]));
+		title = "Open";
+		about = "Text and code files on the badge. Typing filters the list.";
+	}
+	lines = text_wrap(&f_ui18, 0, 0, w, 25, about, 0, 2, 0);
+	h = 22 + 55 + 8 + lines * 25 + 14 + 17 + 6 + n * 32 + KEYS_H - 14 + 6;
+	y = centered(h);
 	/* the descriptions in 18 px, or all in 16 px when one does not fit */
-	for (int i = 0; i < 12; i++)
+	for (int i = 0; i < n; i++)
 		if (help_caps_w(k[i].caps) > kw)
 			kw = help_caps_w(k[i].caps);
-	for (int i = 0; i < 12; i++)
+	for (int i = 0; i < n; i++)
 		if (text_w(&f_ui18, k[i].what, 0) > w - kw - 14)
 			df = &f_ui16;
 	pop_panel(y, h);
 	y += 22;
 	icon(&kc_diamond, x, y + 1, WB_COLOR_KEY_DIAMOND, 255);
 	text(&f_mono13, x + 12 + 8, y, "HELP", WB_COLOR_CYAN, 21);
-	wd_text(&wd_ui28b, x, y + 17 + 6, "Write", WB_COLOR_TEXT_HI, 0);
+	wd_text(&wd_ui28b, x, y + 17 + 6, title, WB_COLOR_TEXT_HI, 0);
 	y += 55 + 8;
 	text_wrap(&f_ui18, x, y, w, 25, about, WB_COLOR_TEXT_MID, 2, 1);
 	y += lines * 25 + 14;
 	text(&f_mono13, x, y, "KEYS ON THIS SCREEN", WB_COLOR_TEXT_LOW, 21);
 	y += 17 + 6;
-	for (int i = 0; i < 12; i++, y += 32) {
+	for (int i = 0; i < n; i++, y += 32) {
 		int cx = x, cy = y + 16;
 
 		if (i)
@@ -1251,27 +1291,25 @@ static void error_draw(struct app *a)
 static void draw(struct app *a)
 {
 	backdrop(a);
-	if (a->screen == SC_OPEN) {
-		open_draw(a);
-		return;
-	}
-	if (a->ov == OV_LOG) {
+	if (log_shown(a)) {
 		log_draw(a);
-		return;
-	}
-	if (!a->full) {
-		docbar(a);
-		page();
-	}
-	text_area(a);
-	if (a->find_open)
-		find_bar(a);
-	scroll_bar(a);
-	if (a->full) {
-		full_footer(a);
+	} else if (a->screen == SC_OPEN) {
+		open_draw(a);
 	} else {
-		word_count(a);
-		hints(a);	/* the editor's, also under a pop-up (dimmed with it) */
+		if (!a->full) {
+			docbar(a);
+			page();
+		}
+		text_area(a);
+		if (a->find_open)
+			find_bar(a);
+		scroll_bar(a);
+		if (a->full) {
+			full_footer(a);
+		} else {
+			word_count(a);
+			hints(a);	/* the editor's, also under a pop-up (dimmed with it) */
+		}
 	}
 	switch (a->ov) {
 	case OV_OPTIONS: {
@@ -1332,7 +1370,7 @@ static void draw(struct app *a)
 	default:
 		break;
 	}
-	if (a->full && a->hint_until && a->ov == OV_NONE)
+	if (a->screen == SC_EDIT && a->full && a->hint_until && a->ov == OV_NONE)
 		full_hint();
 }
 

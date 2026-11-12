@@ -2,19 +2,19 @@
 
 Flappy is our own program, written for the badge. This directory is its
 source (it is not part of why2025-linux); the drawing code, fonts and
-design tokens are a copy of why2025-linux's drawing library `libwb/`
-(commit `647c8ea`):
+design tokens are a copy of WhyOS's drawing library `libwb/` (commit
+`62fb3a2`):
 
 | File | What |
 |---|---|
 | `flappy.c` | the game: the world, the screen, the keys, the best score |
 | `test_flappy.py` | its host test: the game played by script, screens saved as PPM |
 | `app.conf` | the menu entry of a hand-installed copy (the store writes its own) |
-| `libwb/` | the drawing library (`wb.h` and its parts: tokens, fonts and icons, glass; its `README.md`), as built; `gen/` the scripts that made its data, with the fonts' licences (the fonts themselves: why2025-linux `libwb/gen/fonts/`) |
+| `libwb/` | the drawing library (`wb.h` and its parts: tokens, fonts and icons, glass; its `README.md`), as built; `gen/` the scripts that made its data, with the fonts' licences (the fonts themselves: WhyOS `libwb/gen/fonts/`) |
 
 Build, with the badge's toolchain ([toolchain/](../../../toolchain/README.md)),
 in this directory (in a checkout of the repos `-I` may point at
-why2025-linux's `libwb/` instead):
+WhyOS's `libwb/` instead):
 
 ```
 T=$BR_OUT/host/bin/riscv32-buildroot-linux-uclibc
@@ -23,7 +23,7 @@ $T-gcc -Os -fPIC -static -ffunction-sections -fdata-sections -Wall -Ilibwb -I. f
 ```
 
 On a Linux or macOS host, `python3 test_flappy.py` builds it with
-`-DFLAPPY_HOST` and plays it (25 checks); with a directory as argument
+`-DFLAPPY_HOST` and plays it (33 checks); with a directory as argument
 it saves the screens there as PPM.
 
 Measured on the badge (2026-10-20): about 41 ms a frame (24 frames a
@@ -34,7 +34,7 @@ Test hook: key codes written to `/tmp/flappy.keys` count as key presses.
 
 The look (2026-10-27) is the canvas "Menu's met frontpaneel" as libwb
 draws it: the game field fills the panel and stays as it was; the cards
-over it and the hint bar are glass, the pause and the keys are frosted
+over it and the key bar are glass, the pause and the keys are frosted
 pop-ups with their keys inside, square corners, the focus cyan. While the
 game moves every band is drawn; standing still (a pop-up, the game over)
 a frame is recorded first and only the bands that changed are drawn

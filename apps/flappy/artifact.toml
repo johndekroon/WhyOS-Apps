@@ -1,4 +1,4 @@
 # The prebuilt files/ archive (docs/repository.md §1.1), written by tools/import-sdapp.py
 path = "files.tar.gz"
-sha256 = "26464029194f4cf9197df1c3e4cb792df3b792170b792ea20e3a860a3cdd5242"
-built_from = "apps/flappy/source (SOURCES.md, libwb/ from why2025-linux 647c8ea), 2026-10-28"
+sha256 = "202dcf62b2887058ff1e0fb35db9c5770d1a7f2e29cf7993047b856f6c2d6a14"
+built_from = "source/ with the badge toolchain (SOURCES.md), libwb at WhyOS 62fb3a2, 2026-11-12"

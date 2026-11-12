@@ -75,19 +75,28 @@ took to stderr (`/tmp/app-write.log`). The clipboard is
   the keypad's own repeats (WhyOS kernel patch 0060, the same
   pace) are ignored, so a repeat comes only after the last one is drawn.
 - Help is Write's own screen, not libwb's `help_popup`: twelve keys, some with three caps, do not fit in the
-  shared pop-up.
+  shared pop-up. Open and the log have help of their own.
 - The look: the frontpanel's scene at the top, where WhyOS draws its
   status bar over the app (Write leaves those 48 px to the system and
   draws no clock or status icons of its own), the document
-  bar (its chips glass) and the hint bar (glass); the text on an opaque
+  bar (its chips glass) and the key bar (glass); the text on an opaque
   page between them. Glass under 24 px text would
   show the scene's lines through the letters, and the page's bands are the
   ones typing and scrolling redraw: there the scene costs nothing, it is
   drawn only in the bands of the bars. Full screen has no scene (the text
   fills the panel). Open and the log are screens on the scene with libwb's
   header ("WRITE ›" and the folder as the eyebrow) and glass cards.
+- The key bar of the editor, Open and the log is libwb's `app_bar`: Enter
+  first, then the square, triangle and cross, then other keys (Shift+Enter,
+  Ctrl+C); the circle, clover and diamond small with their words, and Esc
+  on the right. What does not fit drops from the end; Help lists every
+  key. While Fn is held a pink Fn follows the keys, where there is room.
+- The circle, clover and diamond work on the editor, Open and the log: the
+  log is a screen, the settings and the help are pop-ups. The clover on
+  the log opens the settings in its place; the help over the log goes
+  back to it.
 - Pop-ups are glass panels 96 px from the sides with their keys inside at
-  the bottom; the hint bar under them stays the editor's, dimmed (in full
+  the bottom; the key bar under them stays the screen's, dimmed (in full
   screen there is none). Language is libwb's `menu_popup`, Discard,
   Replace? and errors its `dialog`; Options, Settings, the find menu,
   Style, Save as and Help are Write's own in the same style. Drawn in

@@ -75,6 +75,9 @@ ICONS = [
     ("kc_circle", 12, 2.6, '<path d="M5 12a7 7 0 1 0 14 0a7 7 0 1 0-14 0"/>'),
     ("kc_cloud", 12, 2.6, '<path d="M9 7.5a3 3 0 1 0 6 0a3 3 0 1 0-6 0M4.5 14.5a3 3 0 1 0 6 0a3 3 0 1 0-6 0M13.5 14.5a3 3 0 1 0 6 0a3 3 0 1 0-6 0"/>'),
     ("kc_diamond", 12, 2.6, '<path d="M12 4l8 8-8 8-8-8z"/>'),
+    # the logo key, as the WHY2025 logo on it: a circle with a ring across it, 16 px
+    ("kc_logo", 16, 1.9, '<circle cx="12" cy="12" r="7.6"/>'
+                         '<ellipse cx="12" cy="12" rx="11.4" ry="3.2" transform="rotate(20 12 12)"/>'),
     # status bar
     ("i_thermo20", 20, 2, '<path d="M10 4v10a3.5 3.5 0 1 0 4 0V4a2 2 0 0 0-4 0z"/><path d="M12 11v5"/>'),
     ("i_wifi22", 22, 2, '<path d="M2 9a15 15 0 0 1 20 0"/><path d="M5 12.5a10 10 0 0 1 14 0"/><path d="M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="#fff"/>'),

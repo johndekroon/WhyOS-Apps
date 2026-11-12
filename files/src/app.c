@@ -656,7 +656,8 @@ void files_key(struct files *f, int key, int value)
 	f->b.notice[0] = 0;
 	/* the right three symbol keys do the same on every screen but pop-ups
 	 * (WhyOS docs/APPS.md): the circle the log, the cloud the settings, the
-	 * diamond this screen's help */
+	 * diamond this screen's help. The log and the settings take each
+	 * other's place, as in the WhyOS SDK: Esc goes back to the list. */
 	if ((f->sc == SC_LIST || f->sc == SC_SETTINGS || f->sc == SC_LOG) &&
 	    (key == K_F4 || key == K_F5 || key == K_F6)) {
 		if (key == K_F6) {
@@ -664,10 +665,11 @@ void files_key(struct files *f, int key, int value)
 			f->sc = SC_HELP;
 		} else if (key == K_F4 && f->sc != SC_LOG) {
 			log_open(f);
-			f->under = f->log_under = f->sc;
+			f->under = SC_LIST;
 			f->sc = SC_LOG;
-		} else if (key == K_F5 && f->sc == SC_LIST) {
+		} else if (key == K_F5 && f->sc != SC_SETTINGS) {
 			f->sc = SC_SETTINGS;
+			f->under = SC_LIST;
 		}
 		return;
 	}
@@ -677,8 +679,8 @@ void files_key(struct files *f, int key, int value)
 			f->sc = f->under;
 		break;
 	case SC_LOG:
-		if (key == K_ESC) {	/* back to what the log is over */
-			f->sc = f->under = f->log_under;
+		if (key == K_ESC) {
+			f->sc = f->under = SC_LIST;
 		} else if (key == K_UP) {
 			f->log_top = f->log_top > steps ? f->log_top - steps : 0;
 		} else if (key == K_DOWN && f->log_top + LOG_ROWS < f->log_n) {

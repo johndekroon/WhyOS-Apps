@@ -3,8 +3,8 @@
 Marble Orbit is our own program, written for the badge. This directory is
 its source (it is no longer part of why2025-linux, where it started in
 `sdapps/marble` at commit `ebdcc16`); the drawing code, fonts and design
-tokens are a copy of why2025-linux's drawing library `libwb/` (commit
-`647c8ea`):
+tokens are a copy of WhyOS's drawing library `libwb/` (commit
+`62fb3a2`):
 
 | File | What |
 |---|---|
@@ -12,11 +12,11 @@ tokens are a copy of why2025-linux's drawing library `libwb/` (commit
 | `levels.h` | the 18 levels as text, with the tile legend |
 | `test_marble.py` | its host test: the levels checked, the game played by script, screens saved as PPM |
 | `app.conf` | the menu entry of a hand-installed copy (the store writes its own) |
-| `libwb/` | the drawing library (`wb.h` and its parts: tokens, fonts and icons, glass, the frontpanel's figures behind the title; its `README.md`), as built; `gen/` the scripts that made its data, with the fonts' licences (the fonts themselves: why2025-linux `libwb/gen/fonts/`) |
+| `libwb/` | the drawing library (`wb.h` and its parts: tokens, fonts and icons, glass, the frontpanel's figures behind the title; its `README.md`), as built; `gen/` the scripts that made its data, with the fonts' licences (the fonts themselves: WhyOS `libwb/gen/fonts/`) |
 
 Build, with the badge's toolchain ([toolchain/](../../../toolchain/README.md)),
 in this directory (in a checkout of the repos `-I` may point at
-why2025-linux's `libwb/` instead):
+WhyOS's `libwb/` instead):
 
 ```
 T=$BR_OUT/host/bin/riscv32-buildroot-linux-uclibc
@@ -42,7 +42,7 @@ code plus 1000 is that key let go).
 The look (2026-10-27) is the canvas "Menu's met frontpaneel" as libwb
 draws it: the title (the levels) lies on the frontpanel's figures (libwb's
 scene) with its tiles as glass; a level fills the panel and stays as it
-was, the cards over it and the hint bar are glass; the pause, the keys, the
+was, the cards over it and the key bar are glass; the pause, the keys, the
 settings and the results are frosted pop-ups with their keys inside;
 square corners, the focus cyan. The title and a pop-up are recorded first
 and only the bands that changed are drawn (libwb's `wb_bands` and

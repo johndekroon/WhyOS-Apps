@@ -2,7 +2,7 @@
 
 OHMinous is our own program, written for the badge. The files are
 copied from WhyOS `sdapps/ohminous/` and
-`libwb/` at commit `3ef5aae`:
+`libwb/` at commit `0db7fc2`:
 
 | File | What |
 |---|---|

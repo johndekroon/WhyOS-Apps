@@ -1,4 +1,4 @@
 # The prebuilt files/ archive (docs/repository.md §1.1), written by tools/import-sdapp.py
 path = "files.tar.gz"
-sha256 = "ea29c78064040220d6e6bd315e9042b9b953bcd834bd35b00b0bd450aa1a32b0"
-built_from = "WhyOS-Apps files/build.sh at dfc5a06 with WhyOS libwb at 3ef5aae, 2026-11-09"
+sha256 = "b0aed36df3feec3b2863ace6b269d7a7cea6b98faf5fd9ab74d5fd174f22359a"
+built_from = "this repository's files/build.sh with WhyOS libwb at 62fb3a2, 2026-11-12"

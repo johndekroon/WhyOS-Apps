@@ -3,16 +3,18 @@
  * flappy — Flappy Bird for the badge, drawn like the menu (libwb: the
  * design's colours, fonts and glass), as an app from the store (SOURCES.md).
  *
- * A bird falls; Space, Enter, Up or a symbol key (not the diamond) makes it
- * flap. Fly through the gaps between the pipes: each pipe passed is a
+ * A bird falls; Space, Enter, Up or one of the square, triangle and cross
+ * makes it flap. Fly through the gaps between the pipes: each pipe passed is a
  * point. Touching a pipe or the ground ends the game. It starts gently and
  * gets harder with each point (level()). The best score is kept in
  * APP_CONFIG/best (flash), so it survives a new card.
  *
- * A full-screen game (Docs/06-design-system.md 6.9): the symbol keys are
+ * A full-screen game (Docs/06-design-system.md 6.9): the left symbol keys are
  * controls, Esc pauses (Resume, Restart, Keys, Quit), the diamond shows the
- * keys, the logo key ends it through apprun (SIGTERM, which saves the best
- * score). The start screen shows the keys too.
+ * keys, the circle and the cloud the log and the settings, which Flappy
+ * does not have (an empty screen says so); the logo key ends it through
+ * apprun (SIGTERM, which saves the best score). The start screen shows the
+ * keys too.
  *
  * The game field fills the panel; the chrome over it is the canvas "Menu's
  * met frontpaneel": the start screen's and the game over's cards and the
@@ -118,6 +120,7 @@ static struct {
 	uint32_t seed;
 	int paused, focus;		/* Esc's pop-up */
 	int help, help_paused;		/* the keys; opened from the pause */
+	int empty;			/* the empty log or settings: its key, or 0 */
 	unsigned gen;			/* one more each time the field changes (recording a frame) */
 } G;
 
@@ -355,14 +358,14 @@ static void step(void)
  * bird lies on the ground. */
 static int running(void)
 {
-	return !G.paused && !G.help &&
+	return !G.paused && !G.help && !G.empty &&
 	       !(G.mode == DEAD && G.t > CARD_T && G.y >= (GROUND_Y - BIRD_R) * FP);
 }
 
 static int is_flap(int code)
 {
 	return code == KEY_SPACE || code == KEY_ENTER || code == KEY_UP ||
-	       (code >= KEY_SYM_MENU && code <= KEY_SYM_SETTINGS);
+	       (code >= KEY_SYM_MENU && code <= KEY_SYM_SECOND);
 }
 
 /* One key press; 1 to quit. */
@@ -373,6 +376,15 @@ static int key(int code)
 			G.help = 0;
 			G.paused = G.help_paused;
 		}
+		return 0;
+	}
+	if (G.empty) {			/* Esc back; the circle and the cloud swap */
+		if (code == KEY_ESC)
+			G.empty = 0;
+		else if (code == KEY_SYM_LOG || code == KEY_SYM_SETTINGS)
+			G.empty = code;
+		else if (code == KEY_SYM_HELP)
+			G.help = 1, G.help_paused = 0;
 		return 0;
 	}
 	if (G.paused) {
@@ -397,6 +409,8 @@ static int key(int code)
 	} else if (code == KEY_SYM_HELP) {
 		G.help = 1;
 		G.help_paused = 0;
+	} else if (code == KEY_SYM_LOG || code == KEY_SYM_SETTINGS) {
+		G.empty = code;
 	} else if (is_flap(code)) {
 		flap();
 	}
@@ -789,8 +803,12 @@ static void draw_help(void)
 {
 	static const struct help_key keys[] = {
 		{ "Space", "Flap (Enter and \xe2\x86\x91 too)" },
-		{ "SYMS", "Flap: any symbol key but the diamond" },
+		{ "#1", "Flap" },
+		{ "#2", "Flap" },
+		{ "#3", "Flap" },
 		{ "Esc", "Pause: resume, restart or quit" },
+		{ "#4", "Log (Flappy keeps none)" },
+		{ "#5", "Settings (Flappy has none)" },
 		{ "#6", "These keys (the game waits)" },
 		{ "Logo", "Back to the menu" },
 	};
@@ -811,6 +829,14 @@ static void draw_band(void)
 		{ .label = "Quit", .sep = 1 },
 	};
 
+	if (G.empty) {
+		empty_screen("FLAPPY", G.empty == KEY_SYM_LOG ? "Log" : "Settings",
+			     G.empty == KEY_SYM_LOG ? "No log yet." : "This app has no settings.");
+		flappy_glass(1);
+		if (G.help)
+			draw_help();
+		return;
+	}
 	if (wb_rec) {		/* the field writes fb itself: recorded by its generation */
 		int k[] = { 0x666c, (int)G.gen };
 
@@ -830,11 +856,11 @@ static void draw_band(void)
 	if (G.mode == READY) {
 		ready_screen();
 		if (!G.help)		/* the help has a bar of its own */
-			hint_bar(ready_hints, 2);
+			app_bar(ready_hints, 2);
 	} else if (G.mode == DEAD && G.t >= CARD_T) {
 		dead_card();
 		if (!G.help)
-			hint_bar(dead_hints, 2);
+			app_bar(dead_hints, 2);
 	} else {
 		score(40);
 	}
@@ -1050,6 +1076,7 @@ int main(int argc, char **argv)
 	if (argc > 2)
 		save_ppm(argv[2]);
 	strcat(out, G.mode == READY ? "mode ready" : G.mode == PLAY ? "mode play" : "mode dead");
+	strcat(out, G.empty == KEY_SYM_LOG ? " log" : G.empty ? " settings" : "");
 	strcat(out, G.help ? " help" : G.paused ? " paused" : "");
 	strcat(out, "\nscore ");
 	strcat(out, utoa((unsigned)G.score, num + sizeof(num)));

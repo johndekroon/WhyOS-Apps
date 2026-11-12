@@ -2,7 +2,7 @@
 /*
  * lora_state.h — is the LoRa radio on? It is while the mesh daemon runs
  * (it holds /dev/lora0; S60lora, docs/LORA.md), which writes its pid here.
- * For the status bar of home, appterm and the SD apps.
+ * For the status bar the system draws (wbstatus.h).
  */
 #ifndef LORA_STATE_H
 #define LORA_STATE_H

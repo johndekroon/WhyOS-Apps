@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 /*
- * wbstatus.h — the right of the status bar, as home, appterm, meshchat and
- * calc draw it: LoRa while the radio is on (pink), Wi-Fi, the clock.
+ * wbstatus.h — the right of the status bar, which the system draws (the
+ * menu, and sysui over the apps): LoRa while the radio is on (pink), Wi-Fi,
+ * AirPlay, mute, the clock. Apps do not include it: the top WB_STATUS_BAR_H
+ * rows are the system's, and an app draws only its background there.
  * Include after wbdraw.h.
  *
  * Wi-Fi is asked of wpa_supplicant (netd keeps it on wlan0): STATUS for
  * whether it is connected, SIGNAL_POLL for the RSSI. Not connected: no
  * icon at all. Connected: the arcs lit from the dot outwards
  * by signal strength, as the network list in Settings draws them (the
- * same steps: -55, -67, -78 dBm). wlan0's operstate, used before
- * 2026-10-18, stays "up" through a lost connection with esp-hosted.
+ * same steps: -55, -67, -78 dBm). wlan0's operstate stays "up" through a lost connection with esp-hosted.
  */
 #ifndef WBSTATUS_H
 #define WBSTATUS_H
@@ -23,59 +24,8 @@
 #include <unistd.h>
 
 #include "lora_state.h"
-
-#define WIFI_CTRL	"/var/run/wpa_supplicant/wlan0"
-
-static char *wifi_num(char *q, unsigned v)
-{
-	unsigned k = 1;
-
-	while (v / k >= 10)
-		k *= 10;
-	for (; k; k /= 10)
-		*q++ = (char)('0' + v / k % 10);
-	*q = 0;
-	return q;
-}
-
-/*
- * One request to wpa_supplicant; its reply in r, or -1 (no answer). Each
- * request has its own socket name (pid and a count): with one name per
- * process, a reply that came after the timeout landed on the next
- * request's socket, and SIGNAL_POLL's answer read as STATUS's said "not
- * connected" (the icon came and went, 2026-10-18).
- */
-static int wifi_ask(const char *cmd, char *r, int size)
-{
-	static unsigned seq;
-	struct sockaddr_un me = { .sun_family = AF_UNIX }, wpa = { .sun_family = AF_UNIX };
-	struct pollfd p;
-	char *q;
-	int s, n = -1;
-
-	if ((s = socket(AF_UNIX, SOCK_DGRAM, 0)) < 0)
-		return -1;
-	strcpy(me.sun_path, "/tmp/wbstatus-");
-	q = wifi_num(me.sun_path + strlen(me.sun_path), (unsigned)getpid());
-	*q++ = '-';
-	wifi_num(q, seq++ % 1000);
-	unlink(me.sun_path);
-	strcpy(wpa.sun_path, WIFI_CTRL);
-	if (bind(s, (struct sockaddr *)&me, sizeof(me)) == 0 &&
-	    connect(s, (struct sockaddr *)&wpa, sizeof(wpa)) == 0 &&
-	    send(s, cmd, strlen(cmd), 0) == (ssize_t)strlen(cmd)) {
-		p.fd = s;
-		p.events = POLLIN;
-		if (poll(&p, 1, 500) > 0)
-			n = (int)recv(s, r, (size_t)size - 1, 0);
-	}
-	close(s);
-	unlink(me.sun_path);
-	if (n < 0)
-		return -1;
-	r[n] = 0;
-	return n;
-}
+#include "sound_state.h"
+#include "wifi_ask.h"
 
 /*
  * -1: not connected; 0..3: lit arcs. Only wpa_supplicant saying so counts
@@ -84,7 +34,7 @@ static int wifi_ask(const char *cmd, char *r, int size)
  * link, the last answer stands, so the icon does not flicker.
  *
  * Asked at most every WIFI_BARS_S: SIGNAL_POLL goes through the driver to
- * the C6 and took ~230 ms, which the menu paid on every key (2026-10-19).
+ * the C6 and takes ~230 ms, which the menu would pay on every key.
  */
 #define WIFI_BARS_S	5
 
@@ -112,7 +62,37 @@ static int wifi_bars(void)
 	return last = rssi >= -55 ? 3 : rssi >= -67 ? 2 : rssi >= -78 ? 1 : 0;
 }
 
-/* LoRa, Wi-Fi (bars from wifi_bars()) and the clock, right-aligned. */
+/*
+ * The sound (sound_state.h; the design's WhyOS Audio UI, Spec 4.8): two
+ * icons of their own, each only while it is so, right to left before the
+ * clock: muted (the crossed speaker, text-mid), then AirPlay: cyan while
+ * the badge is connected to an AirPlay speaker, warn while that connection
+ * is gone or being made (Wi-Fi lost, the speaker out of reach). Nothing for
+ * the speaker or no output.
+ */
+static int status_sound(int x)
+{
+	struct sound_state s;
+
+	sound_state_read(&s);
+	if (!s.output[0] || !strcmp(s.output, "none"))
+		return x;
+	if (s.muted) {
+		x -= 14 + i_spkmute22.w;
+		icon(&i_spkmute22, x, (WB_STATUS_BAR_H - i_spkmute22.h) / 2, WB_COLOR_TEXT_MID, 255);
+	}
+	if (!strcmp(s.output, "airplay") && strcmp(s.link, "needs_code") && strcmp(s.link, "refused") &&
+	    strcmp(s.link, "idle")) {
+		/* cyan while connected; warn while the connection is gone or being made again */
+		int ok = !strcmp(s.link, "ready") || !strcmp(s.link, "connected");
+
+		x -= 14 + i_airplay22.w;
+		icon(&i_airplay22, x, (WB_STATUS_BAR_H - i_airplay22.h) / 2, ok ? WB_COLOR_CYAN : WB_COLOR_WARN, 255);
+	}
+	return x;
+}
+
+/* LoRa, Wi-Fi (bars from wifi_bars()), the sound and the clock, right-aligned. */
 static void status_right(const char *hhmm, int clock_ok, int bars, int lora)
 {
 	static const struct wb_icon *const lit[4] = { &i_sig0_22, &i_sig1_22, &i_sig2_22, &i_wifi22 };
@@ -121,6 +101,7 @@ static void status_right(const char *hhmm, int clock_ok, int bars, int lora)
 	int iy = (WB_STATUS_BAR_H - i_wifi22.h) / 2;
 
 	text(f, x, text_top(f, cy), hhmm, clock_ok ? WB_COLOR_TEXT_HI : WB_COLOR_TEXT_LOW, 0);
+	x = status_sound(x);
 	if (bars >= 0) {
 		x -= 14 + i_wifi22.w;
 		if (bars < 3)
