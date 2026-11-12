@@ -96,6 +96,19 @@
  "type": "app",
  "versions": [
   {
+   "build": 7,
+   "changelog": "The key bar looks as in the other apps: the screen's keys on the left, the circle, clover and diamond small with their words, Esc on the right. The circle and clover open an empty log and settings screen.",
+   "package": {
+    "installed_size": 557517,
+    "sha256": "20924c84f74b1951848a6403072e20a326931fad9063482ddd70bc55a6504640",
+    "size": 289848,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/imgview-1.2.3.wpk"
+   },
+   "published": "2026-11-12T23:16:09Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/imgview-1.2.3-source.tar.gz",
+   "version": "1.2.3"
+  },
+  {
    "build": 6,
    "changelog": "The viewer keeps the whole screen and no longer draws a status bar of its own; hold the logo key to see WhyOS's status bar.",
    "package": {

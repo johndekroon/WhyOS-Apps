@@ -75,6 +75,19 @@
  "type": "game",
  "versions": [
   {
+   "build": 6,
+   "changelog": "The key bar looks as in the other apps: the screen's keys on the left, the circle, clover and diamond small with their words, Esc on the right.",
+   "package": {
+    "installed_size": 361047,
+    "sha256": "a5873e4f96b2c6f1ea42bd9054358353397787d244d466dab63153372cae0125",
+    "size": 161765,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/marble-1.1.4.wpk"
+   },
+   "published": "2026-11-12T23:16:10Z",
+   "source_archive": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/sources/marble-1.1.4-source.tar.gz",
+   "version": "1.1.4"
+  },
+  {
    "build": 5,
    "changelog": "Uses the whole screen; hold the logo key to see WhyOS's status bar.",
    "package": {

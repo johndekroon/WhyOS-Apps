@@ -98,6 +98,19 @@
  "type": "system",
  "versions": [
   {
+   "build": 19,
+   "changelog": "The key bar looks as in the other apps: the screen's keys on the left, the circle, clover and diamond small with their words, Esc on the right; the log and the settings take each other's place.",
+   "package": {
+    "installed_size": 1009624,
+    "sha256": "b1ca7cd12b7a081444b0aa151f0b24f613dbf5a9abee6c4641925d5856aa7264",
+    "size": 531113,
+    "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.3.1.wpk"
+   },
+   "published": "2026-11-12T23:16:14Z",
+   "source_archive": null,
+   "version": "0.3.1"
+  },
+  {
    "build": 18,
    "changelog": "The status bar comes from WhyOS now; the store installs services, such as the VNC server, with their page in Settings, and apps that need the whole screen.",
    "package": {

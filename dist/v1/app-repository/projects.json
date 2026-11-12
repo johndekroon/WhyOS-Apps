@@ -6,7 +6,7 @@
      "assets": [],
      "executable": "barbarious",
      "external_only": true,
-     "revision": 5,
+     "revision": 6,
      "targets": [
       "why2025-whyos"
      ],
@@ -27,7 +27,7 @@
    "license_type": "MIT AND BSD-3-Clause AND OFL-1.1 AND LGPL-2.1-or-later",
    "name": "BARbarious",
    "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
-   "version": "1.1.3",
+   "version": "1.1.4",
    "whyos": {
     "bundled": [
      {
@@ -67,7 +67,7 @@
      }
     ],
     "category": "utilities",
-    "changelog": "The status bar comes from WhyOS now, so the app no longer draws its own.",
+    "changelog": "The key bar looks as in the other apps: the screen's keys on the left, the circle, clover and diamond small with their words, Esc on the right.",
     "description": "Keep the codes you show often, such as a Wi-Fi login, a ticket, a\nproduct number or a login for a barcode scanner, and show them on the\nbadge's screen for a scanner or a phone to read. Control characters\nsuch as Tab and Enter can be part of a code.\n\nShowing a code:\n- Choose it in the list and press Enter. The code is as big as the\n  screen allows; the screen goes to full brightness and stays on while\n  the code shows, up to 10 minutes after the last key.\n- Left and Right go to the previous and next code.\n\nQuick code, the list's first row: type a text and see its code at once.\nIt is not saved; Enter keeps it as a code of the list.\n\nMaking a code: the triangle adds one, the cross edits it, and the\nsquare has the other options (show, edit, type, move, delete). A code\nhas a name for the list, a type and a text of up to 1000 characters.\nIn the text:\n- Tab puts in a TAB, Shift+Enter a CR (LF or CR LF in the settings).\n- Ctrl with a letter puts in ^A to ^Z; Ctrl+] is GS.\n- The square puts in any other control character, or GS1's FNC1: type\n  its name to find it.\n- The triangle chooses the type. Next to each type it says what the\n  text needs of it: some take digits only, and Code 39 needs a scanner\n  with Full ASCII on for lower case and control characters.\n\nTypes: QR Code, Data Matrix, Aztec, PDF417, Code 128, Code 39, EAN-13,\nUPC-A, ITF and Codabar.\n\nSettings (cloud key): the type of a new code, QR's error correction,\nthe quiet zone, what Shift+Enter puts in, the text under a barcode and\nfull brightness.\n\nThe codes are stored as plain text on the badge, so do not save\npasswords in them.",
     "format": 2,
     "id": "barbarious",
@@ -76,10 +76,10 @@
      "info": "texts as barcodes and QR codes"
     },
     "package": {
-     "installed_size": 416075,
-     "sha256": "0cc6c56b40ff224aaec009b3b2576fae9d784409ef2d0484b98c485a2cea1779",
-     "size": 195275,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/barbarious-1.1.3.wpk"
+     "installed_size": 417063,
+     "sha256": "8e537a6aac8468fc84ad28ee06a227dee533ef65dae71843c4649e5b3b80d7c1",
+     "size": 195938,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/barbarious-1.1.4.wpk"
     },
     "requires": {
      "features": [
@@ -304,7 +304,7 @@
      "assets": [],
      "executable": "files",
      "internal_only": true,
-     "revision": 4,
+     "revision": 5,
      "targets": [
       "why2025-whyos"
      ],
@@ -325,7 +325,7 @@
    "license_type": "MIT AND LGPL-2.1-or-later AND OFL-1.1",
    "name": "Files",
    "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
-   "version": "1.1.2",
+   "version": "1.1.3",
    "whyos": {
     "bundled": [
      {
@@ -351,7 +351,7 @@
      }
     ],
     "category": "other",
-    "changelog": "The status bar comes from WhyOS now, so the app no longer draws its own.",
+    "changelog": "The key bar looks as in the other apps: the screen's keys on the left, the circle, clover and diamond small with their words, Esc on the right; the log and the settings take each other's place.",
     "description": "Files shows every file on the badge as it is: the SD card, USB drives\nand the badge's own storage. Enter opens a folder, or a file with the app\nthat opens it (Write for notes, the Picture viewer for photos); the\nsquare key's options open a file with another app, rename, copy, cut,\npaste, make a folder and delete. The triangle goes to your home folder,\nthe cross to Drives, where Enter mounts a drive when it needs to.\n\nIt opens from the Files tile on the home screen.",
     "format": 2,
     "id": "files",
@@ -362,10 +362,10 @@
      "menu": "none"
     },
     "package": {
-     "installed_size": 426526,
-     "sha256": "a34c5154e989a9f75e675fa09dbe2cd9d0c1a6b1a5b3373e12a7b8d8358f1cea",
-     "size": 199561,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/files-1.1.2.wpk"
+     "installed_size": 427182,
+     "sha256": "82939020fd78e0d7b1a87ab9274b8072ae281bebf3d85adf306106b88dc27011",
+     "size": 199968,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/files-1.1.3.wpk"
     },
     "permissions": [
      "files-all"
@@ -404,7 +404,7 @@
      "assets": [],
      "executable": "flappy",
      "external_only": true,
-     "revision": 4,
+     "revision": 5,
      "targets": [
       "why2025-whyos"
      ],
@@ -425,7 +425,7 @@
    "license_type": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
    "name": "Flappy",
    "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
-   "version": "1.1.2",
+   "version": "1.1.3",
    "whyos": {
     "bundled": [
      {
@@ -451,8 +451,8 @@
      }
     ],
     "category": "action",
-    "changelog": "Uses the whole screen; hold the logo key to see WhyOS's status bar.",
-    "description": "A bird falls; you make it flap. Fly through the gaps between the pipes:\nevery pipe you pass is a point. Touching a pipe or the ground ends the\ngame. It starts slowly and gets harder with every point, up to 30: faster,\nwith narrower gaps that lie further apart.\n\nFlap with Space, Enter, Up or any symbol key except the diamond. Esc\npauses (resume, restart or quit), the diamond shows the keys, and the\nlogo key goes back to the menu. Your best score is kept on the badge, so\nit survives a new card. The screen stays upright while you play.",
+    "changelog": "The key bar looks as in the other apps: the screen's keys on the left, the circle, clover and diamond small with their words, Esc on the right. The circle and clover open an empty log and settings screen instead of flapping.",
+    "description": "A bird falls; you make it flap. Fly through the gaps between the pipes:\nevery pipe you pass is a point. Touching a pipe or the ground ends the\ngame. It starts slowly and gets harder with every point, up to 30: faster,\nwith narrower gaps that lie further apart.\n\nFlap with Space, Enter, Up, the square, the triangle or the cross. Esc\npauses (resume, restart or quit), the diamond shows the keys, and the\nlogo key goes back to the menu. Your best score is kept on the badge, so\nit survives a new card. The screen stays upright while you play.",
     "format": 2,
     "id": "flappy",
     "launch": {
@@ -463,10 +463,10 @@
      "statusbar": "hidden"
     },
     "package": {
-     "installed_size": 302907,
-     "sha256": "6bbc69a06122bb13bb373349d081ee357e107807f20d2aa287b2e745bf7e40c4",
-     "size": 127325,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flappy-1.1.2.wpk"
+     "installed_size": 304615,
+     "sha256": "5cdf6cee5ba319d9636cb7d30dc9c2174bb68b2bd1916be8df58ecd5e31c7c00",
+     "size": 128591,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/flappy-1.1.3.wpk"
     },
     "requires": {
      "features": [
@@ -710,7 +710,7 @@
      "assets": [],
      "executable": "hideous",
      "external_only": true,
-     "revision": 5,
+     "revision": 6,
      "targets": [
       "why2025-whyos"
      ],
@@ -731,7 +731,7 @@
    "license_type": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
    "name": "HIDeous",
    "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
-   "version": "1.1.2",
+   "version": "1.1.3",
    "whyos": {
     "bundled": [
      {
@@ -757,7 +757,7 @@
      }
     ],
     "category": "utilities",
-    "changelog": "The status bar comes from WhyOS now, so the app no longer draws its own.",
+    "changelog": "The key bar looks as in the other apps: the screen's keys on the left, the circle, clover and diamond small with their words, Esc on the right.",
     "description": "The badge as a USB keyboard and mouse for a computer. Save texts you\ntype often, such as an address, a long command or a login sequence,\nand let the badge type them.\n\nTyping a text:\n- Connect the computer to the badge's bottom USB-C port, and unplug the\n  side port: while it is connected, the computer does not see the badge.\n- Click where the text should go, choose the text in the list and press\n  Enter. Esc stops the typing.\n\nMaking a text: the triangle adds one, the cross edits it, and the\nsquare has the other options (type, edit, move, delete). A text has a\nname for the list and up to 1000 bytes. In the editor:\n- Shift+Enter starts a new line, Tab types a tab.\n- Shift with Esc, Backspace or an arrow puts in that key.\n- Ctrl or Alt with a key puts in that shortcut, such as Ctrl+C.\n- The square puts in any other key or shortcut, such as F5, Win+R or\n  Ctrl+Alt+Delete.\n- The triangle puts in a pause of half a second, for example to let a\n  window open after Win+R. Press it again for a longer pause.\n\nKeyboard layout: the badge sends keys, not letters, so set the\ncomputer's layout in the settings (cloud key): US, US International or\nUS on a Mac. With other layouts, such as German or French, some\ncharacters come out wrong. Accented letters and the euro sign work with\nthe last two, but you can only add them by editing snippets.txt over\nSSH.\n\nMouse: open the first row of the list. The arrows move the pointer\n(tap for one pixel, hold to go faster), Enter is the left button (hold\nit to drag), the cross is a right click and Fn+Up/Down scrolls. Keep\nawake (the triangle) nudges the pointer every 30 seconds while the app\nis open, so the computer does not lock or show you as away. The mouse\nneeds WhyOS from 2026-10-20 or later.\n\nThe texts are stored as plain text on the badge, so do not save\npasswords in them.",
     "format": 2,
     "id": "hideous",
@@ -766,10 +766,10 @@
      "info": "type saved texts, move the mouse"
     },
     "package": {
-     "installed_size": 368247,
-     "sha256": "954e44fd5872f19fb8a2b2adbdc4d84894bc5723200e58bd086d7b2e3c5ef9af",
-     "size": 165147,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/hideous-1.1.2.wpk"
+     "installed_size": 368983,
+     "sha256": "a8097838d29bce755f07003b25a7b1bba12a157efee4a9278c15096ef1c48e4a",
+     "size": 165789,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/hideous-1.1.3.wpk"
     },
     "permissions": [
      "hid"
@@ -803,7 +803,7 @@
      "assets": [],
      "executable": "imgview",
      "external_only": true,
-     "revision": 6,
+     "revision": 7,
      "targets": [
       "why2025-whyos"
      ],
@@ -824,7 +824,7 @@
    "license_type": "MIT AND IJG AND libpng-2.0 AND Zlib AND OFL-1.1 AND LGPL-2.1-or-later",
    "name": "Picture viewer",
    "repository_url": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/imgview/source",
-   "version": "1.2.2",
+   "version": "1.2.3",
    "whyos": {
     "bundled": [
      {
@@ -871,7 +871,7 @@
      }
     ],
     "category": "media",
-    "changelog": "The viewer keeps the whole screen and no longer draws a status bar of its own; hold the logo key to see WhyOS's status bar.",
+    "changelog": "The key bar looks as in the other apps: the screen's keys on the left, the circle, clover and diamond small with their words, Esc on the right. The circle and clover open an empty log and settings screen.",
     "description": "Shows photos and pictures on the panel: JPEG and PNG, fitted to the\nscreen, with the other pictures in the same folder under the arrow keys.\nJPEGs are turned upright from their EXIF orientation.\n\nPictures are scaled down while they are read, so even a 12-megapixel\nphone photo fits in the badge's memory. Files opens pictures with it; it\nhas no entry in the menu's lists.",
     "format": 2,
     "id": "imgview",
@@ -887,10 +887,10 @@
      "statusbar": "hidden"
     },
     "package": {
-     "installed_size": 557653,
-     "sha256": "0f09b77e9eed5c79a2e7fbd482c7b5916b598292060734ec95c108eb18347348",
-     "size": 289537,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/imgview-1.2.2.wpk"
+     "installed_size": 557517,
+     "sha256": "20924c84f74b1951848a6403072e20a326931fad9063482ddd70bc55a6504640",
+     "size": 289848,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/imgview-1.2.3.wpk"
     },
     "requires": {
      "features": [
@@ -1047,7 +1047,7 @@
      "assets": [],
      "executable": "marble",
      "external_only": true,
-     "revision": 5,
+     "revision": 6,
      "targets": [
       "why2025-whyos"
      ],
@@ -1068,7 +1068,7 @@
    "license_type": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
    "name": "Marble Orbit",
    "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
-   "version": "1.1.3",
+   "version": "1.1.4",
    "whyos": {
     "bundled": [
      {
@@ -1094,7 +1094,7 @@
      }
     ],
     "category": "puzzle",
-    "changelog": "Uses the whole screen; hold the logo key to see WhyOS's status bar.",
+    "changelog": "The key bar looks as in the other apps: the screen's keys on the left, the circle, clover and diamond small with their words, Esc on the right.",
     "description": "Tilt the badge to roll a marble through a level and into the glowing ring.\nThere are 18 levels in six worlds: a wooden workshop, a desert, ice, a\ntemple, a factory and outer space. Each world adds something new: sand\nthat slows you down, ramps to jump gaps, ice and ice that cracks behind\nyou, currents, buttons that open gates, conveyor belts, bumpers, magnets,\nlasers, low gravity, teleporters and a black hole.\n\nYou have three lives per level; falling into a hole costs one. Collect\nthe stars and finish quickly for a higher score. Levels unlock one by one,\nand your best score per level is kept on the badge.\n\nEsc pauses, the diamond shows the keys, the circle shows your results\nand the cloud opens the settings: tilt or arrow keys, sensitivity, and\nwhether the badge counts as level when held as you start or when lying\nflat. The screen stays upright while you play.",
     "format": 2,
     "id": "marble",
@@ -1106,10 +1106,10 @@
      "statusbar": "hidden"
     },
     "package": {
-     "installed_size": 359959,
-     "sha256": "bdf0705525f619234edf5427fe8f550f5d49246990ec9ea8ca941cc356068196",
-     "size": 160976,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/marble-1.1.3.wpk"
+     "installed_size": 361047,
+     "sha256": "a5873e4f96b2c6f1ea42bd9054358353397787d244d466dab63153372cae0125",
+     "size": 161765,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/marble-1.1.4.wpk"
     },
     "requires": {
      "features": [
@@ -1908,7 +1908,7 @@
      "assets": [],
      "executable": "ohminous",
      "external_only": true,
-     "revision": 4,
+     "revision": 5,
      "targets": [
       "why2025-whyos"
      ],
@@ -1929,7 +1929,7 @@
    "license_type": "MIT AND OFL-1.1 AND LGPL-2.1-or-later",
    "name": "OHMinous",
    "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
-   "version": "1.1.2",
+   "version": "1.1.3",
    "whyos": {
     "bundled": [
      {
@@ -1955,7 +1955,7 @@
      }
     ],
     "category": "hardware",
-    "changelog": "The status bar comes from WhyOS now, so the app no longer draws its own.",
+    "changelog": "The key bar looks as in the other apps: the screen's keys on the left, the circle, clover and diamond small with their words, Esc on the right. The Badge / Bus Pirate switch sits at the tool's title.",
     "description": "Work on circuits from the badge's keypad, with the pins on the badge's\nJ3 and J7 headers, and with a Bus Pirate 6 on the bottom USB port when\nyou have one. Each tool has both sources; Tab switches between them.\n\n- Pins: IO0 to IO4 and STROBE as inputs (with a pull-up or pull-down)\n  or outputs, a map of both headers, and your own names for the pins.\n  With a Bus Pirate: its IO0 to IO7.\n- Logic: capture the pins, scroll and zoom, save to /root/capture.bin.\n  The badge samples in software, up to 50 kHz; a Bus Pirate captures 8\n  channels up to 50 MHz.\n- Buses: scan the I2C bus on J7, read and write a device's registers,\n  or talk to a serial device on IO3 (TX) and IO4 (RX) at 1200 to 19200\n  baud. SPI and 1-Wire need a Bus Pirate.\n- LEDs: the WS2812 LEDs on J7, or a Bus Pirate's WS2812 and APA102\n  strips.\n- Power: the headers' supply pins; a Bus Pirate's supply (0.8 to 5.0 V,\n  with a current limit) and pull-ups.\n- Serial: a terminal to a USB serial adapter on the bottom port, or to\n  the Bus Pirate's own.\n\nThe circle key shows a log of what the tools sent and read, the cloud\nthe settings, the diamond the help. Esc goes back, and closes OHMinous\nfrom the start screen; pins it made outputs go back to inputs.\n\nThe badge's pins are 3.3 V: do not connect 5 V signals to them.",
     "format": 2,
     "id": "ohminous",
@@ -1964,10 +1964,10 @@
      "info": "pins, logic, buses, power"
     },
     "package": {
-     "installed_size": 526839,
-     "sha256": "ff528a464ce27216aeddba34342f3e8d176d58d7a3900852e1783636827df927",
-     "size": 223478,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/ohminous-1.1.2.wpk"
+     "installed_size": 527479,
+     "sha256": "01c842a71c6452c58c4b148b256b8fe3a3c6e250aa892b50977ca4e01f3cfced",
+     "size": 224007,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/ohminous-1.1.3.wpk"
     },
     "permissions": [
      "usb"
@@ -2003,7 +2003,7 @@
      "assets": [],
      "executable": "pdfview",
      "external_only": true,
-     "revision": 4,
+     "revision": 5,
      "targets": [
       "why2025-whyos"
      ],
@@ -2024,7 +2024,7 @@
    "license_type": "AGPL-3.0-or-later AND FTL AND IJG AND Zlib AND OFL-1.1 AND LGPL-2.1-or-later",
    "name": "PDF viewer",
    "repository_url": "https://github.com/johndekroon/WhyOS-Apps/tree/main/apps/pdfview/source",
-   "version": "1.1.2",
+   "version": "1.1.3",
    "whyos": {
     "bundled": [
      {
@@ -2092,7 +2092,7 @@
      }
     ],
     "category": "media",
-    "changelog": "The viewer keeps the whole screen and no longer draws a status bar of its own; hold the logo key to see WhyOS's status bar.",
+    "changelog": "The key bar looks as in the other apps: the screen's keys on the left, the circle, clover and diamond small with their words, Esc on the right. The circle and clover open an empty log and settings screen.",
     "description": "Reads PDF documents on the badge: a page as wide as the screen, to\nscroll with the arrow keys, on into the next page. Left and Right turn\nthe pages, Space goes a screen down, Enter zooms in 2x. The square key\nhas Go to page and Whole page. It opens a file again on the page you\nleft it at.\n\nFiles opens PDF files with it; it has no entry in the menu's lists.\nRendering is done by MuPDF, cut down for the badge: documents in Chinese,\nJapanese or Korean, and PDFs with JPEG 2000 images, show those parts as\nboxes or blank. Locked PDFs (with a password) cannot be opened.\n\nIt needs about 6 MB of memory while it shows a page.",
     "format": 2,
     "id": "pdfview",
@@ -2106,10 +2106,10 @@
      "statusbar": "hidden"
     },
     "package": {
-     "installed_size": 3381142,
-     "sha256": "3dd120e4061d452f8a6748019287ea2e0d051424edee9d32d91dfef0b6d15939",
-     "size": 2207709,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/pdfview-1.1.2.wpk"
+     "installed_size": 3381178,
+     "sha256": "a4fc040b53d422db62eca41cd99a7ae74ae9a9a578abe34f7286d7839e31b091",
+     "size": 2207776,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/pdfview-1.1.3.wpk"
     },
     "requires": {
      "features": [
@@ -2398,7 +2398,7 @@
      "assets": [],
      "executable": "store",
      "internal_only": true,
-     "revision": 18,
+     "revision": 19,
      "targets": [
       "why2025-whyos"
      ],
@@ -2419,7 +2419,7 @@
    "license_type": "MIT AND (Apache-2.0 OR GPL-2.0-or-later) AND Zlib AND LGPL-2.1-or-later AND OFL-1.1",
    "name": "App store",
    "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
-   "version": "0.3.0",
+   "version": "0.3.1",
    "whyos": {
     "bundled": [
      {
@@ -2466,7 +2466,7 @@
      }
     ],
     "category": "store",
-    "changelog": "The status bar comes from WhyOS now; the store installs services, such as the VNC server, with their page in Settings, and apps that need the whole screen.",
+    "changelog": "The key bar looks as in the other apps: the screen's keys on the left, the circle, clover and diamond small with their words, Esc on the right; the log and the settings take each other's place.",
     "commands": [
      {
       "exec": "store",
@@ -2481,10 +2481,10 @@
      "info": "install apps and games"
     },
     "package": {
-     "installed_size": 1008584,
-     "sha256": "15247184c201ff236626812a60caf3fac103b531cb42f6b4f7c21f3993690e32",
-     "size": 530462,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.3.0.wpk"
+     "installed_size": 1009624,
+     "sha256": "b1ca7cd12b7a081444b0aa151f0b24f613dbf5a9abee6c4641925d5856aa7264",
+     "size": 531113,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/store-0.3.1.wpk"
     },
     "permissions": [
      "network"
@@ -2621,7 +2621,7 @@
      "assets": [],
      "executable": "write",
      "internal_only": true,
-     "revision": 5,
+     "revision": 6,
      "targets": [
       "why2025-whyos"
      ],
@@ -2642,7 +2642,7 @@
    "license_type": "MIT AND LGPL-2.1-or-later AND OFL-1.1",
    "name": "Write",
    "repository_url": "https://github.com/johndekroon/WhyOS-Apps",
-   "version": "1.2.2",
+   "version": "1.2.3",
    "whyos": {
     "bundled": [
      {
@@ -2668,7 +2668,7 @@
      }
     ],
     "category": "other",
-    "changelog": "The status bar comes from WhyOS now, so the app no longer draws its own.",
+    "changelog": "The key bar looks as in the other apps: the screen's keys on the left, the circle, clover and diamond small with their words, Esc on the right; the log and the settings take each other's place.",
     "description": "Write notes and documents on the badge, with headings, lists, bold,\nitalic and underline, saved as markdown (.md) that any other editor can\nopen. Markdown works while you type: \"# \" makes a heading, \"- \" a list,\n**bold** turns bold when you type the last star. The cross key shows the\nmarkdown itself.\n\nCode and other text open in a code view with line numbers, colours for\nPython, shell, HTML, CSS, JavaScript, JSON, YAML, C and more, and Tab\nand Enter keep the indent. The triangle runs a Python or shell script\nin a terminal window, or shows an HTML page in NetSurf.\n\nSelect with Fn and the arrows, copy, cut and paste between documents,\nfind and replace, full screen for long texts. Files opens .md and .txt\nfiles in Write. The logo key saves before going back to the menu.",
     "format": 2,
     "id": "write",
@@ -2703,10 +2703,10 @@
      ]
     },
     "package": {
-     "installed_size": 713817,
-     "sha256": "de6c716cf6059607258c815005128d22b3256d9fd897f8ce1cc917b060f07945",
-     "size": 307727,
-     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/write-1.2.2.wpk"
+     "installed_size": 716477,
+     "sha256": "b7c688a2305f9863e58a938b5c93d58df7e9ba59c554f20e06f8192cac6f9bae",
+     "size": 309445,
+     "url": "https://raw.githubusercontent.com/johndekroon/WhyOS-Apps/main/dist/v1/packages/write-1.2.3.wpk"
     },
     "permissions": [
      "system"
